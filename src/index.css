@@ -96,7 +96,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
 #root {
+  width: 100%;
   min-height: 100svh;
+}
+
+#root {
   display: flex;
 }
