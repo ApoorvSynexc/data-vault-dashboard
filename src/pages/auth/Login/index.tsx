@@ -1,6 +1,7 @@
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Link } from 'react-router-dom';
+import FormError from '../../../components/FormError';
 import TextField from '../../../components/TextField';
 import MailIcon from '../../../assets/icons/mail.svg?react';
 import EyeIcon from '../../../assets/icons/eye.svg?react';
@@ -17,11 +18,13 @@ import { validateLoginForm } from '../../../validation';
 
 type LoginFormState = {
   fieldErrors: Partial<Record<keyof LoginForm, string>>;
+  submitError: string;
   values: LoginForm;
 };
 
 const initialState: LoginFormState = {
   fieldErrors: {},
+  submitError: '',
   values: {
     email: '',
     password: '',
@@ -96,6 +99,7 @@ export default function Login() {
               </Link>
             </div>
 
+            <FormError message={state.submitError} />
             <SubmitButton />
 
             {/* Divider */}
@@ -165,24 +169,24 @@ async function handleLoginSubmit(
   if (Object.keys(fieldErrors).length > 0) {
     return {
       fieldErrors,
+      submitError: '',
       values,
     };
   }
 
   try {
-    await authService.login(values);
+    const res = await authService.login(values);
+    console.log({res});
 
     return {
       fieldErrors: {},
+      submitError: '',
       values,
     };
   } catch (error) {
-    const fieldErrors: LoginFormState['fieldErrors'] = {
-      password: error instanceof Error ? error.message : 'Unable to sign in',
-    };
-
     return {
-      fieldErrors,
+      fieldErrors: {},
+      submitError: error instanceof Error ? error.message : 'Unable to sign in',
       values,
     };
   }

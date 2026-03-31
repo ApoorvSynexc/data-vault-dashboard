@@ -1,14 +1,22 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+import { BASE_URL } from "../constant";
+
+type ApiResponse<T> = {
+  success: boolean;
+  message: string;
+  data: T | null;
+  meta: Record<string, unknown>;
+};
 
 export class HttpError extends Error {
   status: number;
   data: unknown;
 
-  constructor(status: number, statusText: string, data: unknown) {
+  constructor(status: number, statusText: string, data?: ApiResponse<unknown>) {
     super(`${status} ${statusText}`);
     this.name = 'HttpError';
     this.status = status;
     this.data = data;
+    this.message = data?.message ?? `${status} ${statusText}`;
   }
 }
 
@@ -32,13 +40,13 @@ export async function request<T>(
     body: hasJsonBody ? JSON.stringify(body) : body,
   });
 
-  const data = await parseResponse(response);
-  
-  if (!response.ok) {
-    throw new HttpError(response.status, response.statusText, data);
+  const envelope = await parseResponse(response) as ApiResponse<T>;
+
+  if (!response.ok || !envelope?.success) {
+    throw new HttpError(response.status, response.statusText, envelope);
   }
 
-  return data as T;
+  return envelope.data as T;
 }
 
 export const httpRequest = {
