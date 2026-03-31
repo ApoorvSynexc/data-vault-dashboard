@@ -33,18 +33,6 @@ export default function Login() {
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-md w-full max-w-md p-8">
-          {/* Tabs */}
-          <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
-            <button className="px-5 py-1.5 rounded-md text-sm font-medium bg-blue-600 text-white shadow-sm">
-              Sign In
-            </button>
-            <Link
-              to="/signup"
-              className="px-5 py-1.5 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700"
-            >
-              Sign Up
-            </Link>
-          </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back</h2>
           <p className="text-sm text-gray-500 mb-6">Enter your credentials to access your account</p>
@@ -111,7 +99,7 @@ export default function Login() {
       </div>
 
       {/* ── Right Panel ── */}
-      <div className="hidden lg:flex flex-col flex-1 items-center justify-between bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 px-12 py-12">
+      <div className="hidden lg:flex flex-col flex-1 items-center justify-between bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 px-12 py-8">
         {/* Illustration placeholder */}
         <div className="flex-1 flex items-center justify-center w-full">
           <IllustrationPlaceholder />
