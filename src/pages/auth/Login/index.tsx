@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import { Link } from 'react-router-dom'
 import TextField from '../../../components/TextField'
-import Button from '../../../components/Button'
 import MailIcon from '../../../assets/icons/mail.svg?react'
 import EyeIcon from '../../../assets/icons/eye.svg?react'
 import EyeOffIcon from '../../../assets/icons/eye-off.svg?react'
@@ -11,10 +11,25 @@ import CheckCircleIcon from '../../../assets/icons/check-circle.svg?react'
 import GoogleIcon from '../../../assets/icons/google.svg?react'
 import MicrosoftIcon from '../../../assets/icons/microsoft.svg?react'
 import SSOIcon from '../../../assets/icons/sso.svg?react'
+import type { LoginForm } from '../auth.types'
+
+type LoginFormState = {
+  fieldErrors: Partial<Record<keyof LoginForm, string>>
+  values: LoginForm
+}
+
+const initialState: LoginFormState = {
+  fieldErrors: {},
+  values: {
+    email: '',
+    password: '',
+  },
+}
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [state, submitAction] = useActionState(handleLoginSubmit, initialState)
 
   return (
     <div className="flex flex-1 bg-[#EEF2FF]">
@@ -37,18 +52,24 @@ export default function Login() {
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome Back</h2>
           <p className="text-sm text-gray-500 mb-6">Enter your credentials to access your account</p>
 
-          <div className="flex flex-col gap-4">
+          <form action={submitAction} className="flex flex-col gap-4">
             <TextField
               label="Email"
+              name="email"
               type="email"
               placeholder="Enter you email"
+              defaultValue={state.values.email}
+              error={state.fieldErrors.email}
               rightIcon={<MailIcon className="h-4 w-4" />}
             />
 
             <TextField
+              name="password"
               label="Password"
               type={showPassword ? 'text' : 'password'}
               placeholder="Enter password"
+              defaultValue={state.values.password}
+              error={state.fieldErrors.password}
               rightIcon={showPassword
                 ? <EyeOffIcon className="h-4 w-4" />
                 : <EyeIcon className="h-4 w-4" />
@@ -61,6 +82,7 @@ export default function Login() {
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
                 <input
                   type="checkbox"
+                  name="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 accent-blue-600"
@@ -72,7 +94,7 @@ export default function Login() {
               </Link>
             </div>
 
-            <Button fullWidth size="lg">Sign In</Button>
+            <SubmitButton />
 
             {/* Divider */}
             <div className="flex items-center gap-3 my-1">
@@ -94,7 +116,7 @@ export default function Login() {
                 Sign Up
               </Link>
             </p>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -128,11 +150,72 @@ export default function Login() {
   )
 }
 
+async function handleLoginSubmit(
+  _previousState: LoginFormState,
+  formData: FormData,
+): Promise<LoginFormState> {
+  const values: LoginForm = {
+    email: String(formData.get('email') ?? '').trim(),
+    password: String(formData.get('password') ?? '').trim(),
+  }
+
+  const fieldErrors: LoginFormState['fieldErrors'] = {}
+
+  if (!values.email) {
+    fieldErrors.email = 'Email is required'
+  } else if (!/\S+@\S+\.\S+/.test(values.email)) {
+    fieldErrors.email = 'Enter a valid email address'
+  }
+
+  if (!values.password) {
+    fieldErrors.password = 'Password is required'
+  } else if (values.password.length < 6) {
+    fieldErrors.password = 'Password must be at least 6 characters'
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      fieldErrors,
+      values,
+    }
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 600))
+
+  return {
+    fieldErrors: {},
+    values,
+  }
+}
+
 function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <button className="flex items-center justify-center gap-2 border border-gray-200 rounded-lg py-2 px-3 text-sm text-gray-600 hover:bg-gray-50 transition">
       {icon}
       <span>{label}</span>
+    </button>
+  )
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className={[
+        'inline-flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-medium transition',
+        'focus:outline-none focus:ring-2 focus:ring-blue-300',
+        pending
+          ? 'cursor-not-allowed bg-blue-300 text-white'
+          : 'bg-blue-600 text-white hover:bg-blue-700',
+      ].join(' ')}
+    >
+      {pending && (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      )}
+      {pending ? 'Signing In...' : 'Sign In'}
     </button>
   )
 }
