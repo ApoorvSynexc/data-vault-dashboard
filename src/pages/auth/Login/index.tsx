@@ -12,6 +12,7 @@ import GoogleIcon from '../../../assets/icons/google.svg?react'
 import MicrosoftIcon from '../../../assets/icons/microsoft.svg?react'
 import SSOIcon from '../../../assets/icons/sso.svg?react'
 import type { LoginForm } from '../auth.types'
+import { authService } from '../../../services'
 
 type LoginFormState = {
   fieldErrors: Partial<Record<keyof LoginForm, string>>
@@ -180,7 +181,11 @@ async function handleLoginSubmit(
     }
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 600))
+  try {
+    await authService.login(values)
+  } catch (error) {
+    
+  }
 
   return {
     fieldErrors: {},
