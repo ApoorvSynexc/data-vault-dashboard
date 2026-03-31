@@ -1,6 +1,6 @@
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import FormError from '../../../components/FormError';
 import TextField from '../../../components/TextField';
 import MailIcon from '../../../assets/icons/mail.svg?react';
@@ -20,21 +20,25 @@ type LoginFormState = {
   fieldErrors: Partial<Record<keyof LoginForm, string>>;
   submitError: string;
   values: LoginForm;
+  success: boolean;
 };
 
 const initialState: LoginFormState = {
   fieldErrors: {},
   submitError: '',
-  values: {
-    email: '',
-    password: '',
-  },
+  values: { email: '', password: '' },
+  success: false,
 };
 
 export default function Login() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [state, submitAction] = useActionState(handleLoginSubmit, initialState);
+
+  useEffect(() => {
+    if (state.success) navigate('/', { replace: true });
+  }, [state.success]);
 
   return (
     <div className='flex flex-1 bg-[#EEF2FF]'>
@@ -167,27 +171,18 @@ async function handleLoginSubmit(
 
   const fieldErrors = await validateLoginForm(values);
   if (Object.keys(fieldErrors).length > 0) {
-    return {
-      fieldErrors,
-      submitError: '',
-      values,
-    };
+    return { fieldErrors, submitError: '', values, success: false };
   }
 
   try {
-    const res = await authService.login(values);
-    console.log({res});
-
-    return {
-      fieldErrors: {},
-      submitError: '',
-      values,
-    };
+    await authService.login(values);
+    return { fieldErrors: {}, submitError: '', values, success: true };
   } catch (error) {
     return {
       fieldErrors: {},
       submitError: error instanceof Error ? error.message : 'Unable to sign in',
       values,
+      success: false,
     };
   }
 }

@@ -24,21 +24,59 @@ type HttpRequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | object | null
 }
 
-export async function request<T>(
-  path: string,
-  { body, headers, ...options }: HttpRequestOptions = {},
-): Promise<T> {
+let isRefreshing = false;
+let refreshQueue: Array<() => void> = [];
+
+async function refreshTokens(): Promise<void> {
+  const response = await fetch(`${BASE_URL}/v1/auth/refresh-token`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('refresh_failed');
+  }
+}
+
+async function rawFetch(path: string, body: HttpRequestOptions['body'], headers: HeadersInit | undefined, options: RequestInit): Promise<Response> {
   const isFormData = body instanceof FormData;
   const hasJsonBody = body !== undefined && body !== null && !isFormData;
 
-  const response = await fetch(`${BASE_URL}${path}`, {
+  return fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       ...(hasJsonBody ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
-    body: hasJsonBody ? JSON.stringify(body) : body,
+    body: hasJsonBody ? JSON.stringify(body) : (body as BodyInit | null | undefined),
   });
+}
+
+export async function request<T>(
+  path: string,
+  { body, headers, ...options }: HttpRequestOptions = {},
+): Promise<T> {
+  let response = await rawFetch(path, body, headers, options);
+
+  if (response.status === 401 && path !== '/v1/auth/refresh-token') {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        await refreshTokens();
+        refreshQueue.forEach((resolve) => resolve());
+      } catch {
+        refreshQueue = [];
+        isRefreshing = false;
+        throw new HttpError(401, 'Unauthorized');
+      }
+      refreshQueue = [];
+      isRefreshing = false;
+    } else {
+      await new Promise<void>((resolve) => refreshQueue.push(resolve));
+    }
+
+    response = await rawFetch(path, body, headers, options);
+  }
 
   const envelope = await parseResponse(response) as ApiResponse<T>;
 

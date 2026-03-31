@@ -13,3 +13,8 @@ export interface SignupForm {
 export interface ForgotPasswordForm {
   email: string
 }
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
