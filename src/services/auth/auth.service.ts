@@ -1,5 +1,5 @@
-import type { ForgotPasswordForm, LoginForm, SignupForm } from '../../pages/auth/auth.types'
-import { httpRequest } from '../api'
+import type { ForgotPasswordForm, LoginForm, SignupForm } from '../../pages/auth/auth.types';
+import { httpRequest } from '../api';
 
 export const authService = {
   login: <TResponse>(payload: LoginForm) =>
@@ -8,4 +8,4 @@ export const authService = {
     httpRequest.post<TResponse>('/auth/signup', payload),
   forgotPassword: <TResponse>(payload: ForgotPasswordForm) =>
     httpRequest.post<TResponse>('/auth/forgot-password', payload),
-}
+};

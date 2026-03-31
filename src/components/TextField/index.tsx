@@ -1,4 +1,4 @@
-import type { TextFieldProps } from './TextField.types'
+import type { TextFieldProps } from './TextField.types';
 
 export default function TextField({
   label,
@@ -8,17 +8,17 @@ export default function TextField({
   id,
   ...props
 }: TextFieldProps) {
-  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
 
   return (
-    <div className="flex flex-col gap-1 w-full">
+    <div className='flex flex-col gap-1 w-full'>
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} className='text-sm font-medium text-gray-700'>
           {label}
         </label>
       )}
 
-      <div className="relative">
+      <div className='relative'>
         <input
           id={inputId}
           {...props}
@@ -33,9 +33,9 @@ export default function TextField({
 
         {rightIcon && (
           <button
-            type="button"
+            type='button'
             onClick={onRightIconClick}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className='absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'
             tabIndex={-1}
           >
             {rightIcon}
@@ -43,7 +43,7 @@ export default function TextField({
         )}
       </div>
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className='text-xs text-red-500'>{error}</p>}
     </div>
-  )
+  );
 }

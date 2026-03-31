@@ -1,14 +1,14 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? ''
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 export class HttpError extends Error {
-  status: number
-  data: unknown
+  status: number;
+  data: unknown;
 
   constructor(status: number, statusText: string, data: unknown) {
-    super(`${status} ${statusText}`)
-    this.name = 'HttpError'
-    this.status = status
-    this.data = data
+    super(`${status} ${statusText}`);
+    this.name = 'HttpError';
+    this.status = status;
+    this.data = data;
   }
 }
 
@@ -20,8 +20,8 @@ export async function request<T>(
   path: string,
   { body, headers, ...options }: HttpRequestOptions = {},
 ): Promise<T> {
-  const isFormData = body instanceof FormData
-  const hasJsonBody = body !== undefined && body !== null && !isFormData
+  const isFormData = body instanceof FormData;
+  const hasJsonBody = body !== undefined && body !== null && !isFormData;
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -30,15 +30,15 @@ export async function request<T>(
       ...headers,
     },
     body: hasJsonBody ? JSON.stringify(body) : body,
-  })
+  });
 
-  const data = await parseResponse(response)
+  const data = await parseResponse(response);
   
   if (!response.ok) {
-    throw new HttpError(response.status, response.statusText, data)
+    throw new HttpError(response.status, response.statusText, data);
   }
 
-  return data as T
+  return data as T;
 }
 
 export const httpRequest = {
@@ -52,18 +52,18 @@ export const httpRequest = {
     request<T>(path, { ...options, method: 'PATCH', body }),
   delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
     request<T>(path, { ...options, method: 'DELETE' }),
-}
+};
 
 async function parseResponse(response: Response): Promise<unknown> {
   if (response.status === 204) {
-    return null
+    return null;
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
+  const contentType = response.headers.get('content-type') ?? '';
 
   if (contentType.includes('application/json')) {
-    return response.json()
+    return response.json();
   }
 
-  return response.text()
+  return response.text();
 }
