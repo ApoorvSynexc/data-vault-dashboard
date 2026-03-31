@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* ─── Brand / Primary (Blue) ─── */
+  --color-primary-50:  #EFF6FF;
+  --color-primary-100: #DBEAFE;
+  --color-primary-200: #BFDBFE;
+  --color-primary-300: #93C5FD;
+  --color-primary-500: #3B82F6;
+  --color-primary-600: #2563EB;
+  --color-primary-700: #1D4ED8;
+  --color-primary-800: #1E40AF;
+  --color-primary-900: #1B3A8A;  /* sidebar / header dark navy */
+
+  /* ─── Neutrals ─── */
+  --color-neutral-50:  #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-500: #64748B;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1E293B;
+  --color-neutral-900: #0F172A;
+
+  /* ─── Success (green — Connected badge, checkmarks) ─── */
+  --color-success-50:  #F0FDF4;
+  --color-success-100: #DCFCE7;
+  --color-success-500: #22C55E;
+  --color-success-600: #16A34A;
+  --color-success-700: #15803D;
+
+  /* ─── Warning (yellow — health gauge arc) ─── */
+  --color-warning-50:  #FEFCE8;
+  --color-warning-400: #FACC15;
+  --color-warning-500: #EAB308;
+  --color-warning-600: #CA8A04;
+
+  /* ─── Error / Danger ─── */
+  --color-error-50:  #FEF2F2;
+  --color-error-500: #EF4444;
+  --color-error-600: #DC2626;
+  --color-error-700: #B91C1C;
+
+  /* ─── Semantic surface aliases ─── */
+  --color-bg-page:         #F5F7FA;   /* main content area */
+  --color-bg-card:         #FFFFFF;   /* cards / panels */
+  --color-bg-sidebar:      #1B3A8A;   /* left nav */
+  --color-bg-header:       #1B3A8A;   /* top header bar */
+  --color-bg-nav-active:   #FFFFFF;   /* active nav item */
+  --color-bg-input:        #FFFFFF;
+
+  /* ─── Semantic text aliases ─── */
+  --color-text-primary:    #111827;   /* headings, big numbers */
+  --color-text-secondary:  #6B7280;   /* subtitles, labels */
+  --color-text-muted:      #9CA3AF;   /* timestamps, hints */
+  --color-text-inverse:    #FFFFFF;   /* text on dark bg */
+  --color-text-nav:        rgba(255, 255, 255, 0.75);  /* inactive nav */
+  --color-text-nav-active: #2563EB;   /* active nav item */
+
+  /* ─── Borders ─── */
+  --color-border:          #E5E7EB;
+  --color-border-light:    #F3F4F6;
+  --color-border-focus:    #2563EB;
+
+  /* ─── Typography ─── */
+  --font-sans:   'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:   ui-monospace, Consolas, monospace;
+
+  /* ─── Border radius ─── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ─── */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-dropdown: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+}
+
+/* ─── Base ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+}
