@@ -7,6 +7,7 @@ import ForgotPassword from '../pages/auth/ForgotPassword';
 import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
+import BackupMannagement from '../pages/BackupManagement';
 
 const router = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <Dashboard /> },
+          { path: '/backup-management', element: <BackupMannagement /> },
         ],
       },
     ],
