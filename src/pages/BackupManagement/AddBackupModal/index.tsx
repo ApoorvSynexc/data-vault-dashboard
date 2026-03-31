@@ -99,7 +99,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4'>
-      <div className='max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]'>
+      <div className='flex h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]'>
         <div className='border-b border-gray-100 px-6 py-5'>
           <div className='flex flex-wrap items-start justify-between gap-6'>
             <StepMarker step={1} label='Define Backup Policy' status={currentStep > 1 ? 'completed' : 'active'} />
@@ -109,7 +109,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
           </div>
         </div>
 
-        <div className='max-h-[calc(100vh-14rem)] overflow-y-auto px-6 py-6'>
+        <div className='min-h-0 flex-1 overflow-y-auto px-6 py-6'>
           {currentStep === 1 && (
             <>
               <Typography as='h2' variant='pageTitle' className='font-semibold'>
@@ -478,7 +478,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
           )}
         </div>
 
-        <div className='flex flex-col gap-3 border-t border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='shrink-0 flex flex-col gap-3 border-t border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between'>
           <button
             type='button'
             onClick={handleClose}
