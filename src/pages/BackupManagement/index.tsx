@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
+import Typography from '../../components/Typography';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'Completed' | 'Running' | 'Paused';
-type PlatformType = 'Salesforce' | 'HubSpot' | 'Zoho';
 
 type ScheduledJob = {
   id: string;
@@ -34,7 +35,9 @@ function Panel({
   return (
     <section className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
       <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4'>
-        <h3 className='text-sm font-semibold text-gray-800'>{title}</h3>
+        <Typography as='h3' variant='sectionTitle' color='secondary'>
+          {title}
+        </Typography>
         {action}
       </div>
       {children}
@@ -62,9 +65,15 @@ function MetricCard({
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'>
-      <p className='text-[11px] font-medium text-gray-500'>{label}</p>
-      <p className='mt-1 text-[2rem] leading-none font-bold text-gray-900'>{value}</p>
-      <p className={`mt-2 text-[11px] font-medium ${noteStyles[tone]}`}>{note}</p>
+      <Typography variant='metricLabel' color='muted'>
+        {label}
+      </Typography>
+      <Typography className='mt-1' variant='metricValue'>
+        {value}
+      </Typography>
+      <Typography className={`mt-2 ${noteStyles[tone]}`} variant='metricLabel'>
+        {note}
+      </Typography>
     </div>
   );
 }
@@ -158,14 +167,22 @@ function ScheduledJobRow({ job }: { job: ScheduledJob }) {
       <div className='flex min-w-0 flex-1 items-center gap-3'>
         <PlatformBadge platform={job.platform} />
         <div className='min-w-0'>
-          <p className='text-sm font-medium text-gray-800'>{job.name}</p>
-          <p className='text-xs text-gray-500'>{job.platform} Production</p>
+          <Typography variant='body' color='secondary' className='font-medium'>
+            {job.name}
+          </Typography>
+          <Typography variant='bodySm' color='muted'>
+            {job.platform} Production
+          </Typography>
         </div>
       </div>
 
       <div className='grid flex-1 grid-cols-1 gap-2 text-xs text-gray-500 sm:grid-cols-2 lg:max-w-[400px] lg:grid-cols-2'>
-        <p>{job.time}</p>
-        <p>{job.lastRun}</p>
+        <Typography variant='bodySm' color='muted'>
+          {job.time}
+        </Typography>
+        <Typography variant='bodySm' color='muted'>
+          {job.lastRun}
+        </Typography>
       </div>
 
       <div className='flex shrink-0 items-center gap-2'>
@@ -180,7 +197,9 @@ function ScheduledJobRow({ job }: { job: ScheduledJob }) {
 function PaginationFooter() {
   return (
     <div className='flex flex-col gap-3 px-5 py-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-end'>
-      <span>Showing 4 of 12</span>
+      <Typography as='span' variant='bodySm' color='muted'>
+        Showing 4 of 12
+      </Typography>
       <div className='flex items-center gap-1'>
         <button type='button' className='flex h-6 min-w-6 items-center justify-center rounded bg-emerald-500 px-2 text-[10px] font-semibold text-white'>
           1
@@ -269,7 +288,9 @@ const backupColumns: TableColumn<BackupRow>[] = [
     render: (row) => (
       <div className='flex min-w-0 items-center gap-3'>
         <PlatformBadge platform={row.platform} size='sm' />
-        <span className='whitespace-normal text-xs font-medium text-gray-800'>{row.name}</span>
+        <Typography as='span' variant='label' color='secondary' className='whitespace-normal'>
+          {row.name}
+        </Typography>
       </div>
     ),
   },
@@ -320,19 +341,24 @@ const backupColumns: TableColumn<BackupRow>[] = [
 ];
 
 export default function BackupManagement() {
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+
   return (
     <div className='flex w-full min-w-0 flex-col gap-5'>
       <section className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
         <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
-            <h2 className='text-xl font-bold text-gray-900'>Backup Management</h2>
-            <p className='mt-1 text-sm text-gray-500'>
+            <Typography as='h2' variant='pageTitle'>
+              Backup Management
+            </Typography>
+            <Typography className='mt-1' variant='body' color='muted'>
               Track schedules, performance, and intervention points across every protected workload.
-            </p>
+            </Typography>
           </div>
 
           <button
             type='button'
+            onClick={() => setIsCreatingBackup(true)}
             className='inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
           >
             + New Backup
@@ -366,6 +392,8 @@ export default function BackupManagement() {
         />
         <PaginationFooter />
       </Panel>
+
+      <AddBackupModal isOpen={isCreatingBackup} onClose={() => setIsCreatingBackup(false)} />
     </div>
   );
 }
