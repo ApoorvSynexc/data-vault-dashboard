@@ -13,6 +13,7 @@ import MicrosoftIcon from '../../../assets/icons/microsoft.svg?react';
 import SSOIcon from '../../../assets/icons/sso.svg?react';
 import type { LoginForm } from '../auth.types';
 import { authService } from '../../../services';
+import { validateLoginForm } from '../../../validation';
 
 type LoginFormState = {
   fieldErrors: Partial<Record<keyof LoginForm, string>>;
@@ -160,20 +161,7 @@ async function handleLoginSubmit(
     password: String(formData.get('password') ?? '').trim(),
   };
 
-  const fieldErrors: LoginFormState['fieldErrors'] = {};
-
-  if (!values.email) {
-    fieldErrors.email = 'Email is required';
-  } else if (!/\S+@\S+\.\S+/.test(values.email)) {
-    fieldErrors.email = 'Enter a valid email address';
-  }
-
-  if (!values.password) {
-    fieldErrors.password = 'Password is required';
-  } else if (values.password.length < 6) {
-    fieldErrors.password = 'Password must be at least 6 characters';
-  }
-
+  const fieldErrors = await validateLoginForm(values);
   if (Object.keys(fieldErrors).length > 0) {
     return {
       fieldErrors,
@@ -183,19 +171,21 @@ async function handleLoginSubmit(
 
   try {
     await authService.login(values);
+
+    return {
+      fieldErrors: {},
+      values,
+    };
   } catch (error) {
-    fieldErrors.password = error instanceof Error ? error.message : 'Unable to sign in';
+    const fieldErrors: LoginFormState['fieldErrors'] = {
+      password: error instanceof Error ? error.message : 'Unable to sign in',
+    };
 
     return {
       fieldErrors,
       values,
     };
   }
-
-  return {
-    fieldErrors: {},
-    values,
-  };
 }
 
 function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
