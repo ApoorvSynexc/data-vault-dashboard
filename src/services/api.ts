@@ -26,6 +26,11 @@ type HttpRequestOptions = Omit<RequestInit, 'body'> & {
 
 let isRefreshing = false;
 let refreshQueue: Array<() => void> = [];
+let logoutHandler: (() => void) | null = null;
+
+export function registerLogoutHandler(fn: () => void) {
+  logoutHandler = fn;
+}
 
 async function refreshTokens(): Promise<void> {
   const response = await fetch(`${BASE_URL}/v1/auth/refresh-token`, {
@@ -67,6 +72,7 @@ export async function request<T>(
       } catch {
         refreshQueue = [];
         isRefreshing = false;
+        logoutHandler?.();
         throw new HttpError(401, 'Unauthorized');
       }
       refreshQueue = [];

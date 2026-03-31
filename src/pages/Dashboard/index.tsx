@@ -1,12 +1,8 @@
-import { useEffect } from 'react';
-import { userService } from '../../services';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Dashboard() {
-  useEffect(() => {
-    userService.getMyProfile().then((profile) => {
-      console.log('my-profile', profile);
-    });
-  }, []);
+  const { user } = useAuth();
+  console.log('my-profile', user);
 
   return (
     <div>

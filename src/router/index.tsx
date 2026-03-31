@@ -5,18 +5,30 @@ import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import NotFound from '../pages/NotFound';
+import ProtectedRoute from './ProtectedRoute';
+import PublicRoute from './PublicRoute';
 
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: <MainLayout />,
+    element: <ProtectedRoute />,
     children: [
-      { index: true, element: <Dashboard /> },
+      {
+        path: '/',
+        element: <MainLayout />,
+        children: [
+          { index: true, element: <Dashboard /> },
+        ],
+      },
     ],
   },
-  { path: '/login', element: <Login /> },
-  { path: '/signup', element: <Signup /> },
-  { path: '/forgot-password', element: <ForgotPassword /> },
+  {
+    element: <PublicRoute />,
+    children: [
+      { path: '/login', element: <Login /> },
+      { path: '/signup', element: <Signup /> },
+      { path: '/forgot-password', element: <ForgotPassword /> },
+    ],
+  },
   { path: '*', element: <NotFound /> },
 ]);
 

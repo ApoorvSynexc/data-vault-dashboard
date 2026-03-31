@@ -8,4 +8,6 @@ export const authService = {
     httpRequest.post<TResponse>('/auth/signup', payload),
   forgotPassword: <TResponse>(payload: ForgotPasswordForm) =>
     httpRequest.post<TResponse>('/auth/forgot-password', payload),
+  logout: () =>
+    httpRequest.post('/v1/auth/logout'),
 };
