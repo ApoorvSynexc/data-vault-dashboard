@@ -9,11 +9,13 @@ import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
 import Platforms from '../pages/Platforms';
+import SalesforceCallback from '../pages/callback/salesforce';
 
 const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      { path: '/callback/salesforce', element: <SalesforceCallback /> },
       {
         path: '/',
         element: <MainLayout />,

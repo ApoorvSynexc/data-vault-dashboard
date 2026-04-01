@@ -57,7 +57,7 @@ export default function AddPlatformModal({
   const connectPlatformMutation = useMutation({
     mutationFn: (crm: CrmPlatform) => connectPlatform(crm),
     onSuccess: (response) => {
-      const redirectUrl = typeof response === 'string' ? response : response.url;
+      const redirectUrl = typeof response === 'string' ? response : response.redirectUrl;
 
       if (!redirectUrl) {
         setError('Connect URL was not returned by the server.');

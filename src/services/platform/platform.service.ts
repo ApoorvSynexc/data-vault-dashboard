@@ -23,7 +23,7 @@ export type ConnectedPlatform = {
 };
 
 export type ConnectPlatformResponse = {
-  url: string;
+  redirectUrl: string;
 };
 
 export function usePlatformService() {
@@ -39,7 +39,7 @@ export function usePlatformService() {
         },
       }),
     callbackPlatform: (payload: { crmName: CrmPlatform; code: string, state: string }) =>
-      api.get<ConnectPlatformResponse | string>('/crm/callback', {
+      api.get<ConnectPlatformResponse | string>('/v1/crm/callback', {
         query: {
           crmName: payload.crmName.toLowerCase(),
           code: payload.code,
