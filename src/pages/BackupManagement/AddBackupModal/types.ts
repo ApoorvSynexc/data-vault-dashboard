@@ -22,7 +22,10 @@ export type AzureConfig = {
   containerName: string;
 };
 export type StepStatus = 'completed' | 'active' | 'upcoming';
-export type BackupFrequency = 'Hourly' | 'Daily' | 'Weekly' | 'Monthly';
+export type ScheduleMode = 'realtime' | 'schedule';
+export type ScheduleType = 'one_time' | 'incremental';
+export type DurationType = 'hour' | 'day' | 'week' | 'month';
+export type WeekDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type AddBackupModalProps = {
   isOpen: boolean;

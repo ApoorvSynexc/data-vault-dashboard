@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react';
 import Typography from '../../../components/Typography';
 import { dataScopeRows, initialSelectedObjectIds } from './constants';
-import { ReviewCard, SearchIcon, SelectChevron, StepMarker, Toggle } from './components';
+import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
 import type {
   AddBackupModalProps,
   AzureConfig,
   BackupEnvironment,
-  BackupFrequency,
   DestinationType,
+  DurationType,
   GoogleConfig,
   PlatformType,
   S3Config,
+  ScheduleMode,
+  ScheduleType,
+  WeekDay,
   WizardStep,
 } from './types';
 
@@ -22,16 +25,18 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [description, setDescription] = useState('');
   const [platform, setPlatform] = useState<PlatformType>('Salesforce');
   const [environment, setEnvironment] = useState<BackupEnvironment>('Production');
-  const [frequency, setFrequency] = useState<BackupFrequency>('Daily');
-  const [scheduleTime, setScheduleTime] = useState('02:00 AM');
-  const [timeZone, setTimeZone] = useState('(GMT-04:00) Eastern Time(US & Canada)');
-  const [retentionPeriod, setRetentionPeriod] = useState('1 Year (Standard)');
-  const [abortWindow, setAbortWindow] = useState('1 Hour');
   const [search, setSearch] = useState('');
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(initialSelectedObjectIds);
   const [includeAttachments, setIncludeAttachments] = useState(true);
   const [metadataBackup, setMetadataBackup] = useState(true);
-  const [incrementedBackup, setIncrementedBackup] = useState(true);
+  // Scheduling
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('realtime');
+  const [scheduleType, setScheduleType] = useState<ScheduleType>('incremental');
+  const [duration, setDuration] = useState<DurationType>('hour');
+  const [interval, setInterval] = useState<number>(6);
+  const [weekDays, setWeekDays] = useState<WeekDay[]>([]);
+  const [monthDate, setMonthDate] = useState<number>(1);
+  const [timeZone, setTimeZone] = useState('UTC');
   const [destination, setDestination] = useState<DestinationType>('S3');
   const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
   const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({ serviceAccountKey: '', bucketName: '', projectId: '' });
@@ -66,8 +71,18 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     metadataBackup ? 'Metadata included' : null,
   ].filter(Boolean).join(', ') || 'No extras selected';
 
-  const schedulingDetails = `${frequency} at ${scheduleTime}, ${timeZone}`;
-  const schedulingMeta = `${retentionPeriod} | ${incrementedBackup ? 'Incremental' : 'Full'} Backup`;
+  const schedulingDetails = scheduleMode === 'realtime'
+    ? 'Realtime'
+    : scheduleType === 'one_time'
+      ? `One-time (${timeZone})`
+      : duration === 'hour'
+        ? `Every ${interval}h (${timeZone})`
+        : duration === 'day'
+          ? `Every ${interval}d (${timeZone})`
+          : duration === 'week'
+            ? `Weekly — ${weekDays.join(', ') || 'no days'} (${timeZone})`
+            : `Monthly — day ${monthDate} (${timeZone})`;
+  const schedulingMeta = scheduleMode === 'schedule' && scheduleType === 'incremental' ? 'Incremental' : scheduleMode === 'schedule' ? 'One-time' : 'Realtime';
 
   function handleClose() {
     setCurrentStep(1);
@@ -342,118 +357,194 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                 Define how frequently your backup should be performed.
               </Typography>
 
-              <div className='mt-6'>
-                <div className='inline-flex flex-wrap overflow-hidden rounded-lg border border-blue-600'>
-                  {(['Hourly', 'Daily', 'Weekly', 'Monthly'] as BackupFrequency[]).map((option) => (
-                    <button
-                      key={option}
-                      type='button'
-                      onClick={() => setFrequency(option)}
-                      className={[
-                        'min-w-[82px] border-r border-blue-600 px-5 py-2 text-xs font-medium transition last:border-r-0',
-                        frequency === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                      ].join(' ')}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-
-                <div className='mt-6 grid grid-cols-1 gap-6 md:grid-cols-2'>
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Time
-                    </Typography>
-                    <div className='relative'>
-                      <select
-                        value={scheduleTime}
-                        onChange={(event) => setScheduleTime(event.target.value)}
-                        className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+              <div className='mt-6 space-y-6'>
+                {/* Realtime / Schedule toggle */}
+                <div>
+                  <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                    Type
+                  </Typography>
+                  <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                    {(['realtime', 'schedule'] as ScheduleMode[]).map((option) => (
+                      <button
+                        key={option}
+                        type='button'
+                        onClick={() => setScheduleMode(option)}
+                        className={[
+                          'min-w-[100px] border-r border-blue-600 px-5 py-2 text-xs font-medium capitalize transition last:border-r-0',
+                          scheduleMode === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                        ].join(' ')}
                       >
-                        <option value='02:00 AM'>02 : 00 AM</option>
-                        <option value='06:00 AM'>06 : 00 AM</option>
-                        <option value='08:00 PM'>08 : 00 PM</option>
-                      </select>
-                      <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                        <SelectChevron />
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Time Zone
-                    </Typography>
-                    <div className='relative'>
-                      <select
-                        value={timeZone}
-                        onChange={(event) => setTimeZone(event.target.value)}
-                        className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                      >
-                        <option value='(GMT-04:00) Eastern Time(US & Canada)'>(GMT-04:00) Eastern Time(US & Canada)</option>
-                        <option value='(GMT+00:00) UTC'>(GMT+00:00) UTC</option>
-                        <option value='(GMT+05:30) India Standard Time'>(GMT+05:30) India Standard Time</option>
-                      </select>
-                      <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                        <SelectChevron />
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Retention Period
-                    </Typography>
-                    <div className='relative'>
-                      <select
-                        value={retentionPeriod}
-                        onChange={(event) => setRetentionPeriod(event.target.value)}
-                        className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                      >
-                        <option value='1 Year (Standard)'>1 Year (Standard)</option>
-                        <option value='6 Months'>6 Months</option>
-                        <option value='3 Years'>3 Years</option>
-                      </select>
-                      <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                        <SelectChevron />
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Abort process if not completed in
-                    </Typography>
-                    <div className='relative'>
-                      <select
-                        value={abortWindow}
-                        onChange={(event) => setAbortWindow(event.target.value)}
-                        className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                      >
-                        <option value='1 Hour'>1 Hour</option>
-                        <option value='2 Hours'>2 Hours</option>
-                        <option value='4 Hours'>4 Hours</option>
-                      </select>
-                      <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                        <SelectChevron />
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                <div className='mt-8 max-w-[380px]'>
-                  <div className='flex items-start justify-between gap-4'>
-                    <div>
-                      <Typography variant='sectionTitle' color='secondary'>
-                        Incremented Backup
-                      </Typography>
-                      <Typography className='mt-1' variant='bodySm' color='muted'>
-                        Only backup updated data if any
-                      </Typography>
-                    </div>
-                    <Toggle checked={incrementedBackup} onChange={() => setIncrementedBackup((value) => !value)} />
+                        {option === 'realtime' ? 'Realtime' : 'Schedule'}
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {scheduleMode === 'schedule' && (
+                  <>
+                    {/* One-time / Incremental */}
+                    <div>
+                      <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                        Schedule Type
+                      </Typography>
+                      <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                        {(['one_time', 'incremental'] as ScheduleType[]).map((option) => (
+                          <button
+                            key={option}
+                            type='button'
+                            onClick={() => setScheduleType(option)}
+                            className={[
+                              'min-w-[110px] border-r border-blue-600 px-5 py-2 text-xs font-medium transition last:border-r-0',
+                              scheduleType === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                            ].join(' ')}
+                          >
+                            {option === 'one_time' ? 'One-time' : 'Incremental'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {scheduleType === 'incremental' && (
+                      <>
+                        {/* Duration type */}
+                        <div>
+                          <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                            Frequency
+                          </Typography>
+                          <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                            {(['hour', 'day', 'week', 'month'] as DurationType[]).map((option) => (
+                              <button
+                                key={option}
+                                type='button'
+                                onClick={() => setDuration(option)}
+                                className={[
+                                  'min-w-[72px] border-r border-blue-600 px-4 py-2 text-xs font-medium capitalize transition last:border-r-0',
+                                  duration === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                                ].join(' ')}
+                              >
+                                {option.charAt(0).toUpperCase() + option.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Interval — hour */}
+                        {duration === 'hour' && (
+                          <label className='block max-w-xs'>
+                            <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                              Every (hours)
+                            </Typography>
+                            <div className='relative'>
+                              <select
+                                value={interval}
+                                onChange={(e) => setInterval(Number(e.target.value))}
+                                className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                              >
+                                {[6, 12].map((h) => (
+                                  <option key={h} value={h}>Every {h} hours</option>
+                                ))}
+                              </select>
+                              <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'><SelectChevron /></div>
+                            </div>
+                          </label>
+                        )}
+
+                        {/* Interval — day */}
+                        {duration === 'day' && (
+                          <label className='block max-w-xs'>
+                            <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                              Every (days)
+                            </Typography>
+                            <div className='relative'>
+                              <select
+                                value={interval}
+                                onChange={(e) => setInterval(Number(e.target.value))}
+                                className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                              >
+                                {Array.from({ length: 15 }, (_, i) => i + 1).map((d) => (
+                                  <option key={d} value={d}>Every {d} {d === 1 ? 'day' : 'days'}</option>
+                                ))}
+                              </select>
+                              <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'><SelectChevron /></div>
+                            </div>
+                          </label>
+                        )}
+
+                        {/* Week days */}
+                        {duration === 'week' && (
+                          <div>
+                            <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                              On days
+                            </Typography>
+                            <div className='flex flex-wrap gap-2'>
+                              {(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as WeekDay[]).map((day) => {
+                                const active = weekDays.includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type='button'
+                                    onClick={() => setWeekDays((prev) =>
+                                      active ? prev.filter((d) => d !== day) : [...prev, day]
+                                    )}
+                                    className={[
+                                      'h-9 w-12 rounded-lg border text-xs font-medium capitalize transition',
+                                      active ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400',
+                                    ].join(' ')}
+                                  >
+                                    {day.charAt(0).toUpperCase() + day.slice(1)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Month date */}
+                        {duration === 'month' && (
+                          <label className='block max-w-xs'>
+                            <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                              On date
+                            </Typography>
+                            <div className='relative'>
+                              <select
+                                value={monthDate}
+                                onChange={(e) => setMonthDate(Number(e.target.value))}
+                                className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                              >
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                              <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'><SelectChevron /></div>
+                            </div>
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    {/* Timezone — shown for all schedule types */}
+                    <label className='block max-w-xs'>
+                      <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                        Time Zone
+                      </Typography>
+                      <div className='relative'>
+                        <select
+                          value={timeZone}
+                          onChange={(e) => setTimeZone(e.target.value)}
+                          className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        >
+                          <option value='UTC'>UTC</option>
+                          <option value='America/New_York'>America/New_York (EST/EDT)</option>
+                          <option value='America/Los_Angeles'>America/Los_Angeles (PST/PDT)</option>
+                          <option value='Europe/London'>Europe/London (GMT/BST)</option>
+                          <option value='Asia/Kolkata'>Asia/Kolkata (IST)</option>
+                          <option value='Asia/Tokyo'>Asia/Tokyo (JST)</option>
+                        </select>
+                        <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'><SelectChevron /></div>
+                      </div>
+                    </label>
+                  </>
+                )}
               </div>
             </>
           )}
