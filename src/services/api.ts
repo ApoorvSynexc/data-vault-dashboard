@@ -24,12 +24,16 @@ type HttpRequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | object | null
 }
 
-let isRefreshing = false;
-let refreshQueue: Array<() => void> = [];
-let logoutHandler: (() => void) | null = null;
+export type HttpRequestConfig = {
+  onLogout?: () => void;
+}
 
-export function registerLogoutHandler(fn: () => void) {
-  logoutHandler = fn;
+export type HttpRequestInstance = {
+  get: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
+  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
+  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
+  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
+  delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
 }
 
 async function refreshTokens(): Promise<void> {
@@ -57,54 +61,61 @@ async function rawFetch(path: string, body: HttpRequestOptions['body'], headers:
   });
 }
 
-export async function request<T>(
-  path: string,
-  { body, headers, ...options }: HttpRequestOptions = {},
-): Promise<T> {
-  let response = await rawFetch(path, body, headers, options);
+export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestInstance {
+  let isRefreshing = false;
+  let refreshQueue: Array<() => void> = [];
 
-  if (response.status === 401 && path !== '/v1/auth/refresh-token') {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      try {
-        await refreshTokens();
-        refreshQueue.forEach((resolve) => resolve());
-      } catch {
+  async function request<T>(
+    path: string,
+    { body, headers, ...options }: HttpRequestOptions = {},
+  ): Promise<T> {
+    let response = await rawFetch(path, body, headers, options);
+
+    if (response.status === 401 && path !== '/v1/auth/refresh-token') {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          await refreshTokens();
+          refreshQueue.forEach((resolve) => resolve());
+        } catch {
+          refreshQueue = [];
+          isRefreshing = false;
+          config.onLogout?.();
+          throw new HttpError(401, 'Unauthorized');
+        }
         refreshQueue = [];
         isRefreshing = false;
-        logoutHandler?.();
-        throw new HttpError(401, 'Unauthorized');
+      } else {
+        await new Promise<void>((resolve) => refreshQueue.push(resolve));
       }
-      refreshQueue = [];
-      isRefreshing = false;
-    } else {
-      await new Promise<void>((resolve) => refreshQueue.push(resolve));
+
+      response = await rawFetch(path, body, headers, options);
     }
 
-    response = await rawFetch(path, body, headers, options);
+    const envelope = await parseResponse(response) as ApiResponse<T>;
+
+    if (!response.ok || !envelope?.success) {
+      throw new HttpError(response.status, response.statusText, envelope);
+    }
+
+    return envelope.data as T;
   }
 
-  const envelope = await parseResponse(response) as ApiResponse<T>;
-
-  if (!response.ok || !envelope?.success) {
-    throw new HttpError(response.status, response.statusText, envelope);
-  }
-
-  return envelope.data as T;
+  return {
+    get: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+      request<T>(path, { ...options, method: 'GET' }),
+    post: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+      request<T>(path, { ...options, method: 'POST', body }),
+    put: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+      request<T>(path, { ...options, method: 'PUT', body }),
+    patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+      request<T>(path, { ...options, method: 'PATCH', body }),
+    delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+      request<T>(path, { ...options, method: 'DELETE' }),
+  };
 }
 
-export const httpRequest = {
-  get: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'GET' }),
-  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'POST', body }),
-  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'PUT', body }),
-  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'PATCH', body }),
-  delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
-    request<T>(path, { ...options, method: 'DELETE' }),
-};
+export const httpRequest = createHttpRequest();
 
 async function parseResponse(response: Response): Promise<unknown> {
   if (response.status === 204) {

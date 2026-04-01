@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { authService, userService } from '../services';
-import { registerLogoutHandler } from '../services/api';
+import { useAuthService, useUserService } from '../services';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -17,12 +16,14 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { logout: profileLogout } = useAuthService();
+  const { getMyProfile } = useUserService();
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
 
   const logout = useCallback(async () => {
     try {
-      await authService.logout();
+      await profileLogout();
     } catch {
       // ignore — clear state regardless
     }
@@ -31,12 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    registerLogoutHandler(logout);
-  }, [logout]);
-
-  useEffect(() => {
-    userService
-      .getMyProfile<Record<string, unknown>>()
+    getMyProfile<Record<string, unknown>>()
       .then((profile) => {
         setUser(profile);
         setStatus('authenticated');

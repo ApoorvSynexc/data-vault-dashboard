@@ -1,5 +1,9 @@
-import { httpRequest } from '../api';
+import { useHttpRequest } from '../../hooks/useHttpRequest';
 
-export const userService = {
-  getMyProfile: <TResponse>() => httpRequest.get<TResponse>('/v1/user/my-profile'),
-};
+export function useUserService() {
+  const api = useHttpRequest();
+
+  return {
+    getMyProfile: <TResponse>() => api.get<TResponse>('/v1/user/my-profile'),
+  };
+}

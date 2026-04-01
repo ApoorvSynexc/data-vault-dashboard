@@ -1,13 +1,17 @@
 import type { ForgotPasswordForm, LoginForm, SignupForm } from '../../pages/auth/auth.types';
-import { httpRequest } from '../api';
+import { useHttpRequest } from '../../hooks/useHttpRequest';
 
-export const authService = {
-  login: <TResponse>(payload: LoginForm) =>
-    httpRequest.post<TResponse>('/v1/auth/login', payload),
-  signup: <TResponse>(payload: SignupForm) =>
-    httpRequest.post<TResponse>('/auth/signup', payload),
-  forgotPassword: <TResponse>(payload: ForgotPasswordForm) =>
-    httpRequest.post<TResponse>('/auth/forgot-password', payload),
-  logout: () =>
-    httpRequest.post('/v1/auth/logout'),
-};
+export function useAuthService() {
+  const api = useHttpRequest();
+
+  return {
+    login: <TResponse>(payload: LoginForm) =>
+      api.post<TResponse>('/v1/auth/login', payload),
+    signup: <TResponse>(payload: SignupForm) =>
+      api.post<TResponse>('/auth/signup', payload),
+    forgotPassword: <TResponse>(payload: ForgotPasswordForm) =>
+      api.post<TResponse>('/auth/forgot-password', payload),
+    logout: () =>
+      api.post('/v1/auth/logout'),
+  };
+}

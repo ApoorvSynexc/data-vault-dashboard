@@ -1,4 +1,4 @@
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import FormError from '../../../components/FormError';
@@ -13,7 +13,7 @@ import GoogleIcon from '../../../assets/icons/google.svg?react';
 import MicrosoftIcon from '../../../assets/icons/microsoft.svg?react';
 import SSOIcon from '../../../assets/icons/sso.svg?react';
 import type { LoginForm } from '../auth.types';
-import { authService } from '../../../services';
+import { useAuthService } from '../../../services';
 import { validateLoginForm } from '../../../validation';
 
 type LoginFormState = {
@@ -32,14 +32,39 @@ const initialState: LoginFormState = {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuthService();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  async function handleLoginSubmit(
+    _previousState: LoginFormState,
+    formData: FormData,
+  ): Promise<LoginFormState> {
+    const values: LoginForm = {
+      email: String(formData.get('email') ?? '').trim(),
+      password: String(formData.get('password') ?? '').trim(),
+    };
+
+    const fieldErrors = await validateLoginForm(values);
+    if (Object.keys(fieldErrors).length > 0) {
+      return { fieldErrors, submitError: '', values, success: false };
+    }
+
+    try {
+      await login(values);
+      navigate('/', { replace: true });
+      return { fieldErrors: {}, submitError: '', values, success: true };
+    } catch (error) {
+      return {
+        fieldErrors: {},
+        submitError: error instanceof Error ? error.message : 'Unable to sign in',
+        values,
+        success: false,
+      };
+    }
+  }
+
   const [state, submitAction] = useActionState(handleLoginSubmit, initialState);
-
-  useEffect(() => {
-    if (state.success) navigate('/', { replace: true });
-  }, [state.success]);
-
   return (
     <div className='flex flex-1 bg-[#EEF2FF]'>
       {/* ── Left Panel ── */}
@@ -158,33 +183,6 @@ export default function Login() {
       </div>
     </div>
   );
-}
-
-async function handleLoginSubmit(
-  _previousState: LoginFormState,
-  formData: FormData,
-): Promise<LoginFormState> {
-  const values: LoginForm = {
-    email: String(formData.get('email') ?? '').trim(),
-    password: String(formData.get('password') ?? '').trim(),
-  };
-
-  const fieldErrors = await validateLoginForm(values);
-  if (Object.keys(fieldErrors).length > 0) {
-    return { fieldErrors, submitError: '', values, success: false };
-  }
-
-  try {
-    await authService.login(values);
-    return { fieldErrors: {}, submitError: '', values, success: true };
-  } catch (error) {
-    return {
-      fieldErrors: {},
-      submitError: error instanceof Error ? error.message : 'Unable to sign in',
-      values,
-      success: false,
-    };
-  }
 }
 
 function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
