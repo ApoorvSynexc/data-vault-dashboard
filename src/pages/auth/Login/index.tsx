@@ -1,6 +1,7 @@
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 import FormError from '../../../components/FormError';
 import TextField from '../../../components/TextField';
 import MailIcon from '../../../assets/icons/mail.svg?react';
@@ -31,7 +32,7 @@ const initialState: LoginFormState = {
 };
 
 export default function Login() {
-  const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
   const { login } = useAuthService();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -52,7 +53,7 @@ export default function Login() {
 
     try {
       await login(values);
-      navigate('/', { replace: true });
+      await refreshProfile();
       return { fieldErrors: {}, submitError: '', values, success: true };
     } catch (error) {
       return {
