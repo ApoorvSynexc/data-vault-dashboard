@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CRM_PLATFORM_META, CRM_PLATFORMS } from '../../constants/platforms';
+import { CRM_NAME_MAP, CRM_PLATFORM_META, CRM_PLATFORMS } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
 import type { ConnectedPlatform } from '../../services';
@@ -144,34 +144,66 @@ function AddPlatformModal({
 // ── Platform Card ──────────────────────────────────────────────────────────────
 
 function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
-  const meta = CRM_PLATFORM_META[platform.crmType];
-  const Logo = CRM_LOGOS[platform.crmType];
+  const crmPlatform = CRM_NAME_MAP[platform.crmName.toLowerCase()];
+  const meta = crmPlatform ? CRM_PLATFORM_META[crmPlatform] : null;
+  const Logo = crmPlatform ? CRM_LOGOS[crmPlatform] : null;
 
-  const syncLabel = platform.lastSyncedAt
-    ? `Synced ${formatRelative(platform.lastSyncedAt)}`
-    : 'Never synced';
+  const isActive = platform.status === 'ACTIVE';
+  const isError  = platform.status === 'ERROR';
 
   return (
-    <div className='flex flex-col gap-3 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm'>
+    <div className='flex flex-col gap-4 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm'>
+      {/* Header */}
       <div className='flex items-start justify-between gap-2'>
         <div>
-          <p className='text-base font-bold' style={{ color: meta.textColor }}>{meta.label}</p>
-          <p className='mt-0.5 text-xs text-gray-500'>{meta.description}</p>
+          <p className='text-base font-bold' style={{ color: meta?.textColor ?? '#374151' }}>
+            {meta?.label ?? platform.crmName}
+          </p>
+          <p className='mt-0.5 text-xs text-gray-500'>{meta?.description}</p>
         </div>
-        <Logo />
+        {Logo && <Logo />}
       </div>
+
+      {/* Profile */}
+      <div className='flex items-center gap-3'>
+        {platform.crmProfile.photoUrl ? (
+          <img
+            src={platform.crmProfile.photoUrl}
+            alt={platform.crmProfile.name}
+            className='h-8 w-8 rounded-full object-cover ring-2 ring-gray-100'
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div className='flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600'>
+            {platform.crmProfile.name.charAt(0)}
+          </div>
+        )}
+        <div className='min-w-0'>
+          <p className='truncate text-xs font-medium text-gray-800'>{platform.crmProfile.name}</p>
+          <p className='truncate text-[11px] text-gray-400'>{platform.crmProfile.email}</p>
+        </div>
+      </div>
+
+      {/* Instance URL */}
+      <p className='truncate text-[11px] text-gray-400'>
+        {platform.crmProfile.instanceUrl}
+      </p>
+
+      {/* Status + sync */}
       <div className='flex items-center gap-1.5'>
         <span className={[
           'h-2 w-2 rounded-full',
-          platform.status === 'connected' ? 'bg-green-500' : platform.status === 'error' ? 'bg-red-500' : 'bg-gray-400',
+          isActive ? 'bg-green-500' : isError ? 'bg-red-500' : 'bg-gray-400',
         ].join(' ')} />
         <span className={[
-          'text-xs font-medium capitalize',
-          platform.status === 'connected' ? 'text-green-600' : platform.status === 'error' ? 'text-red-600' : 'text-gray-500',
+          'text-xs font-medium',
+          isActive ? 'text-green-600' : isError ? 'text-red-600' : 'text-gray-500',
         ].join(' ')}>
-          {platform.status}
+          {isActive ? 'Connected' : isError ? 'Error' : 'Inactive'}
         </span>
-        <span className='text-xs text-gray-400'>{syncLabel}</span>
+        <span className='text-xs text-gray-400'>
+          Synced {formatRelative(platform.updatedAt)}
+        </span>
       </div>
     </div>
   );
@@ -257,7 +289,7 @@ export default function Platforms() {
         ) : (
           <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
             {platforms.map((p) => (
-              <PlatformCard key={p.id} platform={p} />
+              <PlatformCard key={p.crmId} platform={p} />
             ))}
           </div>
         )}

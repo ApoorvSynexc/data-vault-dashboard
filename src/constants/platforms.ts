@@ -1,6 +1,13 @@
 export const CRM_PLATFORMS = ['Salesforce', 'HubSpot', 'Zoho'] as const;
 export type CrmPlatform = (typeof CRM_PLATFORMS)[number];
 
+/** Maps the lowercase crmName from the API to our CrmPlatform type */
+export const CRM_NAME_MAP: Record<string, CrmPlatform> = {
+  salesforce: 'Salesforce',
+  hubspot:    'HubSpot',
+  zoho:       'Zoho',
+};
+
 export const CRM_PLATFORM_META: Record<CrmPlatform, {
   label: string;
   description: string;
