@@ -1,7 +1,5 @@
+import dayjs from 'dayjs';
+
 export function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return dayjs(date).format('MMM D, YYYY');
 }

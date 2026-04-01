@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { CRM_NAME_MAP, CRM_PLATFORM_META } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
@@ -7,6 +9,8 @@ import type { ConnectedPlatform } from '../../services';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import AddPlatformModal from './AddPlatform';
+
+dayjs.extend(relativeTime);
 
 function SalesforceLogo() {
   return (
@@ -140,11 +144,7 @@ function PlatformCard({
 }
 
 function formatRelative(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} mins ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hrs ago`;
-  return `${Math.floor(diff / 86400)} days ago`;
+  return dayjs(iso).fromNow();
 }
 
 export default function Platforms() {
@@ -164,7 +164,7 @@ export default function Platforms() {
 
   const disconnectPlatformMutation = useMutation({
     mutationFn: (crmId: string) => disconnectPlatform(crmId),
-    onSuccess: (_, crmId) => {
+    onSuccess: () => {
       refetch();
       // queryClient.setQueryData<ConnectedPlatform[]>(['connected-platforms'], (current = []) =>
       //   current.filter((platform) => platform.crmId !== crmId),
