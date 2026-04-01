@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { CRM_NAME_MAP, CRM_PLATFORM_META, CRM_PLATFORMS } from '../../constants/platforms';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { CRM_NAME_MAP, CRM_PLATFORM_META } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
 import type { ConnectedPlatform } from '../../services';
-
-// ── CRM brand SVG logos ────────────────────────────────────────────────────────
+import Typography from '../../components/Typography';
+import AddPlatformModal from './AddPlatform';
 
 function SalesforceLogo() {
   return (
@@ -45,115 +46,16 @@ const CRM_LOGOS: Record<CrmPlatform, React.FC> = {
   Zoho: ZohoLogo,
 };
 
-// ── Add Platform Modal ─────────────────────────────────────────────────────────
-
-function AddPlatformModal({
-  onClose,
-  onConnect,
-  connecting,
-}: {
-  onClose: () => void;
-  onConnect: (crm: CrmPlatform) => void;
-  connecting: boolean;
-}) {
-  const [selected, setSelected] = useState<CrmPlatform | null>(null);
-
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4'>
-      <div className='w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]'>
-        <div className='flex items-center justify-between border-b border-gray-100 px-6 py-4'>
-          <div>
-            <p className='text-base font-semibold text-gray-900'>Add Platform</p>
-            <p className='text-xs text-gray-500'>Select a CRM to connect</p>
-          </div>
-          <button
-            type='button'
-            onClick={onClose}
-            className='rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition'
-          >
-            <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-              <path d='M5 5l10 10M15 5L5 15' strokeLinecap='round' />
-            </svg>
-          </button>
-        </div>
-
-        <div className='space-y-3 px-6 py-5'>
-          {CRM_PLATFORMS.map((crm) => {
-            const meta = CRM_PLATFORM_META[crm];
-            const Logo = CRM_LOGOS[crm];
-            const isSelected = selected === crm;
-            return (
-              <button
-                key={crm}
-                type='button'
-                onClick={() => setSelected(crm)}
-                className={[
-                  'flex w-full items-center gap-4 rounded-xl border px-4 py-3 text-left transition',
-                  isSelected
-                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
-                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50',
-                ].join(' ')}
-              >
-                <div className='flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-gray-50'>
-                  <Logo />
-                </div>
-                <div className='min-w-0 flex-1'>
-                  <p className='text-sm font-semibold' style={{ color: meta.textColor }}>{meta.label}</p>
-                  <p className='text-xs text-gray-500'>{meta.description}</p>
-                </div>
-                <div className={[
-                  'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition',
-                  isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300',
-                ].join(' ')}>
-                  {isSelected && (
-                    <svg viewBox='0 0 10 10' fill='none' stroke='white' strokeWidth='2' className='h-2.5 w-2.5'>
-                      <path d='M2 5l2 2 4-4' strokeLinecap='round' strokeLinejoin='round' />
-                    </svg>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className='flex justify-end gap-3 border-t border-gray-100 px-6 py-4'>
-          <button
-            type='button'
-            onClick={onClose}
-            className='inline-flex min-w-[88px] items-center justify-center rounded-lg border border-blue-500 bg-white px-5 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50'
-          >
-            Cancel
-          </button>
-          <button
-            type='button'
-            disabled={!selected || connecting}
-            onClick={() => selected && onConnect(selected)}
-            className='inline-flex min-w-[120px] items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300'
-          >
-            {connecting && (
-              <span className='h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent' />
-            )}
-            {connecting ? 'Connecting...' : 'Connect'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Platform Card ──────────────────────────────────────────────────────────────
-
 function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
   const crmPlatform = CRM_NAME_MAP[platform.crmName.toLowerCase()];
   const meta = crmPlatform ? CRM_PLATFORM_META[crmPlatform] : null;
   const Logo = crmPlatform ? CRM_LOGOS[crmPlatform] : null;
 
   const isActive = platform.status === 'ACTIVE';
-  const isError  = platform.status === 'ERROR';
+  const isError = platform.status === 'ERROR';
 
   return (
     <div className='flex flex-col gap-4 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm'>
-      {/* Header */}
       <div className='flex items-start justify-between gap-2'>
         <div>
           <p className='text-base font-bold' style={{ color: meta?.textColor ?? '#374151' }}>
@@ -164,7 +66,6 @@ function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
         {Logo && <Logo />}
       </div>
 
-      {/* Profile */}
       <div className='flex items-center gap-3'>
         {platform.crmProfile.photoUrl ? (
           <img
@@ -184,26 +85,14 @@ function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
         </div>
       </div>
 
-      {/* Instance URL */}
-      <p className='truncate text-[11px] text-gray-400'>
-        {platform.crmProfile.instanceUrl}
-      </p>
+      <p className='truncate text-[11px] text-gray-400'>{platform.crmProfile.instanceUrl}</p>
 
-      {/* Status + sync */}
       <div className='flex items-center gap-1.5'>
-        <span className={[
-          'h-2 w-2 rounded-full',
-          isActive ? 'bg-green-500' : isError ? 'bg-red-500' : 'bg-gray-400',
-        ].join(' ')} />
-        <span className={[
-          'text-xs font-medium',
-          isActive ? 'text-green-600' : isError ? 'text-red-600' : 'text-gray-500',
-        ].join(' ')}>
+        <span className={['h-2 w-2 rounded-full', isActive ? 'bg-green-500' : isError ? 'bg-red-500' : 'bg-gray-400'].join(' ')} />
+        <span className={['text-xs font-medium', isActive ? 'text-green-600' : isError ? 'text-red-600' : 'text-gray-500'].join(' ')}>
           {isActive ? 'Connected' : isError ? 'Error' : 'Inactive'}
         </span>
-        <span className='text-xs text-gray-400'>
-          Synced {formatRelative(platform.updatedAt)}
-        </span>
+        <span className='text-xs text-gray-400'>Synced {formatRelative(platform.updatedAt)}</span>
       </div>
     </div>
   );
@@ -217,90 +106,82 @@ function formatRelative(iso: string): string {
   return `${Math.floor(diff / 86400)} days ago`;
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
-
 export default function Platforms() {
-  const { getConnectedPlatforms, connectPlatform } = usePlatformService();
-  const [platforms, setPlatforms] = useState<ConnectedPlatform[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getConnectedPlatforms } = usePlatformService();
   const [modalOpen, setModalOpen] = useState(false);
-  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    getConnectedPlatforms()
-      .then(setPlatforms)
-      .catch(() => setError('Failed to load platforms'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function handleConnect(crm: CrmPlatform) {
-    setConnecting(true);
-    try {
-      const newPlatform = await connectPlatform(crm);
-      setPlatforms((prev) => [...prev, newPlatform]);
-      setModalOpen(false);
-    } catch {
-      setError('Failed to connect platform. Please try again.');
-    } finally {
-      setConnecting(false);
-    }
-  }
+  const {
+    data: platforms = [],
+    isLoading,
+  } = useQuery({
+    queryKey: ['connected-platforms'],
+    queryFn: getConnectedPlatforms,
+  });
 
   return (
-    <div>
-      {/* Header */}
-      <div className='flex items-start justify-between gap-4'>
-        <div>
-          <p className='text-xl font-bold text-gray-900'>Platforms</p>
-          <p className='mt-0.5 text-sm text-gray-500'>Manage Connectors, authentication health, and object coverage.</p>
+    <div className='flex w-full min-w-0 flex-col gap-5'>
+      <section className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
+        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
+          <div>
+            <Typography as='h2' variant='pageTitle'>
+              Platforms
+            </Typography>
+            <Typography className='mt-1' variant='body' color='muted'>
+              Manage connectors, authentication health, and object coverage.
+            </Typography>
+          </div>
+
+          <button
+            type='button'
+            onClick={() => { setError(''); setModalOpen(true); }}
+            className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+          >
+            <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+              <path d='M10 4v12M4 10h12' strokeLinecap='round' />
+            </svg>
+            + Add Platform
+          </button>
         </div>
-        <button
-          type='button'
-          onClick={() => { setError(''); setModalOpen(true); }}
-          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
-        >
-          <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
-            <path d='M10 4v12M4 10h12' strokeLinecap='round' />
-          </svg>
-          + Add Platform
-        </button>
-      </div>
+      </section>
 
-      {/* Connected platforms */}
-      <div className='mt-6'>
-        <p className='text-sm font-semibold text-gray-700'>Connected Platforms</p>
-        <p className='mt-0.5 text-xs text-gray-500'>Manage your connected platforms</p>
+      <section className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+        <div className='border-b border-gray-100 px-5 py-4'>
+          <Typography as='h3' variant='sectionTitle' color='secondary'>
+            Connected Platforms
+          </Typography>
+          <Typography className='mt-1' variant='bodySm' color='muted'>
+            Manage your connected platforms
+          </Typography>
+        </div>
 
-        {error && (
-          <p className='mt-4 rounded-lg bg-red-50 px-4 py-3 text-xs text-red-600'>{error}</p>
-        )}
+        <div className='px-5 py-5'>
+          {error && (
+            <p className='mb-4 rounded-lg bg-red-50 px-4 py-3 text-xs text-red-600'>{error}</p>
+          )}
 
-        {loading ? (
-          <div className='mt-6 flex items-center gap-2 text-sm text-gray-400'>
-            <span className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />
-            Loading platforms...
-          </div>
-        ) : platforms.length === 0 ? (
-          <div className='mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-14 text-center'>
-            <p className='text-sm font-medium text-gray-500'>No platforms connected yet</p>
-            <p className='mt-1 text-xs text-gray-400'>Click "+ Add Platform" to get started</p>
-          </div>
-        ) : (
-          <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {platforms.map((p) => (
-              <PlatformCard key={p.crmId} platform={p} />
-            ))}
-          </div>
-        )}
-      </div>
+          {isLoading ? (
+            <div className='flex items-center gap-2 text-sm text-gray-400'>
+              <span className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />
+              Loading platforms...
+            </div>
+          ) : platforms.length === 0 ? (
+            <div className='flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-14 text-center'>
+              <p className='text-sm font-medium text-gray-500'>No platforms connected yet</p>
+              <p className='mt-1 text-xs text-gray-400'>Click "+ Add Platform" to get started</p>
+            </div>
+          ) : (
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+              {platforms.map((platform) => (
+                <PlatformCard key={platform.crmId} platform={platform} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {modalOpen && (
-        <AddPlatformModal
-          onClose={() => setModalOpen(false)}
-          onConnect={handleConnect}
-          connecting={connecting}
-        />
+        <AddPlatformModal onClose={() => setModalOpen(false)} />
       )}
     </div>
   );

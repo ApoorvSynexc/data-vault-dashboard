@@ -43,8 +43,8 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [environment, setEnvironment] = useState<BackupEnvironment>('Production');
   const [search, setSearch] = useState('');
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(initialSelectedObjectIds);
-  const [includeAttachments, setIncludeAttachments] = useState(true);
-  const [metadataBackup, setMetadataBackup] = useState(true);
+  const [includeAttachments] = useState(true);
+  const [metadataBackup] = useState(true);
   // Scheduling
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('realtime');
   const [scheduleType, setScheduleType] = useState<ScheduleType>('incremental');
