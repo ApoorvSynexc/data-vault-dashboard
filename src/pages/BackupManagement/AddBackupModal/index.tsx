@@ -4,9 +4,13 @@ import { dataScopeRows, initialSelectedObjectIds } from './constants';
 import { ReviewCard, SearchIcon, SelectChevron, StepMarker, Toggle } from './components';
 import type {
   AddBackupModalProps,
+  AzureConfig,
   BackupEnvironment,
   BackupFrequency,
+  DestinationType,
+  GoogleConfig,
   PlatformType,
+  S3Config,
   WizardStep,
 } from './types';
 
@@ -28,6 +32,10 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [includeAttachments, setIncludeAttachments] = useState(true);
   const [metadataBackup, setMetadataBackup] = useState(true);
   const [incrementedBackup, setIncrementedBackup] = useState(true);
+  const [destination, setDestination] = useState<DestinationType>('S3');
+  const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
+  const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({ serviceAccountKey: '', bucketName: '', projectId: '' });
+  const [azureConfig, setAzureConfig] = useState<AzureConfig>({ accountName: '', accountKey: '', containerName: '' });
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -81,8 +89,14 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     setSelectedObjectIds((current) => [...new Set([...current, ...filteredRows.map((row) => row.id)])]);
   }
 
+  const destinationSummary = destination === 'S3'
+    ? `S3 — ${s3Config.bucketName || 'No bucket'} (${s3Config.region || 'No region'})`
+    : destination === 'Google'
+      ? `Google Cloud — ${googleConfig.bucketName || 'No bucket'} (${googleConfig.projectId || 'No project'})`
+      : `Azure Blob — ${azureConfig.containerName || 'No container'} (${azureConfig.accountName || 'No account'})`;
+
   function handleContinue() {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as WizardStep);
     }
   }
@@ -105,7 +119,8 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
             <StepMarker step={1} label='Define Backup Policy' status={currentStep > 1 ? 'completed' : 'active'} />
             <StepMarker step={2} label='Data Scope' status={currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : 'upcoming'} />
             <StepMarker step={3} label='Scheduling' status={currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming'} />
-            <StepMarker step={4} label='Review & Create' status={currentStep === 4 ? 'active' : 'upcoming'} />
+            <StepMarker step={4} label='Destination' status={currentStep === 4 ? 'active' : currentStep > 4 ? 'completed' : 'upcoming'} />
+            <StepMarker step={5} label='Review & Create' status={currentStep === 5 ? 'active' : 'upcoming'} />
           </div>
         </div>
 
@@ -123,7 +138,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                 <div className='space-y-5 lg:border-r lg:border-gray-100 lg:pr-8'>
                   <label className='block'>
                     <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Policy Name
+                      Backup Name
                     </Typography>
                     <input
                       type='text'
@@ -159,9 +174,9 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         onChange={(event) => setPlatform(event.target.value as PlatformType)}
                         className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                       >
-                        <option value='Salesforce'>Salesforce</option>
-                        <option value='HubSpot'>HubSpot</option>
-                        <option value='Zoho'>Zoho</option>
+                        <option value='SALESFORCE'>Salesforce</option>
+                        {/* <option value='HubSpot'>HubSpot</option>
+                        <option value='Zoho'>Zoho</option> */}
                       </select>
                       <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
                         <SelectChevron />
@@ -289,7 +304,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                   </table>
                 </div>
 
-                <div className='mt-6 grid grid-cols-1 gap-6 border-t border-gray-100 pt-6 md:grid-cols-2'>
+                {/* <div className='mt-6 grid grid-cols-1 gap-6 border-t border-gray-100 pt-6 md:grid-cols-2'>
                   <div className='flex items-start justify-between gap-4'>
                     <div>
                       <Typography variant='sectionTitle' color='secondary'>
@@ -313,7 +328,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                     </div>
                     <Toggle checked={metadataBackup} onChange={() => setMetadataBackup((value) => !value)} />
                   </div>
-                </div>
+                </div> */}
               </div>
             </>
           )}
@@ -446,6 +461,181 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
           {currentStep === 4 && (
             <>
               <Typography as='h2' variant='pageTitle' className='font-semibold'>
+                Destination
+              </Typography>
+              <Typography className='mt-1' variant='bodySm' color='muted'>
+                Choose where your backup data will be stored.
+              </Typography>
+
+              <div className='mt-6'>
+                <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                  {(['S3', 'Google', 'Azure'] as DestinationType[]).map((option) => (
+                    <button
+                      key={option}
+                      type='button'
+                      onClick={() => setDestination(option)}
+                      className={[
+                        'min-w-[96px] border-r border-blue-600 px-5 py-2 text-xs font-medium transition last:border-r-0',
+                        destination === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                      ].join(' ')}
+                    >
+                      {option === 'S3' ? 'Amazon S3' : option === 'Google' ? 'Google Cloud' : 'Azure Blob'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className='mt-6 grid grid-cols-1 gap-5 md:grid-cols-2'>
+                  {destination === 'S3' && (
+                    <>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Access Key ID
+                        </Typography>
+                        <input
+                          type='text'
+                          value={s3Config.accessKeyId}
+                          onChange={(e) => setS3Config((c) => ({ ...c, accessKeyId: e.target.value }))}
+                          placeholder='AKIAIOSFODNN7EXAMPLE'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Secret Access Key
+                        </Typography>
+                        <input
+                          type='password'
+                          value={s3Config.secretAccessKey}
+                          onChange={(e) => setS3Config((c) => ({ ...c, secretAccessKey: e.target.value }))}
+                          placeholder='••••••••••••••••••••'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Bucket Name
+                        </Typography>
+                        <input
+                          type='text'
+                          value={s3Config.bucketName}
+                          onChange={(e) => setS3Config((c) => ({ ...c, bucketName: e.target.value }))}
+                          placeholder='my-backup-bucket'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Region
+                        </Typography>
+                        <div className='relative'>
+                          <select
+                            value={s3Config.region}
+                            onChange={(e) => setS3Config((c) => ({ ...c, region: e.target.value }))}
+                            className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          >
+                            <option value=''>Select region</option>
+                            <option value='us-east-1'>us-east-1</option>
+                            <option value='us-west-2'>us-west-2</option>
+                            <option value='eu-west-1'>eu-west-1</option>
+                            <option value='ap-south-1'>ap-south-1</option>
+                          </select>
+                          <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
+                            <SelectChevron />
+                          </div>
+                        </div>
+                      </label>
+                    </>
+                  )}
+
+                  {destination === 'Google' && (
+                    <>
+                      <label className='block md:col-span-2'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Service Account Key (JSON)
+                        </Typography>
+                        <textarea
+                          value={googleConfig.serviceAccountKey}
+                          onChange={(e) => setGoogleConfig((c) => ({ ...c, serviceAccountKey: e.target.value }))}
+                          placeholder='Paste your service account JSON here...'
+                          rows={4}
+                          className='w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Bucket Name
+                        </Typography>
+                        <input
+                          type='text'
+                          value={googleConfig.bucketName}
+                          onChange={(e) => setGoogleConfig((c) => ({ ...c, bucketName: e.target.value }))}
+                          placeholder='my-gcs-bucket'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Project ID
+                        </Typography>
+                        <input
+                          type='text'
+                          value={googleConfig.projectId}
+                          onChange={(e) => setGoogleConfig((c) => ({ ...c, projectId: e.target.value }))}
+                          placeholder='my-gcp-project-id'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  {destination === 'Azure' && (
+                    <>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Account Name
+                        </Typography>
+                        <input
+                          type='text'
+                          value={azureConfig.accountName}
+                          onChange={(e) => setAzureConfig((c) => ({ ...c, accountName: e.target.value }))}
+                          placeholder='mystorageaccount'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Account Key
+                        </Typography>
+                        <input
+                          type='password'
+                          value={azureConfig.accountKey}
+                          onChange={(e) => setAzureConfig((c) => ({ ...c, accountKey: e.target.value }))}
+                          placeholder='••••••••••••••••••••'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                      <label className='block'>
+                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                          Container Name
+                        </Typography>
+                        <input
+                          type='text'
+                          value={azureConfig.containerName}
+                          onChange={(e) => setAzureConfig((c) => ({ ...c, containerName: e.target.value }))}
+                          placeholder='backup-container'
+                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentStep === 5 && (
+            <>
+              <Typography as='h2' variant='pageTitle' className='font-semibold'>
                 Review And Create
               </Typography>
               <Typography className='mt-1' variant='bodySm' color='muted'>
@@ -473,6 +663,13 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                   meta={schedulingMeta}
                   onEdit={() => setCurrentStep(3)}
                 />
+
+                <ReviewCard
+                  title='Destination'
+                  details={destinationSummary}
+                  meta={destination}
+                  onEdit={() => setCurrentStep(4)}
+                />
               </div>
             </>
           )}
@@ -495,7 +692,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
             >
               Back
             </button>
-            {currentStep === 4 ? (
+            {currentStep === 5 ? (
               <>
                 <button
                   type='button'
