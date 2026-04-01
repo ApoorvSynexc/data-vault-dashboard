@@ -29,8 +29,16 @@ export function usePlatformService() {
     getConnectedPlatforms: () =>
       api.get<ConnectedPlatform[]>('/v1/crm/list'),
     connectPlatform: (crmType: CrmPlatform) =>
-      api.get<ConnectedPlatform>(`/v1/crm/connect?crmName=${encodeURIComponent(crmType.toLowerCase())}`),
-    disconnectPlatform: (id: string) =>
-      api.delete<void>(`/v1/platforms/${id}`),
+      api.get<ConnectedPlatform>('/v1/crm/connect', {
+        query: {
+          crmName: crmType.toLowerCase(),
+        },
+      }),
+    disconnectPlatform: (crmId: string) =>
+      api.delete<void>('/v1/crm/disconnect', {
+        query: {
+          crmId,
+        },
+      }),
   };
 }

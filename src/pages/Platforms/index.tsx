@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CRM_NAME_MAP, CRM_PLATFORM_META } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
 import type { ConnectedPlatform } from '../../services';
 import Typography from '../../components/Typography';
+import WarningDialog from '../../components/WarningDialog';
 import AddPlatformModal from './AddPlatform';
 
 function SalesforceLogo() {
@@ -46,7 +47,15 @@ const CRM_LOGOS: Record<CrmPlatform, React.FC> = {
   Zoho: ZohoLogo,
 };
 
-function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
+function PlatformCard({
+  platform,
+  onDisconnect,
+  disconnecting,
+}: {
+  platform: ConnectedPlatform;
+  onDisconnect: (crmId: string) => void;
+  disconnecting: boolean;
+}) {
   const crmPlatform = CRM_NAME_MAP[platform.crmName.toLowerCase()];
   const meta = crmPlatform ? CRM_PLATFORM_META[crmPlatform] : null;
   const Logo = crmPlatform ? CRM_LOGOS[crmPlatform] : null;
@@ -94,6 +103,20 @@ function PlatformCard({ platform }: { platform: ConnectedPlatform }) {
         </span>
         <span className='text-xs text-gray-400'>Synced {formatRelative(platform.updatedAt)}</span>
       </div>
+
+      <div className='flex justify-end border-t border-gray-100 pt-3'>
+        <button
+          type='button'
+          onClick={() => onDisconnect(platform.crmId)}
+          disabled={disconnecting}
+          className='inline-flex min-w-[96px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60'
+        >
+          {disconnecting && (
+            <span className='h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent' />
+          )}
+          {disconnecting ? 'Disconnecting' : 'Disconnect'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -107,8 +130,10 @@ function formatRelative(iso: string): string {
 }
 
 export default function Platforms() {
-  const { getConnectedPlatforms } = usePlatformService();
+  const { getConnectedPlatforms, disconnectPlatform } = usePlatformService();
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const [disconnectTarget, setDisconnectTarget] = useState<ConnectedPlatform | null>(null);
   const [error, setError] = useState('');
 
   const {
@@ -117,6 +142,18 @@ export default function Platforms() {
   } = useQuery({
     queryKey: ['connected-platforms'],
     queryFn: getConnectedPlatforms,
+  });
+
+  const disconnectPlatformMutation = useMutation({
+    mutationFn: (crmId: string) => disconnectPlatform(crmId),
+    onSuccess: (_, crmId) => {
+      queryClient.setQueryData<ConnectedPlatform[]>(['connected-platforms'], (current = []) =>
+        current.filter((platform) => platform.crmId !== crmId),
+      );
+    },
+    onError: () => {
+      setError('Failed to disconnect platform. Please try again.');
+    },
   });
 
   return (
@@ -173,7 +210,18 @@ export default function Platforms() {
           ) : (
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
               {platforms.map((platform) => (
-                <PlatformCard key={platform.crmId} platform={platform} />
+                <PlatformCard
+                  key={platform.crmId}
+                  platform={platform}
+                  onDisconnect={() => {
+                    setError('');
+                    setDisconnectTarget(platform);
+                  }}
+                  disconnecting={
+                    disconnectPlatformMutation.isPending &&
+                    disconnectPlatformMutation.variables === platform.crmId
+                  }
+                />
               ))}
             </div>
           )}
@@ -183,6 +231,26 @@ export default function Platforms() {
       {modalOpen && (
         <AddPlatformModal onClose={() => setModalOpen(false)} />
       )}
+
+      <WarningDialog
+        isOpen={disconnectTarget !== null}
+        title='Disconnect Platform'
+        message={`Are you sure you want to disconnect ${disconnectTarget?.crmName ?? 'this platform'}?`}
+        confirmLabel='Disconnect'
+        isLoading={disconnectPlatformMutation.isPending}
+        onCancel={() => setDisconnectTarget(null)}
+        onConfirm={() => {
+          if (!disconnectTarget) {
+            return;
+          }
+
+          disconnectPlatformMutation.mutate(disconnectTarget.crmId, {
+            onSuccess: () => {
+              setDisconnectTarget(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }

@@ -7,6 +7,9 @@ type ApiResponse<T> = {
   meta: Record<string, unknown>;
 };
 
+type QueryParamValue = string | number | boolean | null | undefined;
+export type QueryParams = Record<string, QueryParamValue | QueryParamValue[]>;
+
 export class HttpError extends Error {
   status: number;
   data: unknown;
@@ -22,18 +25,22 @@ export class HttpError extends Error {
 
 type HttpRequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | object | null
+  query?: QueryParams
 }
+
+type RequestOptions = Omit<HttpRequestOptions, 'method' | 'body'>;
+type MutationRequestOptions = Omit<HttpRequestOptions, 'method' | 'body'>;
 
 export type HttpRequestConfig = {
   onLogout?: () => void;
 }
 
 export type HttpRequestInstance = {
-  get: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
-  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
-  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
-  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
-  delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) => Promise<T>;
+  get: <T>(path: string, options?: RequestOptions) => Promise<T>;
+  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
+  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
+  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
+  delete: <T>(path: string, options?: RequestOptions) => Promise<T>;
 }
 
 async function refreshTokens(): Promise<void> {
@@ -61,15 +68,49 @@ async function rawFetch(path: string, body: HttpRequestOptions['body'], headers:
   });
 }
 
+function buildPath(path: string, query?: QueryParams): string {
+  if (!query) {
+    return path;
+  }
+
+  const searchParams = new URLSearchParams();
+
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null) {
+          searchParams.append(key, String(item));
+        }
+      });
+      return;
+    }
+
+    searchParams.append(key, String(value));
+  });
+
+  const queryString = searchParams.toString();
+
+  if (!queryString) {
+    return path;
+  }
+
+  return `${path}${path.includes('?') ? '&' : '?'}${queryString}`;
+}
+
 export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestInstance {
   let isRefreshing = false;
   let refreshQueue: Array<() => void> = [];
 
   async function request<T>(
     path: string,
-    { body, headers, ...options }: HttpRequestOptions = {},
+    { body, headers, query, ...options }: HttpRequestOptions = {},
   ): Promise<T> {
-    let response = await rawFetch(path, body, headers, options);
+    const resolvedPath = buildPath(path, query);
+    let response = await rawFetch(resolvedPath, body, headers, options);
 
     if (response.status === 401 && path !== '/v1/auth/refresh-token') {
       if (!isRefreshing) {
@@ -89,7 +130,7 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
         await new Promise<void>((resolve) => refreshQueue.push(resolve));
       }
 
-      response = await rawFetch(path, body, headers, options);
+      response = await rawFetch(resolvedPath, body, headers, options);
     }
 
     const envelope = await parseResponse(response) as ApiResponse<T>;
@@ -102,15 +143,15 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
   }
 
   return {
-    get: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+    get: <T>(path: string, options?: RequestOptions) =>
       request<T>(path, { ...options, method: 'GET' }),
-    post: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+    post: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) =>
       request<T>(path, { ...options, method: 'POST', body }),
-    put: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+    put: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) =>
       request<T>(path, { ...options, method: 'PUT', body }),
-    patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+    patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) =>
       request<T>(path, { ...options, method: 'PATCH', body }),
-    delete: <T>(path: string, options?: Omit<HttpRequestOptions, 'method' | 'body'>) =>
+    delete: <T>(path: string, options?: RequestOptions) =>
       request<T>(path, { ...options, method: 'DELETE' }),
   };
 }
