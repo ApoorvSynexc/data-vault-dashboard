@@ -213,7 +213,7 @@ export default function Platforms() {
             <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
               <path d='M10 4v12M4 10h12' strokeLinecap='round' />
             </svg>
-            + Add Platform
+            Add Platform
           </button>
         </div>
       </section>
