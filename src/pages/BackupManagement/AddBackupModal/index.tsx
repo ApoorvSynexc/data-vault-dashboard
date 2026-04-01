@@ -2,13 +2,20 @@ import { useMemo, useState } from 'react';
 import Typography from '../../../components/Typography';
 import { dataScopeRows, initialSelectedObjectIds } from './constants';
 import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
+import { useHttpRequest } from '../../../hooks/useHttpRequest';
 import type {
   AddBackupModalProps,
   AzureConfig,
   BackupEnvironment,
+  ConditionType,
   DestinationType,
   DurationType,
+  FieldDataType,
+  FieldFilter,
+  FilterOperator,
   GoogleConfig,
+  ObjectField,
+  ObjectFilterConfig,
   PlatformType,
   S3Config,
   ScheduleMode,
@@ -16,6 +23,15 @@ import type {
   WeekDay,
   WizardStep,
 } from './types';
+
+const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
+  string:   ['=', '!=', 'LIKE', 'IN'],
+  number:   ['=', '!=', '>', '<', '>=', '<='],
+  boolean:  ['=', '!='],
+  date:     ['=', '!=', '>', '<', '>=', '<='],
+  datetime: ['=', '!=', '>', '<', '>=', '<='],
+  id:       ['=', '!=', 'IN'],
+};
 
 export type { BackupEnvironment, PlatformType } from './types';
 
@@ -37,6 +53,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [weekDays, setWeekDays] = useState<WeekDay[]>([]);
   const [monthDate, setMonthDate] = useState<number>(1);
   const [timeZone, setTimeZone] = useState('UTC');
+  const [objectFilters, setObjectFilters] = useState<Record<string, ObjectFilterConfig>>({});
+  const [expandedFilterObject, setExpandedFilterObject] = useState<string | null>(null);
+  const [objectFields, setObjectFields] = useState<Record<string, ObjectField[]>>({});
+  const [objectFieldsLoading, setObjectFieldsLoading] = useState<Record<string, boolean>>({});
+  const api = useHttpRequest();
   const [destination, setDestination] = useState<DestinationType>('S3');
   const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
   const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({ serviceAccountKey: '', bucketName: '', projectId: '' });
@@ -543,6 +564,231 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'><SelectChevron /></div>
                       </div>
                     </label>
+
+                    {/* Filters — per selected object */}
+                    <div>
+                      <Typography as='span' className='mb-3 block' variant='label' color='secondary'>
+                        Filters
+                      </Typography>
+                      <div className='space-y-2'>
+                        {dataScopeRows.filter((r) => selectedObjectIds.includes(r.id)).map((row) => {
+                          const cfg = objectFilters[row.id] ?? { conditionType: 'AND', expression: '', fields: [] };
+                          const isOpen = expandedFilterObject === row.id;
+                          const fields = objectFields[row.id] ?? [];
+                          const isLoadingFields = objectFieldsLoading[row.id] ?? false;
+
+                          function updateCfg(patch: Partial<ObjectFilterConfig>) {
+                            setObjectFilters((prev) => ({ ...prev, [row.id]: { ...cfg, ...patch } }));
+                          }
+
+                          function handleToggleOpen() {
+                            if (isOpen) {
+                              setExpandedFilterObject(null);
+                              return;
+                            }
+                            setExpandedFilterObject(row.id);
+                            if (!objectFields[row.id]) {
+                              setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: true }));
+                              api.get<ObjectField[]>(`/v1/objects/${row.id}/fields`)
+                                .then((res) => setObjectFields((prev) => ({ ...prev, [row.id]: res })))
+                                .catch(() => setObjectFields((prev) => ({ ...prev, [row.id]: [] })))
+                                .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: false })));
+                            }
+                          }
+
+                          function addField() {
+                            updateCfg({ fields: [...cfg.fields, { name: '', dataType: null, operator: '=', value: '' }] });
+                          }
+
+                          function removeField(idx: number) {
+                            updateCfg({ fields: cfg.fields.filter((_, i) => i !== idx) });
+                          }
+
+                          function updateField(idx: number, patch: Partial<FieldFilter>) {
+                            updateCfg({ fields: cfg.fields.map((f, i) => i === idx ? { ...f, ...patch } : f) });
+                          }
+
+                          function handleFieldNameChange(idx: number, name: string) {
+                            const matched = fields.find((f) => f.name === name);
+                            const dataType = matched?.dataType ?? null;
+                            const operators = dataType ? OPERATORS_BY_TYPE[dataType] : OPERATORS_BY_TYPE.string;
+                            updateField(idx, { name, dataType, operator: operators[0], value: '' });
+                          }
+
+                          return (
+                            <div key={row.id} className='overflow-hidden rounded-xl border border-gray-200'>
+                              {/* Header */}
+                              <button
+                                type='button'
+                                onClick={handleToggleOpen}
+                                className='flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50'
+                              >
+                                <Typography variant='sectionTitle' color='secondary'>{row.name}</Typography>
+                                <svg
+                                  viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8'
+                                  className={['h-4 w-4 text-gray-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
+                                >
+                                  <path d='M5 7.5L10 12.5L15 7.5' strokeLinecap='round' strokeLinejoin='round' />
+                                </svg>
+                              </button>
+
+                              {isOpen && (
+                                <div className='space-y-4 border-t border-gray-100 px-4 py-4'>
+                                  {isLoadingFields ? (
+                                    <div className='flex items-center gap-2 text-xs text-gray-400'>
+                                      <span className='h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent' />
+                                      Loading fields...
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {/* Condition type */}
+                                      <div>
+                                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
+                                          Condition
+                                        </Typography>
+                                        <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                                          {(['AND', 'OR', 'CUSTOM'] as ConditionType[]).map((ct) => (
+                                            <button
+                                              key={ct}
+                                              type='button'
+                                              onClick={() => updateCfg({ conditionType: ct })}
+                                              className={[
+                                                'min-w-[64px] border-r border-blue-600 px-4 py-1.5 text-xs font-medium transition last:border-r-0',
+                                                cfg.conditionType === ct ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                                              ].join(' ')}
+                                            >
+                                              {ct}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Field rows */}
+                                      {cfg.fields.length > 0 && (
+                                        <div className='space-y-2'>
+                                          {cfg.fields.map((field, idx) => {
+                                            const availableOps = field.dataType ? OPERATORS_BY_TYPE[field.dataType] : OPERATORS_BY_TYPE.string;
+                                            return (
+                                              <div key={idx} className='flex items-center gap-2'>
+                                                {/* Number badge */}
+                                                <span className='flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-600'>
+                                                  {idx + 1}
+                                                </span>
+
+                                                {/* Field name — dropdown from API */}
+                                                <div className='relative min-w-0 flex-1'>
+                                                  <select
+                                                    value={field.name}
+                                                    onChange={(e) => handleFieldNameChange(idx, e.target.value)}
+                                                    className='h-9 w-full appearance-none rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                                  >
+                                                    <option value=''>Select field</option>
+                                                    {fields.map((f) => (
+                                                      <option key={f.name} value={f.name}>{f.name}</option>
+                                                    ))}
+                                                  </select>
+                                                  <div className='pointer-events-none absolute inset-y-0 right-1.5 flex items-center'><SelectChevron /></div>
+                                                </div>
+
+                                                {/* Data type badge — auto-detected, read-only */}
+                                                {field.dataType && (
+                                                  <span className='flex-shrink-0 rounded-md bg-gray-100 px-2 py-1 font-mono text-[10px] text-gray-500'>
+                                                    {field.dataType}
+                                                  </span>
+                                                )}
+
+                                                {/* Operator — filtered by data type */}
+                                                <div className='relative flex-shrink-0'>
+                                                  <select
+                                                    value={field.operator}
+                                                    onChange={(e) => updateField(idx, { operator: e.target.value as FilterOperator })}
+                                                    className='h-9 appearance-none rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                                  >
+                                                    {availableOps.map((op) => (
+                                                      <option key={op} value={op}>{op}</option>
+                                                    ))}
+                                                  </select>
+                                                  <div className='pointer-events-none absolute inset-y-0 right-1.5 flex items-center'><SelectChevron /></div>
+                                                </div>
+
+                                                {/* Value — input type based on dataType */}
+                                                {field.dataType === 'boolean' ? (
+                                                  <div className='relative min-w-0 flex-1'>
+                                                    <select
+                                                      value={field.value}
+                                                      onChange={(e) => updateField(idx, { value: e.target.value })}
+                                                      className='h-9 w-full appearance-none rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                                    >
+                                                      <option value=''>Select</option>
+                                                      <option value='true'>true</option>
+                                                      <option value='false'>false</option>
+                                                    </select>
+                                                    <div className='pointer-events-none absolute inset-y-0 right-1.5 flex items-center'><SelectChevron /></div>
+                                                  </div>
+                                                ) : (
+                                                  <input
+                                                    type={field.dataType === 'number' ? 'number' : field.dataType === 'date' ? 'date' : field.dataType === 'datetime' ? 'datetime-local' : 'text'}
+                                                    value={field.value}
+                                                    onChange={(e) => updateField(idx, { value: e.target.value })}
+                                                    placeholder='Value'
+                                                    className='h-9 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                                  />
+                                                )}
+
+                                                {/* Remove */}
+                                                <button
+                                                  type='button'
+                                                  onClick={() => removeField(idx)}
+                                                  className='flex-shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition'
+                                                >
+                                                  <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+                                                    <path d='M5 5l10 10M15 5L5 15' strokeLinecap='round' />
+                                                  </svg>
+                                                </button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* Custom expression */}
+                                      {cfg.conditionType === 'CUSTOM' && (
+                                        <label className='block'>
+                                          <Typography as='span' className='mb-1 block' variant='label' color='secondary'>
+                                            Expression
+                                          </Typography>
+                                          <Typography className='mb-2' variant='bodySm' color='muted'>
+                                            Reference fields by their number above, e.g. <span className='font-mono'>1 AND 2 OR 3</span>
+                                          </Typography>
+                                          <input
+                                            type='text'
+                                            value={cfg.expression}
+                                            onChange={(e) => updateCfg({ expression: e.target.value })}
+                                            placeholder='e.g. 1 AND 2 OR 3'
+                                            className='h-10 w-full rounded-lg border border-gray-300 px-4 font-mono text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                                          />
+                                        </label>
+                                      )}
+
+                                      <button
+                                        type='button'
+                                        onClick={addField}
+                                        className='inline-flex items-center gap-1.5 rounded-lg border border-blue-500 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition'
+                                      >
+                                        <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                                          <path d='M10 4v12M4 10h12' strokeLinecap='round' />
+                                        </svg>
+                                        Add Field
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </>
                 )}
               </div>

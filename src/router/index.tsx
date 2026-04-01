@@ -8,6 +8,7 @@ import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
+import Platforms from '../pages/Platforms';
 
 const router = createBrowserRouter([
   {
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: '/backup-management', element: <BackupMannagement /> },
+          { path: '/platforms', element: <Platforms /> },
         ],
       },
     ],
