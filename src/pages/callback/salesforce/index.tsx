@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { usePlatformService } from '../../../services';
@@ -47,17 +47,33 @@ export default function SalesforceCallback() {
         </Typography>
 
         {!hasRequiredParams ? (
-          <Typography className='mt-2' variant='body' color='muted'>
-            Missing required `code` or `state` query parameters.
-          </Typography>
+          <>
+            <Typography className='mt-2' variant='body' color='muted'>
+              Missing required `code` or `state` query parameters.
+            </Typography>
+            <Link
+              to='/platforms'
+              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+            >
+              Back To Platforms
+            </Link>
+          </>
         ) : isLoading ? (
           <Typography className='mt-2' variant='body' color='muted'>
             Completing Salesforce connection and redirecting you to Platforms...
           </Typography>
         ) : (
-          <Typography className='mt-2' variant='body' color='danger'>
-            {error instanceof Error ? error.message : 'Failed to complete Salesforce connection.'}
-          </Typography>
+          <>
+            <Typography className='mt-2' variant='body' color='danger'>
+              {error instanceof Error ? error.message : 'Failed to complete Salesforce connection.'}
+            </Typography>
+            <Link
+              to='/platforms'
+              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+            >
+              Back To Platforms
+            </Link>
+          </>
         )}
       </div>
     </div>
