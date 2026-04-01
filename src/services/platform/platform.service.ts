@@ -38,6 +38,12 @@ export function usePlatformService() {
           crmName: crmType.toLowerCase(),
         },
       }),
+    reconnectPlatform: (crmId: string) =>
+      api.get<ConnectPlatformResponse | string>('/v1/crm/connect', {
+        query: {
+          crmId,
+        },
+      }),
     callbackPlatform: (payload: { crmName: CrmPlatform; code: string, state: string }) =>
       api.get<ConnectPlatformResponse | string>('/v1/crm/callback', {
         query: {

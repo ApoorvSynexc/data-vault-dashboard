@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { CRM_NAME_MAP, CRM_PLATFORM_META } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
@@ -50,17 +50,21 @@ const CRM_LOGOS: Record<CrmPlatform, React.FC> = {
 function PlatformCard({
   platform,
   onDisconnect,
+  onConnect,
   disconnecting,
+  connecting,
 }: {
   platform: ConnectedPlatform;
   onDisconnect: (crmId: string) => void;
+  onConnect: (crmId: string) => void;
   disconnecting: boolean;
+  connecting: boolean;
 }) {
   const crmPlatform = CRM_NAME_MAP[platform.crmName.toLowerCase()];
   const meta = crmPlatform ? CRM_PLATFORM_META[crmPlatform] : null;
   const Logo = crmPlatform ? CRM_LOGOS[crmPlatform] : null;
 
-  const isActive = platform.status === 'ACTIVE';
+  const isActive = platform.isConnected;
   const isError = platform.status === 'ERROR';
 
   return (
@@ -99,23 +103,37 @@ function PlatformCard({
       <div className='flex items-center gap-1.5'>
         <span className={['h-2 w-2 rounded-full', isActive ? 'bg-green-500' : isError ? 'bg-red-500' : 'bg-gray-400'].join(' ')} />
         <span className={['text-xs font-medium', isActive ? 'text-green-600' : isError ? 'text-red-600' : 'text-gray-500'].join(' ')}>
-          {isActive ? 'Connected' : isError ? 'Error' : 'Inactive'}
+          {isActive ? 'Connected' : isError ? 'Error' : 'Disconnected'}
         </span>
         <span className='text-xs text-gray-400'>Synced {formatRelative(platform.updatedAt)}</span>
       </div>
 
       <div className='flex justify-end border-t border-gray-100 pt-3'>
-        <button
-          type='button'
-          onClick={() => onDisconnect(platform.crmId)}
-          disabled={disconnecting}
-          className='inline-flex min-w-[96px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60'
-        >
-          {disconnecting && (
-            <span className='h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent' />
-          )}
-          {disconnecting ? 'Disconnecting' : 'Disconnect'}
-        </button>
+        {platform.isConnected ? (
+          <button
+            type='button'
+            onClick={() => onDisconnect(platform.crmId)}
+            disabled={disconnecting}
+            className='inline-flex min-w-[96px] items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60'
+          >
+            {disconnecting && (
+              <span className='h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent' />
+            )}
+            {disconnecting ? 'Disconnecting' : 'Disconnect'}
+          </button>
+        ) : (
+          <button
+            type='button'
+            onClick={() => onConnect(platform.crmId)}
+            disabled={connecting}
+            className='inline-flex min-w-[96px] items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-[11px] font-semibold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60'
+          >
+            {connecting && (
+              <span className='h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent' />
+            )}
+            {connecting ? 'Connecting' : 'Connect'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -130,8 +148,7 @@ function formatRelative(iso: string): string {
 }
 
 export default function Platforms() {
-  const { getConnectedPlatforms, disconnectPlatform } = usePlatformService();
-  const queryClient = useQueryClient();
+  const { getConnectedPlatforms, disconnectPlatform, reconnectPlatform } = usePlatformService();
   const [modalOpen, setModalOpen] = useState(false);
   const [disconnectTarget, setDisconnectTarget] = useState<ConnectedPlatform | null>(null);
   const [error, setError] = useState('');
@@ -139,6 +156,7 @@ export default function Platforms() {
   const {
     data: platforms = [],
     isLoading,
+    refetch
   } = useQuery({
     queryKey: ['connected-platforms'],
     queryFn: getConnectedPlatforms,
@@ -147,12 +165,30 @@ export default function Platforms() {
   const disconnectPlatformMutation = useMutation({
     mutationFn: (crmId: string) => disconnectPlatform(crmId),
     onSuccess: (_, crmId) => {
-      queryClient.setQueryData<ConnectedPlatform[]>(['connected-platforms'], (current = []) =>
-        current.filter((platform) => platform.crmId !== crmId),
-      );
+      refetch();
+      // queryClient.setQueryData<ConnectedPlatform[]>(['connected-platforms'], (current = []) =>
+      //   current.filter((platform) => platform.crmId !== crmId),
+      // );
     },
     onError: () => {
       setError('Failed to disconnect platform. Please try again.');
+    },
+  });
+
+  const reconnectPlatformMutation = useMutation({
+    mutationFn: (crmId: string) => reconnectPlatform(crmId),
+    onSuccess: (response) => {
+      const redirectUrl = typeof response === 'string' ? response : response.redirectUrl;
+
+      if (!redirectUrl) {
+        setError('Connect URL was not returned by the server.');
+        return;
+      }
+
+      window.location.href = redirectUrl;
+    },
+    onError: () => {
+      setError('Failed to reconnect platform. Please try again.');
     },
   });
 
@@ -217,9 +253,17 @@ export default function Platforms() {
                     setError('');
                     setDisconnectTarget(platform);
                   }}
+                  onConnect={(crmId) => {
+                    setError('');
+                    reconnectPlatformMutation.mutate(crmId);
+                  }}
                   disconnecting={
                     disconnectPlatformMutation.isPending &&
                     disconnectPlatformMutation.variables === platform.crmId
+                  }
+                  connecting={
+                    reconnectPlatformMutation.isPending &&
+                    reconnectPlatformMutation.variables === platform.crmId
                   }
                 />
               ))}
