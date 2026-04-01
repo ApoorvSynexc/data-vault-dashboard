@@ -22,6 +22,10 @@ export type ConnectedPlatform = {
   userId: string;
 };
 
+export type ConnectPlatformResponse = {
+  url: string;
+};
+
 export function usePlatformService() {
   const api = useHttpRequest();
 
@@ -29,9 +33,17 @@ export function usePlatformService() {
     getConnectedPlatforms: () =>
       api.get<ConnectedPlatform[]>('/v1/crm/list'),
     connectPlatform: (crmType: CrmPlatform) =>
-      api.get<ConnectedPlatform>('/v1/crm/connect', {
+      api.get<ConnectPlatformResponse | string>('/v1/crm/connect', {
         query: {
           crmName: crmType.toLowerCase(),
+        },
+      }),
+    callbackPlatform: (payload: { crmName: CrmPlatform; code: string, state: string }) =>
+      api.get<ConnectPlatformResponse | string>('/crm/callback', {
+        query: {
+          crmName: payload.crmName.toLowerCase(),
+          code: payload.code,
+          state: payload.state,
         },
       }),
     disconnectPlatform: (crmId: string) =>
