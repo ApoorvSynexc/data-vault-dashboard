@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { dataScopeRows, initialSelectedObjectIds } from './constants';
 import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
-import { useHttpRequest } from '../../../hooks/useHttpRequest';
-import { useBackupService } from '../../../services/backup/backup.service';
+import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import { useAppSelector } from '../../../store/hooks';
+import { capitalize } from '../../../utils';
 import {
   validateBackupStep1,
   validateBackupStep2,
@@ -27,7 +27,6 @@ import type {
   GoogleConfig,
   ObjectField,
   ObjectFilterConfig,
-  PlatformType,
   S3Config,
   ScheduleMode,
   ScheduleType,
@@ -56,11 +55,12 @@ function fieldClass(error?: string, isSelect = false) {
 }
 
 export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps) {
-  const crmId = useAppSelector((state) => state.platforms.list.find((p) => p.status === 'ACTIVE')?.crmId ?? state.platforms.list[0]?.crmId ?? '');
+  const platforms = useAppSelector((state) => state.platforms.list);
+  const defaultCrmId = platforms.find((item) => item.status === 'ACTIVE')?.crmId ?? platforms[0]?.crmId ?? '';
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
-  const [platform, setPlatform] = useState<PlatformType>('Salesforce');
+  const [crmId, setCrmId] = useState(defaultCrmId);
   const [environment, setEnvironment] = useState<BackupEnvironment>('Production');
   const [search, setSearch] = useState('');
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(initialSelectedObjectIds);
@@ -78,18 +78,23 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [expandedFilterObject, setExpandedFilterObject] = useState<string | null>(null);
   const [objectFields, setObjectFields] = useState<Record<string, ObjectField[]>>({});
   const [objectFieldsLoading, setObjectFieldsLoading] = useState<Record<string, boolean>>({});
-  const api = useHttpRequest();
-  const backupService = useBackupService();
+  const backupConfigService = useBackupConfigService();
   const [stepErrors, setStepErrors] = useState<BackupFieldErrors>({});
 
   const createBackupMutation = useMutation({
-    mutationFn: () => backupService.createBackup(buildPayload()),
+    mutationFn: () => backupConfigService.createBackupConfig(buildPayload()),
     onSuccess: handleClose,
   });
   const [destination, setDestination] = useState<DestinationType>('S3');
   const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
   const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({ serviceAccountKey: '', bucketName: '', projectId: '' });
   const [azureConfig, setAzureConfig] = useState<AzureConfig>({ accountName: '', accountKey: '', containerName: '' });
+
+  useEffect(() => {
+    if (!crmId && defaultCrmId) {
+      setCrmId(defaultCrmId);
+    }
+  }, [crmId, defaultCrmId]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -117,6 +122,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     includeAttachments ? 'Attachment' : null,
     metadataBackup ? 'Metadata included' : null,
   ].filter(Boolean).join(', ') || 'No extras selected';
+
+  const selectedPlatform = useMemo(
+    () => platforms.find((item) => item.crmId === crmId),
+    [crmId, platforms],
+  );
 
   const schedulingDetails = scheduleMode === 'realtime'
     ? 'Realtime'
@@ -322,14 +332,20 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                       Platform
                     </Typography>
                     <div className='relative'>
-                      <select
-                        value={platform}
-                        onChange={(event) => setPlatform(event.target.value as PlatformType)}
+                        <select
+                        value={crmId}
+                        onChange={(event) => setCrmId(event.target.value)}
                         className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                       >
-                        <option value='SALESFORCE'>Salesforce</option>
-                        {/* <option value='HubSpot'>HubSpot</option>
-                        <option value='Zoho'>Zoho</option> */}
+                        {platforms.length === 0 ? (
+                          <option value=''>No platform available</option>
+                        ) : (
+                          platforms.map((item) => (
+                            <option key={item.crmId} value={item.crmId}>
+                              {capitalize(item.crmName)} ( {item?.crmProfile?.email} )
+                            </option>
+                          ))
+                        )}
                       </select>
                       <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
                         <SelectChevron />
@@ -731,7 +747,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                             setExpandedFilterObject(row.id);
                             if (!objectFields[row.id]) {
                               setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: true }));
-                              api.get<ObjectField[]>(`/v1/objects/${row.id}/fields`)
+                              backupConfigService.getObjectFields(crmId, row.name)
                                 .then((res) => setObjectFields((prev) => ({ ...prev, [row.id]: res })))
                                 .catch(() => setObjectFields((prev) => ({ ...prev, [row.id]: [] })))
                                 .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: false })));
@@ -1150,8 +1166,8 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               <div className='mt-8 space-y-4'>
                 <ReviewCard
                   title='Define Backup Policy'
-                  details={policyName || 'Salesforce Production full backup'}
-                  meta={`${platform} | ${environment}`}
+                  details={policyName || `${capitalize(selectedPlatform?.crmName ?? 'Platform')} ${environment} full backup`}
+                  meta={`${capitalize(selectedPlatform?.crmName ?? 'Platform')} | ${environment}`}
                   onEdit={() => setCurrentStep(1)}
                 />
 
