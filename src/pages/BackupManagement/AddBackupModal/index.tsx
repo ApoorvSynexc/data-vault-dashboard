@@ -259,12 +259,12 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
           ? { bucketName: googleConfig.bucketName, projectId: googleConfig.projectId, serviceAccountKey: googleConfig.serviceAccountKey }
           : { accountName: azureConfig.accountName, accountKey: azureConfig.accountKey, containerName: azureConfig.containerName };
 
-    const objectNames = selectedObjectIds.map((id) => dataScopeRows.find((r) => r.id === id)?.name ?? id);
+    const objectNames = selectedObjectIds.map((id) => dataScopeRows.find((r) => r.id === id)?.id ?? id);
     const objects = selectedObjectIds.map((id) => {
       const row = dataScopeRows.find((r) => r.id === id);
       const cfg = objectFilters[id] ?? { conditionType: 'AND' as const, expression: '', fields: [] };
       return {
-        name: row?.name ?? id,
+        name: row?.id ?? id,
         condition: { type: cfg.conditionType },
         field: cfg.fields.map((f) => ({ name: f.name, filter: { value: f.value, operator: f.operator } })),
       };
