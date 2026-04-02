@@ -125,7 +125,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     const modeRows = dataScopeRows.filter((row) => row.backupMode === scheduleMode || row.backupMode === 'both');
     if (!query) return modeRows;
     return modeRows.filter((row) => row.name.toLowerCase().includes(query));
-  }, [search, scheduleMode]);
+  }, [search, scheduleMode, isObjectListLoading]);
 
   const allVisibleSelected =
     filteredRows.length > 0 && filteredRows.every((row) => selectedObjectIds.includes(row.id));
@@ -341,6 +341,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               isLoading={isObjectListLoading}
               search={search}
               selectedObjectIds={selectedObjectIds}
+              totalObjects={dataScopeRows.length}
               stepErrors={stepErrors}
               allVisibleSelected={allVisibleSelected}
               onSearchChange={setSearch}
