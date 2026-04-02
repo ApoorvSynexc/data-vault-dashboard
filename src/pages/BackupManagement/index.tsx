@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
-import { usePlatformService } from '../../services';
 import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
 
@@ -344,14 +342,6 @@ const backupColumns: TableColumn<BackupRow>[] = [
 
 export default function BackupManagement() {
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-  const platformService = usePlatformService();
-
-  const { data: platforms } = useQuery({
-    queryKey: ['connected-platforms'],
-    queryFn: () => platformService.getConnectedPlatforms(),
-  });
-
-  const crmId = platforms?.find((p) => p.status === 'ACTIVE')?.crmId ?? platforms?.[0]?.crmId ?? '';
 
   return (
     <div className='flex w-full min-w-0 flex-col gap-5'>
@@ -403,7 +393,7 @@ export default function BackupManagement() {
         <PaginationFooter />
       </Panel>
 
-      <AddBackupModal isOpen={isCreatingBackup} onClose={() => setIsCreatingBackup(false)} crmId={crmId} />
+      <AddBackupModal isOpen={isCreatingBackup} onClose={() => setIsCreatingBackup(false)} />
     </div>
   );
 }

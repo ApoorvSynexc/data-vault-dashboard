@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAppDispatch } from '../store/hooks';
+import { fetchPlatforms } from '../store/slices/platformsSlice';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const ico = (children: React.ReactNode) => (
@@ -42,8 +44,13 @@ const mainNav = [
 
 export default function MainLayout() {
   const { logout } = useAuth();
+  const dispatch = useAppDispatch();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    dispatch(fetchPlatforms());
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

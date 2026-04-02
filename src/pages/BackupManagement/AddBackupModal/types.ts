@@ -52,7 +52,6 @@ export type ObjectFilterConfig = {
 export type AddBackupModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  crmId: string;
 };
 
 // ── API Payload ──────────────────────────────────────────────────────────────

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { CRM_NAME_MAP, CRM_PLATFORM_META } from '../../constants/platforms';
 import type { CrmPlatform } from '../../constants/platforms';
 import { usePlatformService } from '../../services';
 import type { ConnectedPlatform } from '../../services';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchPlatforms } from '../../store/slices/platformsSlice';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import AddPlatformModal from './AddPlatform';
@@ -148,24 +150,18 @@ function formatRelative(iso: string): string {
 }
 
 export default function Platforms() {
-  const { getConnectedPlatforms, disconnectPlatform, reconnectPlatform } = usePlatformService();
+  const { disconnectPlatform, reconnectPlatform } = usePlatformService();
+  const dispatch = useAppDispatch();
+  const platforms = useAppSelector((state) => state.platforms.list);
+  const isLoading = useAppSelector((state) => state.platforms.status === 'loading');
   const [modalOpen, setModalOpen] = useState(false);
   const [disconnectTarget, setDisconnectTarget] = useState<ConnectedPlatform | null>(null);
   const [error, setError] = useState('');
 
-  const {
-    data: platforms = [],
-    isLoading,
-    refetch
-  } = useQuery({
-    queryKey: ['connected-platforms'],
-    queryFn: getConnectedPlatforms,
-  });
-
   const disconnectPlatformMutation = useMutation({
     mutationFn: (crmId: string) => disconnectPlatform(crmId),
     onSuccess: () => {
-      refetch();
+      dispatch(fetchPlatforms());
     },
     onError: () => {
       setError('Failed to disconnect platform. Please try again.');

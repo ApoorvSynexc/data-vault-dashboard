@@ -5,6 +5,7 @@ import { dataScopeRows, initialSelectedObjectIds } from './constants';
 import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
 import { useHttpRequest } from '../../../hooks/useHttpRequest';
 import { useBackupService } from '../../../services/backup/backup.service';
+import { useAppSelector } from '../../../store/hooks';
 import {
   validateBackupStep1,
   validateBackupStep2,
@@ -54,7 +55,8 @@ function fieldClass(error?: string, isSelect = false) {
     : `${base} border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100`;
 }
 
-export default function AddBackupModal({ isOpen, onClose, crmId }: AddBackupModalProps) {
+export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps) {
+  const crmId = useAppSelector((state) => state.platforms.list.find((p) => p.status === 'ACTIVE')?.crmId ?? state.platforms.list[0]?.crmId ?? '');
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
