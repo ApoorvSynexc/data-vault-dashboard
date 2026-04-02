@@ -263,10 +263,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     const objects = selectedObjectIds.map((id) => {
       const row = dataScopeRows.find((r) => r.id === id);
       const cfg = objectFilters[id] ?? { conditionType: 'AND' as const, expression: '', fields: [] };
+      const populatedFields = cfg.fields.filter((field) => field.name.trim().length > 0);
       return {
         name: row?.id ?? id,
         condition: { type: cfg.conditionType },
-        field: cfg.fields.map((f) => ({ name: f.name, filter: { value: f.value, operator: f.operator } })),
+        field: populatedFields.map((f) => ({ name: f.name, filter: { value: f.value, operator: f.operator } })),
       };
     });
 

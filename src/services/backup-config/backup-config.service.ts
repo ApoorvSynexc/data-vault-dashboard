@@ -7,7 +7,7 @@ import type {
 } from '../../pages/BackupManagement/AddBackupModal/types';
 
 export const BACKUP_CONFIG_ENDPOINTS = {
-  create: '/v1/backup/create',
+  create: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
 } as const;
