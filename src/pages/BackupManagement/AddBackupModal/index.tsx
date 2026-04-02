@@ -1,13 +1,23 @@
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { dataScopeRows, initialSelectedObjectIds } from './constants';
 import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
 import { useHttpRequest } from '../../../hooks/useHttpRequest';
+import { useBackupService } from '../../../services/backup/backup.service';
+import {
+  validateBackupStep1,
+  validateBackupStep2,
+  validateBackupStep4,
+  type BackupFieldErrors,
+} from '../../../validation/backup.validation';
 import type {
   AddBackupModalProps,
   AzureConfig,
   BackupEnvironment,
   ConditionType,
+  CreateBackupFrequency,
+  CreateBackupPayload,
   DestinationType,
   DurationType,
   FieldDataType,
@@ -35,7 +45,16 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
 
 export type { BackupEnvironment, PlatformType } from './types';
 
-export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps) {
+function fieldClass(error?: string, isSelect = false) {
+  const base = isSelect
+    ? 'h-10 w-full appearance-none rounded-lg border bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition'
+    : 'h-10 w-full rounded-lg border px-4 text-xs text-gray-800 outline-none transition';
+  return error
+    ? `${base} border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-100`
+    : `${base} border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100`;
+}
+
+export default function AddBackupModal({ isOpen, onClose, crmId }: AddBackupModalProps) {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
@@ -58,6 +77,13 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [objectFields, setObjectFields] = useState<Record<string, ObjectField[]>>({});
   const [objectFieldsLoading, setObjectFieldsLoading] = useState<Record<string, boolean>>({});
   const api = useHttpRequest();
+  const backupService = useBackupService();
+  const [stepErrors, setStepErrors] = useState<BackupFieldErrors>({});
+
+  const createBackupMutation = useMutation({
+    mutationFn: () => backupService.createBackup(buildPayload()),
+    onSuccess: handleClose,
+  });
   const [destination, setDestination] = useState<DestinationType>('S3');
   const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
   const [googleConfig, setGoogleConfig] = useState<GoogleConfig>({ serviceAccountKey: '', bucketName: '', projectId: '' });
@@ -105,6 +131,8 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   function handleClose() {
     setCurrentStep(1);
+    setStepErrors({});
+    createBackupMutation.reset();
     onClose();
   }
 
@@ -138,7 +166,74 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     setSelectedObjectIds((prev) => prev.filter((id) => validIds.has(id)));
   }
 
-  function handleContinue() {
+  function buildPayload(): CreateBackupPayload {
+    const frequencyMap: Record<DurationType, CreateBackupFrequency> = {
+      hour: 'HOURS', day: 'DAYS', week: 'WEEKS', month: 'MONTHS',
+    };
+    const destinationTypeMap: Record<DestinationType, 'S3' | 'GOOGLE' | 'AZURE'> = {
+      S3: 'S3', Google: 'GOOGLE', Azure: 'AZURE',
+    };
+    const destinationConfig: Record<string, string> =
+      destination === 'S3'
+        ? { bucketName: s3Config.bucketName, region: s3Config.region, accessKeyId: s3Config.accessKeyId, secretAccessKey: s3Config.secretAccessKey }
+        : destination === 'Google'
+          ? { bucketName: googleConfig.bucketName, projectId: googleConfig.projectId, serviceAccountKey: googleConfig.serviceAccountKey }
+          : { accountName: azureConfig.accountName, accountKey: azureConfig.accountKey, containerName: azureConfig.containerName };
+
+    const objectNames = selectedObjectIds.map((id) => dataScopeRows.find((r) => r.id === id)?.name ?? id);
+    const objects = selectedObjectIds.map((id) => {
+      const row = dataScopeRows.find((r) => r.id === id);
+      const cfg = objectFilters[id] ?? { conditionType: 'AND' as const, expression: '', fields: [] };
+      return {
+        name: row?.name ?? id,
+        condition: { type: cfg.conditionType },
+        field: cfg.fields.map((f) => ({ name: f.name, filter: { value: f.value, operator: f.operator } })),
+      };
+    });
+
+    const payload: CreateBackupPayload = {
+      crmId,
+      name: policyName,
+      description,
+      environment: environment.toUpperCase(),
+      objectNames,
+      schedule: scheduleMode === 'realtime' ? 'REALTIME' : 'SCHEDULE',
+      objects,
+      destination: { type: destinationTypeMap[destination], config: destinationConfig },
+    };
+
+    if (scheduleMode === 'schedule') {
+      const now = new Date();
+      const monthDateIso = new Date(now.getFullYear(), now.getMonth(), monthDate).toISOString();
+      payload.scheduleConfig = {
+        timeZone: timeZone.toLowerCase(),
+        type: scheduleType === 'one_time' ? 'ONE_TIME' : 'INCREMENTAL',
+        scheduling: {
+          frequency: frequencyMap[duration],
+          interval,
+          weekDays: weekDays.map((d) => d.toUpperCase()),
+          monthDate: monthDateIso,
+        },
+      };
+    }
+
+    return payload;
+  }
+
+  async function handleContinue() {
+    let errors: BackupFieldErrors = {};
+
+    if (currentStep === 1) {
+      errors = await validateBackupStep1({ name: policyName });
+    } else if (currentStep === 2) {
+      errors = await validateBackupStep2({ selectedObjectIds });
+    } else if (currentStep === 4) {
+      errors = await validateBackupStep4({ destination, s3Config, googleConfig, azureConfig });
+    }
+
+    setStepErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     if (currentStep === 2 && scheduleMode === 'realtime') {
       setCurrentStep(4);
     } else if (currentStep < 5) {
@@ -147,6 +242,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   }
 
   function handleBack() {
+    setStepErrors({});
     if (currentStep === 4 && scheduleMode === 'realtime') {
       setCurrentStep(2);
     } else if (currentStep > 1) {
@@ -190,10 +286,18 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                     <input
                       type='text'
                       value={policyName}
-                      onChange={(event) => setPolicyName(event.target.value)}
+                      onChange={(event) => { setPolicyName(event.target.value); setStepErrors((e) => ({ ...e, name: undefined })); }}
                       placeholder='Backup policy name'
-                      className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                      className={[
+                        'h-10 w-full rounded-lg border px-4 text-xs text-gray-800 outline-none transition focus:ring-2',
+                        stepErrors.name
+                          ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
+                          : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100',
+                      ].join(' ')}
                     />
+                    {stepErrors.name && (
+                      <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.name}</Typography>
+                    )}
                   </label>
 
                   <label className='block'>
@@ -310,6 +414,16 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               </Typography>
 
               <div className='mt-6'>
+                {stepErrors.objects && (
+                  <div className='mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5'>
+                    <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4 shrink-0 text-red-500'>
+                      <circle cx='10' cy='10' r='8' />
+                      <path d='M10 6v4' strokeLinecap='round' />
+                      <circle cx='10' cy='13.5' r='0.5' fill='currentColor' />
+                    </svg>
+                    <Typography variant='bodySm' className='text-red-600'>{stepErrors.objects}</Typography>
+                  </div>
+                )}
                 <div className='relative max-w-[350px]'>
                   <span className='pointer-events-none absolute left-4 top-1/2 -translate-y-1/2'>
                     <SearchIcon />
@@ -857,10 +971,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={s3Config.accessKeyId}
-                          onChange={(e) => setS3Config((c) => ({ ...c, accessKeyId: e.target.value }))}
+                          onChange={(e) => { setS3Config((c) => ({ ...c, accessKeyId: e.target.value })); setStepErrors((err) => ({ ...err, accessKeyId: undefined })); }}
                           placeholder='AKIAIOSFODNN7EXAMPLE'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.accessKeyId)}
                         />
+                        {stepErrors.accessKeyId && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accessKeyId}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -869,10 +984,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='password'
                           value={s3Config.secretAccessKey}
-                          onChange={(e) => setS3Config((c) => ({ ...c, secretAccessKey: e.target.value }))}
+                          onChange={(e) => { setS3Config((c) => ({ ...c, secretAccessKey: e.target.value })); setStepErrors((err) => ({ ...err, secretAccessKey: undefined })); }}
                           placeholder='••••••••••••••••••••'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.secretAccessKey)}
                         />
+                        {stepErrors.secretAccessKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.secretAccessKey}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -881,10 +997,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={s3Config.bucketName}
-                          onChange={(e) => setS3Config((c) => ({ ...c, bucketName: e.target.value }))}
+                          onChange={(e) => { setS3Config((c) => ({ ...c, bucketName: e.target.value })); setStepErrors((err) => ({ ...err, bucketName: undefined })); }}
                           placeholder='my-backup-bucket'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.bucketName)}
                         />
+                        {stepErrors.bucketName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.bucketName}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -893,8 +1010,8 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <div className='relative'>
                           <select
                             value={s3Config.region}
-                            onChange={(e) => setS3Config((c) => ({ ...c, region: e.target.value }))}
-                            className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                            onChange={(e) => { setS3Config((c) => ({ ...c, region: e.target.value })); setStepErrors((err) => ({ ...err, region: undefined })); }}
+                            className={fieldClass(stepErrors.region, true)}
                           >
                             <option value=''>Select region</option>
                             <option value='us-east-1'>us-east-1</option>
@@ -906,6 +1023,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                             <SelectChevron />
                           </div>
                         </div>
+                        {stepErrors.region && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.region}</Typography>}
                       </label>
                     </>
                   )}
@@ -918,11 +1036,17 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         </Typography>
                         <textarea
                           value={googleConfig.serviceAccountKey}
-                          onChange={(e) => setGoogleConfig((c) => ({ ...c, serviceAccountKey: e.target.value }))}
+                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, serviceAccountKey: e.target.value })); setStepErrors((err) => ({ ...err, serviceAccountKey: undefined })); }}
                           placeholder='Paste your service account JSON here...'
                           rows={4}
-                          className='w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={[
+                            'w-full rounded-lg border px-4 py-3 font-mono text-xs text-gray-800 outline-none transition focus:ring-2',
+                            stepErrors.serviceAccountKey
+                              ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100',
+                          ].join(' ')}
                         />
+                        {stepErrors.serviceAccountKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.serviceAccountKey}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -931,10 +1055,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={googleConfig.bucketName}
-                          onChange={(e) => setGoogleConfig((c) => ({ ...c, bucketName: e.target.value }))}
+                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, bucketName: e.target.value })); setStepErrors((err) => ({ ...err, bucketName: undefined })); }}
                           placeholder='my-gcs-bucket'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.bucketName)}
                         />
+                        {stepErrors.bucketName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.bucketName}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -943,10 +1068,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={googleConfig.projectId}
-                          onChange={(e) => setGoogleConfig((c) => ({ ...c, projectId: e.target.value }))}
+                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, projectId: e.target.value })); setStepErrors((err) => ({ ...err, projectId: undefined })); }}
                           placeholder='my-gcp-project-id'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.projectId)}
                         />
+                        {stepErrors.projectId && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.projectId}</Typography>}
                       </label>
                     </>
                   )}
@@ -960,10 +1086,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={azureConfig.accountName}
-                          onChange={(e) => setAzureConfig((c) => ({ ...c, accountName: e.target.value }))}
+                          onChange={(e) => { setAzureConfig((c) => ({ ...c, accountName: e.target.value })); setStepErrors((err) => ({ ...err, accountName: undefined })); }}
                           placeholder='mystorageaccount'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.accountName)}
                         />
+                        {stepErrors.accountName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accountName}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -972,10 +1099,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='password'
                           value={azureConfig.accountKey}
-                          onChange={(e) => setAzureConfig((c) => ({ ...c, accountKey: e.target.value }))}
+                          onChange={(e) => { setAzureConfig((c) => ({ ...c, accountKey: e.target.value })); setStepErrors((err) => ({ ...err, accountKey: undefined })); }}
                           placeholder='••••••••••••••••••••'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.accountKey)}
                         />
+                        {stepErrors.accountKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accountKey}</Typography>}
                       </label>
                       <label className='block'>
                         <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
@@ -984,10 +1112,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         <input
                           type='text'
                           value={azureConfig.containerName}
-                          onChange={(e) => setAzureConfig((c) => ({ ...c, containerName: e.target.value }))}
+                          onChange={(e) => { setAzureConfig((c) => ({ ...c, containerName: e.target.value })); setStepErrors((err) => ({ ...err, containerName: undefined })); }}
                           placeholder='backup-container'
-                          className='h-10 w-full rounded-lg border border-gray-300 px-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                          className={fieldClass(stepErrors.containerName)}
                         />
+                        {stepErrors.containerName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.containerName}</Typography>}
                       </label>
                     </>
                   )}
@@ -1004,6 +1133,17 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               <Typography className='mt-1' variant='bodySm' color='muted'>
                 Review your backup policy details below before creating. Make sure everything is set up correctly
               </Typography>
+
+              {createBackupMutation.error && (
+                <div className='mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
+                  <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='mt-px h-4 w-4 shrink-0 text-red-500'>
+                    <circle cx='10' cy='10' r='8' />
+                    <path d='M10 6v4' strokeLinecap='round' />
+                    <circle cx='10' cy='13.5' r='0.5' fill='currentColor' />
+                  </svg>
+                  <Typography variant='bodySm' className='text-red-600'>{createBackupMutation.error.message}</Typography>
+                </div>
+              )}
 
               <div className='mt-8 space-y-4'>
                 <ReviewCard
@@ -1059,15 +1199,21 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               <>
                 <button
                   type='button'
-                  className='inline-flex min-w-[118px] items-center justify-center rounded-lg border border-blue-500 bg-white px-6 py-2.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50'
+                  disabled={createBackupMutation.isPending}
+                  className='inline-flex min-w-[118px] items-center justify-center rounded-lg border border-blue-500 bg-white px-6 py-2.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 disabled:opacity-50'
                 >
                   Save Policy
                 </button>
                 <button
                   type='button'
-                  className='inline-flex min-w-[140px] items-center justify-center rounded-lg bg-blue-600 px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700'
+                  onClick={() => createBackupMutation.mutate()}
+                  disabled={createBackupMutation.isPending}
+                  className='inline-flex min-w-[140px] items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
                 >
-                  Create Backup
+                  {createBackupMutation.isPending && (
+                    <span className='h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
+                  )}
+                  {createBackupMutation.isPending ? 'Creating…' : 'Create Backup'}
                 </button>
               </>
             ) : (

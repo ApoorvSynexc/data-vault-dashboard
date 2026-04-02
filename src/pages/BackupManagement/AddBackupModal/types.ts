@@ -52,6 +52,44 @@ export type ObjectFilterConfig = {
 export type AddBackupModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  crmId: string;
+};
+
+// ── API Payload ──────────────────────────────────────────────────────────────
+
+export type CreateBackupSchedule = 'REALTIME' | 'SCHEDULE';
+export type CreateBackupScheduleType = 'ONE_TIME' | 'INCREMENTAL';
+export type CreateBackupFrequency = 'HOURS' | 'DAYS' | 'WEEKS' | 'MONTHS';
+
+export type CreateBackupPayload = {
+  crmId: string;
+  name: string;
+  description: string;
+  environment: string;
+  objectNames: string[];
+  schedule: CreateBackupSchedule;
+  scheduleConfig?: {
+    timeZone: string;
+    type: CreateBackupScheduleType;
+    scheduling: {
+      frequency: CreateBackupFrequency;
+      interval: number;
+      weekDays: string[];
+      monthDate: string;
+    };
+  };
+  objects: Array<{
+    name: string;
+    condition: { type: ConditionType };
+    field: Array<{
+      name: string;
+      filter: { value: string; operator: string };
+    }>;
+  }>;
+  destination: {
+    type: 'S3' | 'GOOGLE' | 'AZURE';
+    config: Record<string, string>;
+  };
 };
 
 export type StepMarkerProps = {
