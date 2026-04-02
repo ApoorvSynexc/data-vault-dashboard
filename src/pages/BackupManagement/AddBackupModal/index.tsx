@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, useTransition } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { initialSelectedObjectIds } from './constants';
@@ -64,7 +64,9 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [crmId, setCrmId] = useState(defaultCrmId);
   const [environment, setEnvironment] = useState<BackupEnvironment>('Production');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(initialSelectedObjectIds);
+  const [isBulkSelectionPending, startBulkSelectionTransition] = useTransition();
   const [includeAttachments] = useState(true);
   const [metadataBackup] = useState(true);
   // Scheduling
@@ -107,6 +109,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   const dataScopeRows = objectListQuery.data ?? [];
   const isObjectListLoading = objectListQuery.isLoading;
+  const selectedObjectIdSet = useMemo(() => new Set(selectedObjectIds), [selectedObjectIds]);
 
   useEffect(() => {
     if (!objectListQuery.data) {
@@ -121,17 +124,18 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   }, [objectListQuery.data]);
 
   const filteredRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
     const modeRows = dataScopeRows.filter((row) => row.backupMode === scheduleMode || row.backupMode === 'both');
     if (!query) return modeRows;
     return modeRows.filter((row) => row.name.toLowerCase().includes(query));
-  }, [search, scheduleMode, isObjectListLoading]);
+  }, [dataScopeRows, deferredSearch, scheduleMode]);
 
-  const allVisibleSelected =
-    filteredRows.length > 0 && filteredRows.every((row) => selectedObjectIds.includes(row.id));
+  const visibleRowIdSet = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows]);
+
+  const allVisibleSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedObjectIdSet.has(row.id));
 
   const selectedObjectsSummary = useMemo(() => {
-    const selectedRows = dataScopeRows.filter((row) => selectedObjectIds.includes(row.id));
+    const selectedRows = dataScopeRows.filter((row) => selectedObjectIdSet.has(row.id));
     if (selectedRows.length === 0) {
       return 'No objects selected';
     }
@@ -140,7 +144,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     const remaining = selectedRows.length - 3;
 
     return remaining > 0 ? `${firstItems}, +${remaining} objects selected` : firstItems;
-  }, [selectedObjectIds]);
+  }, [dataScopeRows, selectedObjectIdSet]);
 
   const scopeMetaSummary = [
     includeAttachments ? 'Attachment' : null,
@@ -183,20 +187,22 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     onClose();
   }
 
-  function handleToggleRow(id: string) {
+  const handleToggleRow = useCallback((id: string) => {
     setSelectedObjectIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );
-  }
+  }, []);
 
-  function handleToggleAllVisible() {
-    if (allVisibleSelected) {
-      setSelectedObjectIds((current) => current.filter((id) => !filteredRows.some((row) => row.id === id)));
-      return;
-    }
+  const handleToggleAllVisible = useCallback(() => {
+    startBulkSelectionTransition(() => {
+      if (allVisibleSelected) {
+        setSelectedObjectIds((current) => current.filter((id) => !visibleRowIdSet.has(id)));
+        return;
+      }
 
-    setSelectedObjectIds((current) => [...new Set([...current, ...filteredRows.map((row) => row.id)])]);
-  }
+      setSelectedObjectIds((current) => [...new Set([...current, ...visibleRowIdSet])]);
+    });
+  }, [allVisibleSelected, visibleRowIdSet]);
 
   const destinationSummary = destination === 'S3'
     ? `S3 — ${s3Config.bucketName || 'No bucket'} (${s3Config.region || 'No region'})`
@@ -340,10 +346,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               filteredRows={filteredRows}
               isLoading={isObjectListLoading}
               search={search}
-              selectedObjectIds={selectedObjectIds}
+              selectedObjectIdSet={selectedObjectIdSet}
               totalObjects={dataScopeRows.length}
               stepErrors={stepErrors}
               allVisibleSelected={allVisibleSelected}
+              isBulkSelectionPending={isBulkSelectionPending}
               onSearchChange={setSearch}
               onToggleAllVisible={handleToggleAllVisible}
               onToggleRow={handleToggleRow}
