@@ -166,9 +166,6 @@ export default function Platforms() {
     mutationFn: (crmId: string) => disconnectPlatform(crmId),
     onSuccess: () => {
       refetch();
-      // queryClient.setQueryData<ConnectedPlatform[]>(['connected-platforms'], (current = []) =>
-      //   current.filter((platform) => platform.crmId !== crmId),
-      // );
     },
     onError: () => {
       setError('Failed to disconnect platform. Please try again.');
