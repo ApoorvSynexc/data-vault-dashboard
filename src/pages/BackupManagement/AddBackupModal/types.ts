@@ -33,6 +33,7 @@ export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime
 
 export type ObjectField = {
   name: string;
+  label?: string;
   dataType: FieldDataType;
 };
 

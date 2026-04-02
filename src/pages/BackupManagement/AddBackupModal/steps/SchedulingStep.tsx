@@ -377,7 +377,7 @@ function ScheduleFilterCard({
                           <select value={field.name} onChange={(e) => handleFieldNameChange(idx, e.target.value)} className='h-9 w-full appearance-none rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'>
                             <option value=''>Select field</option>
                             {fields.map((option) => (
-                              <option key={option.name} value={option.name}>{option.name}</option>
+                              <option key={option.name} value={option.name}>{option.label ?? option.name}</option>
                             ))}
                           </select>
                           <div className='pointer-events-none absolute inset-y-0 right-1.5 flex items-center'><SelectChevron /></div>

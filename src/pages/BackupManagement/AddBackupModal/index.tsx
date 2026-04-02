@@ -223,7 +223,9 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       queryFn: () => backupConfigService.getObjectFields(crmId, objectApiName),
       staleTime: 5 * 60 * 1000,
     })
-      .then((res) => setObjectFields((prev) => ({ ...prev, [rowId]: res })))
+      .then((res) => {
+        return setObjectFields((prev) => ({ ...prev, [rowId]: res }))
+      })
       .catch(() => setObjectFields((prev) => ({ ...prev, [rowId]: [] })))
       .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [rowId]: false })));
   }, [backupConfigService, crmId, objectFields, objectFieldsLoading, queryClient]);
