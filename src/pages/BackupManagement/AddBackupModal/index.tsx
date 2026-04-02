@@ -1,6 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, useTransition } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { initialSelectedObjectIds } from './constants';
 import { StepMarker } from './components';
 import { DataScopeStep, DefineBackupPolicyStep, DestinationStep, ReviewStep, SchedulingStep } from './steps';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
@@ -41,6 +40,8 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   id:       ['=', '!=', 'IN'],
 };
 
+const INITIAL_SELECTED_OBJECT_IDS = ['accounts', 'contacts'];
+
 export type { BackupEnvironment, PlatformType } from './types';
 
 function fieldClass(error?: string, isSelect = false) {
@@ -62,7 +63,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [environment, setEnvironment] = useState<BackupEnvironment>('Production');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(initialSelectedObjectIds);
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>(INITIAL_SELECTED_OBJECT_IDS);
   const [isBulkSelectionPending, startBulkSelectionTransition] = useTransition();
   const [includeAttachments] = useState(true);
   const [metadataBackup] = useState(true);
