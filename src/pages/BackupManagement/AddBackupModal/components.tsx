@@ -4,27 +4,35 @@ import type { StepMarkerProps } from './types';
 export function StepMarker({ step, label, status }: StepMarkerProps) {
   const isCompleted = status === 'completed';
   const isActive = status === 'active';
+  const isSkipped = status === 'skipped';
 
   return (
     <div className='flex min-w-[120px] flex-1 flex-col items-center gap-2 text-center'>
       <div
         className={[
           'flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-semibold',
-          isCompleted || isActive
-            ? 'border-blue-600 text-blue-600'
-            : 'border-blue-600 bg-blue-600 text-white',
-          isCompleted ? 'bg-blue-600 text-white' : 'bg-white',
+          isSkipped
+            ? 'border-gray-300 bg-gray-100 text-gray-400'
+            : isCompleted
+              ? 'border-blue-600 bg-blue-600 text-white'
+              : isActive
+                ? 'border-blue-600 bg-white text-blue-600'
+                : 'border-blue-600 bg-blue-600 text-white',
         ].join(' ')}
       >
         {isCompleted ? (
           <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
             <path d='M5 10l3 3 7-7' strokeLinecap='round' strokeLinejoin='round' />
           </svg>
+        ) : isSkipped ? (
+          <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+            <path d='M5 10h10' strokeLinecap='round' />
+          </svg>
         ) : (
           step
         )}
       </div>
-      <Typography variant='label' color={isActive ? 'brand' : 'secondary'}>
+      <Typography variant='label' color={isActive ? 'brand' : isSkipped ? 'muted' : 'secondary'}>
         {label}
       </Typography>
     </div>

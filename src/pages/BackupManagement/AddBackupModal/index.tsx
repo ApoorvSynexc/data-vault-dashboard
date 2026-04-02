@@ -65,12 +65,10 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) {
-      return dataScopeRows;
-    }
-
-    return dataScopeRows.filter((row) => row.name.toLowerCase().includes(query));
-  }, [search]);
+    const modeRows = dataScopeRows.filter((row) => row.backupMode === scheduleMode || row.backupMode === 'both');
+    if (!query) return modeRows;
+    return modeRows.filter((row) => row.name.toLowerCase().includes(query));
+  }, [search, scheduleMode]);
 
   const allVisibleSelected =
     filteredRows.length > 0 && filteredRows.every((row) => selectedObjectIds.includes(row.id));
@@ -131,14 +129,27 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       ? `Google Cloud — ${googleConfig.bucketName || 'No bucket'} (${googleConfig.projectId || 'No project'})`
       : `Azure Blob — ${azureConfig.containerName || 'No container'} (${azureConfig.accountName || 'No account'})`;
 
+  function handleScheduleModeChange(mode: ScheduleMode) {
+    setScheduleMode(mode);
+    // Reset selections to only those valid for the new mode
+    const validIds = new Set(
+      dataScopeRows.filter((r) => r.backupMode === mode || r.backupMode === 'both').map((r) => r.id),
+    );
+    setSelectedObjectIds((prev) => prev.filter((id) => validIds.has(id)));
+  }
+
   function handleContinue() {
-    if (currentStep < 5) {
+    if (currentStep === 2 && scheduleMode === 'realtime') {
+      setCurrentStep(4);
+    } else if (currentStep < 5) {
       setCurrentStep((currentStep + 1) as WizardStep);
     }
   }
 
   function handleBack() {
-    if (currentStep > 1) {
+    if (currentStep === 4 && scheduleMode === 'realtime') {
+      setCurrentStep(2);
+    } else if (currentStep > 1) {
       setCurrentStep((currentStep - 1) as WizardStep);
     }
   }
@@ -154,7 +165,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
           <div className='flex flex-wrap items-start justify-between gap-6'>
             <StepMarker step={1} label='Define Backup Policy' status={currentStep > 1 ? 'completed' : 'active'} />
             <StepMarker step={2} label='Data Scope' status={currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : 'upcoming'} />
-            <StepMarker step={3} label='Scheduling' status={currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming'} />
+            <StepMarker step={3} label='Scheduling' status={scheduleMode === 'realtime' ? 'skipped' : currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming'} />
             <StepMarker step={4} label='Destination' status={currentStep === 4 ? 'active' : currentStep > 4 ? 'completed' : 'upcoming'} />
             <StepMarker step={5} label='Review & Create' status={currentStep === 5 ? 'active' : 'upcoming'} />
           </div>
@@ -246,6 +257,43 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                         Sandbox
                       </button>
                     </div>
+                  </div>
+
+                  <div>
+                    <Typography as='span' className='mb-1 block' variant='label' color='secondary'>
+                      Backup Type
+                    </Typography>
+                    <Typography className='mb-2' variant='bodySm' color='muted'>
+                      {scheduleMode === 'realtime' ? 'Data is backed up continuously as changes occur.' : 'Data is backed up on a defined schedule.'}
+                    </Typography>
+                    <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
+                      {(['realtime', 'schedule'] as ScheduleMode[]).map((option) => (
+                        <button
+                          key={option}
+                          type='button'
+                          onClick={() => handleScheduleModeChange(option)}
+                          className={[
+                            'min-w-[100px] border-r border-blue-600 px-5 py-2 text-xs font-medium capitalize transition last:border-r-0',
+                            scheduleMode === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
+                          ].join(' ')}
+                        >
+                          {option === 'realtime' ? 'Realtime' : 'Schedule'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {scheduleMode === 'realtime' && (
+                      <div className='mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5'>
+                        <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='mt-px h-4 w-4 shrink-0 text-amber-500'>
+                          <path d='M10 3L2 17h16L10 3z' strokeLinejoin='round' />
+                          <path d='M10 9v4' strokeLinecap='round' />
+                          <circle cx='10' cy='14.5' r='0.5' fill='currentColor' />
+                        </svg>
+                        <Typography variant='bodySm' color='muted' className='text-amber-700'>
+                          The <span className='font-medium'>Scheduling</span> step will be skipped — realtime backups run continuously without a schedule.
+                        </Typography>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -379,28 +427,6 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               </Typography>
 
               <div className='mt-6 space-y-6'>
-                {/* Realtime / Schedule toggle */}
-                <div>
-                  <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                    Type
-                  </Typography>
-                  <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
-                    {(['realtime', 'schedule'] as ScheduleMode[]).map((option) => (
-                      <button
-                        key={option}
-                        type='button'
-                        onClick={() => setScheduleMode(option)}
-                        className={[
-                          'min-w-[100px] border-r border-blue-600 px-5 py-2 text-xs font-medium capitalize transition last:border-r-0',
-                          scheduleMode === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                        ].join(' ')}
-                      >
-                        {option === 'realtime' ? 'Realtime' : 'Schedule'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {scheduleMode === 'schedule' && (
                   <>
                     {/* One-time / Incremental */}

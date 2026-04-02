@@ -21,7 +21,7 @@ export type AzureConfig = {
   accountKey: string;
   containerName: string;
 };
-export type StepStatus = 'completed' | 'active' | 'upcoming';
+export type StepStatus = 'completed' | 'active' | 'upcoming' | 'skipped';
 export type ScheduleMode = 'realtime' | 'schedule';
 export type ScheduleType = 'one_time' | 'incremental';
 export type DurationType = 'hour' | 'day' | 'week' | 'month';
@@ -65,4 +65,5 @@ export type DataScopeRow = {
   name: string;
   type: string;
   estimatedSize: string;
+  backupMode: 'realtime' | 'schedule' | 'both';
 };
