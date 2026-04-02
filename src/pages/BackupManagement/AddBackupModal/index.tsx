@@ -78,7 +78,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [monthDate, setMonthDate] = useState<number>(1);
   const [timeZone, setTimeZone] = useState('UTC');
   const [objectFilters, setObjectFilters] = useState<Record<string, ObjectFilterConfig>>({});
-  const [expandedFilterObject, setExpandedFilterObject] = useState<string | null>(null);
+  const [expandedFilterObjects, setExpandedFilterObjects] = useState<string[]>([]);
   const [objectFields, setObjectFields] = useState<Record<string, ObjectField[]>>({});
   const [objectFieldsLoading, setObjectFieldsLoading] = useState<Record<string, boolean>>({});
   const backupConfigService = useBackupConfigService();
@@ -146,6 +146,11 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     return remaining > 0 ? `${firstItems}, +${remaining} objects selected` : firstItems;
   }, [dataScopeRows, selectedObjectIdSet]);
 
+  const selectedFilterRows = useMemo(
+    () => dataScopeRows.filter((row) => selectedObjectIdSet.has(row.id)),
+    [dataScopeRows, selectedObjectIdSet],
+  );
+
   const scopeMetaSummary = [
     includeAttachments ? 'Attachment' : null,
     metadataBackup ? 'Metadata included' : null,
@@ -203,6 +208,46 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       setSelectedObjectIds((current) => [...new Set([...current, ...visibleRowIdSet])]);
     });
   }, [allVisibleSelected, visibleRowIdSet]);
+
+  useEffect(() => {
+    const selectedIds = new Set(selectedFilterRows.map((row) => row.id));
+    setExpandedFilterObjects((current) => {
+      const next = current.filter((id) => selectedIds.has(id));
+      const existing = new Set(next);
+
+      selectedFilterRows.forEach((row, index) => {
+        if (!existing.has(row.id) && index < 2) {
+          next.push(row.id);
+        }
+      });
+
+      return next;
+    });
+  }, [selectedFilterRows]);
+
+  const ensureObjectFieldsLoaded = useCallback((rowId: string, objectApiName: string) => {
+    if (objectFields[rowId] || objectFieldsLoading[rowId]) {
+      return;
+    }
+
+    setObjectFieldsLoading((prev) => ({ ...prev, [rowId]: true }));
+    queryClient.fetchQuery({
+      queryKey: ['backup-config', 'object-fields', crmId, objectApiName],
+      queryFn: () => backupConfigService.getObjectFields(crmId, objectApiName),
+      staleTime: 5 * 60 * 1000,
+    })
+      .then((res) => setObjectFields((prev) => ({ ...prev, [rowId]: res })))
+      .catch(() => setObjectFields((prev) => ({ ...prev, [rowId]: [] })))
+      .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [rowId]: false })));
+  }, [backupConfigService, crmId, objectFields, objectFieldsLoading, queryClient]);
+
+  useEffect(() => {
+    selectedFilterRows.forEach((row) => {
+      if (expandedFilterObjects.includes(row.id)) {
+        ensureObjectFieldsLoaded(row.id, row.id);
+      }
+    });
+  }, [ensureObjectFieldsLoaded, expandedFilterObjects, selectedFilterRows]);
 
   const destinationSummary = destination === 'S3'
     ? `S3 — ${s3Config.bucketName || 'No bucket'} (${s3Config.region || 'No region'})`
@@ -533,38 +578,40 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
                     {/* Filters — per selected object */}
                     <div>
-                      <Typography as='span' className='mb-3 block' variant='label' color='secondary'>
-                        Filters
-                      </Typography>
-                      <div className='space-y-2'>
-                        {dataScopeRows.filter((r) => selectedObjectIds.includes(r.id)).map((row) => {
+                      <div className='mb-3 flex items-center justify-between gap-3'>
+                        <Typography as='span' variant='label' color='secondary'>
+                          Filters
+                        </Typography>
+                        <Typography variant='bodySm' color='muted'>
+                          {selectedFilterRows.length} selected {selectedFilterRows.length === 1 ? 'object' : 'objects'}
+                        </Typography>
+                      </div>
+                      <div className='space-y-3'>
+                        {selectedFilterRows.map((row) => {
                           const cfg = objectFilters[row.id] ?? { conditionType: 'AND', expression: '', fields: [] };
-                          const isOpen = expandedFilterObject === row.id;
+                          const isOpen = expandedFilterObjects.includes(row.id);
                           const fields = objectFields[row.id] ?? [];
                           const isLoadingFields = objectFieldsLoading[row.id] ?? false;
+                          const hasFilters = cfg.fields.length > 0 || (cfg.conditionType === 'CUSTOM' && cfg.expression.trim().length > 0);
+                          const summaryText = cfg.fields.length > 0
+                            ? `${cfg.fields.length} ${cfg.fields.length === 1 ? 'rule' : 'rules'}`
+                            : 'No filters yet';
 
                           function updateCfg(patch: Partial<ObjectFilterConfig>) {
                             setObjectFilters((prev) => ({ ...prev, [row.id]: { ...cfg, ...patch } }));
                           }
 
-                            function handleToggleOpen() {
-                              if (isOpen) {
-                                setExpandedFilterObject(null);
-                                return;
-                              }
-                              setExpandedFilterObject(row.id);
-                              if (!objectFields[row.id]) {
-                                setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: true }));
-                                queryClient.fetchQuery({
-                                  queryKey: ['backup-config', 'object-fields', crmId, row.name],
-                                  queryFn: () => backupConfigService.getObjectFields(crmId, row.name),
-                                  staleTime: 5 * 60 * 1000,
-                                })
-                                  .then((res) => setObjectFields((prev) => ({ ...prev, [row.id]: res })))
-                                  .catch(() => setObjectFields((prev) => ({ ...prev, [row.id]: [] })))
-                                  .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: false })));
-                              }
+                          function handleToggleOpen() {
+                            setExpandedFilterObjects((current) =>
+                              current.includes(row.id)
+                                ? current.filter((id) => id !== row.id)
+                                : [...current, row.id],
+                            );
+
+                            if (!isOpen) {
+                              ensureObjectFieldsLoaded(row.id, row.id);
                             }
+                          }
 
                           function addField() {
                             updateCfg({ fields: [...cfg.fields, { name: '', dataType: null, operator: '=', value: '' }] });
@@ -586,24 +633,59 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                           }
 
                           return (
-                            <div key={row.id} className='overflow-hidden rounded-xl border border-gray-200'>
-                              {/* Header */}
+                            <div
+                              key={row.id}
+                              className={[
+                                'overflow-hidden rounded-2xl border bg-white shadow-sm transition',
+                                hasFilters ? 'border-blue-200 shadow-blue-100/40' : 'border-gray-200',
+                              ].join(' ')}
+                            >
                               <button
                                 type='button'
                                 onClick={handleToggleOpen}
-                                className='flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50'
+                                className='flex w-full items-start justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50'
                               >
-                                <Typography variant='sectionTitle' color='secondary'>{row.name}</Typography>
-                                <svg
-                                  viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8'
-                                  className={['h-4 w-4 text-gray-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
-                                >
-                                  <path d='M5 7.5L10 12.5L15 7.5' strokeLinecap='round' strokeLinejoin='round' />
-                                </svg>
+                                <div className='min-w-0 flex-1'>
+                                  <div className='flex flex-wrap items-center gap-2'>
+                                    <Typography variant='sectionTitle' color='secondary'>{row.name}</Typography>
+                                    <span
+                                      className={[
+                                        'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]',
+                                        hasFilters ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500',
+                                      ].join(' ')}
+                                    >
+                                      {hasFilters ? 'Configured' : 'Not set'}
+                                    </span>
+                                  </div>
+                                  <div className='mt-2 flex flex-wrap items-center gap-2'>
+                                    <span className='rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600'>
+                                      {summaryText}
+                                    </span>
+                                    <span className='rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600'>
+                                      Condition: {cfg.conditionType}
+                                    </span>
+                                    {cfg.conditionType === 'CUSTOM' && cfg.expression.trim() && (
+                                      <span className='rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-700'>
+                                        Custom expression
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className='flex items-center gap-3'>
+                                  <span className='text-[11px] font-medium text-gray-500'>
+                                    {isOpen ? 'Hide editor' : 'Edit filters'}
+                                  </span>
+                                  <svg
+                                    viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8'
+                                    className={['h-4 w-4 text-gray-400 transition-transform', isOpen ? 'rotate-180' : ''].join(' ')}
+                                  >
+                                    <path d='M5 7.5L10 12.5L15 7.5' strokeLinecap='round' strokeLinejoin='round' />
+                                  </svg>
+                                </div>
                               </button>
 
                               {isOpen && (
-                                <div className='space-y-4 border-t border-gray-100 px-4 py-4'>
+                                <div className='space-y-4 border-t border-gray-100 bg-slate-50/40 px-5 py-5'>
                                   {isLoadingFields ? (
                                     <div className='flex items-center gap-2 text-xs text-gray-400'>
                                       <span className='h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent' />
@@ -639,7 +721,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                                           {cfg.fields.map((field, idx) => {
                                             const availableOps = field.dataType ? OPERATORS_BY_TYPE[field.dataType] : OPERATORS_BY_TYPE.string;
                                             return (
-                                              <div key={idx} className='flex items-center gap-2'>
+                                              <div key={idx} className='flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3'>
                                                 {/* Number badge */}
                                                 <span className='flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-600'>
                                                   {idx + 1}
@@ -740,16 +822,26 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                                         </label>
                                       )}
 
-                                      <button
-                                        type='button'
-                                        onClick={addField}
-                                        className='inline-flex items-center gap-1.5 rounded-lg border border-blue-500 px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition'
-                                      >
-                                        <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
-                                          <path d='M10 4v12M4 10h12' strokeLinecap='round' />
-                                        </svg>
-                                        Add Field
-                                      </button>
+                                      <div className='flex items-center justify-between gap-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/60 px-4 py-3'>
+                                        <div>
+                                          <Typography variant='bodySm' color='secondary'>
+                                            Add another rule for {row.name}
+                                          </Typography>
+                                          <Typography variant='bodySm' color='muted' className='mt-1'>
+                                            Combine multiple fields with {cfg.conditionType}.
+                                          </Typography>
+                                        </div>
+                                        <button
+                                          type='button'
+                                          onClick={addField}
+                                          className='inline-flex items-center gap-1.5 rounded-lg border border-blue-500 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition'
+                                        >
+                                          <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                                            <path d='M10 4v12M4 10h12' strokeLinecap='round' />
+                                          </svg>
+                                          Add Field
+                                        </button>
+                                      </div>
                                     </>
                                   )}
                                 </div>
