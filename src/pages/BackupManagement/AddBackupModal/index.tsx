@@ -211,18 +211,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   useEffect(() => {
     const selectedIds = new Set(selectedFilterRows.map((row) => row.id));
-    setExpandedFilterObjects((current) => {
-      const next = current.filter((id) => selectedIds.has(id));
-      const existing = new Set(next);
-
-      selectedFilterRows.forEach((row, index) => {
-        if (!existing.has(row.id) && index < 2) {
-          next.push(row.id);
-        }
-      });
-
-      return next;
-    });
+    setExpandedFilterObjects((current) => current.filter((id) => selectedIds.has(id)));
   }, [selectedFilterRows]);
 
   const ensureObjectFieldsLoaded = useCallback((rowId: string, objectApiName: string) => {
@@ -240,14 +229,6 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       .catch(() => setObjectFields((prev) => ({ ...prev, [rowId]: [] })))
       .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [rowId]: false })));
   }, [backupConfigService, crmId, objectFields, objectFieldsLoading, queryClient]);
-
-  useEffect(() => {
-    selectedFilterRows.forEach((row) => {
-      if (expandedFilterObjects.includes(row.id)) {
-        ensureObjectFieldsLoaded(row.id, row.id);
-      }
-    });
-  }, [ensureObjectFieldsLoaded, expandedFilterObjects, selectedFilterRows]);
 
   const destinationSummary = destination === 'S3'
     ? `S3 — ${s3Config.bucketName || 'No bucket'} (${s3Config.region || 'No region'})`
@@ -579,9 +560,14 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                     {/* Filters — per selected object */}
                     <div>
                       <div className='mb-3 flex items-center justify-between gap-3'>
-                        <Typography as='span' variant='label' color='secondary'>
-                          Filters
-                        </Typography>
+                        <div>
+                          <Typography as='span' variant='label' color='secondary'>
+                            Filters
+                          </Typography>
+                          <Typography variant='bodySm' color='muted' className='mt-1'>
+                            Choose only the objects you want to filter. Fields load when you open a filter editor.
+                          </Typography>
+                        </div>
                         <Typography variant='bodySm' color='muted'>
                           {selectedFilterRows.length} selected {selectedFilterRows.length === 1 ? 'object' : 'objects'}
                         </Typography>
@@ -673,7 +659,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                                 </div>
                                 <div className='flex items-center gap-3'>
                                   <span className='text-[11px] font-medium text-gray-500'>
-                                    {isOpen ? 'Hide editor' : 'Edit filters'}
+                                    {isOpen ? 'Hide editor' : hasFilters ? 'Edit filters' : 'Set filters'}
                                   </span>
                                   <svg
                                     viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8'
