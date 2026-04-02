@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
-import { dataScopeRows, initialSelectedObjectIds } from './constants';
-import { ReviewCard, SearchIcon, SelectChevron, StepMarker } from './components';
+import { initialSelectedObjectIds } from './constants';
+import { SelectChevron, StepMarker } from './components';
+import { DataScopeStep, DefineBackupPolicyStep, DestinationStep, ReviewStep } from './steps';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import { useAppSelector } from '../../../store/hooks';
 import { capitalize } from '../../../utils';
@@ -79,6 +80,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [objectFields, setObjectFields] = useState<Record<string, ObjectField[]>>({});
   const [objectFieldsLoading, setObjectFieldsLoading] = useState<Record<string, boolean>>({});
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
   const [stepErrors, setStepErrors] = useState<BackupFieldErrors>({});
 
   const createBackupMutation = useMutation({
@@ -95,6 +97,28 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       setCrmId(defaultCrmId);
     }
   }, [crmId, defaultCrmId]);
+
+  const objectListQuery = useQuery({
+    queryKey: ['backup-config', 'object-list', crmId],
+    queryFn: () => backupConfigService.getObjectList(crmId),
+    enabled: isOpen && currentStep === 2 && !!crmId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const dataScopeRows = objectListQuery.data ?? [];
+  const isObjectListLoading = objectListQuery.isLoading;
+
+  useEffect(() => {
+    if (!objectListQuery.data) {
+      return;
+    }
+
+    setSelectedObjectIds((current) => {
+      const validIds = new Set(objectListQuery.data.map((row) => row.id));
+      const nextSelectedIds = current.filter((id) => validIds.has(id));
+      return nextSelectedIds.length > 0 ? nextSelectedIds : objectListQuery.data.slice(0, 2).map((row) => row.id);
+    });
+  }, [objectListQuery.data]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -127,6 +151,17 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     () => platforms.find((item) => item.crmId === crmId),
     [crmId, platforms],
   );
+
+  const platformOptions = useMemo(
+    () =>
+      platforms.map((item) => ({
+        value: item.crmId,
+        label: `${capitalize(item.crmName)} ( ${item.crmProfile?.email} )`,
+      })),
+    [platforms],
+  );
+
+  const selectedPlatformLabel = capitalize(selectedPlatform?.crmName ?? 'Platform');
 
   const schedulingDetails = scheduleMode === 'realtime'
     ? 'Realtime'
@@ -281,272 +316,37 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
         <div className='min-h-0 flex-1 overflow-y-auto px-6 py-6'>
           {currentStep === 1 && (
-            <>
-              <Typography as='h2' variant='pageTitle' className='font-semibold'>
-                Define Backup Policy
-              </Typography>
-              <Typography className='mt-1' variant='bodySm' color='muted'>
-                Fill in the basic information to create a backup policy.
-              </Typography>
-
-              <div className='mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2'>
-                <div className='space-y-5 lg:border-r lg:border-gray-100 lg:pr-8'>
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Backup Name
-                    </Typography>
-                    <input
-                      type='text'
-                      value={policyName}
-                      onChange={(event) => { setPolicyName(event.target.value); setStepErrors((e) => ({ ...e, name: undefined })); }}
-                      placeholder='Backup policy name'
-                      className={[
-                        'h-10 w-full rounded-lg border px-4 text-xs text-gray-800 outline-none transition focus:ring-2',
-                        stepErrors.name
-                          ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                          : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100',
-                      ].join(' ')}
-                    />
-                    {stepErrors.name && (
-                      <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.name}</Typography>
-                    )}
-                  </label>
-
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Description
-                    </Typography>
-                    <textarea
-                      value={description}
-                      onChange={(event) => setDescription(event.target.value)}
-                      placeholder='Add description...'
-                      rows={4}
-                      className='w-full rounded-lg border border-gray-300 px-4 py-3 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                    />
-                  </label>
-                </div>
-
-                <div className='space-y-5 lg:pl-8'>
-                  <label className='block'>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Platform
-                    </Typography>
-                    <div className='relative'>
-                        <select
-                        value={crmId}
-                        onChange={(event) => setCrmId(event.target.value)}
-                        className='h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 pr-10 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                      >
-                        {platforms.length === 0 ? (
-                          <option value=''>No platform available</option>
-                        ) : (
-                          platforms.map((item) => (
-                            <option key={item.crmId} value={item.crmId}>
-                              {capitalize(item.crmName)} ( {item?.crmProfile?.email} )
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                        <SelectChevron />
-                      </div>
-                    </div>
-                  </label>
-
-                  <div>
-                    <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                      Environment
-                    </Typography>
-                    <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
-                      <button
-                        type='button'
-                        onClick={() => setEnvironment('Production')}
-                        className={[
-                          'min-w-[112px] px-5 py-2 text-xs font-medium transition',
-                          environment === 'Production' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                        ].join(' ')}
-                      >
-                        Production
-                      </button>
-                      <button
-                        type='button'
-                        onClick={() => setEnvironment('Sandbox')}
-                        className={[
-                          'min-w-[112px] border-l border-blue-600 px-5 py-2 text-xs font-medium transition',
-                          environment === 'Sandbox' ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                        ].join(' ')}
-                      >
-                        Sandbox
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Typography as='span' className='mb-1 block' variant='label' color='secondary'>
-                      Backup Type
-                    </Typography>
-                    <Typography className='mb-2' variant='bodySm' color='muted'>
-                      {scheduleMode === 'realtime' ? 'Data is backed up continuously as changes occur.' : 'Data is backed up on a defined schedule.'}
-                    </Typography>
-                    <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
-                      {(['realtime', 'schedule'] as ScheduleMode[]).map((option) => (
-                        <button
-                          key={option}
-                          type='button'
-                          onClick={() => handleScheduleModeChange(option)}
-                          className={[
-                            'min-w-[100px] border-r border-blue-600 px-5 py-2 text-xs font-medium capitalize transition last:border-r-0',
-                            scheduleMode === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                          ].join(' ')}
-                        >
-                          {option === 'realtime' ? 'Realtime' : 'Schedule'}
-                        </button>
-                      ))}
-                    </div>
-
-                    {scheduleMode === 'realtime' && (
-                      <div className='mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5'>
-                        <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='mt-px h-4 w-4 shrink-0 text-amber-500'>
-                          <path d='M10 3L2 17h16L10 3z' strokeLinejoin='round' />
-                          <path d='M10 9v4' strokeLinecap='round' />
-                          <circle cx='10' cy='14.5' r='0.5' fill='currentColor' />
-                        </svg>
-                        <Typography variant='bodySm' color='muted' className='text-amber-700'>
-                          The <span className='font-medium'>Scheduling</span> step will be skipped — realtime backups run continuously without a schedule.
-                        </Typography>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
+            <DefineBackupPolicyStep
+              crmId={crmId}
+              description={description}
+              environment={environment}
+              platformOptions={platformOptions}
+              policyName={policyName}
+              scheduleMode={scheduleMode}
+              stepErrors={stepErrors}
+              onCrmIdChange={setCrmId}
+              onDescriptionChange={setDescription}
+              onEnvironmentChange={setEnvironment}
+              onPolicyNameChange={(value) => {
+                setPolicyName(value);
+                setStepErrors((errors) => ({ ...errors, name: undefined }));
+              }}
+              onScheduleModeChange={handleScheduleModeChange}
+            />
           )}
 
           {currentStep === 2 && (
-            <>
-              <Typography as='h2' variant='pageTitle' className='font-semibold'>
-                Select Data Scope
-              </Typography>
-              <Typography className='mt-1' variant='bodySm' color='muted'>
-                Choose the data and metadata that should be included in this backup policy.
-              </Typography>
-
-              <div className='mt-6'>
-                {stepErrors.objects && (
-                  <div className='mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5'>
-                    <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4 shrink-0 text-red-500'>
-                      <circle cx='10' cy='10' r='8' />
-                      <path d='M10 6v4' strokeLinecap='round' />
-                      <circle cx='10' cy='13.5' r='0.5' fill='currentColor' />
-                    </svg>
-                    <Typography variant='bodySm' className='text-red-600'>{stepErrors.objects}</Typography>
-                  </div>
-                )}
-                <div className='relative max-w-[350px]'>
-                  <span className='pointer-events-none absolute left-4 top-1/2 -translate-y-1/2'>
-                    <SearchIcon />
-                  </span>
-                  <input
-                    type='text'
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder='Search Object'
-                    className='h-10 w-full rounded-lg border border-gray-300 pl-10 pr-4 text-xs text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                  />
-                </div>
-
-                <div className='mt-4 overflow-hidden rounded-xl border border-gray-100'>
-                  <table className='w-full'>
-                    <thead>
-                      <tr className='border-b border-gray-100 bg-white'>
-                        <th className='w-12 px-3 py-3 text-left'>
-                          <input
-                            type='checkbox'
-                            checked={allVisibleSelected}
-                            onChange={handleToggleAllVisible}
-                            className='h-4 w-4 rounded border-gray-300 accent-blue-600'
-                          />
-                        </th>
-                        <th className='px-3 py-3 text-left'>
-                          <Typography as='span' variant='label' color='secondary'>
-                            Object
-                          </Typography>
-                        </th>
-                        <th className='px-3 py-3 text-left'>
-                          <Typography as='span' variant='label' color='secondary'>
-                            Type
-                          </Typography>
-                        </th>
-                        <th className='px-3 py-3 text-left'>
-                          <Typography as='span' variant='label' color='secondary'>
-                            Estimated Size
-                          </Typography>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map((row) => {
-                        const checked = selectedObjectIds.includes(row.id);
-
-                        return (
-                          <tr key={row.id} className='border-b border-gray-100 last:border-b-0'>
-                            <td className='px-3 py-3'>
-                              <input
-                                type='checkbox'
-                                checked={checked}
-                                onChange={() => handleToggleRow(row.id)}
-                                className='h-4 w-4 rounded border-gray-300 accent-blue-600'
-                              />
-                            </td>
-                            <td className='px-3 py-3'>
-                              <Typography variant='bodySm' color='secondary'>
-                                {row.name}
-                              </Typography>
-                            </td>
-                            <td className='px-3 py-3'>
-                              <Typography variant='bodySm' color='muted'>
-                                {row.type}
-                              </Typography>
-                            </td>
-                            <td className='px-3 py-3'>
-                              <Typography variant='bodySm' color='muted'>
-                                {row.estimatedSize}
-                              </Typography>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* <div className='mt-6 grid grid-cols-1 gap-6 border-t border-gray-100 pt-6 md:grid-cols-2'>
-                  <div className='flex items-start justify-between gap-4'>
-                    <div>
-                      <Typography variant='sectionTitle' color='secondary'>
-                        Include Attachments
-                      </Typography>
-                      <Typography className='mt-1' variant='bodySm' color='muted'>
-                        Backup email attachment, files and documents.
-                      </Typography>
-                    </div>
-                    <Toggle checked={includeAttachments} onChange={() => setIncludeAttachments((value) => !value)} />
-                  </div>
-
-                  <div className='flex items-start justify-between gap-4'>
-                    <div>
-                      <Typography variant='sectionTitle' color='secondary'>
-                        Metadata Backup
-                      </Typography>
-                      <Typography className='mt-1' variant='bodySm' color='muted'>
-                        Backup the metadata structure of your platform.
-                      </Typography>
-                    </div>
-                    <Toggle checked={metadataBackup} onChange={() => setMetadataBackup((value) => !value)} />
-                  </div>
-                </div> */}
-              </div>
-            </>
+            <DataScopeStep
+              filteredRows={filteredRows}
+              isLoading={isObjectListLoading}
+              search={search}
+              selectedObjectIds={selectedObjectIds}
+              stepErrors={stepErrors}
+              allVisibleSelected={allVisibleSelected}
+              onSearchChange={setSearch}
+              onToggleAllVisible={handleToggleAllVisible}
+              onToggleRow={handleToggleRow}
+            />
           )}
 
           {currentStep === 3 && (
@@ -739,20 +539,24 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
                             setObjectFilters((prev) => ({ ...prev, [row.id]: { ...cfg, ...patch } }));
                           }
 
-                          function handleToggleOpen() {
-                            if (isOpen) {
-                              setExpandedFilterObject(null);
-                              return;
+                            function handleToggleOpen() {
+                              if (isOpen) {
+                                setExpandedFilterObject(null);
+                                return;
+                              }
+                              setExpandedFilterObject(row.id);
+                              if (!objectFields[row.id]) {
+                                setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: true }));
+                                queryClient.fetchQuery({
+                                  queryKey: ['backup-config', 'object-fields', crmId, row.name],
+                                  queryFn: () => backupConfigService.getObjectFields(crmId, row.name),
+                                  staleTime: 5 * 60 * 1000,
+                                })
+                                  .then((res) => setObjectFields((prev) => ({ ...prev, [row.id]: res })))
+                                  .catch(() => setObjectFields((prev) => ({ ...prev, [row.id]: [] })))
+                                  .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: false })));
+                              }
                             }
-                            setExpandedFilterObject(row.id);
-                            if (!objectFields[row.id]) {
-                              setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: true }));
-                              backupConfigService.getObjectFields(crmId, row.name)
-                                .then((res) => setObjectFields((prev) => ({ ...prev, [row.id]: res })))
-                                .catch(() => setObjectFields((prev) => ({ ...prev, [row.id]: [] })))
-                                .finally(() => setObjectFieldsLoading((prev) => ({ ...prev, [row.id]: false })));
-                            }
-                          }
 
                           function addField() {
                             updateCfg({ fields: [...cfg.fields, { name: '', dataType: null, operator: '=', value: '' }] });
@@ -952,247 +756,35 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
               </div>
             </>
           )}
-
           {currentStep === 4 && (
-            <>
-              <Typography as='h2' variant='pageTitle' className='font-semibold'>
-                Destination
-              </Typography>
-              <Typography className='mt-1' variant='bodySm' color='muted'>
-                Choose where your backup data will be stored.
-              </Typography>
-
-              <div className='mt-6'>
-                <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
-                  {(['S3', 'Google', 'Azure'] as DestinationType[]).map((option) => (
-                    <button
-                      key={option}
-                      type='button'
-                      onClick={() => setDestination(option)}
-                      className={[
-                        'min-w-[96px] border-r border-blue-600 px-5 py-2 text-xs font-medium transition last:border-r-0',
-                        destination === option ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-blue-50',
-                      ].join(' ')}
-                    >
-                      {option === 'S3' ? 'Amazon S3' : option === 'Google' ? 'Google Cloud' : 'Azure Blob'}
-                    </button>
-                  ))}
-                </div>
-
-                <div className='mt-6 grid grid-cols-1 gap-5 md:grid-cols-2'>
-                  {destination === 'S3' && (
-                    <>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Access Key ID
-                        </Typography>
-                        <input
-                          type='text'
-                          value={s3Config.accessKeyId}
-                          onChange={(e) => { setS3Config((c) => ({ ...c, accessKeyId: e.target.value })); setStepErrors((err) => ({ ...err, accessKeyId: undefined })); }}
-                          placeholder='AKIAIOSFODNN7EXAMPLE'
-                          className={fieldClass(stepErrors.accessKeyId)}
-                        />
-                        {stepErrors.accessKeyId && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accessKeyId}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Secret Access Key
-                        </Typography>
-                        <input
-                          type='password'
-                          value={s3Config.secretAccessKey}
-                          onChange={(e) => { setS3Config((c) => ({ ...c, secretAccessKey: e.target.value })); setStepErrors((err) => ({ ...err, secretAccessKey: undefined })); }}
-                          placeholder='••••••••••••••••••••'
-                          className={fieldClass(stepErrors.secretAccessKey)}
-                        />
-                        {stepErrors.secretAccessKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.secretAccessKey}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Bucket Name
-                        </Typography>
-                        <input
-                          type='text'
-                          value={s3Config.bucketName}
-                          onChange={(e) => { setS3Config((c) => ({ ...c, bucketName: e.target.value })); setStepErrors((err) => ({ ...err, bucketName: undefined })); }}
-                          placeholder='my-backup-bucket'
-                          className={fieldClass(stepErrors.bucketName)}
-                        />
-                        {stepErrors.bucketName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.bucketName}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Region
-                        </Typography>
-                        <div className='relative'>
-                          <select
-                            value={s3Config.region}
-                            onChange={(e) => { setS3Config((c) => ({ ...c, region: e.target.value })); setStepErrors((err) => ({ ...err, region: undefined })); }}
-                            className={fieldClass(stepErrors.region, true)}
-                          >
-                            <option value=''>Select region</option>
-                            <option value='us-east-1'>us-east-1</option>
-                            <option value='us-west-2'>us-west-2</option>
-                            <option value='eu-west-1'>eu-west-1</option>
-                            <option value='ap-south-1'>ap-south-1</option>
-                          </select>
-                          <div className='pointer-events-none absolute inset-y-0 right-3 flex items-center'>
-                            <SelectChevron />
-                          </div>
-                        </div>
-                        {stepErrors.region && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.region}</Typography>}
-                      </label>
-                    </>
-                  )}
-
-                  {destination === 'Google' && (
-                    <>
-                      <label className='block md:col-span-2'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Service Account Key (JSON)
-                        </Typography>
-                        <textarea
-                          value={googleConfig.serviceAccountKey}
-                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, serviceAccountKey: e.target.value })); setStepErrors((err) => ({ ...err, serviceAccountKey: undefined })); }}
-                          placeholder='Paste your service account JSON here...'
-                          rows={4}
-                          className={[
-                            'w-full rounded-lg border px-4 py-3 font-mono text-xs text-gray-800 outline-none transition focus:ring-2',
-                            stepErrors.serviceAccountKey
-                              ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-100',
-                          ].join(' ')}
-                        />
-                        {stepErrors.serviceAccountKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.serviceAccountKey}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Bucket Name
-                        </Typography>
-                        <input
-                          type='text'
-                          value={googleConfig.bucketName}
-                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, bucketName: e.target.value })); setStepErrors((err) => ({ ...err, bucketName: undefined })); }}
-                          placeholder='my-gcs-bucket'
-                          className={fieldClass(stepErrors.bucketName)}
-                        />
-                        {stepErrors.bucketName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.bucketName}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Project ID
-                        </Typography>
-                        <input
-                          type='text'
-                          value={googleConfig.projectId}
-                          onChange={(e) => { setGoogleConfig((c) => ({ ...c, projectId: e.target.value })); setStepErrors((err) => ({ ...err, projectId: undefined })); }}
-                          placeholder='my-gcp-project-id'
-                          className={fieldClass(stepErrors.projectId)}
-                        />
-                        {stepErrors.projectId && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.projectId}</Typography>}
-                      </label>
-                    </>
-                  )}
-
-                  {destination === 'Azure' && (
-                    <>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Account Name
-                        </Typography>
-                        <input
-                          type='text'
-                          value={azureConfig.accountName}
-                          onChange={(e) => { setAzureConfig((c) => ({ ...c, accountName: e.target.value })); setStepErrors((err) => ({ ...err, accountName: undefined })); }}
-                          placeholder='mystorageaccount'
-                          className={fieldClass(stepErrors.accountName)}
-                        />
-                        {stepErrors.accountName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accountName}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Account Key
-                        </Typography>
-                        <input
-                          type='password'
-                          value={azureConfig.accountKey}
-                          onChange={(e) => { setAzureConfig((c) => ({ ...c, accountKey: e.target.value })); setStepErrors((err) => ({ ...err, accountKey: undefined })); }}
-                          placeholder='••••••••••••••••••••'
-                          className={fieldClass(stepErrors.accountKey)}
-                        />
-                        {stepErrors.accountKey && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.accountKey}</Typography>}
-                      </label>
-                      <label className='block'>
-                        <Typography as='span' className='mb-2 block' variant='label' color='secondary'>
-                          Container Name
-                        </Typography>
-                        <input
-                          type='text'
-                          value={azureConfig.containerName}
-                          onChange={(e) => { setAzureConfig((c) => ({ ...c, containerName: e.target.value })); setStepErrors((err) => ({ ...err, containerName: undefined })); }}
-                          placeholder='backup-container'
-                          className={fieldClass(stepErrors.containerName)}
-                        />
-                        {stepErrors.containerName && <Typography variant='bodySm' className='mt-1 text-red-500'>{stepErrors.containerName}</Typography>}
-                      </label>
-                    </>
-                  )}
-                </div>
-              </div>
-            </>
+            <DestinationStep
+              destination={destination}
+              googleConfig={googleConfig}
+              azureConfig={azureConfig}
+              s3Config={s3Config}
+              stepErrors={stepErrors}
+              fieldClass={fieldClass}
+              onDestinationChange={setDestination}
+              onS3ConfigChange={(patch) => setS3Config((current) => ({ ...current, ...patch }))}
+              onGoogleConfigChange={(patch) => setGoogleConfig((current) => ({ ...current, ...patch }))}
+              onAzureConfigChange={(patch) => setAzureConfig((current) => ({ ...current, ...patch }))}
+              onClearError={(field) => setStepErrors((current) => ({ ...current, [field]: undefined }))}
+            />
           )}
 
           {currentStep === 5 && (
-            <>
-              <Typography as='h2' variant='pageTitle' className='font-semibold'>
-                Review And Create
-              </Typography>
-              <Typography className='mt-1' variant='bodySm' color='muted'>
-                Review your backup policy details below before creating. Make sure everything is set up correctly
-              </Typography>
-
-              {createBackupMutation.error && (
-                <div className='mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
-                  <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.8' className='mt-px h-4 w-4 shrink-0 text-red-500'>
-                    <circle cx='10' cy='10' r='8' />
-                    <path d='M10 6v4' strokeLinecap='round' />
-                    <circle cx='10' cy='13.5' r='0.5' fill='currentColor' />
-                  </svg>
-                  <Typography variant='bodySm' className='text-red-600'>{createBackupMutation.error.message}</Typography>
-                </div>
-              )}
-
-              <div className='mt-8 space-y-4'>
-                <ReviewCard
-                  title='Define Backup Policy'
-                  details={policyName || `${capitalize(selectedPlatform?.crmName ?? 'Platform')} ${environment} full backup`}
-                  meta={`${capitalize(selectedPlatform?.crmName ?? 'Platform')} | ${environment}`}
-                  onEdit={() => setCurrentStep(1)}
-                />
-
-                <ReviewCard
-                  title='Data Scope'
-                  details={selectedObjectsSummary}
-                  meta={scopeMetaSummary}
-                  onEdit={() => setCurrentStep(2)}
-                />
-
-                <ReviewCard
-                  title='Scheduling'
-                  details={schedulingDetails}
-                  meta={schedulingMeta}
-                  onEdit={() => setCurrentStep(3)}
-                />
-
-                <ReviewCard
-                  title='Destination'
-                  details={destinationSummary}
-                  meta={destination}
-                  onEdit={() => setCurrentStep(4)}
-                />
-              </div>
-            </>
+            <ReviewStep
+              createErrorMessage={createBackupMutation.error?.message}
+              defineDetails={policyName || `${selectedPlatformLabel} ${environment} full backup`}
+              defineMeta={`${selectedPlatformLabel} | ${environment}`}
+              destinationDetails={destinationSummary}
+              destinationMeta={destination}
+              schedulingDetails={schedulingDetails}
+              schedulingMeta={schedulingMeta}
+              scopeDetails={selectedObjectsSummary}
+              scopeMeta={scopeMetaSummary}
+              onEditStep={(step) => setCurrentStep(step)}
+            />
           )}
         </div>
 

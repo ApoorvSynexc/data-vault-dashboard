@@ -8,7 +8,7 @@ import type {
 export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup/create',
   objectList: '/v1/backup-config/object-list',
-  objectFields: '/v1/backup-confi/object-fields',
+  objectFields: '/v1/backup-config/object-fields',
 } as const;
 
 export function useBackupConfigService() {
