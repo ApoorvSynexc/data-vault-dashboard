@@ -1,11 +1,25 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
+import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'Completed' | 'Running' | 'Paused';
 type BackupType = 'Realtime' | 'Schedule';
+
+type BackupConfigItem = {
+  backupConfigId: string;
+  crmId: string;
+  name: string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
+  schedule?: 'SCHEDULE' | 'REALTIME' | string;
+  backupStatus?: 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
+  lastBackupAt?: string;
+  sizeInBytes?: number;
+  platform?: PlatformType | string;
+};
 
 type BackupRow = {
   id: string;
@@ -230,66 +244,6 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   );
 }
 
-function PaginationFooter() {
-  return (
-    <div className='flex flex-col gap-3 px-5 py-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-end'>
-      <Typography as='span' variant='bodySm' color='muted'>
-        Showing 4 of 12
-      </Typography>
-      <div className='flex items-center gap-1'>
-        <button type='button' className='flex h-6 min-w-6 items-center justify-center rounded bg-emerald-500 px-2 text-[10px] font-semibold text-white'>
-          1
-        </button>
-        <button type='button' className='flex h-6 min-w-6 items-center justify-center rounded border border-gray-200 px-2 text-[10px] font-medium text-gray-500'>
-          2
-        </button>
-        <button type='button' className='flex h-6 min-w-6 items-center justify-center rounded border border-gray-200 px-2 text-[10px] font-medium text-gray-500'>
-          3
-        </button>
-      </div>
-    </div>
-  );
-}
-
-const allBackups: BackupRow[] = [
-  {
-    id: 'sf-prod',
-    name: 'Salesforce Production Backup',
-    platform: 'Salesforce',
-    status: 'Completed',
-    backupType: 'Realtime',
-    lastRun: 'Today, 02:00 AM',
-    dataSize: '5.2 GB',
-  },
-  {
-    id: 'sf-uat',
-    name: 'Salesforce UAT Backup',
-    platform: 'Salesforce',
-    status: 'Completed',
-    backupType: 'Schedule',
-    lastRun: 'Today, 06:00 AM',
-    dataSize: '2.2 GB',
-  },
-  {
-    id: 'hubspot-dev',
-    name: 'HubSpot Dev Backup',
-    platform: 'HubSpot',
-    status: 'Running',
-    backupType: 'Realtime',
-    lastRun: 'Today, 08:00 AM',
-    dataSize: '4.2 GB',
-  },
-  {
-    id: 'zoho-prod',
-    name: 'Zoho Production Backup',
-    platform: 'Zoho',
-    status: 'Paused',
-    backupType: 'Schedule',
-    lastRun: 'Today, 08:00 AM',
-    dataSize: '4.2 GB',
-  },
-];
-
 const ROW_ACTIONS: DropdownMenuItem[] = [
   { label: 'Run Now' },
   { label: 'Pause' },
@@ -358,7 +312,57 @@ export default function BackupManagement() {
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
 
-  const filteredBackups = allBackups.filter((row) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
+
+  const backupConfigService = useBackupConfigService();
+  const currentCursor = cursorMap[currentPage] ?? null;
+
+  const backupQuery = useQuery({
+    queryKey: ['backup-config-list', currentCursor],
+    queryFn: () => backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
+    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const listObject = (backupQuery.data as any)?.data ?? null;
+  const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
+  const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
+    limit: 10,
+    nextCursor: null,
+    totalRecords: apiDataArray.length,
+    totalPages: 1,
+  };
+
+  useEffect(() => {
+    const sourceData = (backupQuery.data as any)?.data;
+    if (!sourceData) return;
+
+    const nextCursor = (sourceData as any)?.meta?.nextCursor ?? null;
+
+    if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
+      setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
+    }
+  }, [backupQuery.data, currentPage, cursorMap]);
+
+  const parsedRows: BackupRow[] = (apiDataArray as BackupConfigItem[]).map((item) => {
+    const platform: PlatformType =
+      item.platform === 'Salesforce' || item.platform === 'HubSpot' || item.platform === 'Zoho'
+        ? (item.platform as PlatformType)
+        : 'Salesforce';
+
+    return {
+      id: item.backupConfigId,
+      name: item.name,
+      platform,
+      status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : 'Paused',
+      backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
+      lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
+      dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
+    };
+  });
+
+  const filteredBackups = parsedRows.filter((row) => {
     if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
     if (filters.status !== 'All' && row.status !== filters.status) return false;
     return true;
@@ -370,7 +374,7 @@ export default function BackupManagement() {
       header: 'Backup Name',
       render: (row) => (
         <div className='flex min-w-0 items-center gap-3'>
-          <PlatformBadge platform={row.platform} size='sm' />
+          <PlatformBadge platform={row.platform as PlatformType} size='sm' />
           <Typography as='span' variant='label' color='secondary' className='whitespace-normal'>
             {row.name}
           </Typography>
@@ -454,14 +458,41 @@ export default function BackupManagement() {
 
       <Panel title='All Backups'>
         <FilterBar filters={filters} onChange={setFilters} />
-        <Table
-          columns={backupColumns}
-          rows={filteredBackups}
-          getRowKey={(row) => row.id}
-          rowClassName='border-t border-gray-100'
-          minWidthClassName='min-w-[960px]'
-        />
-        <PaginationFooter />
+
+        {backupQuery.isLoading ? (
+          <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
+        ) : backupQuery.isError ? (
+          <div className='p-8 text-center text-red-500'>Failed to load backup configs.</div>
+        ) : (
+          <Table
+            columns={backupColumns}
+            rows={filteredBackups}
+            getRowKey={(row) => row.id}
+            rowClassName='border-t border-gray-100'
+            minWidthClassName='min-w-[960px]'
+            pagination={{
+              currentPage,
+              pageSize: apiMeta.limit ?? 10,
+              totalRecords: apiMeta.totalRecords ?? filteredBackups.length,
+              onPageChange: (nextPage) => {
+                if (nextPage <= 0) return;
+                if (nextPage === currentPage) return;
+
+                const nextCursor = cursorMap[nextPage];
+                if (nextCursor !== undefined) {
+                  setCurrentPage(nextPage);
+                  return;
+                }
+
+                const foundNextCursor = apiMeta.nextCursor;
+                if (foundNextCursor && nextPage === currentPage + 1) {
+                  setCursorMap((prev) => ({ ...prev, [nextPage]: foundNextCursor }));
+                  setCurrentPage(nextPage);
+                }
+              },
+            }}
+          />
+        )}
       </Panel>
 
       <AddBackupModal isOpen={isCreatingBackup} onClose={() => setIsCreatingBackup(false)} />

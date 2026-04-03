@@ -97,7 +97,7 @@ export function useBackupConfigService() {
         query: { pagination, cursor },
       });
 
-      return response.data;
+      return response;
     },
     getObjectList: async (crmId: string) => {
       const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {

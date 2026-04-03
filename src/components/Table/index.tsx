@@ -8,6 +8,13 @@ export type TableColumn<TRow> = {
   render: (row: TRow) => ReactNode;
 };
 
+type TablePagination = {
+  currentPage: number;
+  pageSize: number;
+  totalRecords: number;
+  onPageChange: (nextPage: number) => void;
+};
+
 type TableProps<TRow> = {
   columns: TableColumn<TRow>[];
   rows: TRow[];
@@ -16,6 +23,7 @@ type TableProps<TRow> = {
   emptyState?: ReactNode;
   minWidthClassName?: string;
   maxHeightClassName?: string;
+  pagination?: TablePagination;
 };
 
 export default function Table<TRow>({
@@ -26,7 +34,11 @@ export default function Table<TRow>({
   emptyState,
   minWidthClassName = 'min-w-full',
   maxHeightClassName,
+  pagination,
 }: TableProps<TRow>) {
+  const safePageSize = pagination?.pageSize && pagination.pageSize > 0 ? pagination.pageSize : 1;
+  const totalPages = pagination ? Math.max(1, Math.ceil(pagination.totalRecords / safePageSize)) : 1;
+
   return (
     <div className='overflow-x-auto'>
       <div className={maxHeightClassName ? `overflow-y-auto ${maxHeightClassName}` : ''}>
@@ -77,6 +89,32 @@ export default function Table<TRow>({
           </tbody>
         </table>
       </div>
+
+      {pagination && (
+        <div className='mt-3 flex items-center justify-between px-3 py-2 text-xs text-gray-700'>
+          <span>
+            Showing page {pagination.currentPage} of {totalPages} ({pagination.totalRecords} records)
+          </span>
+          <div className='flex items-center gap-1'>
+            <button
+              type='button'
+              onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
+              disabled={pagination.currentPage <= 1}
+              className='rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 disabled:opacity-50'
+            >
+              Prev
+            </button>
+            <button
+              type='button'
+              onClick={() => pagination.onPageChange(Math.min(totalPages, pagination.currentPage + 1))}
+              disabled={pagination.currentPage >= totalPages}
+              className='rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 disabled:opacity-50'
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
