@@ -1,24 +1,18 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'Completed' | 'Running' | 'Paused';
-
-type ScheduledJob = {
-  id: string;
-  name: string;
-  platform: PlatformType;
-  time: string;
-  lastRun: string;
-};
+type BackupType = 'Realtime' | 'Schedule';
 
 type BackupRow = {
   id: string;
   name: string;
   platform: PlatformType;
   status: BackupStatus;
+  backupType: BackupType;
   lastRun: string;
   dataSize: string;
 };
@@ -146,50 +140,92 @@ function StatusBadge({ status }: { status: BackupStatus }) {
   );
 }
 
-function GhostButton({ children, primary = false }: { children: ReactNode; primary?: boolean }) {
+function BackupTypeBadge({ type }: { type: BackupType }) {
+  const styles: Record<BackupType, string> = {
+    Realtime: 'bg-violet-100 text-violet-700',
+    Schedule: 'bg-blue-100 text-blue-700',
+  };
+
+  const icons: Record<BackupType, ReactNode> = {
+    Realtime: (
+      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+        <circle cx='12' cy='12' r='10' />
+        <circle cx='12' cy='12' r='3' fill='currentColor' stroke='none' />
+      </svg>
+    ),
+    Schedule: (
+      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+        <circle cx='12' cy='12' r='10' />
+        <polyline points='12 6 12 12 16 14' />
+      </svg>
+    ),
+  };
+
   return (
-    <button
-      type='button'
-      className={
-        primary
-          ? 'rounded bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700'
-          : 'rounded border border-gray-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50'
-      }
-    >
-      {children}
-    </button>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[type]}`}>
+      {icons[type]}
+      {type}
+    </span>
   );
 }
 
-function ScheduledJobRow({ job }: { job: ScheduledJob }) {
+type DropdownMenuItem = {
+  label: string;
+  danger?: boolean;
+  onClick?: () => void;
+};
+
+function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
   return (
-    <div className='flex flex-col gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 lg:flex-row lg:items-center'>
-      <div className='flex min-w-0 flex-1 items-center gap-3'>
-        <PlatformBadge platform={job.platform} />
-        <div className='min-w-0'>
-          <Typography variant='body' color='secondary' className='font-medium'>
-            {job.name}
-          </Typography>
-          <Typography variant='bodySm' color='muted'>
-            {job.platform} Production
-          </Typography>
+    <div className='relative' ref={ref}>
+      <button
+        type='button'
+        onClick={() => setOpen((v) => !v)}
+        className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
+        aria-label='Row actions'
+      >
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+          <circle cx='12' cy='5' r='1' fill='currentColor' />
+          <circle cx='12' cy='12' r='1' fill='currentColor' />
+          <circle cx='12' cy='19' r='1' fill='currentColor' />
+        </svg>
+      </button>
+
+      {open && (
+        <div className='absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type='button'
+              onClick={() => {
+                item.onClick?.();
+                setOpen(false);
+              }}
+              className={[
+                'flex w-full items-center px-3 py-2 text-left text-xs font-medium transition',
+                item.danger
+                  ? 'text-red-600 hover:bg-red-50'
+                  : 'text-gray-700 hover:bg-gray-50',
+              ].join(' ')}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-      </div>
-
-      <div className='grid flex-1 grid-cols-1 gap-2 text-xs text-gray-500 sm:grid-cols-2 lg:max-w-[400px] lg:grid-cols-2'>
-        <Typography variant='bodySm' color='muted'>
-          {job.time}
-        </Typography>
-        <Typography variant='bodySm' color='muted'>
-          {job.lastRun}
-        </Typography>
-      </div>
-
-      <div className='flex shrink-0 items-center gap-2'>
-        <GhostButton primary>Run Now</GhostButton>
-        <GhostButton>Pause</GhostButton>
-        <GhostButton>Manage</GhostButton>
-      </div>
+      )}
     </div>
   );
 }
@@ -215,43 +251,13 @@ function PaginationFooter() {
   );
 }
 
-const scheduledJobs: ScheduledJob[] = [
-  {
-    id: 'sf-full',
-    name: 'Salesforce Backup Full Production',
-    platform: 'Salesforce',
-    time: '02:00 AM Today',
-    lastRun: 'Last run on yesterday at 02:00AM',
-  },
-  {
-    id: 'sf-prod',
-    name: 'Salesforce Backup Full Production',
-    platform: 'Salesforce',
-    time: '02:00 AM Today',
-    lastRun: 'Last run on yesterday at 02:00AM',
-  },
-  {
-    id: 'zoho-full',
-    name: 'Zoho Backup Full Production',
-    platform: 'Zoho',
-    time: '02:00 AM Today',
-    lastRun: 'Last run on yesterday at 02:00AM',
-  },
-  {
-    id: 'hubspot-prod',
-    name: 'HubSpot Backup Full Production',
-    platform: 'HubSpot',
-    time: '02:00 AM Today',
-    lastRun: 'Last run on yesterday at 02:00AM',
-  },
-];
-
 const allBackups: BackupRow[] = [
   {
     id: 'sf-prod',
     name: 'Salesforce Production Backup',
     platform: 'Salesforce',
     status: 'Completed',
+    backupType: 'Realtime',
     lastRun: 'Today, 02:00 AM',
     dataSize: '5.2 GB',
   },
@@ -260,6 +266,7 @@ const allBackups: BackupRow[] = [
     name: 'Salesforce UAT Backup',
     platform: 'Salesforce',
     status: 'Completed',
+    backupType: 'Schedule',
     lastRun: 'Today, 06:00 AM',
     dataSize: '2.2 GB',
   },
@@ -267,7 +274,8 @@ const allBackups: BackupRow[] = [
     id: 'hubspot-dev',
     name: 'HubSpot Dev Backup',
     platform: 'HubSpot',
-    status: 'Completed',
+    status: 'Running',
+    backupType: 'Realtime',
     lastRun: 'Today, 08:00 AM',
     dataSize: '4.2 GB',
   },
@@ -275,73 +283,144 @@ const allBackups: BackupRow[] = [
     id: 'zoho-prod',
     name: 'Zoho Production Backup',
     platform: 'Zoho',
-    status: 'Completed',
+    status: 'Paused',
+    backupType: 'Schedule',
     lastRun: 'Today, 08:00 AM',
     dataSize: '4.2 GB',
   },
 ];
 
-const backupColumns: TableColumn<BackupRow>[] = [
-  {
-    key: 'name',
-    header: 'Backup Name',
-    render: (row) => (
-      <div className='flex min-w-0 items-center gap-3'>
-        <PlatformBadge platform={row.platform} size='sm' />
-        <Typography as='span' variant='label' color='secondary' className='whitespace-normal'>
-          {row.name}
-        </Typography>
-      </div>
-    ),
-  },
-  {
-    key: 'platform',
-    header: 'Platform',
-    className: 'text-xs text-gray-500',
-    render: (row) => row.platform,
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (row) => <StatusBadge status={row.status} />,
-  },
-  {
-    key: 'lastRun',
-    header: 'Last Run',
-    className: 'text-xs text-gray-500',
-    render: (row) => row.lastRun,
-  },
-  {
-    key: 'dataSize',
-    header: 'Data Size',
-    className: 'text-xs text-gray-500',
-    render: (row) => row.dataSize,
-  },
-  {
-    key: 'action',
-    header: 'Action',
-    render: () => (
-      <div className='flex items-center gap-2 text-gray-400'>
-        <button type='button' className='transition hover:text-gray-600'>
-          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-            <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-            <circle cx='12' cy='12' r='3' />
-          </svg>
-        </button>
-        <button type='button' className='transition hover:text-gray-600'>
-          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-            <circle cx='12' cy='5' r='1' fill='currentColor' />
-            <circle cx='12' cy='12' r='1' fill='currentColor' />
-            <circle cx='12' cy='19' r='1' fill='currentColor' />
-          </svg>
-        </button>
-      </div>
-    ),
-  },
+const ROW_ACTIONS: DropdownMenuItem[] = [
+  { label: 'Run Now' },
+  { label: 'Pause' },
+  { label: 'Manage' },
+  { label: 'Delete', danger: true },
 ];
+
+type FilterState = {
+  backupType: BackupType | 'All';
+  status: BackupStatus | 'All';
+};
+
+function FilterBar({
+  filters,
+  onChange,
+}: {
+  filters: FilterState;
+  onChange: (next: FilterState) => void;
+}) {
+  const selectCls =
+    'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-200';
+
+  return (
+    <div className='flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3'>
+      <Typography variant='bodySm' color='muted' className='mr-1'>
+        Filter:
+      </Typography>
+
+      <select
+        value={filters.backupType}
+        onChange={(e) => onChange({ ...filters, backupType: e.target.value as FilterState['backupType'] })}
+        className={selectCls}
+        aria-label='Filter by backup type'
+      >
+        <option value='All'>All Types</option>
+        <option value='Realtime'>Realtime</option>
+        <option value='Schedule'>Schedule</option>
+      </select>
+
+      <select
+        value={filters.status}
+        onChange={(e) => onChange({ ...filters, status: e.target.value as FilterState['status'] })}
+        className={selectCls}
+        aria-label='Filter by status'
+      >
+        <option value='All'>All Statuses</option>
+        <option value='Completed'>Completed</option>
+        <option value='Running'>Running</option>
+        <option value='Paused'>Paused</option>
+      </select>
+
+      {(filters.backupType !== 'All' || filters.status !== 'All') && (
+        <button
+          type='button'
+          onClick={() => onChange({ backupType: 'All', status: 'All' })}
+          className='text-[10px] font-medium text-blue-600 hover:underline'
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function BackupManagement() {
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
+
+  const filteredBackups = allBackups.filter((row) => {
+    if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
+    if (filters.status !== 'All' && row.status !== filters.status) return false;
+    return true;
+  });
+
+  const backupColumns: TableColumn<BackupRow>[] = [
+    {
+      key: 'name',
+      header: 'Backup Name',
+      render: (row) => (
+        <div className='flex min-w-0 items-center gap-3'>
+          <PlatformBadge platform={row.platform} size='sm' />
+          <Typography as='span' variant='label' color='secondary' className='whitespace-normal'>
+            {row.name}
+          </Typography>
+        </div>
+      ),
+    },
+    {
+      key: 'platform',
+      header: 'Platform',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.platform,
+    },
+    {
+      key: 'backupType',
+      header: 'Backup Type',
+      render: (row) => <BackupTypeBadge type={row.backupType} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      key: 'lastRun',
+      header: 'Last Run',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.lastRun,
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.dataSize,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row) => (
+        <div className='flex items-center gap-2 text-gray-400'>
+          <button type='button' className='transition hover:text-gray-600' aria-label='View details'>
+            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+              <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+              <circle cx='12' cy='12' r='3' />
+            </svg>
+          </button>
+          <ActionDropdown key={row.id} items={ROW_ACTIONS} />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className='flex w-full min-w-0 flex-col gap-5'>
@@ -373,22 +452,14 @@ export default function BackupManagement() {
         <MetricCard label='Data Processed' value='1.6 TB' note='+11% this week' />
       </div>
 
-      <Panel title='Scheduled Jobs'>
-        <div className='divide-y divide-gray-100'>
-          {scheduledJobs.map((job) => (
-            <ScheduledJobRow key={job.id} job={job} />
-          ))}
-        </div>
-        <PaginationFooter />
-      </Panel>
-
       <Panel title='All Backups'>
+        <FilterBar filters={filters} onChange={setFilters} />
         <Table
           columns={backupColumns}
-          rows={allBackups}
+          rows={filteredBackups}
           getRowKey={(row) => row.id}
           rowClassName='border-t border-gray-100'
-          minWidthClassName='min-w-[860px]'
+          minWidthClassName='min-w-[960px]'
         />
         <PaginationFooter />
       </Panel>
