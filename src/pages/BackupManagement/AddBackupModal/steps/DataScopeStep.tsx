@@ -142,12 +142,33 @@ const DataScopeTableRow = memo(function DataScopeTableRow({
   checked,
   onToggleRow,
 }: DataScopeTableRowProps) {
+  const isDisabled = !!row.isBackedUp;
   return (
-    <tr className='border-b border-gray-100 last:border-b-0'>
+    <tr className={`border-b border-gray-100 last:border-b-0 ${isDisabled ? 'bg-gray-50/60' : ''}`}>
       <td className='w-14 px-3 py-3 align-middle'>
-        <input type='checkbox' checked={checked} onChange={() => onToggleRow(row.id)} className='h-4 w-4 rounded border-gray-300 accent-blue-600' />
+        <input
+          type='checkbox'
+          checked={checked}
+          disabled={isDisabled}
+          onChange={() => !isDisabled && onToggleRow(row.id)}
+          className='h-4 w-4 rounded border-gray-300 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
+        />
       </td>
-      <td className='px-3 py-3 align-middle'><Typography variant='bodySm' color='secondary'>{row.name}</Typography></td>
+      <td className='px-3 py-3 align-middle'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Typography variant='bodySm' color={isDisabled ? 'muted' : 'secondary'}>{row.name}</Typography>
+          {isDisabled && row.schedule && (
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${row.schedule === 'realtime' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+              Already backed up &bull; {row.schedule === 'realtime' ? 'Realtime' : 'Schedule'}
+            </span>
+          )}
+          {isDisabled && !row.schedule && (
+            <span className='inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500'>
+              Already backed up
+            </span>
+          )}
+        </div>
+      </td>
       <td className='px-3 py-3 align-middle'><Typography variant='bodySm' color='muted'>{row.type}</Typography></td>
       <td className='px-3 py-3 align-middle'><Typography variant='bodySm' color='muted'>{row.estimatedSize}</Typography></td>
     </tr>

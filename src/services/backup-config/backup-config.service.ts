@@ -15,6 +15,8 @@ export const BACKUP_CONFIG_ENDPOINTS = {
 type ObjectListApiItem = {
   label: string;
   apiName: string;
+  isBackedUp?: boolean;
+  schedule?: 'schedule' | 'realtime';
 };
 
 type ObjectListApiResponse = {
@@ -76,6 +78,8 @@ export function useBackupConfigService() {
           type: 'Object',
           estimatedSize: '--',
           backupMode: 'both',
+          isBackedUp: item.isBackedUp,
+          schedule: item.schedule,
         }),
       );
     },

@@ -41,7 +41,14 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   id:       ['=', '!=', 'IN'],
 };
 
-const INITIAL_SELECTED_OBJECT_IDS = ['accounts', 'contacts'];
+const DURATION_TYPE: Record<DurationType, CreateBackupFrequency> = {
+  hour: 'HOUR',
+  day: 'DAY',
+  week: 'WEEK',
+  month: 'MONTH',
+};
+
+const INITIAL_SELECTED_OBJECT_IDS: Array<string> = [];
 const EMPTY_DATA_SCOPE_ROWS: DataScopeRow[] = [];
 
 export type { BackupEnvironment, PlatformType } from './types';
@@ -116,11 +123,12 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
       return;
     }
 
-    setSelectedObjectIds((current) => {
-      const validIds = new Set(objectListQuery.data.map((row) => row.id));
-      const nextSelectedIds = current.filter((id) => validIds.has(id));
-      return nextSelectedIds.length > 0 ? nextSelectedIds : objectListQuery.data.slice(0, 2).map((row) => row.id);
-    });
+    // setSelectedObjectIds((current) => {
+    //   const selectableRows = objectListQuery.data.filter((row) => !row.isBackedUp);
+    //   const validIds = new Set(selectableRows.map((row) => row.id));
+    //   const nextSelectedIds = current.filter((id) => validIds.has(id));
+    //   return nextSelectedIds.length > 0 ? nextSelectedIds : selectableRows.slice(0, 2).map((row) => row.id);
+    // });
   }, [objectListQuery.data]);
 
   const filteredRows = useMemo(() => {
@@ -130,9 +138,13 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     return modeRows.filter((row) => row.name.toLowerCase().includes(query));
   }, [dataScopeRows, deferredSearch, scheduleMode]);
 
-  const visibleRowIdSet = useMemo(() => new Set(filteredRows.map((row) => row.id)), [filteredRows]);
+  console.log({filteredRows});
+  
 
-  const allVisibleSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedObjectIdSet.has(row.id));
+  const selectableFilteredRows = useMemo(() => filteredRows.filter((row) => !row.isBackedUp), [filteredRows]);
+  const visibleRowIdSet = useMemo(() => new Set(selectableFilteredRows.map((row) => row.id)), [selectableFilteredRows]);
+
+  const allVisibleSelected = selectableFilteredRows.length > 0 && selectableFilteredRows.every((row) => selectedObjectIdSet.has(row.id));
 
   const selectedObjectsSummary = useMemo(() => {
     const selectedRows = dataScopeRows.filter((row) => selectedObjectIdSet.has(row.id));
@@ -251,9 +263,6 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   }
 
   function buildPayload(): CreateBackupPayload {
-    const frequencyMap: Record<DurationType, CreateBackupFrequency> = {
-      hour: 'HOURS', day: 'DAYS', week: 'WEEKS', month: 'MONTHS',
-    };
     const destinationTypeMap: Record<DestinationType, 'S3' | 'GOOGLE' | 'AZURE'> = {
       S3: 'S3', Google: 'GOOGLE', Azure: 'AZURE',
     };
@@ -288,16 +297,16 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     };
 
     if (scheduleMode === 'schedule') {
-      const now = new Date();
-      const monthDateIso = new Date(now.getFullYear(), now.getMonth(), monthDate).toISOString();
       payload.scheduleConfig = {
         timeZone: timeZone.toLowerCase(),
         type: scheduleType === 'one_time' ? 'ONE_TIME' : 'INCREMENTAL',
         scheduling: {
-          frequency: frequencyMap[duration],
+          frequency: DURATION_TYPE[duration],
           interval,
-          weekDays: weekDays.map((d) => d.toUpperCase()),
-          monthDate: monthDateIso,
+          ...(duration === 'week' && { weekDays: weekDays.map((d) => d.toUpperCase()) }),
+          ...(duration === 'month' && {
+            monthDate: new Date(new Date().getFullYear(), new Date().getMonth(), monthDate).toISOString(),
+          }),
         },
       };
     }

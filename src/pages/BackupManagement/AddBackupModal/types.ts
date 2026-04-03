@@ -59,7 +59,7 @@ export type AddBackupModalProps = {
 
 export type CreateBackupSchedule = 'REALTIME' | 'SCHEDULE';
 export type CreateBackupScheduleType = 'ONE_TIME' | 'INCREMENTAL';
-export type CreateBackupFrequency = 'HOURS' | 'DAYS' | 'WEEKS' | 'MONTHS';
+export type CreateBackupFrequency = 'HOUR' | 'DAY' | 'WEEK' | 'MONTH';
 
 export type CreateBackupPayload = {
   crmId: string;
@@ -74,8 +74,8 @@ export type CreateBackupPayload = {
     scheduling: {
       frequency: CreateBackupFrequency;
       interval: number;
-      weekDays: string[];
-      monthDate: string;
+      weekDays?: string[];
+      monthDate?: string;
     };
   };
   objects: Array<{
@@ -104,4 +104,6 @@ export type DataScopeRow = {
   type: string;
   estimatedSize: string;
   backupMode: 'realtime' | 'schedule' | 'both';
+  isBackedUp?: boolean;
+  schedule?: 'schedule' | 'realtime';
 };
