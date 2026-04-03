@@ -148,7 +148,7 @@ export function DefineBackupPolicyStep({
                 : 'Data is backed up on a defined schedule.'}
             </Typography>
             <div className='inline-flex overflow-hidden rounded-lg border border-blue-600'>
-              {(['realtime', 'schedule'] as ScheduleMode[]).map((option) => (
+              {(['schedule', 'realtime'] as ScheduleMode[]).map((option) => (
                 <button
                   key={option}
                   type='button'

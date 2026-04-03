@@ -17,6 +17,7 @@ import type {
   BackupEnvironment,
   CreateBackupFrequency,
   CreateBackupPayload,
+  DataScopeRow,
   DestinationType,
   DurationType,
   FieldDataType,
@@ -41,6 +42,7 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
 };
 
 const INITIAL_SELECTED_OBJECT_IDS = ['accounts', 'contacts'];
+const EMPTY_DATA_SCOPE_ROWS: DataScopeRow[] = [];
 
 export type { BackupEnvironment, PlatformType } from './types';
 
@@ -68,7 +70,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const [includeAttachments] = useState(true);
   const [metadataBackup] = useState(true);
   // Scheduling
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('realtime');
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('schedule');
   const [scheduleType, setScheduleType] = useState<ScheduleType>('incremental');
   const [duration, setDuration] = useState<DurationType>('hour');
   const [interval, setInterval] = useState<number>(6);
@@ -105,7 +107,7 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     staleTime: 5 * 60 * 1000,
   });
 
-  const dataScopeRows = objectListQuery.data ?? [];
+  const dataScopeRows = objectListQuery.data ?? EMPTY_DATA_SCOPE_ROWS;
   const isObjectListLoading = objectListQuery.isLoading;
   const selectedObjectIdSet = useMemo(() => new Set(selectedObjectIds), [selectedObjectIds]);
 
@@ -209,7 +211,10 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   useEffect(() => {
     const selectedIds = new Set(selectedFilterRows.map((row) => row.id));
-    setExpandedFilterObjects((current) => current.filter((id) => selectedIds.has(id)));
+    setExpandedFilterObjects((current) => {
+      const next = current.filter((id) => selectedIds.has(id));
+      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+    });
   }, [selectedFilterRows]);
 
   const ensureObjectFieldsLoaded = useCallback((rowId: string, objectApiName: string) => {
