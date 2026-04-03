@@ -328,7 +328,7 @@ export default function BackupManagement() {
   const listObject = (backupQuery.data as any)?.data ?? null;
   const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
   const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
-    limit: 10,
+    limit: 20,
     nextCursor: null,
     totalRecords: apiDataArray.length,
     totalPages: 1,
