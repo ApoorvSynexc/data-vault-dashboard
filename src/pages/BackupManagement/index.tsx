@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
@@ -375,9 +376,11 @@ export default function BackupManagement() {
       render: (row) => (
         <div className='flex min-w-0 items-center gap-3'>
           <PlatformBadge platform={row.platform as PlatformType} size='sm' />
-          <Typography as='span' variant='label' color='secondary' className='whitespace-normal'>
-            {row.name}
-          </Typography>
+          <Link to={`/backup-management/${row.id}`} className='whitespace-normal'>
+            <Typography as='span' variant='label' color='secondary' className='underline hover:text-blue-600'>
+              {row.name}
+            </Typography>
+          </Link>
         </div>
       ),
     },

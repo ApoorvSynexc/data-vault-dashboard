@@ -11,6 +11,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   list: '/v1/backup-config/list',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
+  jobs: '/v1/backup-config/jobs',
 } as const;
 
 type BackupConfigItem = {
@@ -63,6 +64,27 @@ type ObjectFieldApiResponse = {
   objectApiName: string;
   fields: ObjectFieldApiItem[];
   count: number;
+};
+
+export type BackupJobItem = {
+  jobId: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string;
+  startedAt?: string;
+  completedAt?: string;
+  sizeInBytes?: number;
+  message?: string;
+};
+
+export type BackupJobListApiResponse = {
+  success: boolean;
+  message: string;
+  data: BackupJobItem[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+    totalRecords: number;
+    totalPages: number;
+  };
 };
 
 const FIELD_DATA_TYPE_MAP: Record<string, FieldDataType> = {
@@ -136,6 +158,13 @@ export function useBackupConfigService() {
           dataType: FIELD_DATA_TYPE_MAP[field.dataType.toUpperCase()] ?? 'string',
         }),
       );
+    },
+    listBackupJobs: async (backupConfigId: string, pagination = true, cursor?: string, limit = 20) => {
+      const response = await api.get<BackupJobListApiResponse>(BACKUP_CONFIG_ENDPOINTS.jobs, {
+        query: { backupConfigId, pagination, cursor, limit },
+      });
+
+      return response;
     },
   };
 }

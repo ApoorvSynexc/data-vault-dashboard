@@ -1,6 +1,6 @@
 import { BASE_URL } from "../constant";
 
-type ApiResponse<T> = {
+export type ApiResponse<T> = {
   success: boolean;
   message: string;
   data: T | null;

@@ -8,6 +8,7 @@ import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
+import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Platforms from '../pages/Platforms';
 import SalesforceCallback from '../pages/callback/salesforce';
 
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: '/backup-management', element: <BackupMannagement /> },
+          { path: '/backup-management/:id', element: <BackupDetail /> },
           { path: '/platforms', element: <Platforms /> },
         ],
       },
