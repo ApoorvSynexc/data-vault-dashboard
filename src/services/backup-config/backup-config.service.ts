@@ -8,9 +8,35 @@ import type {
 
 export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
+  list: '/v1/backup-config/list',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
 } as const;
+
+type BackupConfigItem = {
+  backupConfigId: string;
+  crmId: string;
+  name: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
+  schedule?: 'SCHEDULE' | 'REALTIME' | string;
+  backupStatus?: 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
+  lastBackupAt?: string;
+  sizeInBytes?: number;
+  platform?: string;
+  [key: string]: unknown;
+};
+
+type BackupConfigListApiResponse = {
+  success: boolean;
+  message: string;
+  data: BackupConfigItem[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+    totalRecords: number;
+    totalPages: number;
+  };
+};
 
 type ObjectListApiItem = {
   label: string;
@@ -66,12 +92,23 @@ export function useBackupConfigService() {
   return {
     createBackupConfig: (payload: CreateBackupPayload) =>
       api.post<void>(BACKUP_CONFIG_ENDPOINTS.create, payload),
+    listBackupConfigs: async (pagination = true, cursor?: string) => {
+      const response = await api.get<BackupConfigListApiResponse>(BACKUP_CONFIG_ENDPOINTS.list, {
+        query: { pagination, cursor },
+      });
+
+      return response.data;
+    },
     getObjectList: async (crmId: string) => {
       const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {
         query: { crmId },
       });
 
-      return response.objects.map(
+      if (!response.data) {
+        throw new Error('Invalid response from objectList API');
+      }
+
+      return response.data.objects.map(
         (item): DataScopeRow => ({
           id: item.apiName,
           name: item.label,
@@ -88,7 +125,11 @@ export function useBackupConfigService() {
         query: { crmId, objectName },
       });
 
-      return response.fields.map(
+      if (!response.data) {
+        throw new Error('Invalid response from objectFields API');
+      }
+
+      return response.data.fields.map(
         (field): ObjectField => ({
           name: field.apiName,
           label: field.label,

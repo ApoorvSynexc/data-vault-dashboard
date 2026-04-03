@@ -4,6 +4,6 @@ export function useUserService() {
   const api = useHttpRequest();
 
   return {
-    getMyProfile: <TResponse>() => api.get<TResponse>('/v1/user/my-profile'),
+    getMyProfile: async <TResponse>() => (await api.get<TResponse>('/v1/user/my-profile')).data,
   };
 }

@@ -5,13 +5,9 @@ export function useAuthService() {
   const api = useHttpRequest();
 
   return {
-    login: <TResponse>(payload: LoginForm) =>
-      api.post<TResponse>('/v1/auth/login', payload),
-    signup: <TResponse>(payload: SignupForm) =>
-      api.post<TResponse>('/auth/signup', payload),
-    forgotPassword: <TResponse>(payload: ForgotPasswordForm) =>
-      api.post<TResponse>('/auth/forgot-password', payload),
-    logout: () =>
-      api.post('/v1/auth/logout'),
+    login: async <TResponse>(payload: LoginForm) => (await api.post<TResponse>('/v1/auth/login', payload)).data,
+    signup: async <TResponse>(payload: SignupForm) => (await api.post<TResponse>('/auth/signup', payload)).data,
+    forgotPassword: async <TResponse>(payload: ForgotPasswordForm) => (await api.post<TResponse>('/auth/forgot-password', payload)).data,
+    logout: async () => (await api.post('/v1/auth/logout')).data,
   };
 }

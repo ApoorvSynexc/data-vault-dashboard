@@ -30,7 +30,7 @@ const platformsSlice = createSlice({
         state.status = 'loading';
       })
       .addCase(fetchPlatforms.fulfilled, (state, action) => {
-        state.list = action.payload;
+        state.list = action.payload?.data ?? [];
         state.status = 'idle';
       })
       .addCase(fetchPlatforms.rejected, (state) => {

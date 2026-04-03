@@ -37,23 +37,23 @@ export function usePlatformService() {
   const api = useHttpRequest();
 
   return {
-    getConnectedPlatforms: () =>
-      api.get<ConnectedPlatform[]>(PLATFORM_ENDPOINTS.list),
-    connectPlatform: (crmType: CrmPlatform) =>
-      api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
+    getConnectedPlatforms: async () =>
+      (await api.get<ConnectedPlatform[]>(PLATFORM_ENDPOINTS.list)).data,
+    connectPlatform: async (crmType: CrmPlatform) =>
+      (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
         query: { crmName: crmType.toLowerCase() },
-      }),
-    reconnectPlatform: (crmId: string) =>
-      api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
+      })).data,
+    reconnectPlatform: async (crmId: string) =>
+      (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
         query: { crmId },
-      }),
-    callbackPlatform: (payload: { crmName: CrmPlatform; code: string; state: string }) =>
-      api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.callback, {
+      })).data,
+    callbackPlatform: async (payload: { crmName: CrmPlatform; code: string; state: string }) =>
+      (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.callback, {
         query: { crmName: payload.crmName.toLowerCase(), code: payload.code, state: payload.state },
-      }),
-    disconnectPlatform: (crmId: string) =>
-      api.delete<void>(PLATFORM_ENDPOINTS.disconnect, {
+      })).data,
+    disconnectPlatform: async (crmId: string) =>
+      (await api.delete<void>(PLATFORM_ENDPOINTS.disconnect, {
         query: { crmId },
-      }),
+      })).data,
   };
 }

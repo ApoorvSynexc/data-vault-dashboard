@@ -36,11 +36,11 @@ export type HttpRequestConfig = {
 }
 
 export type HttpRequestInstance = {
-  get: <T>(path: string, options?: RequestOptions) => Promise<T>;
-  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
-  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
-  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<T>;
-  delete: <T>(path: string, options?: RequestOptions) => Promise<T>;
+  get: <T>(path: string, options?: RequestOptions) => Promise<ApiResponse<T>>;
+  post: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<ApiResponse<T>>;
+  put: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<ApiResponse<T>>;
+  patch: <T>(path: string, body?: HttpRequestOptions['body'], options?: MutationRequestOptions) => Promise<ApiResponse<T>>;
+  delete: <T>(path: string, options?: RequestOptions) => Promise<ApiResponse<T>>;
 }
 
 async function refreshTokens(): Promise<void> {
@@ -108,7 +108,7 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
   async function request<T>(
     path: string,
     { body, headers, query, ...options }: HttpRequestOptions = {},
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const resolvedPath = buildPath(path, query);
     let response = await rawFetch(resolvedPath, body, headers, options);
 
@@ -139,7 +139,7 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
       throw new HttpError(response.status, response.statusText, envelope);
     }
 
-    return envelope.data as T;
+    return envelope as ApiResponse<T>;
   }
 
   return {
