@@ -9,9 +9,10 @@ import type {
 export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
   list: '/v1/backup-config/list',
+  detail: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
-  jobs: '/v1/backup-config/jobs',
+  jobs: '/v1/backup-job/list',
 } as const;
 
 type BackupConfigItem = {
@@ -25,6 +26,14 @@ type BackupConfigItem = {
   sizeInBytes?: number;
   platform?: string;
   [key: string]: unknown;
+};
+
+export type BackupConfigDetail = BackupConfigItem;
+
+type BackupConfigDetailApiResponse = {
+  success: boolean;
+  message: string;
+  data: BackupConfigDetail;
 };
 
 type BackupConfigListApiResponse = {
@@ -66,13 +75,27 @@ type ObjectFieldApiResponse = {
   count: number;
 };
 
+export type BackupJobObject = {
+  bulkJobId: string;
+  name: string;
+  status: string;
+  totalRecordCount: number;
+  condition?: { type: string };
+  field?: unknown[];
+};
+
 export type BackupJobItem = {
-  jobId: string;
+  backupJobId: string;
+  backupConfigId: string;
+  userId: string;
   status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string;
   startedAt?: string;
   completedAt?: string;
-  sizeInBytes?: number;
-  message?: string;
+  lastUpdatedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  object?: BackupJobObject[];
+  destination?: { type: string };
 };
 
 export type BackupJobListApiResponse = {
@@ -158,6 +181,12 @@ export function useBackupConfigService() {
           dataType: FIELD_DATA_TYPE_MAP[field.dataType.toUpperCase()] ?? 'string',
         }),
       );
+    },
+    getBackupConfig: async (id: string) => {
+      const response = await api.get<BackupConfigDetailApiResponse>(BACKUP_CONFIG_ENDPOINTS.detail, {
+        query: { backupConfigId: id },
+      });
+      return response;
     },
     listBackupJobs: async (backupConfigId: string, pagination = true, cursor?: string, limit = 20) => {
       const response = await api.get<BackupJobListApiResponse>(BACKUP_CONFIG_ENDPOINTS.jobs, {
