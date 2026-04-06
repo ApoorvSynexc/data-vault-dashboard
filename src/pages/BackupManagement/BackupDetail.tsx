@@ -226,7 +226,7 @@ export default function BackupDetail() {
     ? `${(detail.sizeInBytes / (1024 * 1024)).toFixed(2)} MB`
     : '--';
   const crmId: string = detail?.crmId ?? '--';
-  const backupConfigId: string = detail?.backupConfigId ?? '--';
+  const description: string = detail?.description ?? '';
 
   const jobsData = (jobsQuery.data as any)?.data;
   const jobRows: BackupJobItem[] = Array.isArray(jobsData)
@@ -240,7 +240,7 @@ export default function BackupDetail() {
       <section className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
         <Link
           to='/backup-management'
-          className='mb-3 inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700'
+          className='mb-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 -ml-2'
         >
           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
             <polyline points='15 18 9 12 15 6' />
@@ -248,33 +248,38 @@ export default function BackupDetail() {
           Back to Backups
         </Link>
 
-        <div className='flex items-center gap-3'>
+        <div className='flex min-w-0 items-center gap-4'>
           {detailQuery.isLoading ? (
-            <SkeletonBlock className='h-10 w-10 rounded-lg' />
+            <SkeletonBlock className='h-11 w-11 shrink-0 rounded-xl' />
           ) : (
             platform && <PlatformBadge platform={platform} />
           )}
 
-          <div className='flex min-w-0 flex-col gap-1'>
+          <div className='flex min-w-0 flex-1 flex-col gap-0.5'>
             {detailQuery.isLoading ? (
               <>
                 <SkeletonBlock className='h-5 w-48' />
-                <SkeletonBlock className='h-3 w-32' />
+                <SkeletonBlock className='h-3 w-64 mt-1' />
               </>
             ) : (
               <>
                 <Typography as='h2' variant='pageTitle'>
                   {name || 'Backup Detail'}
                 </Typography>
-                <Typography variant='bodySm' color='muted'>
-                  ID: {backupConfigId}
-                </Typography>
+                {description && (
+                  <p
+                    title={description}
+                    className='mt-0.5 truncate text-xs text-gray-400 max-w-prose cursor-default'
+                  >
+                    {description}
+                  </p>
+                )}
               </>
             )}
           </div>
 
           {!detailQuery.isLoading && configStatus && (
-            <div className='ml-auto'>
+            <div className='ml-auto shrink-0'>
               <ConfigStatusBadge status={configStatus} />
             </div>
           )}
