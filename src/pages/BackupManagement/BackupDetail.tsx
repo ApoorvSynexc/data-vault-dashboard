@@ -8,6 +8,7 @@ import {
 import Typography from '../../components/Typography';
 import Table, { type TableColumn } from '../../components/Table';
 import type { PlatformType } from './AddBackupModal';
+import { capitalize } from '../../utils';
 
 type ConfigStatus = 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
 type BackupStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
@@ -193,7 +194,7 @@ export default function BackupDetail() {
 
   const detail = (detailQuery.data as any)?.data as any;
 
-  const platform: PlatformType | string = detail?.platform ?? '';
+  const platform: PlatformType | string = detail?.crmDetail?.crmName ?? '';
   const name: string = detail?.name ?? '';
   const configStatus: ConfigStatus = detail?.status ?? '';
   const backupStatus: BackupStatus = detail?.backupStatus ?? '';
@@ -278,7 +279,7 @@ export default function BackupDetail() {
             {detailQuery.isLoading ? (
               <SkeletonBlock className='h-4 w-24' />
             ) : (
-              <Typography variant='bodySm'>{platform || '--'}</Typography>
+              <Typography variant='bodySm'>{capitalize(platform) || '--'}</Typography>
             )}
           </InfoRow>
           <InfoRow label='Backup Type'>
@@ -320,13 +321,6 @@ export default function BackupDetail() {
               <SkeletonBlock className='h-4 w-20' />
             ) : (
               <Typography variant='bodySm'>{dataSize}</Typography>
-            )}
-          </InfoRow>
-          <InfoRow label='CRM ID'>
-            {detailQuery.isLoading ? (
-              <SkeletonBlock className='h-4 w-40' />
-            ) : (
-              <Typography variant='bodySm' color='muted'>{crmId}</Typography>
             )}
           </InfoRow>
         </div>
