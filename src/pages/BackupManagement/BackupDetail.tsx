@@ -162,7 +162,7 @@ const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
 ];
 
 export default function BackupDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const backupConfigService = useBackupConfigService();
 
   const [jobPage, setJobPage] = useState(1);
@@ -170,17 +170,17 @@ export default function BackupDetail() {
   const currentJobCursor = jobCursorMap[jobPage] ?? null;
 
   const detailQuery = useQuery({
-    queryKey: ['backup-config-detail', id],
-    queryFn: () => backupConfigService.getBackupConfig(id!),
-    enabled: !!id,
+    queryKey: ['backup-config-detail', slug],
+    queryFn: () => backupConfigService.getBackupConfig(slug!),
+    enabled: !!slug,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
   const jobsQuery = useQuery({
-    queryKey: ['backup-jobs', id, currentJobCursor],
-    queryFn: () => backupConfigService.listBackupJobs(id!, true, currentJobCursor ?? undefined),
-    enabled: !!id,
+    queryKey: ['backup-jobs', slug, currentJobCursor],
+    queryFn: () => backupConfigService.listBackupJobs(slug!, true, currentJobCursor ?? undefined),
+    enabled: !!slug,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
     onSuccess: (res: any) => {
@@ -205,7 +205,7 @@ export default function BackupDetail() {
     ? `${(detail.sizeInBytes / (1024 * 1024)).toFixed(2)} MB`
     : '--';
   const crmId: string = detail?.crmId ?? '--';
-  const backupConfigId: string = detail?.backupConfigId ?? id ?? '--';
+  const backupConfigId: string = detail?.backupConfigId ?? '--';
 
   const jobsData = (jobsQuery.data as any)?.data;
   const jobRows: BackupJobItem[] = Array.isArray(jobsData)

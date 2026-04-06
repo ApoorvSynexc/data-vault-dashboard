@@ -17,6 +17,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
 
 type BackupConfigItem = {
   backupConfigId: string;
+  slug: string;
   crmId: string;
   name: string;
   status: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
@@ -182,9 +183,9 @@ export function useBackupConfigService() {
         }),
       );
     },
-    getBackupConfig: async (id: string) => {
+    getBackupConfig: async (slug: string) => {
       const response = await api.get<BackupConfigDetailApiResponse>(BACKUP_CONFIG_ENDPOINTS.detail, {
-        query: { backupConfigId: id },
+        query: { slug },
       });
       return response;
     },

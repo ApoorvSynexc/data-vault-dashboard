@@ -23,7 +23,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: '/backup-management', element: <BackupMannagement /> },
-          { path: '/backup-management/:id', element: <BackupDetail /> },
+          { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/platforms', element: <Platforms /> },
         ],
       },
