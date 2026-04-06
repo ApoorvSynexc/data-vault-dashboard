@@ -5,7 +5,7 @@ export type TableColumn<TRow> = {
   header: ReactNode;
   className?: string;
   headerClassName?: string;
-  render: (row: TRow) => ReactNode;
+  render: (row: TRow, index: number) => ReactNode;
 };
 
 type TablePagination = {
@@ -71,7 +71,7 @@ export default function Table<TRow>({
                         column.className ?? '',
                       ].join(' ')}
                     >
-                      {column.render(row)}
+                      {column.render(row, index)}
                     </td>
                   ))}
                 </tr>

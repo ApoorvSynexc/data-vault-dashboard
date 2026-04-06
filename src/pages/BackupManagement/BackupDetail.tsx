@@ -123,11 +123,12 @@ function SkeletonBlock({ className }: { className?: string }) {
 
 const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
   {
-    key: 'backupJobId',
-    header: 'Job ID',
-    render: (row) => (
-      <Typography variant='bodySm' color='muted' className='font-mono'>
-        {row.backupJobId}
+    key: 'serial',
+    header: '#',
+    headerClassName: 'w-10',
+    render: (_row, index) => (
+      <Typography variant='bodySm' color='muted'>
+        {index + 1}
       </Typography>
     ),
   },
@@ -155,10 +156,29 @@ const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
     render: (row) => row.destination?.type ?? '--',
   },
   {
-    key: 'object',
-    header: 'Objects',
+    key: 'totalObjects',
+    header: 'Total Objects',
     className: 'text-xs text-gray-500',
-    render: (row) => (row.object?.length ? `${row.object.length} object(s)` : '--'),
+    render: (row) => row.object?.length ?? '--',
+  },
+  {
+    key: 'completedObjects',
+    header: 'Completed Objects',
+    className: 'text-xs text-gray-500',
+    render: (row) =>
+      row.object ? row.object.filter((o) => o.status === 'COMPLETED').length : '--',
+  },
+  {
+    key: 'totalSize',
+    header: 'Total Size',
+    className: 'text-xs text-gray-500',
+    render: (row) => {
+      const total = row.object?.reduce((sum, o) => sum + (o.sizeInBytes ?? 0), 0) ?? 0;
+      if (!total) return '--';
+      return total >= 1024 * 1024
+        ? `${(total / (1024 * 1024)).toFixed(2)} MB`
+        : `${(total / 1024).toFixed(2)} KB`;
+    },
   },
 ];
 
