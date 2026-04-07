@@ -1,1 +1,1 @@
-export { validateLoginForm } from './auth.validation';
+export { validateLoginForm, validateSignupForm } from './auth.validation';

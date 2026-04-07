@@ -4,8 +4,10 @@ export interface LoginForm {
 }
 
 export interface SignupForm {
-  name: string
+  firstName: string
+  lastName: string
   email: string
+  gender: string
   password: string
   confirmPassword: string
 }
@@ -17,4 +19,17 @@ export interface ForgotPasswordForm {
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface SendOtpPayload {
+  channel: 'EMAIL';
+  contact: string;
+  otpType: 'SIGNUP' | 'FORGOT-PASSWORD';
+}
+
+export interface VerifyOtpPayload {
+  channel: 'EMAIL';
+  contact: string;
+  otp: string;
+  otpType: 'SIGNUP' | 'FORGOT-PASSWORD';
 }

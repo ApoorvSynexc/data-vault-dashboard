@@ -1,22 +1,143 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useActionState, useEffect, useRef, useState } from 'react';
+import { useFormStatus } from 'react-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import FormError from '../../../components/FormError';
 import TextField from '../../../components/TextField';
-import Button from '../../../components/Button';
 import MailIcon from '../../../assets/icons/mail.svg?react';
 import EyeIcon from '../../../assets/icons/eye.svg?react';
 import EyeOffIcon from '../../../assets/icons/eye-off.svg?react';
 import LockIcon from '../../../assets/icons/lock.svg?react';
 import ShieldIcon from '../../../assets/icons/shield.svg?react';
 import CheckCircleIcon from '../../../assets/icons/check-circle.svg?react';
+import type { SignupForm } from '../auth.types';
+import { useAuthService } from '../../../services';
+import { validateSignupForm } from '../../../validation';
+
+// ─── Signup form state ───────────────────────────────────────────────────────
+
+type SignupFormState = {
+  fieldErrors: Partial<Record<keyof SignupForm, string>>;
+  submitError: string;
+  values: SignupForm;
+};
+
+const signupInitial: SignupFormState = {
+  fieldErrors: {},
+  submitError: '',
+  values: { firstName: '', lastName: '', email: '', gender: '', password: '', confirmPassword: '' },
+};
+
+// ─── OTP form state ──────────────────────────────────────────────────────────
+
+type OtpFormState = { submitError: string };
+const otpInitial: OtpFormState = { submitError: '' };
+
+const RESEND_SECONDS = 60;
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Signup() {
+  const { signup, verifyOtp, sendOtp } = useAuthService();
+  const navigate = useNavigate();
+
+  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [signedUpEmail, setSignedUpEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
+  // ── Countdown timer ──
+  const [countdown, setCountdown] = useState(0);
+  const [resendError, setResendError] = useState('');
+  const [resendPending, setResendPending] = useState(false);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [countdown]);
+
+  // ── Step 1: Signup ──
+  async function handleSignupSubmit(
+    _prev: SignupFormState,
+    formData: FormData,
+  ): Promise<SignupFormState> {
+    const values: SignupForm = {
+      firstName: String(formData.get('firstName') ?? '').trim(),
+      lastName: String(formData.get('lastName') ?? '').trim(),
+      email: String(formData.get('email') ?? '').trim(),
+      gender: String(formData.get('gender') ?? '').trim(),
+      password: String(formData.get('password') ?? '').trim(),
+      confirmPassword: String(formData.get('confirmPassword') ?? '').trim(),
+    };
+
+    if (!agreeToTerms) {
+      return { fieldErrors: {}, submitError: 'You must agree to the Terms & Conditions', values };
+    }
+
+    const fieldErrors = await validateSignupForm(values);
+    if (Object.keys(fieldErrors).length > 0) {
+      return { fieldErrors, submitError: '', values };
+    }
+
+    try {
+      await signup(values);
+      setSignedUpEmail(values.email);
+      setCountdown(RESEND_SECONDS);
+      setStep('otp');
+      return { fieldErrors: {}, submitError: '', values };
+    } catch (error) {
+      return {
+        fieldErrors: {},
+        submitError: error instanceof Error ? error.message : 'Unable to create account',
+        values,
+      };
+    }
+  }
+
+  // ── Step 2: OTP verify ──
+  async function handleOtpSubmit(
+    _prev: OtpFormState,
+    formData: FormData,
+  ): Promise<OtpFormState> {
+    const otp = Array.from({ length: 6 }, (_, i) =>
+      String(formData.get(`otp-${i}`) ?? ''),
+    ).join('');
+
+    if (otp.length < 6) {
+      return { submitError: 'Please enter the complete 6-digit code' };
+    }
+
+    try {
+      await verifyOtp({ channel: 'EMAIL', contact: signedUpEmail, otp, otpType: 'SIGNUP' });
+      navigate('/login');
+      return { submitError: '' };
+    } catch (error) {
+      return { submitError: error instanceof Error ? error.message : 'Invalid or expired OTP' };
+    }
+  }
+
+  async function handleResend() {
+    setResendError('');
+    setResendPending(true);
+    try {
+      await sendOtp({ channel: 'EMAIL', contact: signedUpEmail, otpType: 'SIGNUP' });
+      setCountdown(RESEND_SECONDS);
+    } catch (error) {
+      setResendError(error instanceof Error ? error.message : 'Failed to resend OTP');
+    } finally {
+      setResendPending(false);
+    }
+  }
+
+  const [signupState, signupAction] = useActionState(handleSignupSubmit, signupInitial);
+  const [otpState, otpAction] = useActionState(handleOtpSubmit, otpInitial);
+
   return (
     <div className='flex flex-1 bg-[#EEF2FF]'>
+      {/* ── Left Panel ── */}
       <div className='flex flex-col flex-1 items-center justify-center px-8 py-6'>
+        {/* Logo */}
         <div className='mb-8 ml-2 flex items-center gap-3 self-start'>
           <div className='flex h-10 w-10 rotate-45 items-center justify-center rounded-lg bg-blue-600'>
             <span className='-rotate-45 text-xs font-bold text-white'>DV</span>
@@ -27,93 +148,41 @@ export default function Signup() {
           </div>
         </div>
 
-        <div className='w-full max-w-md rounded-2xl bg-white p-8 shadow-md'>
-          <h2 className='mb-1 text-2xl font-bold text-gray-900'>Create Your Account</h2>
-          <p className='mb-6 text-sm text-gray-500'>
-            Get started with secure backup &amp; restore in minutes
-          </p>
-
-          <div className='flex flex-col gap-4'>
-            <TextField
-              label='Full Name'
-              type='text'
-              placeholder='Enter your name'
-              rightIcon={<UserIcon className='h-4 w-4' />}
-            />
-
-            <TextField
-              label='Email'
-              type='email'
-              placeholder='Enter you email'
-              rightIcon={<MailIcon className='h-4 w-4' />}
-            />
-
-            <TextField
-              label='Password'
-              type={showPassword ? 'text' : 'password'}
-              placeholder='Enter password'
-              rightIcon={
-                showPassword
-                  ? <EyeOffIcon className='h-4 w-4' />
-                  : <EyeIcon className='h-4 w-4' />
-              }
-              onRightIconClick={() => setShowPassword((value) => !value)}
-            />
-
-            <TextField
-              label='Confirm Password'
-              type={showConfirmPassword ? 'text' : 'password'}
-              placeholder='Re-enter password'
-              rightIcon={
-                showConfirmPassword
-                  ? <EyeOffIcon className='h-4 w-4' />
-                  : <EyeIcon className='h-4 w-4' />
-              }
-              onRightIconClick={() => setShowConfirmPassword((value) => !value)}
-            />
-
-            <label className='flex cursor-pointer items-center gap-2 text-sm text-gray-600 select-none'>
-              <input
-                type='checkbox'
-                checked={agreeToTerms}
-                onChange={(event) => setAgreeToTerms(event.target.checked)}
-                className='h-4 w-4 rounded border-gray-300 accent-blue-600'
-              />
-              <span>
-                I agree to the{' '}
-                <a href='#' className='text-blue-600 hover:underline'>
-                  Terms &amp; Conditions
-                </a>{' '}
-                and{' '}
-                <a href='#' className='text-blue-600 hover:underline'>
-                  Privacy Policy
-                </a>
-              </span>
-            </label>
-
-            <Button fullWidth size='lg'>Create Account</Button>
-
-            <p className='mt-1 text-center text-sm text-gray-500'>
-              Already have an account?{' '}
-              <Link to='/login' className='font-semibold text-blue-600 hover:underline'>
-                Sign In
-              </Link>
-            </p>
-          </div>
-        </div>
+        {step === 'form' ? (
+          <SignupFormCard
+            state={signupState}
+            action={signupAction}
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            agreeToTerms={agreeToTerms}
+            onTogglePassword={() => setShowPassword((v) => !v)}
+            onToggleConfirmPassword={() => setShowConfirmPassword((v) => !v)}
+            onToggleTerms={(v) => setAgreeToTerms(v)}
+          />
+        ) : (
+          <OtpCard
+            email={signedUpEmail}
+            state={otpState}
+            action={otpAction}
+            countdown={countdown}
+            resendError={resendError}
+            resendPending={resendPending}
+            onResend={handleResend}
+            onBack={() => setStep('form')}
+          />
+        )}
       </div>
 
+      {/* ── Right Panel ── */}
       <div className='hidden flex-1 flex-col items-center justify-between bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 px-12 py-8 lg:flex'>
         <div className='flex w-full flex-1 items-center justify-center'>
           <IllustrationPlaceholder />
         </div>
-
         <div className='mb-6 flex items-center gap-6'>
           <TrustBadge icon={<LockIcon className='h-4 w-4' />} label='256-Bit Encryption' />
           <TrustBadge icon={<ShieldIcon className='h-4 w-4' />} label='SOC 2 Compliant' />
           <TrustBadge icon={<CheckCircleIcon className='h-4 w-4' />} label='GDPR Ready' />
         </div>
-
         <div className='flex flex-col gap-1 text-center text-xs text-white/60'>
           <p>
             <a href='#' className='hover:text-white'>Privacy Policy</a>
@@ -127,6 +196,315 @@ export default function Signup() {
       </div>
     </div>
   );
+}
+
+// ─── Step 1 card ─────────────────────────────────────────────────────────────
+
+function SignupFormCard({
+  state,
+  action,
+  showPassword,
+  showConfirmPassword,
+  agreeToTerms,
+  onTogglePassword,
+  onToggleConfirmPassword,
+  onToggleTerms,
+}: {
+  state: SignupFormState;
+  action: (payload: FormData) => void;
+  showPassword: boolean;
+  showConfirmPassword: boolean;
+  agreeToTerms: boolean;
+  onTogglePassword: () => void;
+  onToggleConfirmPassword: () => void;
+  onToggleTerms: (v: boolean) => void;
+}) {
+  return (
+    <div className='w-full max-w-md rounded-2xl bg-white p-8 shadow-md'>
+      <h2 className='mb-1 text-2xl font-bold text-gray-900'>Create Your Account</h2>
+      <p className='mb-6 text-sm text-gray-500'>
+        Get started with secure backup &amp; restore in minutes
+      </p>
+
+      <form action={action} className='flex flex-col gap-4'>
+        <div className='grid grid-cols-2 gap-3'>
+          <TextField
+            label='First Name'
+            name='firstName'
+            type='text'
+            placeholder='First name'
+            defaultValue={state.values.firstName}
+            error={state.fieldErrors.firstName}
+            rightIcon={<UserIcon className='h-4 w-4' />}
+          />
+          <TextField
+            label='Last Name'
+            name='lastName'
+            type='text'
+            placeholder='Last name'
+            defaultValue={state.values.lastName}
+            error={state.fieldErrors.lastName}
+            rightIcon={<UserIcon className='h-4 w-4' />}
+          />
+        </div>
+
+        <TextField
+          label='Email'
+          name='email'
+          type='email'
+          placeholder='Enter your email'
+          defaultValue={state.values.email}
+          error={state.fieldErrors.email}
+          rightIcon={<MailIcon className='h-4 w-4' />}
+        />
+
+        <div className='flex flex-col gap-1'>
+          <label className='text-sm font-medium text-gray-700'>Gender</label>
+          <select
+            name='gender'
+            defaultValue={state.values.gender}
+            className={[
+              'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900 outline-none transition',
+              'focus:border-blue-500 focus:ring-2 focus:ring-blue-100',
+              state.fieldErrors.gender ? 'border-red-400' : 'border-gray-300',
+            ].join(' ')}
+          >
+            <option value=''>Select gender</option>
+            <option value='MALE'>Male</option>
+            <option value='FEMALE'>Female</option>
+            <option value='OTHER'>Other</option>
+          </select>
+          {state.fieldErrors.gender && (
+            <p className='text-xs text-red-500'>{state.fieldErrors.gender}</p>
+          )}
+        </div>
+
+        <TextField
+          label='Password'
+          name='password'
+          type={showPassword ? 'text' : 'password'}
+          placeholder='Enter password'
+          defaultValue={state.values.password}
+          error={state.fieldErrors.password}
+          rightIcon={showPassword ? <EyeOffIcon className='h-4 w-4' /> : <EyeIcon className='h-4 w-4' />}
+          onRightIconClick={onTogglePassword}
+        />
+
+        <TextField
+          label='Confirm Password'
+          name='confirmPassword'
+          type={showConfirmPassword ? 'text' : 'password'}
+          placeholder='Re-enter password'
+          defaultValue={state.values.confirmPassword}
+          error={state.fieldErrors.confirmPassword}
+          rightIcon={showConfirmPassword ? <EyeOffIcon className='h-4 w-4' /> : <EyeIcon className='h-4 w-4' />}
+          onRightIconClick={onToggleConfirmPassword}
+        />
+
+        <label className='flex cursor-pointer items-center gap-2 text-sm text-gray-600 select-none'>
+          <input
+            type='checkbox'
+            checked={agreeToTerms}
+            onChange={(e) => onToggleTerms(e.target.checked)}
+            className='h-4 w-4 rounded border-gray-300 accent-blue-600'
+          />
+          <span>
+            I agree to the{' '}
+            <a href='#' className='text-blue-600 hover:underline'>Terms &amp; Conditions</a>
+            {' '}and{' '}
+            <a href='#' className='text-blue-600 hover:underline'>Privacy Policy</a>
+          </span>
+        </label>
+
+        <FormError message={state.submitError} />
+        <SignupSubmitButton />
+
+        <p className='mt-1 text-center text-sm text-gray-500'>
+          Already have an account?{' '}
+          <Link to='/login' className='font-semibold text-blue-600 hover:underline'>
+            Sign In
+          </Link>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+// ─── Step 2 card ─────────────────────────────────────────────────────────────
+
+function OtpCard({
+  email,
+  state,
+  action,
+  countdown,
+  resendError,
+  resendPending,
+  onResend,
+  onBack,
+}: {
+  email: string;
+  state: OtpFormState;
+  action: (payload: FormData) => void;
+  countdown: number;
+  resendError: string;
+  resendPending: boolean;
+  onResend: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className='w-full max-w-md rounded-2xl bg-white p-8 shadow-md'>
+      {/* Back */}
+      <button
+        type='button'
+        onClick={onBack}
+        className='mb-6 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition'
+      >
+        <ArrowLeftIcon className='h-4 w-4' />
+        Back to Sign Up
+      </button>
+
+      {/* Icon */}
+      <div className='mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50'>
+        <MailIcon className='h-7 w-7 text-blue-600' />
+      </div>
+
+      <h2 className='mb-1 text-2xl font-bold text-gray-900'>Verify Your Email</h2>
+      <p className='mb-2 text-sm text-gray-500'>
+        We've sent a 6-digit code to
+      </p>
+      <p className='mb-6 text-sm font-semibold text-gray-800'>{email}</p>
+
+      <form action={action} className='flex flex-col gap-5'>
+        <OtpInputs error={state.submitError} />
+
+        <FormError message={state.submitError} />
+        <OtpSubmitButton />
+
+        {/* Resend */}
+        <div className='text-center text-sm text-gray-500'>
+          {countdown > 0 ? (
+            <span>
+              Resend code in{' '}
+              <span className='font-semibold text-blue-600 tabular-nums'>
+                0:{String(countdown).padStart(2, '0')}
+              </span>
+            </span>
+          ) : (
+            <button
+              type='button'
+              onClick={onResend}
+              disabled={resendPending}
+              className='font-semibold text-blue-600 hover:underline disabled:opacity-50'
+            >
+              {resendPending ? 'Sending...' : "Didn't receive it? Resend"}
+            </button>
+          )}
+        </div>
+        {resendError && <p className='text-center text-xs text-red-500'>{resendError}</p>}
+      </form>
+    </div>
+  );
+}
+
+// ─── OTP 6-box input ─────────────────────────────────────────────────────────
+
+function OtpInputs({ error }: { error?: string }) {
+  const refs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
+
+  function handleChange(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const digit = e.target.value.replace(/\D/g, '').slice(-1);
+    e.target.value = digit;
+    if (digit && index < 5) refs.current[index + 1]?.focus();
+  }
+
+  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !e.currentTarget.value && index > 0) {
+      refs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) refs.current[index - 1]?.focus();
+    if (e.key === 'ArrowRight' && index < 5) refs.current[index + 1]?.focus();
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    e.preventDefault();
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    digits.split('').forEach((char, i) => {
+      if (refs.current[i]) refs.current[i]!.value = char;
+    });
+    const focusIndex = Math.min(digits.length, 5);
+    refs.current[focusIndex]?.focus();
+  }
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <label className='text-sm font-medium text-gray-700'>Enter OTP</label>
+      <div className='flex justify-between gap-2'>
+        {Array.from({ length: 6 }, (_, i) => (
+          <input
+            key={i}
+            ref={(el) => { refs.current[i] = el; }}
+            name={`otp-${i}`}
+            type='text'
+            inputMode='numeric'
+            maxLength={1}
+            autoFocus={i === 0}
+            onChange={(e) => handleChange(i, e)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            onPaste={i === 0 ? handlePaste : undefined}
+            className={[
+              'h-12 w-full rounded-lg border text-center text-lg font-semibold text-gray-900 outline-none transition',
+              'focus:border-blue-500 focus:ring-2 focus:ring-blue-100',
+              error ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white',
+            ].join(' ')}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Submit buttons ───────────────────────────────────────────────────────────
+
+function SignupSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type='submit'
+      disabled={pending}
+      className={[
+        'inline-flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-medium transition',
+        'focus:outline-none focus:ring-2 focus:ring-blue-300',
+        pending ? 'cursor-not-allowed bg-blue-300 text-white' : 'bg-blue-600 text-white hover:bg-blue-700',
+      ].join(' ')}
+    >
+      {pending && <Spinner />}
+      {pending ? 'Creating Account...' : 'Create Account'}
+    </button>
+  );
+}
+
+function OtpSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type='submit'
+      disabled={pending}
+      className={[
+        'inline-flex w-full items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-medium transition',
+        'focus:outline-none focus:ring-2 focus:ring-blue-300',
+        pending ? 'cursor-not-allowed bg-blue-300 text-white' : 'bg-blue-600 text-white hover:bg-blue-700',
+      ].join(' ')}
+    >
+      {pending && <Spinner />}
+      {pending ? 'Verifying...' : 'Verify Email'}
+    </button>
+  );
+}
+
+// ─── Shared small components ──────────────────────────────────────────────────
+
+function Spinner() {
+  return <span className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />;
 }
 
 function TrustBadge({ icon, label }: { icon: React.ReactNode; label: string }) {
@@ -167,6 +545,14 @@ function UserIcon({ className }: { className?: string }) {
     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className={className}>
       <path d='M20 21C20 17.6863 16.4183 15 12 15C7.58172 15 4 17.6863 4 21' strokeLinecap='round' />
       <circle cx='12' cy='8' r='4' />
+    </svg>
+  );
+}
+
+function ArrowLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className={className}>
+      <path d='M19 12H5M5 12L12 19M5 12L12 5' strokeLinecap='round' strokeLinejoin='round' />
     </svg>
   );
 }
