@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard';
+import Profile from '../pages/Profile';
 import Login from '../pages/auth/Login';
 import Signup from '../pages/auth/Signup';
 import ForgotPassword from '../pages/auth/ForgotPassword';
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <Dashboard /> },
+          { path: '/profile', element: <Profile /> },
           { path: '/backup-management', element: <BackupMannagement /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/platforms', element: <Platforms /> },

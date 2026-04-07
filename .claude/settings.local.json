@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/hp/.claude/projects/c--Users-hp-Documents-projects-data-vault-data-vault-dashboard/**)",
+      "Read(//c/Users/hp/.claude/projects/c--Users-hp-Documents-projects-data-vault-data-vault-dashboard/memory/**)"
+    ]
+  }
+}

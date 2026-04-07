@@ -10,3 +10,15 @@ export interface User {
   email: string
   name: string
 }
+
+export interface UserProfile {
+  id: string
+  firstName: string
+  lastName: string
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | string
+  contact: {
+    email: string
+  }
+  authProvider: string
+  createdAt?: string
+}
