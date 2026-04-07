@@ -2,19 +2,14 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { useUserService } from '../../services';
-import { useAuthService } from '../../services';
+import { useUserService, useAuthService } from '../../services';
 import FormError from '../../components/FormError';
 import TextField from '../../components/TextField';
-import EyeIcon from '../../assets/icons/eye.svg?react';
-import EyeOffIcon from '../../assets/icons/eye-off.svg?react';
 import type { UserProfile } from '../../types';
 import {
   validateUpdateProfile,
-  validateChangePassword,
   validateEmail,
   type UpdateProfileValues,
-  type ChangePasswordValues,
 } from '../../validation';
 
 const RESEND_SECONDS = 60;
@@ -25,7 +20,6 @@ export default function Profile() {
   const { refreshProfile } = useAuth();
   const { getMyProfile } = useUserService();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
 
   const { data: profile, isLoading, isError } = useQuery<UserProfile>({
     queryKey: ['myProfile'],
@@ -57,16 +51,14 @@ export default function Profile() {
     );
   }
 
-  const initials = profile
-    ? `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase()
-    : '??';
-
-  const fullName = profile ? `${profile.firstName} ${profile.lastName}` : '—';
-  const email = profile?.contact?.email ?? '—';
+  const initials = `${profile.firstName[0] ?? ''}${profile.lastName[0] ?? ''}`.toUpperCase();
+  const fullName = `${profile.firstName} ${profile.lastName}`;
+  const email = profile.contact?.email ?? '—';
 
   return (
     <div className='mx-auto flex max-w-3xl flex-col gap-6'>
-      {/* ── Header ── */}
+
+      {/* ── Header card ── */}
       <div className='flex items-center gap-5 rounded-xl border border-gray-100 bg-white p-6 shadow-sm'>
         <div className='flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white'>
           {initials}
@@ -81,33 +73,10 @@ export default function Profile() {
         </span>
       </div>
 
-      {/* ── Tabs ── */}
-      <div className='flex gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-sm'>
-        {(['profile', 'security'] as const).map((tab) => (
-          <button
-            key={tab}
-            type='button'
-            onClick={() => setActiveTab(tab)}
-            className={[
-              'flex-1 rounded-md py-2 text-sm font-medium transition',
-              activeTab === tab
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-800',
-            ].join(' ')}
-          >
-            {tab === 'profile' ? 'Profile Details' : 'Security'}
-          </button>
-        ))}
-      </div>
+      {/* ── Content ── */}
+      <PersonalInfoCard key={profile.id} profile={profile} onSaved={handleProfileSaved} />
+      <EmailCard key={`email-${profile.id}`} profile={profile} onSaved={handleProfileSaved} />
 
-      {activeTab === 'profile' ? (
-        <>
-          <PersonalInfoCard key={profile?.id} profile={profile} onSaved={handleProfileSaved} />
-          <EmailCard key={`email-${profile?.id}`} profile={profile} onSaved={handleProfileSaved} />
-        </>
-      ) : (
-        <ChangePasswordCard />
-      )}
     </div>
   );
 }
@@ -125,7 +94,7 @@ function PersonalInfoCard({
   profile,
   onSaved,
 }: {
-  profile: UserProfile | undefined;
+  profile: UserProfile;
   onSaved: () => Promise<void>;
 }) {
   const { updateProfile } = useUserService();
@@ -161,9 +130,9 @@ function PersonalInfoCard({
     submitError: '',
     success: false,
     values: {
-      firstName: profile?.firstName ?? '',
-      lastName: profile?.lastName ?? '',
-      gender: profile?.gender ?? '',
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      gender: profile.gender,
     },
   });
 
@@ -238,7 +207,7 @@ function EmailCard({
   profile,
   onSaved,
 }: {
-  profile: UserProfile | undefined;
+  profile: UserProfile;
   onSaved: () => Promise<void>;
 }) {
   const { updateProfile } = useUserService();
@@ -289,7 +258,6 @@ function EmailCard({
   }
 
   type OtpState = { submitError: string };
-  const otpInitial: OtpState = { submitError: '' };
 
   async function handleOtpAction(_prev: OtpState, formData: FormData): Promise<OtpState> {
     const otp = Array.from({ length: 6 }, (_, i) =>
@@ -311,7 +279,7 @@ function EmailCard({
     }
   }
 
-  const [otpState, otpAction] = useActionState(handleOtpAction, otpInitial);
+  const [otpState, otpAction] = useActionState(handleOtpAction, { submitError: '' });
 
   function handleCancel() {
     setStep('idle');
@@ -319,7 +287,7 @@ function EmailCard({
     setEmailError('');
   }
 
-  const currentEmail = profile?.contact?.email ?? '—';
+  const currentEmail = profile.contact?.email ?? '—';
 
   return (
     <div className='rounded-xl border border-gray-100 bg-white p-6 shadow-sm'>
@@ -391,12 +359,10 @@ function EmailCard({
 
       {step === 'otp' && (
         <div className='flex flex-col gap-4'>
-          <div>
-            <p className='text-sm text-gray-600'>
-              We sent a 6-digit code to{' '}
-              <span className='font-semibold text-gray-900'>{newEmail}</span>
-            </p>
-          </div>
+          <p className='text-sm text-gray-600'>
+            We sent a 6-digit code to{' '}
+            <span className='font-semibold text-gray-900'>{newEmail}</span>
+          </p>
 
           <form action={otpAction} className='flex flex-col gap-4'>
             <OtpInputs error={otpState.submitError} />
@@ -436,103 +402,6 @@ function EmailCard({
           </form>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Change Password Card ─────────────────────────────────────────────────────
-
-type PasswordFormState = {
-  fieldErrors: Partial<Record<keyof ChangePasswordValues, string>>;
-  submitError: string;
-  success: boolean;
-};
-
-function ChangePasswordCard() {
-  const { changePassword } = useUserService();
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  async function action(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
-    const values: ChangePasswordValues = {
-      oldPassword: String(formData.get('oldPassword') ?? '').trim(),
-      newPassword: String(formData.get('newPassword') ?? '').trim(),
-      confirmNewPassword: String(formData.get('confirmNewPassword') ?? '').trim(),
-    };
-
-    const fieldErrors = await validateChangePassword(values);
-    if (Object.keys(fieldErrors).length > 0) {
-      return { fieldErrors, submitError: '', success: false };
-    }
-
-    try {
-      await changePassword({ oldPassword: values.oldPassword, newPassword: values.newPassword });
-      return { fieldErrors: {}, submitError: '', success: true };
-    } catch (error) {
-      return {
-        fieldErrors: {},
-        submitError: error instanceof Error ? error.message : 'Failed to change password',
-        success: false,
-      };
-    }
-  }
-
-  const [state, submitAction] = useActionState(action, {
-    fieldErrors: {},
-    submitError: '',
-    success: false,
-  });
-
-  return (
-    <div className='rounded-xl border border-gray-100 bg-white p-6 shadow-sm'>
-      <div className='mb-5 border-b border-gray-100 pb-4'>
-        <h2 className='text-base font-semibold text-gray-900'>Change Password</h2>
-        <p className='mt-0.5 text-sm text-gray-500'>
-          Use a strong password that you don't use elsewhere
-        </p>
-      </div>
-
-      <form action={submitAction} className='flex flex-col gap-4 max-w-md'>
-        <TextField
-          label='Current Password'
-          name='oldPassword'
-          type={showOld ? 'text' : 'password'}
-          placeholder='Enter current password'
-          error={state.fieldErrors.oldPassword}
-          rightIcon={showOld ? <EyeOffIcon className='h-4 w-4' /> : <EyeIcon className='h-4 w-4' />}
-          onRightIconClick={() => setShowOld((v) => !v)}
-        />
-        <TextField
-          label='New Password'
-          name='newPassword'
-          type={showNew ? 'text' : 'password'}
-          placeholder='Enter new password'
-          error={state.fieldErrors.newPassword}
-          rightIcon={showNew ? <EyeOffIcon className='h-4 w-4' /> : <EyeIcon className='h-4 w-4' />}
-          onRightIconClick={() => setShowNew((v) => !v)}
-        />
-        <TextField
-          label='Confirm New Password'
-          name='confirmNewPassword'
-          type={showConfirm ? 'text' : 'password'}
-          placeholder='Re-enter new password'
-          error={state.fieldErrors.confirmNewPassword}
-          rightIcon={showConfirm ? <EyeOffIcon className='h-4 w-4' /> : <EyeIcon className='h-4 w-4' />}
-          onRightIconClick={() => setShowConfirm((v) => !v)}
-        />
-
-        {state.success && (
-          <p className='flex items-center gap-1.5 text-sm font-medium text-green-600'>
-            <CheckIcon className='h-4 w-4' /> Password changed successfully
-          </p>
-        )}
-        <FormError message={state.submitError} />
-
-        <div className='flex justify-end'>
-          <SaveButton label='Change Password' pendingLabel='Changing...' />
-        </div>
-      </form>
     </div>
   );
 }
@@ -586,7 +455,7 @@ function OtpInputs({ error }: { error?: string }) {
   );
 }
 
-// ─── Shared small components ──────────────────────────────────────────────────
+// ─── Shared components ────────────────────────────────────────────────────────
 
 function SaveButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();

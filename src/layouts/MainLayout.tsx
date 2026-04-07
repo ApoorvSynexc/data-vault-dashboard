@@ -149,41 +149,39 @@ export default function MainLayout() {
             </button>
 
             {isUserMenuOpen && (
-              <div className='absolute right-0 top-11 z-20 w-40 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg'>
+              <div className='absolute right-0 top-11 z-20 w-48 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg'>
                 <Link
                   to='/profile'
                   onClick={() => setIsUserMenuOpen(false)}
                   className='flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50'
                 >
-                  <svg
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='1.8'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    className='h-4 w-4 shrink-0'
-                  >
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4 shrink-0'>
                     <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' />
                     <circle cx='12' cy='7' r='4' />
                   </svg>
                   My Profile
                 </Link>
 
+                <Link
+                  to='/change-password'
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className='flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50'
+                >
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4 shrink-0'>
+                    <rect x='3' y='11' width='18' height='11' rx='2' ry='2' />
+                    <path d='M7 11V7a5 5 0 0 1 10 0v4' />
+                  </svg>
+                  Change Password
+                </Link>
+
+                <div className='my-1 border-t border-gray-100' />
+
                 <button
                   type='button'
                   onClick={handleLogout}
                   className='flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50'
                 >
-                  <svg
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='1.8'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    className='h-4 w-4 shrink-0'
-                  >
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4 shrink-0'>
                     <path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' />
                     <polyline points='16 17 21 12 16 7' />
                     <line x1='21' y1='12' x2='9' y2='12' />
