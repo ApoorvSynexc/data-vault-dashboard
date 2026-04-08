@@ -477,10 +477,28 @@ export default function BackupDetail() {
 
       {/* Job History */}
       <section className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-        <div className='border-b border-gray-100 px-5 py-4'>
+        <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4'>
           <Typography as='h3' variant='sectionTitle' color='secondary'>
             Job History
           </Typography>
+          <button
+            type='button'
+            onClick={() => jobsQuery.refetch()}
+            disabled={jobsQuery.isFetching}
+            className='inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50'
+          >
+            <svg
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              className={['h-3.5 w-3.5', jobsQuery.isFetching ? 'animate-spin' : ''].join(' ')}
+            >
+              <polyline points='23 4 23 10 17 10' />
+              <path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10' />
+            </svg>
+            {jobsQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
 
         {jobsQuery.isLoading ? (
