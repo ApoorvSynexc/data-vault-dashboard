@@ -347,7 +347,6 @@ export default function BackupDetail() {
   const dataSize = detail?.sizeInBytes
     ? `${(detail.sizeInBytes / (1024 * 1024)).toFixed(2)} MB`
     : '--';
-  const crmId: string = detail?.crmId ?? '--';
   const description: string = detail?.description ?? '';
 
   const jobsResponse = jobsQuery.data as any;

@@ -171,7 +171,7 @@ export default function Platforms() {
   const reconnectPlatformMutation = useMutation({
     mutationFn: (crmId: string) => reconnectPlatform(crmId),
     onSuccess: (response) => {
-      const redirectUrl = typeof response === 'string' ? response : response.redirectUrl;
+      const redirectUrl = typeof response === 'string' ? response : response?.redirectUrl;
 
       if (!redirectUrl) {
         setError('Connect URL was not returned by the server.');
