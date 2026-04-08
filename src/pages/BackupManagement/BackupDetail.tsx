@@ -106,6 +106,50 @@ function ScheduleBadge({ schedule }: { schedule: ScheduleType }) {
   );
 }
 
+function JobTypeBadge({ jobType }: { jobType: string }) {
+  const isRealtime = jobType === 'REALTIME';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+        isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'
+      }`}
+    >
+      {isRealtime ? (
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+          <circle cx='12' cy='12' r='10' />
+          <circle cx='12' cy='12' r='3' fill='currentColor' stroke='none' />
+        </svg>
+      ) : (
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+          <rect x='3' y='3' width='18' height='18' rx='3' />
+          <polyline points='8 12 11 15 16 9' />
+        </svg>
+      )}
+      {isRealtime ? 'Realtime' : 'Bulk'}
+    </span>
+  );
+}
+
+function OperationBadge({ operation }: { operation: string }) {
+  const styles: Record<string, string> = {
+    UPDATE: 'bg-amber-100 text-amber-700',
+    INSERT: 'bg-emerald-100 text-emerald-700',
+    DELETE: 'bg-red-100 text-red-700',
+    UPSERT: 'bg-blue-100 text-blue-700',
+  };
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[operation] ?? 'bg-gray-100 text-gray-600'}`}>
+      {capitalize(operation)}
+    </span>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${bytes} B`;
+}
+
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className='flex items-center justify-between border-b border-gray-100 py-3 last:border-0'>
@@ -133,9 +177,67 @@ const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
     ),
   },
   {
+    key: 'jobType',
+    header: 'Job Type',
+    render: (row) => <JobTypeBadge jobType={row.jobType} />,
+  },
+  {
     key: 'status',
     header: 'Status',
     render: (row) => <JobStatusBadge status={row.status} />,
+  },
+  {
+    key: 'object',
+    header: 'Object(s)',
+    className: 'text-xs text-gray-500',
+    render: (row) => {
+      if (row.jobType === 'REALTIME') return row.objectApiName ?? '--';
+      return row.object?.length ? `${row.object.length} object${row.object.length !== 1 ? 's' : ''}` : '--';
+    },
+  },
+  {
+    key: 'operation',
+    header: 'Operation',
+    render: (row) => {
+      if (row.jobType === 'REALTIME') return row.operation ? <OperationBadge operation={row.operation} /> : '--';
+      return <span className='text-xs text-gray-400'>--</span>;
+    },
+  },
+  {
+    key: 'records',
+    header: 'Records',
+    className: 'text-xs text-gray-500',
+    render: (row) => {
+      if (row.jobType === 'REALTIME') return row.recordCount != null ? row.recordCount.toLocaleString() : '--';
+      if (!row.object?.length) return '--';
+      const completed = row.object.reduce((s, o) => s + (o.completedRecordCount ?? 0), 0);
+      const total = row.object.reduce((s, o) => s + (o.totalRecordCount ?? 0), 0);
+      return `${completed.toLocaleString()} / ${total.toLocaleString()}`;
+    },
+  },
+  {
+    key: 'size',
+    header: 'Size',
+    className: 'text-xs text-gray-500',
+    render: (row) => {
+      const bytes =
+        row.jobType === 'REALTIME'
+          ? (row.sizeInBytes ?? 0)
+          : (row.object?.reduce((s, o) => s + (o.sizeInBytes ?? 0), 0) ?? 0);
+      return bytes ? formatBytes(bytes) : '--';
+    },
+  },
+  {
+    key: 'schemaChanged',
+    header: 'Schema Changed',
+    render: (row) => {
+      if (row.jobType !== 'REALTIME') return <span className='text-xs text-gray-400'>--</span>;
+      return row.schemaChanged ? (
+        <span className='inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-700'>Yes</span>
+      ) : (
+        <span className='inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-500'>No</span>
+      );
+    },
   },
   {
     key: 'startedAt',
@@ -154,31 +256,6 @@ const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
     header: 'Destination',
     className: 'text-xs text-gray-500',
     render: (row) => row.destination?.type ?? '--',
-  },
-  {
-    key: 'totalObjects',
-    header: 'Total Objects',
-    className: 'text-xs text-gray-500',
-    render: (row) => row.object?.length ?? '--',
-  },
-  {
-    key: 'completedObjects',
-    header: 'Completed Objects',
-    className: 'text-xs text-gray-500',
-    render: (row) =>
-      row.object ? row.object.filter((o) => o.status === 'COMPLETED').length : '--',
-  },
-  {
-    key: 'totalSize',
-    header: 'Total Size',
-    className: 'text-xs text-gray-500',
-    render: (row) => {
-      const total = row.object?.reduce((sum, o) => sum + (o.sizeInBytes ?? 0), 0) ?? 0;
-      if (!total) return '--';
-      return total >= 1024 * 1024
-        ? `${(total / (1024 * 1024)).toFixed(2)} MB`
-        : `${(total / 1024).toFixed(2)} KB`;
-    },
   },
 ];
 
@@ -385,7 +462,7 @@ export default function BackupDetail() {
             rows={jobRows}
             getRowKey={(row) => row.backupJobId}
             rowClassName='border-t border-gray-100'
-            minWidthClassName='min-w-[800px]'
+            minWidthClassName='min-w-[1100px]'
             pagination={{
               currentPage: jobPage,
               pageSize: jobsMeta.limit ?? 20,

@@ -91,14 +91,23 @@ export type BackupJobItem = {
   backupJobId: string;
   backupConfigId: string;
   userId: string;
+  jobType: 'BULK' | 'REALTIME' | string;
   status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string;
   startedAt?: string;
   completedAt?: string;
   lastUpdatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
-  object?: BackupJobObject[];
   destination?: { type: string };
+  // BULK-specific
+  object?: BackupJobObject[];
+  // REALTIME-specific
+  objectApiName?: string;
+  operation?: string;
+  recordCount?: number;
+  sizeInBytes?: number;
+  schemaChanged?: boolean;
+  s3Path?: string;
 };
 
 export type BackupJobListApiResponse = {
