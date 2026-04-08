@@ -95,6 +95,7 @@ export default function AddBackupModal({ isOpen, onClose, onSuccess }: AddBackup
   const createBackupMutation = useMutation({
     mutationFn: () => backupConfigService.createBackupConfig(buildPayload()),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
       onSuccess?.();
       handleClose();
     },
