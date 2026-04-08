@@ -10,6 +10,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
   list: '/v1/backup-config/list',
   detail: '/v1/backup-config',
+  delete: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
@@ -210,5 +211,7 @@ export function useBackupConfigService() {
     },
     resumeBackupJob: (backupJobId: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.resume, { query: { backupJobId } }),
+    deleteBackupConfig: (backupConfigId: string) =>
+      api.delete<void>(BACKUP_CONFIG_ENDPOINTS.delete, { query: { backupConfigId } }),
   };
 }

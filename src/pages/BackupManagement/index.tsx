@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
+import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
@@ -247,12 +248,6 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   );
 }
 
-const ROW_ACTIONS: DropdownMenuItem[] = [
-  { label: 'Run Now' },
-  { label: 'Pause' },
-  { label: 'Manage' },
-  { label: 'Delete', danger: true },
-];
 
 type FilterState = {
   backupType: BackupType | 'All';
@@ -314,6 +309,7 @@ function FilterBar({
 export default function BackupManagement() {
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
@@ -321,6 +317,14 @@ export default function BackupManagement() {
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
   const currentCursor = cursorMap[currentPage] ?? null;
+
+  const deleteMutation = useMutation({
+    mutationFn: (backupConfigId: string) => backupConfigService.deleteBackupConfig(backupConfigId),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+    },
+  });
 
   const backupQuery = useQuery({
     queryKey: ['backup-config-list', currentCursor],
@@ -427,7 +431,15 @@ export default function BackupManagement() {
               <circle cx='12' cy='12' r='3' />
             </svg>
           </Link>
-          <ActionDropdown key={row.id} items={ROW_ACTIONS} />
+          <ActionDropdown
+            key={row.id}
+            items={[
+              { label: 'Run Now' },
+              { label: 'Pause' },
+              { label: 'Manage' },
+              { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
+            ]}
+          />
         </div>
       ),
     },
@@ -506,6 +518,16 @@ export default function BackupManagement() {
         isOpen={isCreatingBackup}
         onClose={() => setIsCreatingBackup(false)}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ['backup-config-list'] })}
+      />
+
+      <WarningDialog
+        isOpen={!!deleteTarget}
+        title='Delete Backup'
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone and all associated job history will be permanently removed.`}
+        confirmLabel='Delete'
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(deleteTarget!.id)}
+        onCancel={() => { setDeleteTarget(null); deleteMutation.reset(); }}
       />
     </div>
   );
