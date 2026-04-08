@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -281,13 +281,17 @@ export default function BackupDetail() {
     enabled: !!slug,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
-    onSuccess: (res: any) => {
-      const nextCursor = res?.data?.meta?.nextCursor ?? null;
-      if (nextCursor && !Object.values(jobCursorMap).includes(nextCursor)) {
-        setJobCursorMap((prev) => ({ ...prev, [jobPage + 1]: nextCursor }));
-      }
-    },
-  } as any);
+  });
+
+  useEffect(() => {
+    const res = jobsQuery.data as any;
+    const payload = res?.data;
+    const meta = Array.isArray(payload) ? res?.meta : payload?.meta;
+    const nextCursor = meta?.nextCursor ?? null;
+    if (nextCursor && jobCursorMap[jobPage + 1] === undefined) {
+      setJobCursorMap((prev) => ({ ...prev, [jobPage + 1]: nextCursor }));
+    }
+  }, [jobsQuery.data]);
 
   const detail = (detailQuery.data as any)?.data as any;
 
@@ -305,11 +309,13 @@ export default function BackupDetail() {
   const crmId: string = detail?.crmId ?? '--';
   const description: string = detail?.description ?? '';
 
-  const jobsData = (jobsQuery.data as any)?.data;
-  const jobRows: BackupJobItem[] = Array.isArray(jobsData)
-    ? jobsData
-    : (jobsData?.data ?? []);
-  const jobsMeta = jobsData?.meta ?? { limit: 20, totalRecords: jobRows.length, totalPages: 1 };
+  const jobsResponse = jobsQuery.data as any;
+  const jobsPayload = jobsResponse?.data;
+  const jobRows: BackupJobItem[] = Array.isArray(jobsPayload)
+    ? jobsPayload
+    : (jobsPayload?.data ?? []);
+  const jobsMeta = (Array.isArray(jobsPayload) ? jobsResponse?.meta : jobsPayload?.meta)
+    ?? { limit: 20, totalRecords: jobRows.length, totalPages: 1 };
 
   return (
     <div className='flex w-full min-w-0 flex-col gap-5'>
@@ -469,14 +475,13 @@ export default function BackupDetail() {
               totalRecords: jobsMeta.totalRecords ?? jobRows.length,
               onPageChange: (nextPage) => {
                 if (nextPage <= 0 || nextPage === jobPage) return;
-                const nextCursor = jobCursorMap[nextPage];
-                if (nextCursor !== undefined) {
+                // Going back: cursor already stored
+                if (nextPage < jobPage) {
                   setJobPage(nextPage);
                   return;
                 }
-                const foundNext = jobsMeta.nextCursor;
-                if (foundNext && nextPage === jobPage + 1) {
-                  setJobCursorMap((prev) => ({ ...prev, [nextPage]: foundNext }));
+                // Going forward: only if cursor for next page is known
+                if (jobCursorMap[nextPage] !== undefined) {
                   setJobPage(nextPage);
                 }
               },
