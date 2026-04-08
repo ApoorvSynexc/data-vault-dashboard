@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useBackupConfigService,
   type BackupJobItem,
@@ -165,107 +165,148 @@ function SkeletonBlock({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-gray-100 ${className ?? 'h-4 w-32'}`} />;
 }
 
-const JOB_COLUMNS: TableColumn<BackupJobItem>[] = [
-  {
-    key: 'serial',
-    header: '#',
-    headerClassName: 'w-10',
-    render: (_row, index) => (
-      <Typography variant='bodySm' color='muted'>
-        {index + 1}
-      </Typography>
-    ),
-  },
-  {
-    key: 'jobType',
-    header: 'Job Type',
-    render: (row) => <JobTypeBadge jobType={row.jobType} />,
-  },
-  {
-    key: 'status',
-    header: 'Status',
-    render: (row) => <JobStatusBadge status={row.status} />,
-  },
-  {
-    key: 'object',
-    header: 'Object(s)',
-    className: 'text-xs text-gray-500',
-    render: (row) => {
-      if (row.jobType === 'REALTIME') return row.objectApiName ?? '--';
-      return row.object?.length ? `${row.object.length} object${row.object.length !== 1 ? 's' : ''}` : '--';
+function buildJobColumns(
+  onResume: (jobId: string) => void,
+  resumingJobId: string | null,
+): TableColumn<BackupJobItem>[] {
+  return [
+    {
+      key: 'serial',
+      header: '#',
+      headerClassName: 'w-10',
+      render: (_row, index) => (
+        <Typography variant='bodySm' color='muted'>
+          {index + 1}
+        </Typography>
+      ),
     },
-  },
-  {
-    key: 'operation',
-    header: 'Operation',
-    render: (row) => {
-      if (row.jobType === 'REALTIME') return row.operation ? <OperationBadge operation={row.operation} /> : '--';
-      return <span className='text-xs text-gray-400'>--</span>;
+    {
+      key: 'jobType',
+      header: 'Job Type',
+      render: (row) => <JobTypeBadge jobType={row.jobType} />,
     },
-  },
-  {
-    key: 'records',
-    header: 'Records',
-    className: 'text-xs text-gray-500',
-    render: (row) => {
-      if (row.jobType === 'REALTIME') return row.recordCount != null ? row.recordCount.toLocaleString() : '--';
-      if (!row.object?.length) return '--';
-      const completed = row.object.reduce((s, o) => s + (o.completedRecordCount ?? 0), 0);
-      const total = row.object.reduce((s, o) => s + (o.totalRecordCount ?? 0), 0);
-      return `${completed.toLocaleString()} / ${total.toLocaleString()}`;
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <JobStatusBadge status={row.status} />,
     },
-  },
-  {
-    key: 'size',
-    header: 'Size',
-    className: 'text-xs text-gray-500',
-    render: (row) => {
-      const bytes =
-        row.jobType === 'REALTIME'
-          ? (row.sizeInBytes ?? 0)
-          : (row.object?.reduce((s, o) => s + (o.sizeInBytes ?? 0), 0) ?? 0);
-      return bytes ? formatBytes(bytes) : '--';
+    {
+      key: 'object',
+      header: 'Object(s)',
+      className: 'text-xs text-gray-500',
+      render: (row) => {
+        if (row.jobType === 'REALTIME') return row.objectApiName ?? '--';
+        return row.object?.length ? `${row.object.length} object${row.object.length !== 1 ? 's' : ''}` : '--';
+      },
     },
-  },
-  {
-    key: 'schemaChanged',
-    header: 'Schema Changed',
-    render: (row) => {
-      if (row.jobType !== 'REALTIME') return <span className='text-xs text-gray-400'>--</span>;
-      return row.schemaChanged ? (
-        <span className='inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-700'>Yes</span>
-      ) : (
-        <span className='inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-500'>No</span>
-      );
+    {
+      key: 'operation',
+      header: 'Operation',
+      render: (row) => {
+        if (row.jobType === 'REALTIME') return row.operation ? <OperationBadge operation={row.operation} /> : '--';
+        return <span className='text-xs text-gray-400'>--</span>;
+      },
     },
-  },
-  {
-    key: 'startedAt',
-    header: 'Started At',
-    className: 'text-xs text-gray-500',
-    render: (row) => (row.startedAt ? new Date(row.startedAt).toLocaleString() : '--'),
-  },
-  {
-    key: 'completedAt',
-    header: 'Completed At',
-    className: 'text-xs text-gray-500',
-    render: (row) => (row.completedAt ? new Date(row.completedAt).toLocaleString() : '--'),
-  },
-  {
-    key: 'destination',
-    header: 'Destination',
-    className: 'text-xs text-gray-500',
-    render: (row) => row.destination?.type ?? '--',
-  },
-];
+    {
+      key: 'records',
+      header: 'Records',
+      className: 'text-xs text-gray-500',
+      render: (row) => {
+        if (row.jobType === 'REALTIME') return row.recordCount != null ? row.recordCount.toLocaleString() : '--';
+        if (!row.object?.length) return '--';
+        const completed = row.object.reduce((s, o) => s + (o.completedRecordCount ?? 0), 0);
+        const total = row.object.reduce((s, o) => s + (o.totalRecordCount ?? 0), 0);
+        return `${completed.toLocaleString()} / ${total.toLocaleString()}`;
+      },
+    },
+    {
+      key: 'size',
+      header: 'Size',
+      className: 'text-xs text-gray-500',
+      render: (row) => {
+        const bytes =
+          row.jobType === 'REALTIME'
+            ? (row.sizeInBytes ?? 0)
+            : (row.object?.reduce((s, o) => s + (o.sizeInBytes ?? 0), 0) ?? 0);
+        return bytes ? formatBytes(bytes) : '--';
+      },
+    },
+    {
+      key: 'schemaChanged',
+      header: 'Schema Changed',
+      render: (row) => {
+        if (row.jobType !== 'REALTIME') return <span className='text-xs text-gray-400'>--</span>;
+        return row.schemaChanged ? (
+          <span className='inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-700'>Yes</span>
+        ) : (
+          <span className='inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-500'>No</span>
+        );
+      },
+    },
+    {
+      key: 'startedAt',
+      header: 'Started At',
+      className: 'text-xs text-gray-500',
+      render: (row) => (row.startedAt ? new Date(row.startedAt).toLocaleString() : '--'),
+    },
+    {
+      key: 'completedAt',
+      header: 'Completed At',
+      className: 'text-xs text-gray-500',
+      render: (row) => (row.completedAt ? new Date(row.completedAt).toLocaleString() : '--'),
+    },
+    {
+      key: 'destination',
+      header: 'Destination',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.destination?.type ?? '--',
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (row) => {
+        if (row.status !== 'FAILED') return null;
+        const isResuming = resumingJobId === row.backupJobId;
+        return (
+          <button
+            type='button'
+            disabled={isResuming}
+            onClick={() => onResume(row.backupJobId)}
+            className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
+          >
+            {isResuming ? (
+              <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
+            ) : (
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+                <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
+              </svg>
+            )}
+            {isResuming ? 'Resuming…' : 'Resume'}
+          </button>
+        );
+      },
+    },
+  ];
+}
 
 export default function BackupDetail() {
   const { slug } = useParams<{ slug: string }>();
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
 
   const [jobPage, setJobPage] = useState(1);
   const [jobCursorMap, setJobCursorMap] = useState<Record<number, string | null>>({ 1: null });
+  const [resumingJobId, setResumingJobId] = useState<string | null>(null);
   const currentJobCursor = jobCursorMap[jobPage] ?? null;
+
+  const resumeMutation = useMutation({
+    mutationFn: (backupJobId: string) => backupConfigService.resumeBackupJob(backupJobId),
+    onMutate: (backupJobId) => setResumingJobId(backupJobId),
+    onSettled: () => {
+      setResumingJobId(null);
+      queryClient.invalidateQueries({ queryKey: ['backup-jobs', slug] });
+    },
+  });
 
   const detailQuery = useQuery({
     queryKey: ['backup-config-detail', slug],
@@ -464,7 +505,7 @@ export default function BackupDetail() {
           </div>
         ) : (
           <Table
-            columns={JOB_COLUMNS}
+            columns={buildJobColumns((jobId) => resumeMutation.mutate(jobId), resumingJobId)}
             rows={jobRows}
             getRowKey={(row) => row.backupJobId}
             rowClassName='border-t border-gray-100'

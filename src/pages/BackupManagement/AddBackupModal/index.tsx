@@ -62,7 +62,7 @@ function fieldClass(error?: string, isSelect = false) {
     : `${base} border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100`;
 }
 
-export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps) {
+export default function AddBackupModal({ isOpen, onClose, onSuccess }: AddBackupModalProps) {
   const platforms = useAppSelector((state) => state.platforms.list);
   const defaultCrmId = platforms.find((item) => item.status === 'ACTIVE')?.crmId ?? platforms[0]?.crmId ?? '';
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
@@ -94,7 +94,10 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
 
   const createBackupMutation = useMutation({
     mutationFn: () => backupConfigService.createBackupConfig(buildPayload()),
-    onSuccess: handleClose,
+    onSuccess: () => {
+      onSuccess?.();
+      handleClose();
+    },
   });
   const [destination, setDestination] = useState<DestinationType>('S3');
   const [s3Config, setS3Config] = useState<S3Config>({ accessKeyId: '', secretAccessKey: '', bucketName: '', region: '' });
@@ -118,18 +121,6 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
   const isObjectListLoading = objectListQuery.isLoading;
   const selectedObjectIdSet = useMemo(() => new Set(selectedObjectIds), [selectedObjectIds]);
 
-  useEffect(() => {
-    if (!objectListQuery.data) {
-      return;
-    }
-
-    // setSelectedObjectIds((current) => {
-    //   const selectableRows = objectListQuery.data.filter((row) => !row.isBackedUp);
-    //   const validIds = new Set(selectableRows.map((row) => row.id));
-    //   const nextSelectedIds = current.filter((id) => validIds.has(id));
-    //   return nextSelectedIds.length > 0 ? nextSelectedIds : selectableRows.slice(0, 2).map((row) => row.id);
-    // });
-  }, [objectListQuery.data]);
 
   const filteredRows = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -137,9 +128,6 @@ export default function AddBackupModal({ isOpen, onClose }: AddBackupModalProps)
     if (!query) return modeRows;
     return modeRows.filter((row) => row.name.toLowerCase().includes(query));
   }, [dataScopeRows, deferredSearch, scheduleMode]);
-
-  console.log({filteredRows});
-  
 
   const selectableFilteredRows = useMemo(() => filteredRows.filter((row) => !row.isBackedUp), [filteredRows]);
   const visibleRowIdSet = useMemo(() => new Set(selectableFilteredRows.map((row) => row.id)), [selectableFilteredRows]);

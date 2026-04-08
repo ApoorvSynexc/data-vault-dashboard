@@ -13,6 +13,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
+  resume: '/v1/backup-job/resume',
 } as const;
 
 type BackupConfigItem = {
@@ -207,5 +208,7 @@ export function useBackupConfigService() {
 
       return response;
     },
+    resumeBackupJob: (backupJobId: string) =>
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.resume, { query: { backupJobId } }),
   };
 }

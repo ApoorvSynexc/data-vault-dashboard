@@ -53,6 +53,7 @@ export type ObjectFilterConfig = {
 export type AddBackupModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 };
 
 // ── API Payload ──────────────────────────────────────────────────────────────

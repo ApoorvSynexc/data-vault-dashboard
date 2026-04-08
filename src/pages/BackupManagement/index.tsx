@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
@@ -319,6 +319,7 @@ export default function BackupManagement() {
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
 
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
   const currentCursor = cursorMap[currentPage] ?? null;
 
   const backupQuery = useQuery({
@@ -501,7 +502,11 @@ export default function BackupManagement() {
         )}
       </Panel>
 
-      <AddBackupModal isOpen={isCreatingBackup} onClose={() => setIsCreatingBackup(false)} />
+      <AddBackupModal
+        isOpen={isCreatingBackup}
+        onClose={() => setIsCreatingBackup(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['backup-config-list'] })}
+      />
     </div>
   );
 }
