@@ -42,6 +42,9 @@ export default function Signup() {
 
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [signedUpEmail, setSignedUpEmail] = useState('');
+  const pendingValuesRef = useRef<SignupForm | null>(null);
+
+  const [gender, setGender] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -57,7 +60,7 @@ export default function Signup() {
     return () => clearTimeout(id);
   }, [countdown]);
 
-  // ── Step 1: Signup ──
+  // ── Step 1: Validate + send OTP ──
   async function handleSignupSubmit(
     _prev: SignupFormState,
     formData: FormData,
@@ -81,7 +84,8 @@ export default function Signup() {
     }
 
     try {
-      await signup(values);
+      await sendOtp({ channel: 'EMAIL', contact: values.email, otpType: 'SIGNUP' });
+      pendingValuesRef.current = values;
       setSignedUpEmail(values.email);
       setCountdown(RESEND_SECONDS);
       setStep('otp');
@@ -89,13 +93,13 @@ export default function Signup() {
     } catch (error) {
       return {
         fieldErrors: {},
-        submitError: error instanceof Error ? error.message : 'Unable to create account',
+        submitError: error instanceof Error ? error.message : 'Unable to send verification code',
         values,
       };
     }
   }
 
-  // ── Step 2: OTP verify ──
+  // ── Step 2: Verify OTP then auto-create account ──
   async function handleOtpSubmit(
     _prev: OtpFormState,
     formData: FormData,
@@ -110,10 +114,16 @@ export default function Signup() {
 
     try {
       await verifyOtp({ channel: 'EMAIL', contact: signedUpEmail, otp, otpType: 'SIGNUP' });
+    } catch (error) {
+      return { submitError: error instanceof Error ? error.message : 'Invalid or expired OTP' };
+    }
+
+    try {
+      await signup(pendingValuesRef.current!);
       navigate('/login');
       return { submitError: '' };
     } catch (error) {
-      return { submitError: error instanceof Error ? error.message : 'Invalid or expired OTP' };
+      return { submitError: error instanceof Error ? error.message : 'Unable to create account. Please try again.' };
     }
   }
 
@@ -130,7 +140,7 @@ export default function Signup() {
     }
   }
 
-  const [signupState, signupAction] = useActionState(handleSignupSubmit, signupInitial);
+  const [signupState, signupAction, signupPending] = useActionState(handleSignupSubmit, signupInitial);
   const [otpState, otpAction] = useActionState(handleOtpSubmit, otpInitial);
 
   return (
@@ -152,6 +162,9 @@ export default function Signup() {
           <SignupFormCard
             state={signupState}
             action={signupAction}
+            pending={signupPending}
+            gender={gender}
+            onGenderChange={setGender}
             showPassword={showPassword}
             showConfirmPassword={showConfirmPassword}
             agreeToTerms={agreeToTerms}
@@ -203,6 +216,9 @@ export default function Signup() {
 function SignupFormCard({
   state,
   action,
+  pending,
+  gender,
+  onGenderChange,
   showPassword,
   showConfirmPassword,
   agreeToTerms,
@@ -212,6 +228,9 @@ function SignupFormCard({
 }: {
   state: SignupFormState;
   action: (payload: FormData) => void;
+  pending: boolean;
+  gender: string;
+  onGenderChange: (v: string) => void;
   showPassword: boolean;
   showConfirmPassword: boolean;
   agreeToTerms: boolean;
@@ -226,7 +245,10 @@ function SignupFormCard({
         Get started with secure backup &amp; restore in minutes
       </p>
 
-      <form action={action} className='flex flex-col gap-4'>
+      <form
+        onSubmit={(e) => { e.preventDefault(); action(new FormData(e.currentTarget)); }}
+        className='flex flex-col gap-4'
+      >
         <div className='grid grid-cols-2 gap-3'>
           <TextField
             label='First Name'
@@ -262,7 +284,8 @@ function SignupFormCard({
           <label className='text-sm font-medium text-gray-700'>Gender</label>
           <select
             name='gender'
-            defaultValue={state.values.gender}
+            value={gender}
+            onChange={(e) => onGenderChange(e.target.value)}
             className={[
               'w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900 outline-none transition',
               'focus:border-blue-500 focus:ring-2 focus:ring-blue-100',
@@ -317,7 +340,7 @@ function SignupFormCard({
         </label>
 
         <FormError message={state.submitError} />
-        <SignupSubmitButton />
+        <SignupSubmitButton pending={pending} />
 
         <p className='mt-1 text-center text-sm text-gray-500'>
           Already have an account?{' '}
@@ -465,8 +488,7 @@ function OtpInputs({ error }: { error?: string }) {
 
 // ─── Submit buttons ───────────────────────────────────────────────────────────
 
-function SignupSubmitButton() {
-  const { pending } = useFormStatus();
+function SignupSubmitButton({ pending }: { pending: boolean }) {
   return (
     <button
       type='submit'
@@ -478,7 +500,7 @@ function SignupSubmitButton() {
       ].join(' ')}
     >
       {pending && <Spinner />}
-      {pending ? 'Creating Account...' : 'Create Account'}
+      {pending ? 'Sending Code...' : 'Create Account'}
     </button>
   );
 }
@@ -496,7 +518,7 @@ function OtpSubmitButton() {
       ].join(' ')}
     >
       {pending && <Spinner />}
-      {pending ? 'Verifying...' : 'Verify Email'}
+      {pending ? 'Creating Account...' : 'Verify & Create Account'}
     </button>
   );
 }
