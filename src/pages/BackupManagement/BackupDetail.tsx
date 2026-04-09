@@ -168,6 +168,8 @@ function SkeletonBlock({ className }: { className?: string }) {
 function buildJobColumns(
   onResume: (jobId: string) => void,
   resumingJobId: string | null,
+  page: number,
+  pageSize: number,
 ): TableColumn<BackupJobItem>[] {
   return [
     {
@@ -176,7 +178,7 @@ function buildJobColumns(
       headerClassName: 'w-10',
       render: (_row, index) => (
         <Typography variant='bodySm' color='muted'>
-          {index + 1}
+          {(page - 1) * pageSize + index + 1}
         </Typography>
       ),
     },
@@ -522,7 +524,7 @@ export default function BackupDetail() {
           </div>
         ) : (
           <Table
-            columns={buildJobColumns((jobId) => resumeMutation.mutate(jobId), resumingJobId)}
+            columns={buildJobColumns((jobId) => resumeMutation.mutate(jobId), resumingJobId, jobPage, jobsMeta.limit ?? 20)}
             rows={jobRows}
             getRowKey={(row) => row.backupJobId}
             rowClassName='border-t border-gray-100'
