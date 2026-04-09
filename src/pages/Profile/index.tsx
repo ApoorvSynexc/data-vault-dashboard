@@ -1,5 +1,6 @@
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useUserService, useAuthService } from '../../services';
@@ -17,8 +18,9 @@ const RESEND_SECONDS = 60;
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Profile() {
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, logout } = useAuth();
   const { getMyProfile } = useUserService();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading, isError } = useQuery<UserProfile>({
@@ -76,6 +78,7 @@ export default function Profile() {
       {/* ── Content ── */}
       <PersonalInfoCard key={profile.id} profile={profile} onSaved={handleProfileSaved} />
       <EmailCard key={`email-${profile.id}`} profile={profile} onSaved={handleProfileSaved} />
+      <DeleteAccountCard onDeleted={async () => { try { await logout(); } catch { /* account gone, ignore */ } navigate('/login'); }} />
 
     </div>
   );
@@ -406,6 +409,92 @@ function EmailCard({
   );
 }
 
+// ─── Delete Account Card ──────────────────────────────────────────────────────
+
+function DeleteAccountCard({ onDeleted }: { onDeleted: () => Promise<void> }) {
+  const { deleteMyProfile } = useUserService();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleDelete() {
+    setPending(true);
+    setError('');
+    try {
+      await deleteMyProfile();
+      await onDeleted();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete account');
+      setPending(false);
+    }
+  }
+
+  return (
+    <>
+      <div className='rounded-xl border border-red-100 bg-white p-6 shadow-sm'>
+        <div className='mb-5 border-b border-gray-100 pb-4'>
+          <h2 className='text-base font-semibold text-red-600'>Danger Zone</h2>
+          <p className='mt-0.5 text-sm text-gray-500'>Irreversible actions for your account</p>
+        </div>
+        <div className='flex items-center justify-between'>
+          <div>
+            <p className='text-sm font-medium text-gray-800'>Delete Account</p>
+            <p className='mt-0.5 text-sm text-gray-500'>
+              Permanently delete your account and all associated data
+            </p>
+          </div>
+          <button
+            type='button'
+            onClick={() => { setError(''); setOpen(true); }}
+            className='rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100'
+          >
+            Delete Account
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm'>
+          <div className='w-full max-w-md rounded-2xl bg-white p-6 shadow-xl'>
+            {/* Icon */}
+            <div className='mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100'>
+              <TrashIcon className='h-6 w-6 text-red-600' />
+            </div>
+
+            <h3 className='mb-1 text-lg font-bold text-gray-900'>Delete Account</h3>
+            <p className='mb-6 text-sm text-gray-500'>
+              This action is <span className='font-semibold text-gray-800'>permanent and irreversible</span>.
+              All your data, backups, and settings will be deleted.
+            </p>
+
+            {error && <FormError message={error} />}
+
+            <div className='mt-4 flex gap-3'>
+              <button
+                type='button'
+                onClick={() => setOpen(false)}
+                disabled={pending}
+                className='flex-1 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50'
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                onClick={handleDelete}
+                disabled={pending}
+                className='inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60'
+              >
+                {pending && <Spinner className='h-3.5 w-3.5' />}
+                {pending ? 'Deleting...' : 'Yes, Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── OTP 6-box input ──────────────────────────────────────────────────────────
 
 function OtpInputs({ error }: { error?: string }) {
@@ -503,6 +592,17 @@ function CheckIcon({ className }: { className?: string }) {
   return (
     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' className={className}>
       <polyline points='20 6 9 17 4 12' />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className={className}>
+      <polyline points='3 6 5 6 21 6' />
+      <path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6' />
+      <path d='M10 11v6M14 11v6' />
+      <path d='M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2' />
     </svg>
   );
 }
