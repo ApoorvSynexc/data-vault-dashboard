@@ -12,23 +12,57 @@ type BackupJob = {
   size: string;
 };
 
+function StatCardIcon() {
+  return (
+    <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded bg-teal-50'>
+      <svg viewBox='0 0 24 24' className='h-3.5 w-3.5' fill='none' stroke='#0d9488' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+        <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
+        <polyline points='14 2 14 8 20 8' />
+        <line x1='16' y1='13' x2='8' y2='13' />
+        <line x1='16' y1='17' x2='8' y2='17' />
+      </svg>
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
   sub,
-  children,
+  subNode,
+  decoration,
+  bar,
 }: {
   label: string;
   value: string;
   sub?: string;
-  children?: ReactNode;
+  subNode?: ReactNode;
+  decoration?: ReactNode;
+  bar?: number;
 }) {
   return (
-    <div className='flex flex-col gap-2 rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
-      <p className='text-xs font-medium text-gray-500'>{label}</p>
-      <p className='text-2xl font-bold text-gray-900'>{value}</p>
-      {sub && <p className='text-xs font-medium text-green-600'>{sub}</p>}
-      {children}
+    <div className='rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
+      {/* Header row */}
+      <div className='mb-3 flex items-center gap-1.5'>
+        <StatCardIcon />
+        <p className='text-xs font-medium text-gray-500'>{label}</p>
+      </div>
+      {/* Value */}
+      <p className='mb-2 text-2xl font-bold text-gray-900'>{value}</p>
+      {/* Bottom row: sub text left, decoration right */}
+      <div className='flex items-center justify-between'>
+        <div>
+          {sub && <p className='text-xs font-medium text-green-600'>{sub}</p>}
+          {subNode}
+        </div>
+        {decoration && <div className='shrink-0'>{decoration}</div>}
+      </div>
+      {/* Optional progress bar */}
+      {bar !== undefined && (
+        <div className='mt-2 h-1.5 w-full rounded-full bg-gray-100'>
+          <div className='h-1.5 rounded-full bg-green-500' style={{ width: `${bar}%` }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -110,7 +144,12 @@ function HubSpotIcon() {
 function ZohoIcon() {
   return (
     <div className='flex h-8 w-8 items-center justify-center rounded-lg bg-red-50'>
-      <span className='text-sm font-bold text-red-500'>Z</span>
+      <svg viewBox='0 0 24 24' className='h-5 w-5' fill='none'>
+        <rect x='3' y='3' width='8' height='8' rx='1.5' fill='#e84b37' />
+        <rect x='13' y='3' width='8' height='8' rx='1.5' fill='#f0a500' />
+        <rect x='3' y='13' width='8' height='8' rx='1.5' fill='#00b4cc' />
+        <rect x='13' y='13' width='8' height='8' rx='1.5' fill='#3aab3a' />
+      </svg>
     </div>
   );
 }
@@ -281,24 +320,26 @@ export default function Dashboard() {
       <div className='grid grid-cols-4 gap-4'>
         <StatCard label='Protected Records' value='2.2B' sub='+2.1% vs last week' />
 
-        <StatCard label='Storage Used' value='2.2 TB' sub='+2.5% vs last week'>
-          <div className='mt-1 h-1.5 w-full rounded-full bg-gray-100'>
-            <div className='h-1.5 rounded-full bg-green-500' style={{ width: '68%' }} />
-          </div>
-        </StatCard>
+        <StatCard label='Storage Used' value='2.2 TB' sub='+2.5% vs last week' bar={68} />
 
-        <StatCard label='Backup Success Rate' value='99.98%' sub='Last 7 Day'>
-          <div className='mt-1 flex justify-end'>
-            <CircularProgress pct={99.98} color='#0d9488' />
-          </div>
-        </StatCard>
+        <StatCard
+          label='Backup Success Rate'
+          value='99.98%'
+          sub='Last 7 Day'
+          decoration={<CircularProgress pct={99.98} color='#0d9488' />}
+        />
 
-        <StatCard label='Active Jobs' value='14'>
-          <div className='flex items-center gap-1.5'>
-            <span className='h-2 w-2 animate-pulse rounded-full bg-green-500' />
-            <span className='text-xs font-medium text-green-600'>3 Running</span>
-          </div>
-        </StatCard>
+        <StatCard
+          label='Active Jobs'
+          value='14'
+          subNode={
+            <div className='flex items-center gap-1.5'>
+              <span className='h-2 w-2 animate-pulse rounded-full bg-green-500' />
+              <span className='text-xs font-medium text-green-600'>3 Running</span>
+            </div>
+          }
+          bar={30}
+        />
       </div>
 
       <div className='grid grid-cols-5 gap-4'>
