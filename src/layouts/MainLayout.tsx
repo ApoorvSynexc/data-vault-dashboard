@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
@@ -45,6 +45,7 @@ const mainNav = [
 export default function MainLayout() {
   const { logout } = useAuth();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -132,7 +133,10 @@ export default function MainLayout() {
           <div className='flex-1' />
 
           {/* Icon buttons */}
-          <button className='relative cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 rounded-lg'>
+          <button
+            onClick={() => navigate('/notifications')}
+            className='relative cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 rounded-lg'
+          >
             <Icons.bell />
             <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full' />
           </button>

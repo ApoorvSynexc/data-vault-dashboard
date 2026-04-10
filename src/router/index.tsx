@@ -14,6 +14,7 @@ import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Platforms from '../pages/Platforms';
 import ArchiveVault from '../pages/ArchiveVault';
 import Storage from '../pages/Storage';
+import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
 
 const router = createBrowserRouter([
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
           { path: '/platforms', element: <Platforms /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/storage', element: <Storage /> },
+          { path: '/notifications', element: <Notifications /> },
         ],
       },
     ],
