@@ -12,6 +12,8 @@ import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
 import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Platforms from '../pages/Platforms';
+import ArchiveVault from '../pages/ArchiveVault';
+import Storage from '../pages/Storage';
 import SalesforceCallback from '../pages/callback/salesforce';
 
 const router = createBrowserRouter([
@@ -29,6 +31,8 @@ const router = createBrowserRouter([
           { path: '/backup-management', element: <BackupMannagement /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/platforms', element: <Platforms /> },
+          { path: '/archive-vault', element: <ArchiveVault /> },
+          { path: '/storage', element: <Storage /> },
         ],
       },
     ],
