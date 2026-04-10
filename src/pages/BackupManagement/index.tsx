@@ -325,6 +325,7 @@ export default function BackupManagement() {
     onSuccess: () => {
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
   });
 
