@@ -62,30 +62,57 @@ function MetricCard({
   value,
   note,
   tone = 'default',
+  withBar = false,
 }: {
   label: string;
   value: string;
   note: string;
   tone?: MetricTone;
+  withBar?: boolean;
 }) {
-  const noteStyles: Record<MetricTone, string> = {
-    default: 'text-emerald-500',
-    success: 'text-emerald-500',
-    warning: 'text-amber-500',
-    danger: 'text-orange-500',
+  type TC = 'muted' | 'danger' | 'success' | 'primary';
+
+  const labelColor: Record<MetricTone, TC> = {
+    default: 'muted',
+    success: 'muted',
+    warning: 'muted',
+    danger: 'danger',
+  };
+  const valueColor: Record<MetricTone, TC> = {
+    default: 'primary',
+    success: 'primary',
+    warning: 'primary',
+    danger: 'danger',
+  };
+  const noteColor: Record<MetricTone, TC> = {
+    default: 'success',
+    success: 'success',
+    warning: 'muted',
+    danger: 'danger',
   };
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'>
-      <Typography variant='metricLabel' color='muted'>
+    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
+      <Typography variant='metricLabel' color={labelColor[tone]}>
         {label}
       </Typography>
-      <Typography className='mt-1' variant='metricValue'>
+      <Typography className='mt-1' variant='metricValue' color={valueColor[tone]}>
         {value}
       </Typography>
-      <Typography className={`mt-2 ${noteStyles[tone]}`} variant='metricLabel'>
-        {note}
-      </Typography>
+      {withBar ? (
+        <div className='mt-2 flex items-center gap-2'>
+          <Typography variant='metricLabel' color={noteColor[tone]}>
+            {note}
+          </Typography>
+          <div className='h-1.5 flex-1 rounded-full bg-gray-100'>
+            <div className='h-1.5 rounded-full bg-green-500' style={{ width: '80%' }} />
+          </div>
+        </div>
+      ) : (
+        <Typography className='mt-2' variant='metricLabel' color={noteColor[tone]}>
+          {note}
+        </Typography>
+      )}
     </div>
   );
 }
@@ -471,11 +498,16 @@ export default function BackupManagement() {
         </div>
       </section>
 
-      <div className='grid grid-cols-1 gap-4 xl:grid-cols-4 md:grid-cols-2'>
-        <MetricCard label='Completed Job' value='124' note='+ 6 Jobs vs yesterday' />
-        <MetricCard label='Running Jobs' value='03' note='All within SLA' tone='success' />
-        <MetricCard label='Failed Jobs' value='01' note='Requires Intervention' tone='danger' />
-        <MetricCard label='Data Processed' value='1.6 TB' note='+11% this week' />
+      <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
+        <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-4'>
+          Jobs Status
+        </Typography>
+        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          <MetricCard label='Completed Job' value='124' note='+ 6 Jobs vs yesterday' />
+          <MetricCard label='Running Jobs' value='03' note='All within SLA' tone='success' withBar />
+          <MetricCard label='Failed Jobs' value='01' note='Requires Intervention' tone='danger' />
+          <MetricCard label='Data Processed' value='1.6 TB' note='+11% this week' />
+        </div>
       </div>
 
       <Panel title='All Backups'>

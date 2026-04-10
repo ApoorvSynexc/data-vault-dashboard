@@ -45,7 +45,7 @@ const colorClasses: Record<TypographyColor, string> = {
   brand: 'text-blue-600',
   white: 'text-white',
   success: 'text-emerald-500',
-  danger: 'text-orange-500',
+  danger: 'text-red-500',
 };
 
 export default function Typography<T extends ElementType = 'p'>({

@@ -335,6 +335,47 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Jobs Status ── */}
+      <div className='rounded-xl border border-gray-100 bg-white p-5 shadow-sm'>
+        <h3 className='mb-4 text-sm font-semibold text-gray-800'>Jobs Status</h3>
+        <div className='grid grid-cols-4 gap-4'>
+          {/* Completed */}
+          <div className='rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
+            <p className='text-xs font-medium text-gray-500'>Completed Job</p>
+            <p className='mt-1 text-3xl font-bold text-gray-900'>124</p>
+            <p className='mt-1.5 text-xs font-medium text-green-600'>+6 Jobs vs yesterday</p>
+          </div>
+
+          {/* Running */}
+          <div className='rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
+            <p className='text-xs font-medium text-gray-500'>Running Jobs</p>
+            <p className='mt-1 text-3xl font-bold text-gray-900'>03</p>
+            <div className='mt-1.5 flex items-center gap-2'>
+              <p className='text-xs font-medium text-gray-500'>All within SLA</p>
+              <div className='flex flex-1 items-center gap-1'>
+                <div className='h-1.5 flex-1 rounded-full bg-gray-100'>
+                  <div className='h-1.5 rounded-full bg-green-500' style={{ width: '80%' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Failed */}
+          <div className='rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
+            <p className='text-xs font-medium text-red-500'>Failed Jobs</p>
+            <p className='mt-1 text-3xl font-bold text-red-500'>01</p>
+            <p className='mt-1.5 text-xs font-medium text-red-500'>Requires intervention</p>
+          </div>
+
+          {/* Data Processed */}
+          <div className='rounded-xl border border-gray-100 bg-white p-4 shadow-sm'>
+            <p className='text-xs font-medium text-gray-500'>Data Processed</p>
+            <p className='mt-1 text-3xl font-bold text-gray-900'>1.6 TB</p>
+            <p className='mt-1.5 text-xs font-medium text-green-600'>+11% this week</p>
+          </div>
+        </div>
+      </div>
+
       <div className='grid grid-cols-5 gap-4'>
         <div className='col-span-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm'>
           <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4'>
