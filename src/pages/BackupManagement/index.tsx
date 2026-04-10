@@ -57,6 +57,72 @@ function Panel({
   );
 }
 
+function JobsStatusSection({ service }: { service: { getStats: () => Promise<unknown> } }) {
+  const statsQuery = useQuery({
+    queryKey: ['backup-config-stats'],
+    queryFn: () => service.getStats(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const stats = (statsQuery.data as any)?.data;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  function extractCount(field: unknown): number {
+    if (field == null) return 0;
+    if (typeof field === 'number') return field;
+    if (typeof field === 'object') {
+      const obj = field as Record<string, unknown>;
+      const val = obj.count ?? obj.total ?? obj.value ?? Object.values(obj).find((v) => typeof v === 'number');
+      return typeof val === 'number' ? val : 0;
+    }
+    return 0;
+  }
+
+  function formatBytes(bytes: number): string {
+    if (!bytes) return '--';
+    if (bytes >= 1_099_511_627_776) return `${(bytes / 1_099_511_627_776).toFixed(1)} TB`;
+    if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+    if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  const dataProcessed = stats?.dataProcessed;
+  const dataValue = dataProcessed ? formatBytes(dataProcessed.bytes) : '--';
+  const dataNote = dataProcessed?.weeklyChangePercent != null
+    ? `${dataProcessed.weeklyChangePercent >= 0 ? '+' : ''}${dataProcessed.weeklyChangePercent}% this week`
+    : 'This week';
+
+  return (
+    <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
+      <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-4'>
+        Jobs Status
+      </Typography>
+      {statsQuery.isLoading ? (
+        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm animate-pulse'>
+              <div className='h-3 w-24 rounded bg-gray-100' />
+              <div className='mt-3 h-8 w-16 rounded bg-gray-100' />
+              <div className='mt-2 h-3 w-28 rounded bg-gray-100' />
+            </div>
+          ))}
+        </div>
+      ) : statsQuery.isError ? (
+        <p className='text-xs text-red-500'>Failed to load job stats.</p>
+      ) : (
+        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} note='+ Jobs vs yesterday' />
+          <MetricCard label='Running Jobs' value={pad(extractCount(stats?.runningJobs))} note='All within SLA' tone='success' withBar />
+          <MetricCard label='Failed Jobs' value={pad(extractCount(stats?.failedJobs))} note='Requires Intervention' tone={extractCount(stats?.failedJobs) > 0 ? 'danger' : 'default'} />
+          <MetricCard label='Data Processed' value={dataValue} note={dataNote} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -498,17 +564,7 @@ export default function BackupManagement() {
         </div>
       </section>
 
-      <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
-        <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-4'>
-          Jobs Status
-        </Typography>
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
-          <MetricCard label='Completed Job' value='124' note='+ 6 Jobs vs yesterday' />
-          <MetricCard label='Running Jobs' value='03' note='All within SLA' tone='success' withBar />
-          <MetricCard label='Failed Jobs' value='01' note='Requires Intervention' tone='danger' />
-          <MetricCard label='Data Processed' value='1.6 TB' note='+11% this week' />
-        </div>
-      </div>
+      <JobsStatusSection service={backupConfigService} />
 
       <Panel title='All Backups'>
         <FilterBar filters={filters} onChange={setFilters} />

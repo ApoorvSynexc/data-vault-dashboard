@@ -15,6 +15,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
   resume: '/v1/backup-job/resume',
+  stats: '/v1/backup-config/stats',
 } as const;
 
 type BackupConfigItem = {
@@ -124,6 +125,27 @@ export type BackupJobListApiResponse = {
   };
 };
 
+export type BackupJobStat = {
+  count?: number;
+  total?: number;
+  value?: number;
+  [key: string]: unknown;
+};
+
+export type BackupStatsApiResponse = {
+  success: boolean;
+  message?: string;
+  data: {
+    completedJobs: number | BackupJobStat;
+    runningJobs: number | BackupJobStat;
+    failedJobs: number | BackupJobStat;
+    dataProcessed: {
+      bytes: number;
+      weeklyChangePercent: number;
+    };
+  };
+};
+
 const FIELD_DATA_TYPE_MAP: Record<string, FieldDataType> = {
   STRING: 'string',
   TEXTAREA: 'string',
@@ -213,5 +235,7 @@ export function useBackupConfigService() {
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.resume, { query: { backupJobId } }),
     deleteBackupConfig: (backupConfigId: string) =>
       api.delete<void>(BACKUP_CONFIG_ENDPOINTS.delete, { query: { backupConfigId } }),
+    getStats: () =>
+      api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats),
   };
 }
