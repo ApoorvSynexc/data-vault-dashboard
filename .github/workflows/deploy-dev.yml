@@ -22,6 +22,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          
+          port: 22
+          timeout: 60s
+          command_timeout: 30m
+          request_pty: true
+
           envs: VITE_API_URL,VITE_ENV
           script_stop: true
           script: |
