@@ -15,22 +15,18 @@ jobs:
       WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
 
     steps:
-      - name: Deploy over SSH
-        id: deploy_step
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          password: ${{ secrets.EC2_SSH_PASSWORD }}
-          
-          port: 22
-          timeout: 60s
-          command_timeout: 30m
-          request_pty: true
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-          envs: VITE_API_URL,VITE_ENV
-          script_stop: true
-          script: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        id: deploy_step
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -euo pipefail
 
             cd /var/www/DataVault-Frontend-App
@@ -51,8 +47,8 @@ jobs:
 
             echo "🏗️ Building React app..."
             npm run build
-
             echo "✅ Deployment completed successfully!"
+          EOF
 
       # ✅ SUCCESS WEBHOOK
       - name: Notify Success
@@ -60,16 +56,11 @@ jobs:
         run: |
           curl -X POST "$WEBHOOK_URL" \
           -H "Content-Type: application/json" \
-          -d '{
-                "text": "<h1>✅ Code Successfully Deployed to Dev - DataVault-Frontend-App</h1>"
-              }'
+          -d '{"text":"<h1>✅ Code Successfully Deployed to Dev - DataVault-Frontend-App</h1>"}'
 
-      # ❌ FAILURE WEBHOOK
       - name: Notify Failure
         if: failure()
         run: |
           curl -X POST "$WEBHOOK_URL" \
           -H "Content-Type: application/json" \
-          -d '{
-                "text": "<h1>❌ Error in code deployment to Dev - DataVault-Frontend-App</h1>"
-              }'
+          -d '{"text":"<h1>❌ Error in code deployment to Dev - DataVault-Frontend-App</h1>"}'
