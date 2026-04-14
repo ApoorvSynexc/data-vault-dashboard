@@ -1,0 +1,69 @@
+name: Deploy DEV to EC2
+
+on:
+  push:
+    branches:
+      - DEV
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
+      VITE_ENV: DEV
+      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+
+    steps:
+      - name: Deploy over SSH
+        id: deploy_step
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: VITE_API_URL,VITE_ENV
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            cd /var/www/DataVault-Frontend-App
+
+            echo "📥 Pulling latest code..."
+            git fetch origin
+            git checkout DEV
+            git pull origin DEV
+
+            echo "🧹 Cleaning old .env..."
+            rm -f .env
+
+            echo "⚙️ Generating fresh .env..."
+            printenv | grep VITE_ > .env
+
+            echo "📦 Installing dependencies..."
+            npm ci
+
+            echo "🏗️ Building React app..."
+            npm run build
+
+            echo "✅ Deployment completed successfully!"
+
+      # ✅ SUCCESS WEBHOOK
+      - name: Notify Success
+        if: success()
+        run: |
+          curl -X POST "$WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "text": "<h1>✅ Code Successfully Deployed to Dev - DataVault-Frontend-App</h1>"
+              }'
+
+      # ❌ FAILURE WEBHOOK
+      - name: Notify Failure
+        if: failure()
+        run: |
+          curl -X POST "$WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "text": "<h1>❌ Error in code deployment to Dev - DataVault-Frontend-App</h1>"
+              }'
