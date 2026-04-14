@@ -31,6 +31,14 @@ jobs:
           VITE_ENV='DEV' \
           bash -s" << 'EOF'
 
+            echo "🔧 Loading NVM..."
+
+            export NVM_DIR="$HOME/.nvm"
+
+            # Load nvm
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+            
             set -euo pipefail
 
             cd /var/www/DataVault-Frontend-App
