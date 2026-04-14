@@ -26,7 +26,11 @@ jobs:
       - name: Deploy via SSH
         id: deploy_step
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+          "VITE_API_URL='${{ secrets.VITE_API_URL }}' \
+          VITE_ENV='DEV' \
+          bash -s" << 'EOF'
+
             set -euo pipefail
 
             cd /var/www/DataVault-Frontend-App
@@ -40,7 +44,11 @@ jobs:
             rm -f .env
 
             echo "⚙️ Generating fresh .env..."
-            printenv | grep VITE_ > .env
+
+            cat <<EOT > .env
+            VITE_API_URL=$VITE_API_URL
+            VITE_ENV=$VITE_ENV
+            EOT
 
             echo "📦 Installing dependencies..."
             npm ci
