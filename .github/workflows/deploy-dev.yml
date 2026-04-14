@@ -48,6 +48,15 @@ jobs:
             echo "VITE_API_URL=$VITE_API_URL" > .env
             echo "VITE_ENV=$VITE_ENV" >> .env
 
+            echo "🔧 Ensuring Node is available..."
+
+            export PATH=$PATH:/usr/bin:/usr/local/bin
+
+            if ! command -v npm &> /dev/null; then
+              echo "❌ npm not found. Please install Node.js on EC2"
+              exit 1
+            fi
+            
             echo "📦 Installing dependencies..."
             npm ci
 
