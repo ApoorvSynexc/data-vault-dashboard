@@ -507,8 +507,6 @@ export default function BackupDetail() {
               className='rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50'
             >
               <option value=''>All Status</option>
-              <option value='PENDING'>Pending</option>
-              <option value='RUNNING'>Running</option>
               <option value='SUCCESS'>Completed</option>
               <option value='FAILED'>Failed</option>
             </select>
