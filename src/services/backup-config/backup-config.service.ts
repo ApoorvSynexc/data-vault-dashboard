@@ -226,7 +226,7 @@ export function useBackupConfigService() {
       return response;
     },
     listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
-      const query: Record<string, unknown> = { slug, pagination, cursor, limit };
+      const query: any = { slug, pagination, cursor, limit };
       if (status) {
         query.status = status.toUpperCase();
       }
