@@ -264,6 +264,22 @@ function buildJobColumns(
       render: (row) => row.destination?.type ?? '--',
     },
     {
+      key: 'errorMessage',
+      header: 'Error Message',
+      className: 'text-xs text-gray-500',
+      render: (row) => {
+        if (!row.errorMessage) return '--';
+        const truncated = row.errorMessage.length > 50
+          ? row.errorMessage.substring(0, 50) + '...'
+          : row.errorMessage;
+        return (
+          <span title={row.errorMessage} className='cursor-help text-red-600'>
+            {truncated}
+          </span>
+        );
+      },
+    },
+    {
       key: 'action',
       header: 'Action',
       render: (row) => {
@@ -299,6 +315,7 @@ export default function BackupDetail() {
   const [jobPage, setJobPage] = useState(1);
   const [jobCursorMap, setJobCursorMap] = useState<Record<number, string | null>>({ 1: null });
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const currentJobCursor = jobCursorMap[jobPage] ?? null;
 
   const resumeMutation = useMutation({
@@ -319,8 +336,8 @@ export default function BackupDetail() {
   });
 
   const jobsQuery = useQuery({
-    queryKey: ['backup-jobs', slug, currentJobCursor],
-    queryFn: () => backupConfigService.listBackupJobs(slug!, true, currentJobCursor ?? undefined),
+    queryKey: ['backup-jobs', slug, currentJobCursor, statusFilter],
+    queryFn: () => backupConfigService.listBackupJobs(slug!, true, currentJobCursor ?? undefined, 20, statusFilter ?? undefined),
     enabled: !!slug,
     staleTime: 15_000,
     refetchOnWindowFocus: false,
@@ -356,6 +373,7 @@ export default function BackupDetail() {
   const jobRows: BackupJobItem[] = Array.isArray(jobsPayload)
     ? jobsPayload
     : (jobsPayload?.data ?? []);
+
   const jobsMeta = (Array.isArray(jobsPayload) ? jobsResponse?.meta : jobsPayload?.meta)
     ?? { limit: 20, totalRecords: jobRows.length, totalPages: 1 };
 
@@ -478,28 +496,39 @@ export default function BackupDetail() {
 
       {/* Job History */}
       <section className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-        <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4'>
+        <div className='flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4'>
           <Typography as='h3' variant='sectionTitle' color='secondary'>
             Job History
           </Typography>
-          <button
-            type='button'
-            onClick={() => jobsQuery.refetch()}
-            disabled={jobsQuery.isFetching}
-            className='inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50'
-          >
-            <svg
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              className={['h-3.5 w-3.5', jobsQuery.isFetching ? 'animate-spin' : ''].join(' ')}
+          <div className='flex items-center gap-3 ml-auto'>
+            <select
+              value={statusFilter ?? ''}
+              onChange={(e) => setStatusFilter(e.target.value || null)}
+              className='rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50'
             >
-              <polyline points='23 4 23 10 17 10' />
-              <path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10' />
-            </svg>
-            {jobsQuery.isFetching ? 'Refreshing…' : 'Refresh'}
-          </button>
+              <option value=''>All Status</option>
+              <option value='SUCCESS'>Completed</option>
+              <option value='FAILED'>Failed</option>
+            </select>
+            <button
+              type='button'
+              onClick={() => jobsQuery.refetch()}
+              disabled={jobsQuery.isFetching}
+              className='inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-50'
+            >
+              <svg
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                className={['h-3.5 w-3.5', jobsQuery.isFetching ? 'animate-spin' : ''].join(' ')}
+              >
+                <polyline points='23 4 23 10 17 10' />
+                <path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10' />
+              </svg>
+              {jobsQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
         </div>
 
         {jobsQuery.isLoading ? (
