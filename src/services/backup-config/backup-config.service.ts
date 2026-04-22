@@ -102,6 +102,7 @@ export type BackupJobItem = {
   createdAt?: string;
   updatedAt?: string;
   destination?: { type: string };
+  errorMessage?: string;
   // BULK-specific
   object?: BackupJobObject[];
   // REALTIME-specific
@@ -224,9 +225,13 @@ export function useBackupConfigService() {
       });
       return response;
     },
-    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20) => {
+    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
+      const query: Record<string, unknown> = { slug, pagination, cursor, limit };
+      if (status) {
+        query.status = status.toUpperCase();
+      }
       const response = await api.get<BackupJobListApiResponse>(BACKUP_CONFIG_ENDPOINTS.jobs, {
-        query: { slug, pagination, cursor, limit },
+        query,
       });
 
       return response;
