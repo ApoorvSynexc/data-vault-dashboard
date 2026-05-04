@@ -1,11 +1,14 @@
+import { useEffect } from 'react';
 import { useSearchParams, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { useAuthService } from '../../../services/auth/auth.service';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function SocialLoginCallback() {
   const [searchParams] = useSearchParams();
   const authService = useAuthService();
+  const { refreshProfile } = useAuth();
 
   const code = searchParams.get('code') ?? '';
   const state = searchParams.get('state') ?? '';
@@ -17,6 +20,12 @@ export default function SocialLoginCallback() {
     queryFn: () => authService.handleSocialLoginCallback(authProvider, code, state),
     enabled: hasRequiredParams,
   });
+
+  useEffect(() => {
+    if (isSuccess) {
+      refreshProfile();
+    }
+  }, [isSuccess, refreshProfile]);
 
   if (isSuccess) {
     return <Navigate to='/' replace />;
