@@ -3,7 +3,7 @@ import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard';
 import Profile from '../pages/Profile';
 import ChangePassword from '../pages/ChangePassword';
-import Login from '../pages/auth/Login';
+import LoginV2 from '../pages/auth/Login/LoginV2';
 import Signup from '../pages/auth/Signup';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import NotFound from '../pages/NotFound';
@@ -42,7 +42,7 @@ const router = createBrowserRouter([
   {
     element: <PublicRoute />,
     children: [
-      { path: '/login', element: <Login /> },
+      { path: '/login', element: <LoginV2 /> },
       { path: '/signup', element: <Signup /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
     ],
