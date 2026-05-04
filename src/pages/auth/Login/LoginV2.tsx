@@ -1,22 +1,31 @@
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import LockIcon from '../../../assets/icons/lock.svg?react';
 import ShieldIcon from '../../../assets/icons/shield.svg?react';
 import CheckCircleIcon from '../../../assets/icons/check-circle.svg?react';
 import RecoverPasswordModal from '../RecoverPasswordModal';
+import { useAuthService } from '../../../services/auth/auth.service';
 
 export default function LoginV2() {
-  const [isLoading, setIsLoading] = useState(false);
   const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
+  const authService = useAuthService();
 
-  const handleSalesforceLogin = async (env: 'production' | 'sandbox') => {
-    try {
-      setIsLoading(true);
-      const authUrl = `/api/auth/salesforce${env === 'sandbox' ? '-sandbox' : ''}`;
-      window.location.href = authUrl;
-    } catch (error) {
-      console.error('Login error:', error);
-      setIsLoading(false);
-    }
+  const socialLoginMutation = useMutation({
+    mutationFn: (authProvider: string) => authService.initiateSocialLogin(authProvider),
+  });
+
+  const handleSalesforceLogin = (env: 'production' | 'sandbox') => {
+    const authProvider = env === 'sandbox' ? 'salesforce-sandbox' : 'salesforce';
+    socialLoginMutation.mutate(authProvider, {
+      onSuccess: (data) => {
+        if (data?.authorizationUrl) {
+          window.location.href = data.authorizationUrl;
+        }
+      },
+      onError: (error) => {
+        console.error('Login error:', error);
+      },
+    });
   };
 
   return (
@@ -50,19 +59,19 @@ export default function LoginV2() {
               {/* Salesforce Production Button */}
               <button
                 onClick={() => handleSalesforceLogin('production')}
-                disabled={isLoading}
+                disabled={socialLoginMutation.isPending}
                 className='mb-3 w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
               >
-                {isLoading ? 'Connecting...' : 'Salesforce Production'}
+                {socialLoginMutation.isPending ? 'Connecting...' : 'Salesforce Production'}
               </button>
 
               {/* Salesforce Sandbox Button */}
               <button
                 onClick={() => handleSalesforceLogin('sandbox')}
-                disabled={isLoading}
+                disabled={socialLoginMutation.isPending}
                 className='w-full rounded-lg border-2 border-blue-600 px-4 py-3 font-medium text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50'
               >
-                {isLoading ? 'Connecting...' : 'Salesforce Sandbox'}
+                {socialLoginMutation.isPending ? 'Connecting...' : 'Salesforce Sandbox'}
               </button>
             </div>
 

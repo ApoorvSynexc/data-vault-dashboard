@@ -6,6 +6,7 @@ import ChangePassword from '../pages/ChangePassword';
 import LoginV2 from '../pages/auth/Login/LoginV2';
 import Signup from '../pages/auth/Signup';
 import ForgotPassword from '../pages/auth/ForgotPassword';
+import SocialLoginCallback from '../pages/auth/SocialLoginCallback';
 import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginV2 /> },
       { path: '/signup', element: <Signup /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
+      { path: '/login-callback/salesforce', element: <SocialLoginCallback /> },
     ],
   },
   { path: '*', element: <NotFound /> },
