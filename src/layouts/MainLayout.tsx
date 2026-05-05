@@ -35,7 +35,7 @@ const mainNav = [
   { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup     },
   { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore    },
   { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive    },
-  { to: '/connectors',         label: 'Connectors',          Icon: Icons.connectors },
+  { to: '/connections',         label: 'Connections',          Icon: Icons.connectors },
   { to: '/storage',            label: 'Storage & Retention', Icon: Icons.storage    },
   { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity   },
   { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports    },

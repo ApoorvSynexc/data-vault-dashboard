@@ -12,7 +12,11 @@ import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
 import BackupDetail from '../pages/BackupManagement/BackupDetail';
-import Platforms from '../pages/Platforms';
+import Connectors from '../pages/Connectors';
+import SalesforceConnections from '../pages/Connections/SalesforceConnections';
+import ConnectSalesforceOrg from '../pages/Connections/ConnectSalesforceOrg';
+import AWSConnections from '../pages/Connections/AWSConnections';
+import ConnectAWSBucket from '../pages/Connections/ConnectAWSBucket';
 import ArchiveVault from '../pages/ArchiveVault';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
@@ -32,7 +36,11 @@ const router = createBrowserRouter([
           { path: '/change-password', element: <ChangePassword /> },
           { path: '/backup-management', element: <BackupMannagement /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
-          { path: '/connectors', element: <Platforms /> },
+          { path: '/connections', element: <Connectors /> },
+          { path: '/connections/salesforce', element: <SalesforceConnections /> },
+          { path: '/connections/salesforce/connect', element: <ConnectSalesforceOrg /> },
+          { path: '/connections/aws', element: <AWSConnections /> },
+          { path: '/connections/aws/connect', element: <ConnectAWSBucket /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
