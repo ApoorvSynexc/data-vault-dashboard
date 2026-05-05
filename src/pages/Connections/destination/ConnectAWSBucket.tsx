@@ -14,12 +14,6 @@ const AWS_REGIONS = [
   { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' },
 ];
 
-const MOCK_S3_BUCKETS = [
-  'datavault-backup-prod',
-  'datavault-backup-staging',
-  'company-data-bucket',
-];
-
 function AWSLogo() {
   return (
     <svg viewBox='0 0 100 60' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-10 w-auto'>
@@ -137,18 +131,13 @@ export default function ConnectAWSBucket() {
                 <label className='block text-sm font-semibold text-gray-900'>
                   * Select S3 Bucket
                 </label>
-                <select
+                <input
+                  type='text'
                   value={s3Bucket}
                   onChange={(e) => setS3Bucket(e.target.value)}
+                  placeholder='Enter your S3 bucket name'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                >
-                  <option value=''>Type or select from existing</option>
-                  {MOCK_S3_BUCKETS.map((bucket) => (
-                    <option key={bucket} value={bucket}>
-                      {bucket}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
 
