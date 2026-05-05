@@ -3,18 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import { useDestinationService, type CreateDestinationPayload } from '../../../services/destination/destination.service';
-
-const AWS_REGIONS = [
-  { value: 'us-east-1', label: 'US East (N. Virginia)' },
-  { value: 'us-east-2', label: 'US East (Ohio)' },
-  { value: 'us-west-1', label: 'US West (N. California)' },
-  { value: 'us-west-2', label: 'US West (Oregon)' },
-  { value: 'eu-west-1', label: 'EU (Ireland)' },
-  { value: 'eu-central-1', label: 'EU (Frankfurt)' },
-  { value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
-  { value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
-  { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' },
-];
+import { getRegionsByGroup } from '../../../constants/aws-regions';
 
 function AWSLogo() {
   return (
@@ -188,10 +177,15 @@ export default function ConnectAWSBucket() {
                   onChange={(e) => setRegion(e.target.value)}
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                 >
-                  {AWS_REGIONS.map((reg) => (
-                    <option key={reg.value} value={reg.value}>
-                      {reg.label}
-                    </option>
+                  <option value=''>Select region</option>
+                  {Array.from(getRegionsByGroup().entries()).map(([group, regions]) => (
+                    <optgroup key={group} label={group}>
+                      {regions.map((reg) => (
+                        <option key={reg.value} value={reg.value}>
+                          {reg.value} — {reg.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>

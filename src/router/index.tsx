@@ -17,6 +17,7 @@ import SalesforceConnections from '../pages/Connections/source/SalesforceConnect
 import ConnectSalesforceOrg from '../pages/Connections/source/ConnectSalesforceOrg';
 import AWSConnections from '../pages/Connections/destination/AWSConnections';
 import ConnectAWSBucket from '../pages/Connections/destination/ConnectAWSBucket';
+import EditAWSBucket from '../pages/Connections/destination/EditAWSBucket';
 import ArchiveVault from '../pages/ArchiveVault';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
           { path: '/connections/salesforce/connect', element: <ConnectSalesforceOrg /> },
           { path: '/connections/aws', element: <AWSConnections /> },
           { path: '/connections/aws/connect', element: <ConnectAWSBucket /> },
+          { path: '/connections/aws/edit/:destinationId', element: <EditAWSBucket /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
