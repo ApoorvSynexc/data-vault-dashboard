@@ -88,7 +88,7 @@ function PlatformCard({ platform, onConnect }: { platform: Platform; onConnect: 
 
 export default function Connectors() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>('destination');
+  const [activeTab, setActiveTab] = useState<Tab>('source');
 
   const tabs = [
     { id: 'source' as const, label: 'Source Platforms' },

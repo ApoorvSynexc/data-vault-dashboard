@@ -26,10 +26,30 @@ export default function ConnectSalesforceOrg() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleConnect = async () => {
     if (!connectionName.trim()) {
       setError('Connection name is required');
       return;
+    }
+
+    if (environment === 'custom') {
+      if (!customUrl.trim()) {
+        setError('Custom Salesforce URL is required');
+        return;
+      }
+      if (!isValidUrl(customUrl)) {
+        setError('Invalid URL format. Please enter a valid Salesforce instance URL');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -44,17 +64,15 @@ export default function ConnectSalesforceOrg() {
       };
       sessionStorage.setItem('salesforceConnectionDetails', JSON.stringify(connectionDetails));
 
-      // Determine the CRM type based on environment
-      const crmType = environment === 'sandbox' ? 'salesforce-sandbox' :
-                      environment === 'custom' ? 'salesforce-custom' : 'salesforce';
+      const response = await platformService.connectPlatform('Salesforce', {
+        environment,
+        customUrl: environment === 'custom' ? customUrl : undefined,
+      });
 
-      const response = await platformService.connectPlatform(crmType as any);
-
-      if (response && typeof response === 'string') {
-        // Redirect to Salesforce login
+      if (typeof response === 'string') {
         window.location.href = response;
-      } else if (response && 'redirectUrl' in response) {
-        window.location.href = response.redirectUrl;
+      } else if (response && typeof response === 'object' && 'redirectUrl' in response) {
+        window.location.href = (response as any).redirectUrl;
       } else {
         setError('Failed to get Salesforce authorization URL');
         setIsLoading(false);

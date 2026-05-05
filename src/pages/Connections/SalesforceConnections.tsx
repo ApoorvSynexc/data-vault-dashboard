@@ -34,7 +34,10 @@ export default function SalesforceConnections() {
   });
 
   const reconnectMutation = useMutation({
-    mutationFn: (crmId: string) => platformService.reconnectPlatform(crmId),
+    mutationFn: ({ crmId, environment }: { crmId: string; environment?: string }) =>
+      platformService.reconnectPlatform(crmId, {
+        environment: environment as 'production' | 'sandbox' | 'custom' | undefined,
+      }),
     onSuccess: (data: string | any) => {
       if (typeof data === 'string') {
         window.location.href = data;
@@ -214,7 +217,7 @@ export default function SalesforceConnections() {
                       ) : (
                         <button
                           type='button'
-                          onClick={() => reconnectMutation.mutate(org.crmId)}
+                          onClick={() => reconnectMutation.mutate({ crmId: org.crmId })}
                           disabled={reconnectMutation.isPending}
                           className='inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60'
                         >
