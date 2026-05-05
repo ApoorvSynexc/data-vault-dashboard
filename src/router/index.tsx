@@ -32,7 +32,7 @@ const router = createBrowserRouter([
           { path: '/change-password', element: <ChangePassword /> },
           { path: '/backup-management', element: <BackupMannagement /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
-          { path: '/platforms', element: <Platforms /> },
+          { path: '/connectors', element: <Platforms /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
