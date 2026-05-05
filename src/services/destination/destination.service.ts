@@ -26,6 +26,7 @@ export type Destination = {
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+  config?: DestinationConfig;
 };
 
 export type CreateDestinationPayload = {

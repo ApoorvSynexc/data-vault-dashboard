@@ -35,24 +35,18 @@ export default function EditAWSBucket() {
     enabled: !!destinationId,
   });
 
-  const { data: config, isLoading: isLoadingConfig } = useQuery({
-    queryKey: ['destination-config', destinationId],
-    queryFn: () => destinationService.getDecryptedConfig(destinationId!),
-    enabled: !!destinationId,
-  });
-
   useEffect(() => {
     if (destination) {
       setConnectName(destination.name);
+      if (destination.config) {
+        setAccessKeyId(destination.config.accessKeyId || '');
+        setSecretAccessKey(destination.config.secretAccessKey || '');
+        setRegion(destination.config.region || 'us-east-1');
+        setS3Bucket(destination.config.bucketName || '');
+        setFolderPath(destination.config.folderPath || '');
+      }
     }
-    if (config) {
-      setAccessKeyId(config.accessKeyId);
-      setSecretAccessKey(config.secretAccessKey);
-      setRegion(config.region);
-      setS3Bucket(config.bucketName);
-      setFolderPath(config.folderPath || '');
-    }
-  }, [destination, config]);
+  }, [destination]);
 
   const updateMutation = useMutation({
     mutationFn: async (payload: UpdateDestinationPayload) =>
@@ -71,6 +65,9 @@ export default function EditAWSBucket() {
     if (!isFormValid) return;
 
     const payload: UpdateDestinationPayload = {
+      name: connectName,
+      provider: destination?.provider || 'AWS',
+      type: destination?.type || 'S3',
       config: {
         bucketName: s3Bucket,
         region,
@@ -85,7 +82,7 @@ export default function EditAWSBucket() {
 
   const isFormValid = accessKeyId.trim() && secretAccessKey.trim();
 
-  if (isLoadingDestination || isLoadingConfig) {
+  if (isLoadingDestination) {
     return (
       <div className='flex w-full min-w-0 flex-col gap-6'>
         <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
