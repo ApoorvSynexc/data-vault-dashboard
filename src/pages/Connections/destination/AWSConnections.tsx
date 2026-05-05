@@ -1,23 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
-
-interface AWSBucket {
-  id: string;
-  name: string;
-  description: string;
-  status: 'connected' | 'error' | 'disconnected';
-  connectedDate: string;
-}
-
-const MOCK_AWS_BUCKETS: AWSBucket[] = [
-  {
-    id: '1',
-    name: 'AWS S3',
-    description: 'DataVault Backup Bucket',
-    status: 'connected',
-    connectedDate: 'May 15, 2024',
-  },
-];
+import { useDestinationService } from '../../../services/destination/destination.service';
 
 function AWSLogo() {
   return (
@@ -31,27 +15,43 @@ function AWSLogo() {
 
 export default function AWSConnections() {
   const navigate = useNavigate();
+  const destinationService = useDestinationService();
 
-  const getStatusColor = (status: AWSBucket['status']) => {
+  const { data: destinations = [], isLoading } = useQuery({
+    queryKey: ['destinations'],
+    queryFn: () => destinationService.listDestinations(),
+  });
+
+  const awsDestinations = destinations.filter((dest) => dest.provider === 'AWS');
+
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected':
+      case 'ACTIVE':
         return 'text-green-600';
-      case 'error':
+      case 'INACTIVE':
         return 'text-red-600';
       default:
         return 'text-gray-600';
     }
   };
 
-  const getStatusIcon = (status: AWSBucket['status']) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'connected':
+      case 'ACTIVE':
         return '✓';
-      case 'error':
+      case 'INACTIVE':
         return '✕';
       default:
         return '○';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -127,16 +127,20 @@ export default function AWSConnections() {
           </div>
 
           <div className='px-6 py-6'>
-            {MOCK_AWS_BUCKETS.length === 0 ? (
+            {isLoading ? (
+              <div className='flex items-center justify-center py-12'>
+                <p className='text-sm text-gray-500'>Loading AWS connections...</p>
+              </div>
+            ) : awsDestinations.length === 0 ? (
               <div className='flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 py-12 text-center'>
                 <p className='text-sm font-medium text-gray-500'>No AWS buckets connected yet</p>
                 <p className='mt-1 text-xs text-gray-400'>Click "+ Connect New" to get started</p>
               </div>
             ) : (
               <div className='space-y-3'>
-                {MOCK_AWS_BUCKETS.map((bucket) => (
+                {awsDestinations.map((destination) => (
                   <div
-                    key={bucket.id}
+                    key={destination.destinationId}
                     className='flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4 hover:bg-gray-50'
                   >
                     <div className='flex items-center gap-4'>
@@ -147,18 +151,18 @@ export default function AWSConnections() {
                         </svg>
                       </div>
                       <div>
-                        <p className='font-medium text-gray-900'>{bucket.name}</p>
-                        <p className='text-xs text-gray-500'>{bucket.description}</p>
+                        <p className='font-medium text-gray-900'>{destination.name}</p>
+                        <p className='text-xs text-gray-500'>AWS S3 Destination</p>
                       </div>
                     </div>
 
                     <div className='flex items-center gap-4'>
                       <div className='text-right'>
-                        <p className={`text-sm font-semibold ${getStatusColor(bucket.status)}`}>
-                          <span className='mr-1'>{getStatusIcon(bucket.status)}</span>
-                          {bucket.status.charAt(0).toUpperCase() + bucket.status.slice(1)}
+                        <p className={`text-sm font-semibold ${getStatusColor(destination.status)}`}>
+                          <span className='mr-1'>{getStatusIcon(destination.status)}</span>
+                          {destination.status}
                         </p>
-                        <p className='text-xs text-gray-500'>Connected on {bucket.connectedDate}</p>
+                        <p className='text-xs text-gray-500'>Connected on {formatDate(destination.createdAt)}</p>
                       </div>
 
                       <button
@@ -195,8 +199,8 @@ export default function AWSConnections() {
                   </svg>
                 </div>
                 <div>
-                  <p className='text-2xl font-bold text-gray-900'>1</p>
-                  <p className='text-xs text-gray-500'>Connected Bucket</p>
+                  <p className='text-2xl font-bold text-gray-900'>{awsDestinations.length}</p>
+                  <p className='text-xs text-gray-500'>Connected Bucket{awsDestinations.length !== 1 ? 's' : ''}</p>
                 </div>
               </div>
 

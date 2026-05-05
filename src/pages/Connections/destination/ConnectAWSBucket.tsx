@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
+import { useDestinationService, type CreateDestinationPayload } from '../../../services/destination/destination.service';
 
 const AWS_REGIONS = [
   { value: 'us-east-1', label: 'US East (N. Virginia)' },
@@ -26,6 +28,8 @@ function AWSLogo() {
 
 export default function ConnectAWSBucket() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const destinationService = useDestinationService();
   const [connectName, setConnectName] = useState('');
   const [accessKeyId, setAccessKeyId] = useState('');
   const [secretAccessKey, setSecretAccessKey] = useState('');
@@ -33,21 +37,38 @@ export default function ConnectAWSBucket() {
   const [s3Bucket, setS3Bucket] = useState('');
   const [folderPath, setFolderPath] = useState('');
 
-  const handleConnect = () => {
-    // TODO: Implement AWS connection logic
-    console.log({
-      connectName,
-      accessKeyId,
-      secretAccessKey,
-      region,
-      s3Bucket,
-      folderPath,
-    });
-    // Navigate back to AWS connections
-    navigate('/connections/aws');
+  const createDestinationMutation = useMutation({
+    mutationFn: async (payload: CreateDestinationPayload) =>
+      destinationService.createDestination(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['destinations'] });
+      navigate('/connections/aws');
+    },
+    onError: (error) => {
+      console.error('Failed to create destination:', error);
+    },
+  });
+
+  const handleConnect = async () => {
+    if (!isFormValid) return;
+
+    const payload: CreateDestinationPayload = {
+      name: connectName,
+      provider: 'AWS',
+      type: 'S3',
+      config: {
+        bucketName: s3Bucket,
+        region,
+        accessKeyId,
+        secretAccessKey,
+        ...(folderPath && { folderPath }),
+      },
+    };
+
+    createDestinationMutation.mutate(payload);
   };
 
-  const isFormValid = connectName.trim() && accessKeyId.trim() && secretAccessKey.trim() && s3Bucket;
+  const isFormValid = connectName.trim() && accessKeyId.trim() && secretAccessKey.trim() && s3Bucket.trim();
 
   return (
     <div className='flex w-full min-w-0 flex-col gap-6'>
@@ -197,13 +218,15 @@ export default function ConnectAWSBucket() {
           <button
             type='button'
             onClick={handleConnect}
-            disabled={!isFormValid}
+            disabled={!isFormValid || createDestinationMutation.isPending}
             className='inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-16 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
           >
-            Connect
-            <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-              <path d='M7 10h10M15 7l3 3-3 3' strokeLinecap='round' strokeLinejoin='round' />
-            </svg>
+            {createDestinationMutation.isPending ? 'Connecting...' : 'Connect'}
+            {!createDestinationMutation.isPending && (
+              <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
+                <path d='M7 10h10M15 7l3 3-3 3' strokeLinecap='round' strokeLinejoin='round' />
+              </svg>
+            )}
           </button>
         </div>
       </section>
