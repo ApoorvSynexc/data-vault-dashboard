@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import TextField from '../../../components/TextField';
 import Button from '../../../components/Button';
 import MailIcon from '../../../assets/icons/mail.svg?react';
+import { useAuthService } from '../../../services/auth/auth.service';
+import { useAuth } from '../../../context/AuthContext';
 
 type RecoverPasswordModalProps = {
   isOpen: boolean;
@@ -11,10 +13,14 @@ type RecoverPasswordModalProps = {
 type Step = 'email' | 'otp';
 
 export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswordModalProps) {
+  const authService = useAuthService();
+  const { refreshProfile } = useAuth();
+
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   if (!isOpen) {
@@ -23,10 +29,16 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
 
   const handleSubmitEmail = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // TODO: Implement OTP request API call
-      console.log('Request OTP for:', email);
+      await authService.sendOtp({
+        channel: 'EMAIL',
+        contact: email,
+        otpType: 'LOGIN',
+      });
       setStep('otp');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
       setIsLoading(false);
     }
@@ -55,13 +67,22 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
     if (otpValue.length !== 6) return;
 
     setIsLoading(true);
+    setError(null);
     try {
-      // TODO: Implement OTP verification API call
-      console.log('Verify OTP for:', email, 'OTP:', otpValue);
+      await authService.verifyOtp({
+        channel: 'EMAIL',
+        contact: email,
+        otp: otpValue,
+        otpType: 'LOGIN',
+      });
+      // Token is set in cookie, refresh profile to log user in
+      await refreshProfile();
       onClose();
       setStep('email');
       setEmail('');
       setOtp(['', '', '', '', '', '']);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to verify OTP');
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +91,7 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
   const handleBack = () => {
     setStep('email');
     setOtp(['', '', '', '', '', '']);
+    setError(null);
   };
 
   const handleCloseModal = () => {
@@ -77,6 +99,7 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
     setStep('email');
     setEmail('');
     setOtp(['', '', '', '', '', '']);
+    setError(null);
   };
 
   const isOTPComplete = otp.every((digit) => digit !== '');
@@ -117,6 +140,12 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
 
         {/* Content */}
         <div className='px-6 py-6'>
+          {error && (
+            <div className='mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800'>
+              {error}
+            </div>
+          )}
+
           {step === 'email' ? (
             <TextField
               label='Email'
@@ -125,24 +154,31 @@ export default function RecoverPasswordModal({ isOpen, onClose }: RecoverPasswor
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
               rightIcon={<MailIcon className='h-4 w-4' />}
+              disabled={isLoading}
             />
           ) : (
-            <div className='flex gap-3 justify-center'>
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type='text'
-                  inputMode='numeric'
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOTPInputChange(index, e.target.value)}
-                  onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                  className='h-14 w-12 rounded-lg border border-blue-500 bg-white text-center text-lg font-semibold text-blue-600 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-                />
-              ))}
+            <div>
+              <div className='mb-4 flex gap-3 justify-center'>
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
+                    type='text'
+                    inputMode='numeric'
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOTPInputChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                    disabled={isLoading}
+                    className='h-14 w-12 rounded-lg border border-blue-500 bg-white text-center text-lg font-semibold text-blue-600 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100 disabled:text-gray-400'
+                  />
+                ))}
+              </div>
+              <p className='text-center text-xs text-gray-500'>
+                Enter the 6-digit OTP sent to your email
+              </p>
             </div>
           )}
         </div>
