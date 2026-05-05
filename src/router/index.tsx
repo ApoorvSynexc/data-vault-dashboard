@@ -12,7 +12,7 @@ import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupMannagement from '../pages/BackupManagement';
 import BackupDetail from '../pages/BackupManagement/BackupDetail';
-import Connectors from '../pages/Connectors';
+import Connectors from '../pages/Connections/Connectors';
 import SalesforceConnections from '../pages/Connections/SalesforceConnections';
 import ConnectSalesforceOrg from '../pages/Connections/ConnectSalesforceOrg';
 import AWSConnections from '../pages/Connections/AWSConnections';
