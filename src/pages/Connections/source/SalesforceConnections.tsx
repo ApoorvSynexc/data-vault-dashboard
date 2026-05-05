@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import Typography from '../../components/Typography';
-import WarningDialog from '../../components/WarningDialog';
-import { usePlatformService, type ConnectedPlatform } from '../../services/platform/platform.service';
+import Typography from '../../../components/Typography';
+import WarningDialog from '../../../components/WarningDialog';
+import { usePlatformService, type ConnectedPlatform } from '../../../services/platform/platform.service';
 
 function SalesforceLogo() {
   return (

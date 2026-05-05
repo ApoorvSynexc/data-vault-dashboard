@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import Typography from '../../components/Typography';
+import Typography from '../../../components/Typography';
 
 interface AWSBucket {
   id: string;

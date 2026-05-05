@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Typography from '../../components/Typography';
-import { usePlatformService } from '../../services/platform/platform.service';
+import Typography from '../../../components/Typography';
+import { usePlatformService } from '../../../services/platform/platform.service';
 
 type Environment = 'production' | 'sandbox' | 'custom';
 
