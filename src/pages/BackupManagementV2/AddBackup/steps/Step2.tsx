@@ -6,6 +6,7 @@ import type { Destination } from '../../../../services/destination/destination.s
 
 type Step2Props = {
   onNext: () => void;
+  onBack: () => void;
 };
 
 const DEFAULT_DESTINATION = {
@@ -14,7 +15,7 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext }: Step2Props) {
+export default function Step2({ onNext, onBack }: Step2Props) {
   const destinationService = useDestinationService();
   const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
@@ -144,8 +145,11 @@ export default function Step2({ onNext }: Step2Props) {
 
       {/* Action Buttons */}
       <div className='mt-8 flex justify-end gap-4'>
-        <button className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-          Cancel
+        <button
+          onClick={onBack}
+          className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+        >
+          Back
         </button>
         <button
           onClick={onNext}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import { CRM_PLATFORM_META } from '../../../../constants/platforms';
@@ -9,18 +10,32 @@ type Step1Props = {
   onNext: () => void;
 };
 
+const AVAILABLE_PLATFORMS = [
+  {
+    crmId: 'salesforce-1',
+    crmName: 'Salesforce',
+    isConnected: true,
+    status: 'ACTIVE' as const,
+    crmProfile: {
+      organizationId: 'org-123',
+      photoUrl: '',
+      name: 'Salesforce Production',
+      userId: 'user-123',
+      email: 'admin@salesforce.com',
+      instanceUrl: 'https://salesforce.com',
+      username: 'admin',
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    userId: 'user-123',
+  },
+];
+
 export default function Step1({ onNext }: Step1Props) {
+  const navigate = useNavigate();
   const platformService = usePlatformService();
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
-
-  // Fetch available platforms on render
-  const { data: platformsData, isLoading: isLoadingPlatforms } = useQuery({
-    queryKey: ['available-platforms'],
-    queryFn: async () => platformService.getConnectedPlatforms(),
-  });
-
-  const platforms = platformsData ?? [];
 
   // Fetch connections only when a platform is selected
   const { data: connectionData, isLoading: isLoadingConnections } = useQuery({
@@ -61,40 +76,30 @@ export default function Step1({ onNext }: Step1Props) {
         <div className='bg-white rounded-lg shadow-sm p-6'>
           <h2 className='text-lg font-semibold text-gray-900 mb-6'>Available Source Platform</h2>
 
-          {isLoadingPlatforms ? (
-            <div className='flex items-center justify-center h-64'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
-            </div>
-          ) : (
-            <div className='space-y-3'>
-              {platforms.map((platform) => (
-                <button
-                  key={platform.crmId}
-                  onClick={() => setSelectedPlatform(platform)}
-                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                    selectedPlatform?.crmId === platform.crmId
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <div className='flex items-center gap-3'>
-                    <img
-                      src={salesforceLogo}
-                      alt={platform.crmName}
-                      className='w-12 h-12 rounded-lg object-contain'
-                    />
-                    <div className='flex-1'>
-                      <p className='font-semibold text-gray-900'>{platform.crmName}</p>
-                    </div>
+          <div className='space-y-3'>
+            {AVAILABLE_PLATFORMS.map((platform) => (
+              <button
+                key={platform.crmId}
+                onClick={() => setSelectedPlatform(platform)}
+                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                  selectedPlatform?.crmId === platform.crmId
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className='flex items-center gap-3'>
+                  <img
+                    src={salesforceLogo}
+                    alt={platform.crmName}
+                    className='w-12 h-12 rounded-lg object-contain'
+                  />
+                  <div className='flex-1'>
+                    <p className='font-semibold text-gray-900'>{platform.crmName}</p>
                   </div>
-                </button>
-              ))}
-
-              {platforms.length === 0 && !isLoadingPlatforms && (
-                <p className='text-center text-gray-500 py-8'>No platforms connected yet</p>
-              )}
-            </div>
-          )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Right Column - Select Connections */}
@@ -175,7 +180,10 @@ export default function Step1({ onNext }: Step1Props) {
 
       {/* Action Buttons */}
       <div className='mt-8 flex justify-end gap-4'>
-        <button className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
+        <button
+          onClick={() => navigate('/backup-management')}
+          className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+        >
           Cancel
         </button>
         <button
