@@ -77,7 +77,7 @@ export default function FinalStep({
     },
   });
 
-  const createBackupWithStatus = (backupStatus: 'DRAFT' | 'PENDING') => {
+  const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (!crmId) {
       alert('Please select a platform');
       return;
@@ -119,7 +119,7 @@ export default function FinalStep({
 
   const handleRunBackup = async () => {
     setSuccessType('run');
-    createBackupWithStatus('PENDING');
+    createBackupWithStatus('ACTIVE');
   };
 
   useEffect(() => {

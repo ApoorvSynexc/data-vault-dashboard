@@ -39,7 +39,7 @@ type BackupRow = {
   scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
-  backupStatus: 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
+  backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
 };
 
 function Panel({
@@ -314,6 +314,7 @@ function ScheduleFrequencyBadge({ frequency }: { frequency: string }) {
 function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
   const styles: Record<string, string> = {
     'DRAFT': 'bg-yellow-100 text-yellow-700',
+    'ACTIVE': 'bg-blue-100 text-blue-700',
     'PENDING': 'bg-blue-100 text-blue-700',
     'SUCCESS': 'bg-green-100 text-green-700',
     'FAILED': 'bg-red-100 text-red-700',
@@ -323,6 +324,7 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
 
   const labels: Record<string, string> = {
     'DRAFT': 'Draft',
+    'ACTIVE': 'Active',
     'PENDING': 'Pending',
     'SUCCESS': 'Success',
     'FAILED': 'Failed',
@@ -479,7 +481,7 @@ export default function BackupManagementV2() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'PENDING' | 'PAUSED' | 'RESUMED' }) =>
+    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'ACTIVE' | 'PAUSED' | 'RESUMED' }) =>
       backupConfigService.updateBackupConfig(backupConfigId, { backupStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
@@ -626,7 +628,7 @@ export default function BackupManagementV2() {
             items={[
               ...(row.backupStatus === 'DRAFT' ? [{
                 label: 'Activate',
-                onClick: () => updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'PENDING' }),
+                onClick: () => updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'ACTIVE' }),
               }] : []),
               ...(row.backupStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
               ...(row.backupStatus !== 'DRAFT' ? [{
