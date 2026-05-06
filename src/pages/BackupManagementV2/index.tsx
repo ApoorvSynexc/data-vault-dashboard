@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
@@ -491,9 +491,14 @@ export default function BackupManagementV2() {
     },
   });
 
+  const queryFn = useCallback(() =>
+    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
+    [currentCursor]
+  );
+
   const backupQuery = useQuery({
     queryKey: ['backup-config-list', currentCursor],
-    queryFn: () => backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
+    queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
