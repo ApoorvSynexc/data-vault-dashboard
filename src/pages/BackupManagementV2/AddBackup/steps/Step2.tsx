@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
@@ -16,6 +17,7 @@ const DEFAULT_DESTINATION = {
 };
 
 export default function Step2({ onNext, onBack }: Step2Props) {
+  const navigate = useNavigate();
   const destinationService = useDestinationService();
   const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
@@ -144,24 +146,32 @@ export default function Step2({ onNext, onBack }: Step2Props) {
       </div>
 
       {/* Action Buttons */}
-      <div className='mt-8 flex justify-end gap-4'>
+      <div className='mt-8 flex justify-between'>
         <button
-          onClick={onBack}
+          onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
         >
-          Back
+          Cancel
         </button>
-        <button
-          onClick={onNext}
-          disabled={!selectedDestination}
-          className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-            selectedDestination
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Next Step
-        </button>
+        <div className='flex gap-4'>
+          <button
+            onClick={onBack}
+            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+          >
+            ← Back
+          </button>
+          <button
+            onClick={onNext}
+            disabled={!selectedDestination}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              selectedDestination
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Next Step →
+          </button>
+        </div>
       </div>
     </div>
   );
