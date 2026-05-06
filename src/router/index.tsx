@@ -10,7 +10,7 @@ import SocialLoginCallback from '../pages/auth/SocialLoginCallback';
 import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
-import BackupMannagement from '../pages/BackupManagement';
+import BackupManagementV2 from '../pages/BackupManagementV2';
 import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Connectors from '../pages/Connections/Connectors';
 import SalesforceConnections from '../pages/Connections/source/SalesforceConnections';
@@ -35,7 +35,7 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: '/profile', element: <Profile /> },
           { path: '/change-password', element: <ChangePassword /> },
-          { path: '/backup-management', element: <BackupMannagement /> },
+          { path: '/backup-management', element: <BackupManagementV2 /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/connections', element: <Connectors /> },
           { path: '/connections/salesforce', element: <SalesforceConnections /> },
