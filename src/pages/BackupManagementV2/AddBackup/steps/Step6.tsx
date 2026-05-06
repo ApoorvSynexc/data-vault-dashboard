@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -31,7 +32,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
   const [selectedMonths, setSelectedMonths] = useState<string[]>(['Jan']);
   const [dayOfMonth, setDayOfMonth] = useState('01');
   const [startTime, setStartTime] = useState('12:00');
-  const [timeZone, setTimeZone] = useState('(GMT-04:00) Eastern Time(US & Canada)');
+  const [timeZone, setTimeZone] = useState(getDefaultTimezone().value);
   const [startDate, setStartDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState(dayjs().add(7, 'days').format('YYYY-MM-DD'));
   const [backupFrequency, setBackupFrequency] = useState('Daily');
@@ -142,7 +143,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                   onChange={(e) => setTimeZone(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
-                  <option>{timeZone}</option>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -188,7 +193,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                   onChange={(e) => setTimeZone(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
-                  <option>{timeZone}</option>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -241,7 +250,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                   onChange={(e) => setTimeZone(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
-                  <option>{timeZone}</option>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -310,7 +323,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                   onChange={(e) => setTimeZone(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
-                  <option>{timeZone}</option>
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -378,7 +395,11 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                 onChange={(e) => setTimeZone(e.target.value)}
                 className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               >
-                <option>{timeZone}</option>
+                {TIMEZONES.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -447,7 +468,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                 scheduling.startDate = startDate;
                 scheduling.startTime = startTime;
               } else if (frequency === 'Custom') {
-                scheduling.frequency = backupFrequency.toUpperCase();
+                scheduling.frequency = 'CUSTOM';
                 scheduling.interval = 1;
                 scheduling.startDate = startDate;
                 if (!endDate || endDate === '') {

@@ -11,8 +11,16 @@ type BackupStrategy = 'realtime' | 'scheduled';
 export default function Step3({ onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
-  const [realtimeDataSelection, setRealtimeDataSelection] = useState('entire');
-  const [scheduledDataSelection, setScheduledDataSelection] = useState('entire');
+  const [realtimeDataSelection, setRealtimeDataSelection] = useState('');
+  const [scheduledDataSelection, setScheduledDataSelection] = useState('');
+
+  const handleEntireDatasetToggle = () => {
+    if (selectedStrategy === 'realtime') {
+      setRealtimeDataSelection(realtimeDataSelection === 'entire' ? '' : 'entire');
+    } else {
+      setScheduledDataSelection(scheduledDataSelection === 'entire' ? '' : 'entire');
+    }
+  };
 
   return (
     <div className='min-h-screen bg-gray-50 p-8'>
@@ -173,20 +181,24 @@ export default function Step3({ onNext, onBack }: Step3Props) {
         </div>
 
         {/* Data Selection */}
-        <div className='bg-white rounded-lg border-2 border-gray-200 p-6'>
+        <button
+          onClick={handleEntireDatasetToggle}
+          className='w-full bg-white rounded-lg border-2 border-gray-200 p-6 hover:border-blue-300 hover:bg-blue-50 transition-all text-left'
+        >
           <div className='flex items-start gap-4'>
             <input
               type='checkbox'
               id='entire-dataset'
               checked={selectedStrategy === 'realtime' ? realtimeDataSelection === 'entire' : scheduledDataSelection === 'entire'}
               onChange={(e) => {
+                e.stopPropagation();
                 if (selectedStrategy === 'realtime') {
                   setRealtimeDataSelection(e.target.checked ? 'entire' : '');
                 } else {
                   setScheduledDataSelection(e.target.checked ? 'entire' : '');
                 }
               }}
-              className='w-5 h-5 mt-1 accent-blue-600 rounded'
+              className='w-5 h-5 mt-1 accent-blue-600 rounded cursor-pointer'
             />
             <div className='flex-1'>
               <label htmlFor='entire-dataset' className='font-semibold text-gray-900 cursor-pointer'>
@@ -197,7 +209,7 @@ export default function Step3({ onNext, onBack }: Step3Props) {
               </p>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Action Buttons */}

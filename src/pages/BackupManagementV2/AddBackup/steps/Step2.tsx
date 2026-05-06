@@ -174,10 +174,16 @@ export default function Step2({ onNext, onBack }: Step2Props) {
             ← Back
           </button>
           <button
-            onClick={() => onNext(selectedConnection)}
-            disabled={!selectedDestination}
+            onClick={() => {
+              if (!selectedConnection) {
+                alert('Please select a destination connection');
+                return;
+              }
+              onNext(selectedConnection);
+            }}
+            disabled={!selectedDestination || !selectedConnection}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              selectedDestination
+              selectedDestination && selectedConnection
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
