@@ -30,8 +30,31 @@ export default function Step6({ onNext, onBack }: Step6Props) {
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'];
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dayMap: Record<string, string> = {
+    'Mon': 'MON',
+    'Tue': 'TUE',
+    'Wed': 'WED',
+    'Thu': 'THU',
+    'Fri': 'FRI',
+    'Sat': 'SAT',
+    'Sun': 'SUN',
+  };
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthMap: Record<string, string> = {
+    'Jan': 'JAN',
+    'Feb': 'FEB',
+    'Mar': 'MAR',
+    'Apr': 'APR',
+    'May': 'MAY',
+    'Jun': 'JUN',
+    'Jul': 'JUL',
+    'Aug': 'AUG',
+    'Sep': 'SEP',
+    'Oct': 'OCT',
+    'Nov': 'NOV',
+    'Dec': 'DEC',
+  };
 
   const toggleDay = (day: string) => {
     setSelectedDays(prev =>
@@ -374,9 +397,14 @@ export default function Step6({ onNext, onBack }: Step6Props) {
               if (frequency === 'Hourly') {
                 scheduling.interval = parseInt(backupIn.split(' ')[0]) || 1;
               } else if (frequency === 'Weekly') {
-                scheduling.weekDays = selectedDays.length > 0 ? selectedDays : ['MON'];
+                scheduling.weekDays = selectedDays.length > 0
+                  ? selectedDays.map((day: string) => dayMap[day] || day)
+                  : ['MON'];
               } else if (frequency === 'Monthly') {
                 scheduling.monthDate = parseInt(dayOfMonth) || 1;
+                if (selectedMonths.length > 0) {
+                  scheduling.selectedMonths = selectedMonths.map((month: string) => monthMap[month] || month);
+                }
               } else if (frequency === 'Custom') {
                 // For custom, use the selected backup frequency
                 scheduling.frequency = backupFrequency.toUpperCase();

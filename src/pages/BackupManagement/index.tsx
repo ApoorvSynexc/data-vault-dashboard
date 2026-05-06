@@ -22,6 +22,11 @@ type BackupConfigItem = {
   lastBackupAt?: string;
   sizeInBytes?: number;
   platform?: PlatformType | string;
+  scheduleConfig?: {
+    scheduling?: {
+      frequency?: string;
+    };
+  };
 };
 
 type BackupRow = {
@@ -31,6 +36,7 @@ type BackupRow = {
   platform: PlatformType;
   status: BackupStatus;
   backupType: BackupType;
+  scheduleType: string;
   lastRun: string;
   dataSize: string;
 };
@@ -464,11 +470,31 @@ export default function BackupManagement() {
     }
   }, [backupQuery.data, currentPage, cursorMap]);
 
+  const getScheduleTypeLabel = (frequency?: string): string => {
+    if (!frequency) return '--';
+    const frequencyMap: Record<string, string> = {
+      'HOURLY': 'Hourly',
+      'DAILY': 'Daily',
+      'WEEKLY': 'Weekly',
+      'MONTHLY': 'Monthly',
+      'CUSTOM': 'Custom',
+      'HOUR': 'Hourly',
+      'DAY': 'Daily',
+      'WEEK': 'Weekly',
+      'MONTH': 'Monthly',
+    };
+    return frequencyMap[frequency] || frequency;
+  };
+
   const parsedRows: BackupRow[] = (apiDataArray as BackupConfigItem[]).map((item) => {
     const platform: PlatformType =
       item.platform === 'Salesforce' || item.platform === 'HubSpot' || item.platform === 'Zoho'
         ? (item.platform as PlatformType)
         : 'Salesforce';
+
+    const scheduleType = item.schedule === 'REALTIME'
+      ? 'Real-Time'
+      : getScheduleTypeLabel(item.scheduleConfig?.scheduling?.frequency);
 
     return {
       id: item.backupConfigId,
@@ -477,6 +503,7 @@ export default function BackupManagement() {
       platform,
       status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : item.backupStatus === 'PENDING' ? 'Pending' : item.backupStatus === 'FAILED' ? 'Failed' : 'Pending',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
+      scheduleType,
       lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
       dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
     };
@@ -513,6 +540,12 @@ export default function BackupManagement() {
       key: 'backupType',
       header: 'Backup Type',
       render: (row) => <BackupTypeBadge type={row.backupType} />,
+    },
+    {
+      key: 'scheduleType',
+      header: 'Schedule Type',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.scheduleType,
     },
     {
       key: 'status',
