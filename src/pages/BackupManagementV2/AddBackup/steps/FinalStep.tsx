@@ -75,7 +75,7 @@ export default function FinalStep({
     },
   });
 
-  const handleRunBackup = async () => {
+  const createBackupWithStatus = (backupStatus: 'DRAFT' | 'PENDING') => {
     if (!crmId) {
       alert('Please select a platform');
       return;
@@ -100,6 +100,7 @@ export default function FinalStep({
         condition: { type: 'AND' },
         field: [],
       })),
+      backupStatus,
     };
 
     if (!isRealTime && scheduleConfig) {
@@ -107,6 +108,16 @@ export default function FinalStep({
     }
 
     createBackupMutation.mutate(payload);
+  };
+
+  const handleSaveDraft = () => {
+    setSuccessType('save');
+    createBackupWithStatus('DRAFT');
+  };
+
+  const handleRunBackup = async () => {
+    setSuccessType('run');
+    createBackupWithStatus('PENDING');
   };
 
   useEffect(() => {
@@ -331,13 +342,11 @@ export default function FinalStep({
             ← Back
           </button>
           <button
-            onClick={() => {
-              setSuccessType('save');
-              setIsSuccess(true);
-            }}
-            className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors'
+            onClick={handleSaveDraft}
+            disabled={isLoading || createBackupMutation.isPending}
+            className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
           >
-            Save Backup Policy
+            {isLoading || createBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
           </button>
           <button
             onClick={handleRunBackup}

@@ -39,6 +39,7 @@ type BackupRow = {
   scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
+  backupStatus: 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED';
 };
 
 function Panel({
@@ -325,6 +326,30 @@ function ScheduleFrequencyBadge({ frequency }: { frequency: string }) {
   );
 }
 
+function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
+  const styles: Record<string, string> = {
+    'DRAFT': 'bg-yellow-100 text-yellow-700',
+    'PENDING': 'bg-blue-100 text-blue-700',
+    'SUCCESS': 'bg-green-100 text-green-700',
+    'FAILED': 'bg-red-100 text-red-700',
+    'PAUSED': 'bg-gray-100 text-gray-700',
+  };
+
+  const labels: Record<string, string> = {
+    'DRAFT': 'Draft',
+    'PENDING': 'Pending',
+    'SUCCESS': 'Success',
+    'FAILED': 'Failed',
+    'PAUSED': 'Paused',
+  };
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[backupStatus] || styles['PENDING']}`}>
+      {labels[backupStatus] || backupStatus}
+    </span>
+  );
+}
+
 type DropdownMenuItem = {
   label: string;
   danger?: boolean;
@@ -466,6 +491,19 @@ export default function BackupManagementV2() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'PAUSED' | 'PENDING' }) =>
+      backupConfigService.updateBackupConfig(backupConfigId, { backupStatus }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update backup status:', error);
+      alert('Failed to update backup status. Please try again.');
+    },
+  });
+
   const backupQuery = useQuery({
     queryKey: ['backup-config-list', currentCursor],
     queryFn: () => backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
@@ -522,6 +560,7 @@ export default function BackupManagementV2() {
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
       dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
+      backupStatus: (item.backupStatus as 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED') || 'PENDING',
     };
   });
 
@@ -568,6 +607,11 @@ export default function BackupManagementV2() {
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
+      key: 'backupStatus',
+      header: 'Backup Status',
+      render: (row) => <BackupStatusBadge backupStatus={row.backupStatus} />,
+    },
+    {
       key: 'lastRun',
       header: 'Last Run',
       className: 'text-xs text-gray-500',
@@ -593,8 +637,18 @@ export default function BackupManagementV2() {
           <ActionDropdown
             key={row.id}
             items={[
-              { label: 'Run Now' },
-              { label: 'Pause' },
+              ...(row.backupStatus === 'DRAFT' ? [{
+                label: 'Activate',
+                onClick: () => updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'PENDING' }),
+              }] : []),
+              ...(row.backupStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
+              ...(row.backupStatus !== 'DRAFT' ? [{
+                label: row.backupStatus === 'PAUSED' ? 'Resume' : 'Pause',
+                onClick: () => {
+                  const newStatus = row.backupStatus === 'PAUSED' ? 'PENDING' : 'PAUSED';
+                  updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: newStatus });
+                },
+              }] : []),
               { label: 'Manage' },
               { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
             ]}

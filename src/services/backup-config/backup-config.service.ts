@@ -10,6 +10,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
   list: '/v1/backup-config/list',
   detail: '/v1/backup-config',
+  update: '/v1/backup-config',
   delete: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
   objectFields: '/v1/backup-config/fields',
@@ -225,6 +226,8 @@ export function useBackupConfigService() {
       });
       return response;
     },
+    updateBackupConfig: (backupConfigId: string, payload: Record<string, unknown>) =>
+      api.put<void>(BACKUP_CONFIG_ENDPOINTS.update, payload, { query: { backupConfigId } }),
     listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
       const query: any = { slug, pagination, cursor, limit };
       if (status) {
