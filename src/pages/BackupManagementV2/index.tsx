@@ -494,7 +494,7 @@ export default function BackupManagementV2() {
   const backupQuery = useQuery({
     queryKey: ['backup-config-list', currentCursor],
     queryFn: () => backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
-    staleTime: 10_000,
+    staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -516,7 +516,7 @@ export default function BackupManagementV2() {
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
     }
-  }, [backupQuery.data, currentPage, cursorMap]);
+  }, [backupQuery.data, currentPage]);
 
   const getScheduleFrequencyDisplay = (frequency?: string): string => {
     if (!frequency) return '--';
