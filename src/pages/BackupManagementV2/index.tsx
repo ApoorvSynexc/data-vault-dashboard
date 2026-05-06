@@ -259,21 +259,6 @@ function PlatformBadge({
   );
 }
 
-function StatusBadge({ status }: { status: BackupStatus }) {
-  const styles: Record<BackupStatus, string> = {
-    Completed: 'bg-emerald-100 text-emerald-700',
-    Running: 'bg-amber-100 text-amber-700',
-    Pending: 'bg-blue-100 text-blue-700',
-    Failed: 'bg-red-100 text-red-700',
-  };
-
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status]}`}>
-      {status}
-    </span>
-  );
-}
-
 function BackupTypeBadge({ type }: { type: BackupType }) {
   const styles: Record<BackupType, string> = {
     Realtime: 'bg-violet-100 text-violet-700',
@@ -600,11 +585,6 @@ export default function BackupManagementV2() {
       key: 'scheduleFrequency',
       header: 'Schedule Type',
       render: (row) => row.backupType === 'Schedule' ? <ScheduleFrequencyBadge frequency={row.scheduleFrequency} /> : <span className='text-gray-400 text-[10px]'>N/A</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />,
     },
     {
       key: 'backupStatus',
