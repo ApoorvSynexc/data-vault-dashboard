@@ -15,7 +15,7 @@ export default function AddBackup() {
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
   const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
-  const [policyName, setPolicyName] = useState('Salesforce Production Backup');
+  const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
   const environment = 'Production';
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);

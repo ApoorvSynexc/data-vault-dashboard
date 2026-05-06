@@ -39,7 +39,7 @@ type BackupRow = {
   scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
-  backupStatus: 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED';
+  backupStatus: 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
 };
 
 function Panel({
@@ -318,6 +318,7 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
     'SUCCESS': 'bg-green-100 text-green-700',
     'FAILED': 'bg-red-100 text-red-700',
     'PAUSED': 'bg-gray-100 text-gray-700',
+    'RESUMED': 'bg-purple-100 text-purple-700',
   };
 
   const labels: Record<string, string> = {
@@ -326,6 +327,7 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
     'SUCCESS': 'Success',
     'FAILED': 'Failed',
     'PAUSED': 'Paused',
+    'RESUMED': 'Resumed',
   };
 
   return (
@@ -477,7 +479,7 @@ export default function BackupManagementV2() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'PAUSED' | 'PENDING' }) =>
+    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'PENDING' | 'PAUSED' | 'RESUMED' }) =>
       backupConfigService.updateBackupConfig(backupConfigId, { backupStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
@@ -545,7 +547,7 @@ export default function BackupManagementV2() {
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
       dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
-      backupStatus: (item.backupStatus as 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED') || 'PENDING',
+      backupStatus: (item.backupStatus as 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
     };
   });
 
@@ -625,7 +627,7 @@ export default function BackupManagementV2() {
               ...(row.backupStatus !== 'DRAFT' ? [{
                 label: row.backupStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
-                  const newStatus = row.backupStatus === 'PAUSED' ? 'PENDING' : 'PAUSED';
+                  const newStatus = row.backupStatus === 'PAUSED' ? 'RESUMED' : 'PAUSED';
                   updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: newStatus });
                 },
               }] : []),

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
 type ScheduleConfig = {
@@ -43,6 +43,7 @@ export default function FinalStep({
 }: FinalStepProps) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
   const isRealTime = strategy === 'realtime';
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy']));
   const [isSuccess, setIsSuccess] = useState(false);
@@ -66,6 +67,7 @@ export default function FinalStep({
       return await backupConfigService.createBackupConfig(payload);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
       setSuccessType('run');
       setIsSuccess(true);
     },

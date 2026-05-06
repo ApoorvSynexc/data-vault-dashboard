@@ -9,16 +9,23 @@ type Step4Props = {
   description?: string;
 };
 
-export default function Step4({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = 'Salesforce Production Backup', description: initialDescription = '' }: Step4Props) {
+export default function Step4({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = '', description: initialDescription = '' }: Step4Props) {
   const navigate = useNavigate();
   const [policyName, setPolicyName] = useState(initialPolicyName);
   const [description, setDescription] = useState(initialDescription);
   const [acceptanceText, setAcceptanceText] = useState('');
   const [acceptanceError, setAcceptanceError] = useState(false);
+  const [policyNameError, setPolicyNameError] = useState(false);
 
   const isRealTime = strategy === 'realtime';
 
   const handleNext = () => {
+    if (!policyName.trim()) {
+      setPolicyNameError(true);
+      return;
+    }
+    setPolicyNameError(false);
+
     if (isRealTime) {
       if (acceptanceText.toLowerCase() !== 'accept') {
         setAcceptanceError(true);
@@ -78,9 +85,22 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
           <input
             type='text'
             value={policyName}
-            onChange={(e) => setPolicyName(e.target.value)}
-            className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+            onChange={(e) => {
+              setPolicyName(e.target.value);
+              if (policyNameError && e.target.value.trim()) {
+                setPolicyNameError(false);
+              }
+            }}
+            placeholder='Enter backup policy name'
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+              policyNameError
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-gray-300 focus:ring-blue-500'
+            }`}
           />
+          {policyNameError && (
+            <p className='text-sm text-red-600 mt-2'>Backup Policy Name is required</p>
+          )}
         </div>
 
         {/* Backup Description */}
@@ -156,7 +176,12 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
           </button>
           <button
             onClick={handleNext}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            disabled={!policyName.trim()}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              policyName.trim()
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             Next Step →
           </button>
