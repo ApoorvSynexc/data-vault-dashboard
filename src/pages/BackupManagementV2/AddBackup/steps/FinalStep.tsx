@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import type { DestinationConfig } from '../../../../services/destination/destination.service';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -21,6 +22,7 @@ type FinalStepProps = {
   description?: string;
   environment?: string;
   scheduleConfig?: ScheduleConfig | null;
+  destinationConfig?: DestinationConfig | null;
 };
 
 export default function FinalStep({
@@ -32,6 +34,7 @@ export default function FinalStep({
   description = '',
   environment = 'Production',
   scheduleConfig = null,
+  destinationConfig = null,
 }: FinalStepProps) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
@@ -73,6 +76,11 @@ export default function FinalStep({
       return;
     }
 
+    if (!destinationConfig) {
+      alert('Please select a destination');
+      return;
+    }
+
     setIsLoading(true);
     const payload: any = {
       crmId,
@@ -88,12 +96,7 @@ export default function FinalStep({
       })),
       destination: {
         type: 'S3',
-        config: {
-          bucketName: 'aws-s3-bucket',
-          region: 'us-east-1',
-          accessKeyId: '',
-          secretAccessKey: '',
-        },
+        config: destinationConfig,
       },
     };
 

@@ -6,8 +6,9 @@ import awsLogo from '../../../../assets/icons/aws_logo.svg';
 import type { Destination } from '../../../../services/destination/destination.service';
 
 type Step2Props = {
-  onNext: () => void;
+  onNext: (destination: Destination | null) => void;
   onBack: () => void;
+  selectedDestination?: Destination | null;
 };
 
 const DEFAULT_DESTINATION = {
@@ -159,7 +160,7 @@ export default function Step2({ onNext, onBack }: Step2Props) {
             ← Back
           </button>
           <button
-            onClick={onNext}
+            onClick={() => onNext(selectedConnection)}
             disabled={!selectedDestination}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               selectedDestination
