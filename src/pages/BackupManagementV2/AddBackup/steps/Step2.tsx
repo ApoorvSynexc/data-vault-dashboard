@@ -8,7 +8,6 @@ import type { Destination } from '../../../../services/destination/destination.s
 type Step2Props = {
   onNext: (destination: Destination | null) => void;
   onBack: () => void;
-  selectedDestination?: Destination | null;
 };
 
 const DEFAULT_DESTINATION = {
@@ -35,10 +34,25 @@ export default function Step2({ onNext, onBack }: Step2Props) {
 
   // Auto-select first connection when connections are fetched
   useEffect(() => {
-    if (connections.length > 0 && !isLoadingConnections) {
-      setSelectedConnection(connections[0]);
+    if (connections.length > 0 && !isLoadingConnections && !selectedConnection) {
+      const firstConnection = connections[0];
+      // Fetch decrypted config for the selected connection
+      fetchAndSetConfig(firstConnection);
     }
   }, [connections, isLoadingConnections]);
+
+  const fetchAndSetConfig = async (connection: Destination) => {
+    try {
+      const decryptedConfig = await destinationService.getDecryptedConfig(connection.destinationId);
+      setSelectedConnection({
+        ...connection,
+        config: decryptedConfig ?? undefined,
+      });
+    } catch (error) {
+      console.error('Failed to fetch destination config:', error);
+      setSelectedConnection(connection);
+    }
+  };
 
   const isSelected = selectedDestination?.provider === DEFAULT_DESTINATION.provider;
 
@@ -99,7 +113,7 @@ export default function Step2({ onNext, onBack }: Step2Props) {
                   {connections.map((connection: Destination) => (
                     <div
                       key={connection.destinationId}
-                      onClick={() => setSelectedConnection(connection)}
+                      onClick={() => fetchAndSetConfig(connection)}
                       className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
                         selectedConnection?.destinationId === connection.destinationId
                           ? 'border-blue-500 bg-blue-50'
