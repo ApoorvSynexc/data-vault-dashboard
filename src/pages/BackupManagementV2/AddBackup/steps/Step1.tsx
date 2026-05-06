@@ -7,7 +7,7 @@ import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
 type Step1Props = {
-  onNext: () => void;
+  onNext: (platformId?: string) => void;
 };
 
 const AVAILABLE_PLATFORMS = [
@@ -45,13 +45,19 @@ export default function Step1({ onNext }: Step1Props) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const connections = connectionData ?? [];
+  const allConnections = (connectionData as any)?.data ?? connectionData ?? [];
+  // Filter connections by selected platform type (case-insensitive)
+  const connections = selectedPlatform
+    ? allConnections.filter((conn: any) => conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase())
+    : [];
   const platformMeta = selectedPlatform ? CRM_PLATFORM_META[selectedPlatform.crmName as keyof typeof CRM_PLATFORM_META] : null;
 
   // Auto-select first connection when connections are fetched
   useEffect(() => {
     if (connections.length > 0 && !isLoadingConnections) {
       setSelectedConnection(connections[0]);
+    } else if (connections.length === 0) {
+      setSelectedConnection(null);
     }
   }, [connections, isLoadingConnections]);
 
@@ -116,7 +122,7 @@ export default function Step1({ onNext }: Step1Props) {
                 </div>
               ) : (
                 <div className='space-y-4'>
-                  {connections.map((connection) => (
+                  {connections.map((connection: any) => (
                     <div
                       key={connection.crmId}
                       onClick={() => setSelectedConnection(connection)}
@@ -187,10 +193,10 @@ export default function Step1({ onNext }: Step1Props) {
           Cancel
         </button>
         <button
-          onClick={onNext}
-          disabled={!selectedPlatform}
+          onClick={() => onNext(selectedConnection?.crmId)}
+          disabled={!selectedConnection}
           className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-            selectedPlatform
+            selectedConnection
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
