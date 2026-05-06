@@ -40,26 +40,29 @@ export default function Step1({ onNext }: Step1Props) {
   // Fetch connections only when a platform is selected
   const { data: connectionData, isLoading: isLoadingConnections } = useQuery({
     queryKey: ['platform-connections', selectedPlatform?.crmId],
-    queryFn: async () => platformService.getConnectedPlatforms(),
+    queryFn: async () => {
+      const result = await platformService.getConnectedPlatforms();
+      return Array.isArray(result) ? result : [];
+    },
     enabled: !!selectedPlatform,
     staleTime: 5 * 60 * 1000,
   });
 
-  const allConnections = (connectionData as any)?.data ?? connectionData ?? [];
+  const allConnections = Array.isArray(connectionData) ? connectionData : [];
   // Filter connections by selected platform type (case-insensitive)
   const connections = selectedPlatform
     ? allConnections.filter((conn: any) => conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase())
     : [];
   const platformMeta = selectedPlatform ? CRM_PLATFORM_META[selectedPlatform.crmName as keyof typeof CRM_PLATFORM_META] : null;
 
-  // Auto-select first connection when connections are fetched
+  // Auto-select first connection when connections are fetched (only if not already selected)
   useEffect(() => {
-    if (connections.length > 0 && !isLoadingConnections) {
+    if (connections.length > 0 && !selectedConnection) {
       setSelectedConnection(connections[0]);
-    } else if (connections.length === 0) {
+    } else if (connections.length === 0 && selectedConnection) {
       setSelectedConnection(null);
     }
-  }, [connections, isLoadingConnections]);
+  }, [connections, selectedConnection]);
 
   return (
     <div className='min-h-screen bg-gray-50 p-8'>
