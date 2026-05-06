@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import type { DestinationConfig } from '../../../../services/destination/destination.service';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -22,7 +21,7 @@ type FinalStepProps = {
   description?: string;
   environment?: string;
   scheduleConfig?: ScheduleConfig | null;
-  destinationConfig?: DestinationConfig | null;
+  destinationId?: string | null;
 };
 
 export default function FinalStep({
@@ -34,7 +33,7 @@ export default function FinalStep({
   description = '',
   environment = 'Production',
   scheduleConfig = null,
-  destinationConfig = null,
+  destinationId = null,
 }: FinalStepProps) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
@@ -76,7 +75,7 @@ export default function FinalStep({
       return;
     }
 
-    if (!destinationConfig) {
+    if (!destinationId) {
       alert('Please select a destination');
       return;
     }
@@ -87,6 +86,7 @@ export default function FinalStep({
       name: policyName,
       description,
       environment: environment.toUpperCase(),
+      destinationId,
       objectNames: selectedObjectIds,
       schedule: isRealTime ? 'REALTIME' : 'SCHEDULE',
       objects: selectedObjectIds.map((id) => ({
@@ -94,10 +94,6 @@ export default function FinalStep({
         condition: { type: 'AND' },
         field: [],
       })),
-      destination: {
-        type: 'S3',
-        config: destinationConfig,
-      },
     };
 
     if (!isRealTime && scheduleConfig) {

@@ -6,7 +6,6 @@ import Step4 from './steps/Step4';
 import Step5 from './steps/Step5';
 import Step6 from './steps/Step6';
 import FinalStep from './steps/FinalStep';
-import type { DestinationConfig } from '../../../services/destination/destination.service';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
@@ -20,7 +19,7 @@ export default function AddBackup() {
   const [description, setDescription] = useState('');
   const environment = 'Production';
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
-  const [destinationConfig, setDestinationConfig] = useState<DestinationConfig | null>(null);
+  const [destinationId, setDestinationId] = useState<string | null>(null);
 
   const getMaxSteps = () => {
     return selectedStrategy === 'realtime' ? 6 : 7;
@@ -67,8 +66,8 @@ export default function AddBackup() {
       {currentStep === 2 && (
         <Step2
           onNext={(destination) => {
-            if (destination?.config) {
-              setDestinationConfig(destination.config);
+            if (destination?.destinationId) {
+              setDestinationId(destination.destinationId);
             }
             handleNextStep();
           }}
@@ -120,7 +119,7 @@ export default function AddBackup() {
           environment={environment}
           selectedObjectIds={selectedObjectIds}
           scheduleConfig={scheduleConfig}
-          destinationConfig={destinationConfig}
+          destinationId={destinationId}
         />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
@@ -133,7 +132,7 @@ export default function AddBackup() {
           environment={environment}
           selectedObjectIds={selectedObjectIds}
           scheduleConfig={scheduleConfig}
-          destinationConfig={destinationConfig}
+          destinationId={destinationId}
         />
       )}
     </div>
