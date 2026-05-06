@@ -11,6 +11,7 @@ import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import BackupManagementV2 from '../pages/BackupManagementV2';
+import AddBackup from '../pages/BackupManagementV2/AddBackup';
 import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Connectors from '../pages/Connections/Connectors';
 import SalesforceConnections from '../pages/Connections/source/SalesforceConnections';
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
           { path: '/profile', element: <Profile /> },
           { path: '/change-password', element: <ChangePassword /> },
           { path: '/backup-management', element: <BackupManagementV2 /> },
+          { path: '/backup-management/add', element: <AddBackup /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/connections', element: <Connectors /> },
           { path: '/connections/salesforce', element: <SalesforceConnections /> },

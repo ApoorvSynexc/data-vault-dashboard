@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
 import type { PlatformType } from '../BackupManagement/AddBackupModal';
@@ -417,6 +417,7 @@ function FilterBar({
 }
 
 export default function BackupManagementV2() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -570,9 +571,8 @@ export default function BackupManagementV2() {
 
           <button
             type='button'
-            disabled
-            title='Add backup functionality is disabled in V2'
-            className='inline-flex items-center justify-center rounded-md bg-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 cursor-not-allowed opacity-50 transition'
+            onClick={() => navigate('/backup-management/add')}
+            className='inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition'
           >
             + New Backup
           </button>
