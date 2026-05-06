@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type Step3Props = {
-  onNext: (strategy: 'realtime' | 'scheduled') => void;
+  onNext: (strategy: 'realtime' | 'scheduled', entireDatasetSelected: boolean) => void;
   onBack: () => void;
 };
 
@@ -16,16 +16,14 @@ export default function Step3({ onNext, onBack }: Step3Props) {
 
   return (
     <div className='min-h-screen bg-gray-50 p-8'>
-      {/* Header */}
-      <div className='mb-8'>
-        <h1 className='text-3xl font-bold text-gray-900'>Choose Backup Strategy</h1>
-        <p className='text-gray-600 mt-2'>Select how you want your data to be protected</p>
-      </div>
-
-      {/* Step Indicator */}
-      <div className='mb-8'>
-        <span className='inline-block text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full'>
-          Step 3 of 4
+      {/* Header with Step Indicator */}
+      <div className='flex items-start justify-between mb-8'>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Choose Backup Strategy</h1>
+          <p className='text-gray-600 mt-2'>Select how you want your data to be protected</p>
+        </div>
+        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+          Step 3 of 5
         </span>
       </div>
 
@@ -218,7 +216,7 @@ export default function Step3({ onNext, onBack }: Step3Props) {
             ← Back
           </button>
           <button
-            onClick={() => onNext(selectedStrategy)}
+            onClick={() => onNext(selectedStrategy, selectedStrategy === 'realtime' ? realtimeDataSelection === 'entire' : scheduledDataSelection === 'entire')}
             className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
           >
             Next Step →

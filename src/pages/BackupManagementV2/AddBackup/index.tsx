@@ -31,8 +31,9 @@ export default function AddBackup() {
     }
   };
 
-  const handleStrategySelected = (strategy: BackupStrategy) => {
+  const handleStrategySelected = (strategy: BackupStrategy, entireDataset: boolean) => {
     setSelectedStrategy(strategy);
+    setEntireDatasetSelected(entireDataset);
     handleNextStep();
   };
 

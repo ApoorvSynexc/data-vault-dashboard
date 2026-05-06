@@ -43,16 +43,14 @@ export default function Step2({ onNext, onBack }: Step2Props) {
 
   return (
     <div className='min-h-screen bg-gray-50 p-8'>
-      {/* Header */}
-      <div className='mb-8'>
-        <h1 className='text-3xl font-bold text-gray-900'>Choose Destination</h1>
-        <p className='text-gray-600 mt-2'>Select destination where your backup will be stored</p>
-      </div>
-
-      {/* Step Indicator */}
-      <div className='mb-8'>
-        <span className='inline-block text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full'>
-          Step 2 of 4
+      {/* Header with Step Indicator */}
+      <div className='flex items-start justify-between mb-8'>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Choose Destination</h1>
+          <p className='text-gray-600 mt-2'>Select destination where your backup will be stored</p>
+        </div>
+        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+          Step 2 of 5
         </span>
       </div>
 

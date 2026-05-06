@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
@@ -32,9 +32,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   });
 
   const objects: BackupObject[] = (objectsData as any)?.data ?? objectsData ?? [];
-  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
-    entireDatasetSelected ? new Set(objects.map((obj) => obj.id)) : new Set()
-  );
+  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set());
+
+  // Auto-select all objects when entireDatasetSelected is true and objects are loaded
+  useEffect(() => {
+    if (entireDatasetSelected && objects.length > 0) {
+      setSelectedObjects(new Set(objects.map((obj) => obj.id)));
+    }
+  }, [entireDatasetSelected, objects]);
 
   const filteredObjects = useMemo(() => {
     return objects.filter((obj) => {
@@ -63,24 +68,22 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   };
 
   return (
-    <div className='min-h-screen bg-gray-50 p-8'>
-      {/* Header */}
-      <div className='mb-8'>
-        <h1 className='text-3xl font-bold text-gray-900'>Data Scope</h1>
-        <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
-      </div>
-
-      {/* Step Indicator */}
-      <div className='mb-8'>
-        <span className='inline-block text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full'>
-          Step 5 of 6
+    <div className='h-screen bg-gray-50 p-8 flex flex-col overflow-hidden'>
+      {/* Header with Step Indicator */}
+      <div className='flex items-start justify-between mb-8 flex-shrink-0'>
+        <div>
+          <h1 className='text-3xl font-bold text-gray-900'>Data Scope</h1>
+          <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
+        </div>
+        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+          Step 5 of 5
         </span>
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 p-6 mb-8'>
+      <div className='bg-white rounded-lg border border-gray-200 p-6 mb-8 flex flex-col flex-grow min-h-0'>
         {/* Search and Filter */}
-        <div className='mb-6 flex items-center gap-4 justify-between'>
+        <div className='mb-6 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
             <input
               type='text'
@@ -107,21 +110,21 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
             ))}
           </div>
 
-          <div className='text-sm font-semibold text-blue-600'>
+          <div className='text-sm font-semibold text-blue-600 flex-shrink-0'>
             {selectedObjects.size} Selected
           </div>
         </div>
 
         {/* Loading State */}
         {isLoading && (
-          <div className='flex items-center justify-center py-12'>
+          <div className='flex items-center justify-center py-12 flex-shrink-0'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className='text-center py-12 text-red-600'>
+          <div className='text-center py-12 text-red-600 flex-shrink-0'>
             <p>Failed to load objects. Please try again.</p>
           </div>
         )}
@@ -129,7 +132,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
         {/* Table */}
         {!isLoading && !error && (
           <>
-            <div className='overflow-x-auto'>
+            <div className='overflow-x-auto overflow-y-auto flex-1 min-h-0'>
               <table className='w-full'>
                 <thead>
                   <tr className='border-b border-gray-200'>
@@ -178,17 +181,19 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
                 <p>No objects found matching your search.</p>
               </div>
             )}
-
-            {/* Pagination Info */}
-            <div className='mt-6 text-sm text-gray-600'>
-              Showing {filteredObjects.length} of {objects.length} Objects
-            </div>
           </>
+        )}
+
+        {/* Pagination Info */}
+        {!isLoading && !error && (
+          <div className='mt-6 text-sm text-gray-600 flex-shrink-0'>
+            Showing {filteredObjects.length} of {objects.length} Objects
+          </div>
         )}
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between'>
+      <div className='flex justify-between flex-shrink-0'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
