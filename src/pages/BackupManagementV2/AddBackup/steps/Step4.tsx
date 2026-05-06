@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type Step4Props = {
-  onNext: () => void;
+  onNext: (policyName: string, description: string) => void;
   onBack: () => void;
   strategy?: 'realtime' | 'scheduled';
+  policyName?: string;
+  description?: string;
 };
 
-export default function Step4({ onNext, onBack, strategy = 'realtime' }: Step4Props) {
+export default function Step4({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = 'Salesforce Production Backup', description: initialDescription = '' }: Step4Props) {
   const navigate = useNavigate();
-  const [policyName, setPolicyName] = useState(
-    strategy === 'realtime' ? 'Salesforce Production Backup' : 'Salesforce Production Daily Backup'
-  );
-  const [description, setDescription] = useState('');
+  const [policyName, setPolicyName] = useState(initialPolicyName);
+  const [description, setDescription] = useState(initialDescription);
   const [acceptanceText, setAcceptanceText] = useState('');
   const [acceptanceError, setAcceptanceError] = useState(false);
 
@@ -26,7 +26,7 @@ export default function Step4({ onNext, onBack, strategy = 'realtime' }: Step4Pr
       }
       setAcceptanceError(false);
     }
-    onNext();
+    onNext(policyName, description);
   };
 
   return (

@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+type ScheduleConfig = {
+  timeZone: string;
+  type: string;
+  scheduling: {
+    frequency: string;
+    interval: number;
+  };
+};
+
 type Step6Props = {
-  onNext: () => void;
+  onNext: (scheduleConfig: ScheduleConfig) => void;
   onBack: () => void;
 };
 
@@ -354,7 +363,17 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             ← Back
           </button>
           <button
-            onClick={onNext}
+            onClick={() => {
+              const scheduleConfig: ScheduleConfig = {
+                timeZone,
+                type: 'INCREMENTAL',
+                scheduling: {
+                  frequency: frequency === 'OFF' ? 'ONCE' : frequency.toUpperCase(),
+                  interval: frequency === 'Hourly' ? parseInt(backupIn.split(' ')[0]) : 1,
+                }
+              };
+              onNext(scheduleConfig);
+            }}
             className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
           >
             Next Step →

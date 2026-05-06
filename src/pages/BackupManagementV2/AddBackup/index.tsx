@@ -15,6 +15,10 @@ export default function AddBackup() {
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
   const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
+  const [policyName, setPolicyName] = useState('Salesforce Production Backup');
+  const [description, setDescription] = useState('');
+  const environment = 'Production';
+  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
 
   const getMaxSteps = () => {
     return selectedStrategy === 'realtime' ? 6 : 7;
@@ -39,6 +43,17 @@ export default function AddBackup() {
     handleNextStep();
   };
 
+  type ScheduleConfig = {
+    timeZone: string;
+    type: string;
+    scheduling: {
+      frequency: string;
+      interval: number;
+    };
+  };
+
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
+
   return (
     <div>
       {currentStep === 1 && (
@@ -49,23 +64,63 @@ export default function AddBackup() {
       )}
       {currentStep === 2 && <Step2 onNext={handleNextStep} onBack={handlePrevStep} />}
       {currentStep === 3 && <Step3 onNext={handleStrategySelected} onBack={handlePrevStep} />}
-      {currentStep === 4 && <Step4 strategy={selectedStrategy} onNext={handleNextStep} onBack={handlePrevStep} />}
+      {currentStep === 4 && (
+        <Step4
+          strategy={selectedStrategy}
+          policyName={policyName}
+          description={description}
+          onNext={(name, desc) => {
+            setPolicyName(name);
+            setDescription(desc);
+            handleNextStep();
+          }}
+          onBack={handlePrevStep}
+        />
+      )}
       {currentStep === 5 && (
         <Step5
           crmId={selectedPlatformId}
           entireDatasetSelected={entireDatasetSelected}
-          onNext={handleNextStep}
+          selectedObjectIds={selectedObjectIds}
+          onNext={(objectIds) => {
+            setSelectedObjectIds(objectIds);
+            handleNextStep();
+          }}
           onBack={handlePrevStep}
         />
       )}
       {currentStep === 6 && selectedStrategy === 'scheduled' && (
-        <Step6 onNext={handleNextStep} onBack={handlePrevStep} />
+        <Step6
+          onNext={(schedule) => {
+            setScheduleConfig(schedule);
+            handleNextStep();
+          }}
+          onBack={handlePrevStep}
+        />
       )}
       {currentStep === 6 && selectedStrategy === 'realtime' && (
-        <FinalStep strategy={selectedStrategy} onBack={handlePrevStep} />
+        <FinalStep
+          strategy={selectedStrategy}
+          onBack={handlePrevStep}
+          crmId={selectedPlatformId}
+          policyName={policyName}
+          description={description}
+          environment={environment}
+          selectedObjectIds={selectedObjectIds}
+          scheduleConfig={scheduleConfig}
+        />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
-        <FinalStep strategy={selectedStrategy} onBack={handlePrevStep} />
+        <FinalStep
+          strategy={selectedStrategy}
+          onBack={handlePrevStep}
+          crmId={selectedPlatformId}
+          policyName={policyName}
+          description={description}
+          environment={environment}
+          selectedObjectIds={selectedObjectIds}
+          scheduleConfig={scheduleConfig}
+        />
       )}
     </div>
   );

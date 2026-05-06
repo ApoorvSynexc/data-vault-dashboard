@@ -4,10 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
 type Step5Props = {
-  onNext: () => void;
+  onNext: (selectedObjectIds: string[]) => void;
   onBack: () => void;
   entireDatasetSelected?: boolean;
   crmId?: string | null;
+  selectedObjectIds?: string[];
 };
 
 interface BackupObject {
@@ -18,7 +19,7 @@ interface BackupObject {
   estimatedSize: string;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [] }: Step5Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,12 +28,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   // Fetch objects from API
   const { data: objectsData, isLoading, error } = useQuery({
     queryKey: ['backup-objects', crmId],
-    queryFn: async () => backupConfigService.getObjectList(crmId),
+    queryFn: async () => backupConfigService.getObjectList(crmId ?? ''),
     enabled: !!crmId,
   });
 
   const objects: BackupObject[] = (objectsData as any)?.data ?? objectsData ?? [];
-  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set());
+  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
 
   // Auto-select all objects when entireDatasetSelected is true and objects are loaded
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
             ← Back
           </button>
           <button
-            onClick={onNext}
+            onClick={() => onNext(Array.from(selectedObjects))}
             className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
           >
             Next Step →

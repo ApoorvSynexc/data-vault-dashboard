@@ -1,17 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+
+type ScheduleConfig = {
+  timeZone: string;
+  type: string;
+  scheduling: {
+    frequency: string;
+    interval: number;
+  };
+};
 
 type FinalStepProps = {
   onBack: () => void;
   strategy?: 'realtime' | 'scheduled';
+  crmId?: string | null;
+  selectedObjectIds?: string[];
+  policyName?: string;
+  description?: string;
+  environment?: string;
+  scheduleConfig?: ScheduleConfig | null;
 };
 
-export default function FinalStep({ onBack, strategy = 'realtime' }: FinalStepProps) {
+export default function FinalStep({
+  onBack,
+  strategy = 'realtime',
+  crmId,
+  selectedObjectIds = [],
+  policyName = 'Salesforce Production Backup',
+  description = '',
+  environment = 'Production',
+  scheduleConfig = null,
+}: FinalStepProps) {
   const navigate = useNavigate();
+  const backupConfigService = useBackupConfigService();
   const isRealTime = strategy === 'realtime';
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy']));
   const [isSuccess, setIsSuccess] = useState(false);
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
+  const [isLoading, setIsLoading] = useState(false);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -24,6 +52,57 @@ export default function FinalStep({ onBack, strategy = 'realtime' }: FinalStepPr
   };
 
   const isExpanded = (section: string) => expandedSections.has(section);
+
+  const createBackupMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      return await backupConfigService.createBackupConfig(payload);
+    },
+    onSuccess: () => {
+      setSuccessType('run');
+      setIsSuccess(true);
+    },
+    onError: (error) => {
+      console.error('Failed to create backup:', error);
+      alert('Failed to create backup. Please try again.');
+    },
+  });
+
+  const handleRunBackup = async () => {
+    if (!crmId) {
+      alert('Please select a platform');
+      return;
+    }
+
+    setIsLoading(true);
+    const payload: any = {
+      crmId,
+      name: policyName,
+      description,
+      environment: environment.toUpperCase(),
+      objectNames: selectedObjectIds,
+      schedule: isRealTime ? 'REALTIME' : 'SCHEDULE',
+      objects: selectedObjectIds.map((id) => ({
+        name: id,
+        condition: { type: 'AND' },
+        field: [],
+      })),
+      destination: {
+        type: 'S3',
+        config: {
+          bucketName: 'aws-s3-bucket',
+          region: 'us-east-1',
+          accessKeyId: '',
+          secretAccessKey: '',
+        },
+      },
+    };
+
+    if (!isRealTime && scheduleConfig) {
+      payload.scheduleConfig = scheduleConfig;
+    }
+
+    createBackupMutation.mutate(payload);
+  };
 
   useEffect(() => {
     if (isSuccess) {
@@ -204,13 +283,11 @@ export default function FinalStep({ onBack, strategy = 'realtime' }: FinalStepPr
             Save Backup Policy
           </button>
           <button
-            onClick={() => {
-              setSuccessType('run');
-              setIsSuccess(true);
-            }}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            onClick={handleRunBackup}
+            disabled={isLoading || createBackupMutation.isPending}
+            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
           >
-            Run Backup
+            {isLoading || createBackupMutation.isPending ? 'Creating...' : 'Run Backup'}
           </button>
         </div>
       </div>
