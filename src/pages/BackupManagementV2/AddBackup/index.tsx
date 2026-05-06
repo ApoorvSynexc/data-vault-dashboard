@@ -4,8 +4,10 @@ import Step2 from './steps/Step2';
 import Step3 from './steps/Step3';
 import Step4 from './steps/Step4';
 import Step5 from './steps/Step5';
+import Step6 from './steps/Step6';
+import FinalStep from './steps/FinalStep';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
 export default function AddBackup() {
@@ -15,7 +17,7 @@ export default function AddBackup() {
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
 
   const getMaxSteps = () => {
-    return 5; // Both Real-Time and Scheduled go through Step 5
+    return selectedStrategy === 'realtime' ? 6 : 7;
   };
 
   const handleNextStep = () => {
@@ -55,6 +57,15 @@ export default function AddBackup() {
           onNext={handleNextStep}
           onBack={handlePrevStep}
         />
+      )}
+      {currentStep === 6 && selectedStrategy === 'scheduled' && (
+        <Step6 onNext={handleNextStep} onBack={handlePrevStep} />
+      )}
+      {currentStep === 6 && selectedStrategy === 'realtime' && (
+        <FinalStep strategy={selectedStrategy} onBack={handlePrevStep} />
+      )}
+      {currentStep === 7 && selectedStrategy === 'scheduled' && (
+        <FinalStep strategy={selectedStrategy} onBack={handlePrevStep} />
       )}
     </div>
   );
