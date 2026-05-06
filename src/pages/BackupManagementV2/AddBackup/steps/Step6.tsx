@@ -364,13 +364,29 @@ export default function Step6({ onNext, onBack }: Step6Props) {
           </button>
           <button
             onClick={() => {
+              // Build scheduling based on frequency
+              const scheduling: any = {
+                frequency: frequency === 'OFF' ? 'ONCE' : frequency.toUpperCase(),
+                interval: 1,
+              };
+
+              // Add frequency-specific fields
+              if (frequency === 'Hourly') {
+                scheduling.interval = parseInt(backupIn.split(' ')[0]) || 1;
+              } else if (frequency === 'Weekly') {
+                scheduling.weekDays = selectedDays.length > 0 ? selectedDays : ['MON'];
+              } else if (frequency === 'Monthly') {
+                scheduling.monthDate = parseInt(dayOfMonth) || 1;
+              } else if (frequency === 'Custom') {
+                // For custom, use the selected backup frequency
+                scheduling.frequency = backupFrequency.toUpperCase();
+                scheduling.interval = 1;
+              }
+
               const scheduleConfig: ScheduleConfig = {
                 timeZone,
                 type: 'INCREMENTAL',
-                scheduling: {
-                  frequency: frequency === 'OFF' ? 'ONCE' : frequency.toUpperCase(),
-                  interval: frequency === 'Hourly' ? parseInt(backupIn.split(' ')[0]) : 1,
-                }
+                scheduling,
               };
               onNext(scheduleConfig);
             }}
