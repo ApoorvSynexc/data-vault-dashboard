@@ -230,15 +230,15 @@ export default function FinalStep({
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Data Modules</p>
-              <p className='font-medium text-gray-900'>Entire Dataset</p>
+              <p className='font-medium text-gray-900'>Custom Selection</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Object Selected</p>
-              <p className='font-medium text-gray-900'>200</p>
+              <p className='text-sm text-gray-600 mb-1'>Objects Selected</p>
+              <p className='font-medium text-gray-900'>{selectedObjectIds.length}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Total Records</p>
-              <p className='font-medium text-gray-900'>612400</p>
+              <p className='text-sm text-gray-600 mb-1'>Environment</p>
+              <p className='font-medium text-gray-900'>{environment}</p>
             </div>
           </div>
         </SectionBox>
@@ -248,11 +248,11 @@ export default function FinalStep({
           <div className='grid grid-cols-2 gap-4'>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Policy Name</p>
-              <p className='font-medium text-gray-900'>Salesforce Production Daily Backup</p>
+              <p className='font-medium text-gray-900'>{policyName}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Description</p>
-              <p className='font-medium text-gray-900'>Daily backup of Salesforce production data</p>
+              <p className='font-medium text-gray-900'>{description || 'No description provided'}</p>
             </div>
           </div>
         </SectionBox>
