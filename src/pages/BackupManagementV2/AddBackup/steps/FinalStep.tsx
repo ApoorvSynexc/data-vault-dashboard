@@ -9,6 +9,12 @@ type ScheduleConfig = {
   scheduling: {
     frequency: string;
     interval: number;
+    weekDays?: string[];
+    monthDate?: number;
+    selectedMonths?: string[];
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
   };
 };
 
@@ -255,6 +261,58 @@ export default function FinalStep({
             </div>
           </div>
         </SectionBox>
+
+        {/* Backup Schedule Section - Only for Scheduled Strategy */}
+        {!isRealTime && scheduleConfig && (
+          <SectionBox title='Backup Schedule' sectionKey='schedule'>
+            <div className='grid grid-cols-2 gap-4'>
+              <div className='bg-gray-100 rounded-lg p-4'>
+                <p className='text-sm text-gray-600 mb-1'>Frequency</p>
+                <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.frequency}</p>
+              </div>
+              <div className='bg-gray-100 rounded-lg p-4'>
+                <p className='text-sm text-gray-600 mb-1'>Time Zone</p>
+                <p className='font-medium text-gray-900'>{scheduleConfig.timeZone}</p>
+              </div>
+              {scheduleConfig.scheduling.startDate && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>Start Date</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.startDate}</p>
+                </div>
+              )}
+              {scheduleConfig.scheduling.endDate && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>End Date</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.endDate}</p>
+                </div>
+              )}
+              {scheduleConfig.scheduling.startTime && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>Starting Time</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.startTime}</p>
+                </div>
+              )}
+              {scheduleConfig.scheduling.weekDays && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>Days</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.weekDays.join(', ')}</p>
+                </div>
+              )}
+              {scheduleConfig.scheduling.monthDate && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>Day of Month</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.monthDate}</p>
+                </div>
+              )}
+              {scheduleConfig.scheduling.selectedMonths && (
+                <div className='bg-gray-100 rounded-lg p-4'>
+                  <p className='text-sm text-gray-600 mb-1'>Months</p>
+                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.selectedMonths.join(', ')}</p>
+                </div>
+              )}
+            </div>
+          </SectionBox>
+        )}
       </div>
 
       {/* Action Buttons */}

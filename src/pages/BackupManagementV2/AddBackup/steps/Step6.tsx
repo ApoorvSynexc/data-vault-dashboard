@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -7,6 +8,12 @@ type ScheduleConfig = {
   scheduling: {
     frequency: string;
     interval: number;
+    weekDays?: string[];
+    monthDate?: number;
+    selectedMonths?: string[];
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
   };
 };
 
@@ -23,10 +30,10 @@ export default function Step6({ onNext, onBack }: Step6Props) {
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon']);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(['Jan']);
   const [dayOfMonth, setDayOfMonth] = useState('01');
-  const [time, setTime] = useState('12:00 AM');
+  const [startTime, setStartTime] = useState('12:00');
   const [timeZone, setTimeZone] = useState('(GMT-04:00) Eastern Time(US & Canada)');
-  const [startDate, setStartDate] = useState('March 26, 2026');
-  const [endDate, setEndDate] = useState('March 30, 2026');
+  const [startDate, setStartDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [endDate, setEndDate] = useState(dayjs().add(7, 'days').format('YYYY-MM-DD'));
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
 
@@ -141,22 +148,20 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             </div>
             <div className='grid grid-cols-2 gap-6'>
               <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting At</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>{time}</option>
-                </select>
-              </div>
-              <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
                 <input
-                  type='text'
+                  type='date'
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  placeholder='March 26, 2026'
+                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+              </div>
+              <div>
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
+                <input
+                  type='time'
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
               </div>
@@ -169,13 +174,12 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                <input
+                  type='time'
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>{time}</option>
-                </select>
+                />
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -191,10 +195,9 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             <div>
               <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
               <input
-                type='text'
+                type='date'
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                placeholder='March 26, 2026'
                 className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
             </div>
@@ -224,13 +227,12 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                <input
+                  type='time'
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>{time}</option>
-                </select>
+                />
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -246,10 +248,9 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             <div>
               <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
               <input
-                type='text'
+                type='date'
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                placeholder='March 26, 2026'
                 className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
             </div>
@@ -279,33 +280,48 @@ export default function Step6({ onNext, onBack }: Step6Props) {
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
-                <input
-                  type='text'
+                <select
                   value={dayOfMonth}
                   onChange={(e) => setDayOfMonth(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                />
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={String(day).padStart(2, '0')}>
+                      {String(day).padStart(2, '0')}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                <input
+                  type='time'
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>{time}</option>
-                </select>
+                />
               </div>
             </div>
-            <div>
-              <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-              <select
-                value={timeZone}
-                onChange={(e) => setTimeZone(e.target.value)}
-                className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              >
-                <option>{timeZone}</option>
-              </select>
+            <div className='grid grid-cols-2 gap-6'>
+              <div>
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                <select
+                  value={timeZone}
+                  onChange={(e) => setTimeZone(e.target.value)}
+                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                >
+                  <option>{timeZone}</option>
+                </select>
+              </div>
+              <div>
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                <input
+                  type='date'
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+              </div>
             </div>
           </div>
         )}
@@ -316,7 +332,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On Date</label>
                 <input
-                  type='text'
+                  type='date'
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -325,7 +341,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
                 <input
-                  type='text'
+                  type='date'
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -346,14 +362,13 @@ export default function Step6({ onNext, onBack }: Step6Props) {
                 </select>
               </div>
               <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
+                <input
+                  type='time'
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>{time}</option>
-                </select>
+                />
               </div>
             </div>
             <div>
@@ -387,28 +402,60 @@ export default function Step6({ onNext, onBack }: Step6Props) {
           </button>
           <button
             onClick={() => {
-              // Build scheduling based on frequency
+              // Validate required fields
+              if (frequency !== 'OFF' && !startDate) {
+                alert('Please select a start date');
+                return;
+              }
+              if (frequency !== 'OFF' && !startTime) {
+                alert('Please select a starting time');
+                return;
+              }
+              if (frequency === 'Weekly' && selectedDays.length === 0) {
+                alert('Please select at least one day');
+                return;
+              }
+              if (frequency === 'Monthly' && selectedMonths.length === 0) {
+                alert('Please select at least one month');
+                return;
+              }
+
               const scheduling: any = {
                 frequency: frequency === 'OFF' ? 'ONCE' : frequency.toUpperCase(),
                 interval: 1,
               };
 
-              // Add frequency-specific fields
               if (frequency === 'Hourly') {
                 scheduling.interval = parseInt(backupIn.split(' ')[0]) || 1;
+                scheduling.startDate = startDate;
+                scheduling.startTime = startTime;
+              } else if (frequency === 'Daily') {
+                scheduling.startDate = startDate;
+                scheduling.startTime = startTime;
               } else if (frequency === 'Weekly') {
-                scheduling.weekDays = selectedDays.length > 0
-                  ? selectedDays.map((day: string) => dayMap[day] || day)
-                  : ['MON'];
+                scheduling.weekDays = selectedDays.map((day: string) => dayMap[day] || day);
+                scheduling.startDate = startDate;
+                scheduling.startTime = startTime;
               } else if (frequency === 'Monthly') {
-                scheduling.monthDate = parseInt(dayOfMonth) || 1;
-                if (selectedMonths.length > 0) {
-                  scheduling.selectedMonths = selectedMonths.map((month: string) => monthMap[month] || month);
+                const dayNum = parseInt(dayOfMonth);
+                if (dayNum < 1 || dayNum > 31) {
+                  alert('Please enter a valid day of month (1-31)');
+                  return;
                 }
+                scheduling.monthDate = dayNum;
+                scheduling.selectedMonths = selectedMonths.map((month: string) => monthMap[month] || month);
+                scheduling.startDate = startDate;
+                scheduling.startTime = startTime;
               } else if (frequency === 'Custom') {
-                // For custom, use the selected backup frequency
                 scheduling.frequency = backupFrequency.toUpperCase();
                 scheduling.interval = 1;
+                scheduling.startDate = startDate;
+                if (!endDate || endDate === '') {
+                  alert('Please select an end date for custom schedule');
+                  return;
+                }
+                scheduling.endDate = endDate;
+                scheduling.startTime = startTime;
               }
 
               const scheduleConfig: ScheduleConfig = {

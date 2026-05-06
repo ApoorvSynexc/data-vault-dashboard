@@ -50,6 +50,12 @@ export default function AddBackup() {
     scheduling: {
       frequency: string;
       interval: number;
+      weekDays?: string[];
+      monthDate?: number;
+      selectedMonths?: string[];
+      startDate?: string;
+      endDate?: string;
+      startTime?: string;
     };
   };
 

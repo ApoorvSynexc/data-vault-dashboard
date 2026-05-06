@@ -22,6 +22,11 @@ type BackupConfigItem = {
   lastBackupAt?: string;
   sizeInBytes?: number;
   platform?: PlatformType | string;
+  scheduleConfig?: {
+    scheduling?: {
+      frequency?: string;
+    };
+  };
 };
 
 type BackupRow = {
@@ -31,6 +36,7 @@ type BackupRow = {
   platform: PlatformType;
   status: BackupStatus;
   backupType: BackupType;
+  scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
 };
@@ -296,6 +302,29 @@ function BackupTypeBadge({ type }: { type: BackupType }) {
   );
 }
 
+function ScheduleFrequencyBadge({ frequency }: { frequency: string }) {
+  if (frequency === '--') {
+    return <span className='inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold text-gray-500'>--</span>;
+  }
+
+  const styles: Record<string, string> = {
+    'Hourly': 'bg-orange-100 text-orange-700',
+    'Daily': 'bg-cyan-100 text-cyan-700',
+    'Weekly': 'bg-green-100 text-green-700',
+    'Monthly': 'bg-purple-100 text-purple-700',
+    'Custom': 'bg-indigo-100 text-indigo-700',
+    'Once': 'bg-gray-100 text-gray-700',
+  };
+
+  const style = styles[frequency] || 'bg-gray-100 text-gray-700';
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style}`}>
+      {frequency}
+    </span>
+  );
+}
+
 type DropdownMenuItem = {
   label: string;
   danger?: boolean;
@@ -464,6 +493,19 @@ export default function BackupManagementV2() {
     }
   }, [backupQuery.data, currentPage, cursorMap]);
 
+  const getScheduleFrequencyDisplay = (frequency?: string): string => {
+    if (!frequency) return '--';
+    const freqMap: Record<string, string> = {
+      'HOURLY': 'Hourly',
+      'DAILY': 'Daily',
+      'WEEKLY': 'Weekly',
+      'MONTHLY': 'Monthly',
+      'CUSTOM': 'Custom',
+      'ONCE': 'Once',
+    };
+    return freqMap[frequency] || frequency;
+  };
+
   const parsedRows: BackupRow[] = (apiDataArray as BackupConfigItem[]).map((item) => {
     const platform: PlatformType =
       item.platform === 'Salesforce' || item.platform === 'HubSpot' || item.platform === 'Zoho'
@@ -477,6 +519,7 @@ export default function BackupManagementV2() {
       platform,
       status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : item.backupStatus === 'PENDING' ? 'Pending' : item.backupStatus === 'FAILED' ? 'Failed' : 'Pending',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
+      scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
       dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
     };
@@ -513,6 +556,11 @@ export default function BackupManagementV2() {
       key: 'backupType',
       header: 'Backup Type',
       render: (row) => <BackupTypeBadge type={row.backupType} />,
+    },
+    {
+      key: 'scheduleFrequency',
+      header: 'Schedule Type',
+      render: (row) => row.backupType === 'Schedule' ? <ScheduleFrequencyBadge frequency={row.scheduleFrequency} /> : <span className='text-gray-400 text-[10px]'>N/A</span>,
     },
     {
       key: 'status',
