@@ -17,6 +17,7 @@ interface BackupObject {
   type: 'Standard' | 'Custom';
   records: number;
   estimatedSize: string;
+  isBackedUp?: boolean;
 }
 
 export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [] }: Step5Props) {
@@ -51,6 +52,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   }, [searchQuery, selectedFilter, objects]);
 
   const handleToggleObject = (id: string) => {
+    const object = objects.find((obj) => obj.id === id);
+    if (object?.isBackedUp) {
+      return;
+    }
     const newSelected = new Set(selectedObjects);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -61,10 +66,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   };
 
   const handleSelectAll = () => {
-    if (selectedObjects.size === filteredObjects.length) {
+    const selectableObjects = filteredObjects.filter((obj) => !obj.isBackedUp);
+    if (selectedObjects.size === selectableObjects.length) {
       setSelectedObjects(new Set());
     } else {
-      setSelectedObjects(new Set(filteredObjects.map((obj) => obj.id)));
+      setSelectedObjects(new Set(selectableObjects.map((obj) => obj.id)));
     }
   };
 
@@ -140,7 +146,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
                     <th className='px-4 py-3 text-left'>
                       <input
                         type='checkbox'
-                        checked={selectedObjects.size === filteredObjects.length && filteredObjects.length > 0}
+                        checked={selectedObjects.size === filteredObjects.filter((obj) => !obj.isBackedUp).length && filteredObjects.filter((obj) => !obj.isBackedUp).length > 0}
                         onChange={handleSelectAll}
                         className='w-5 h-5 accent-blue-600 rounded cursor-pointer'
                       />
@@ -156,21 +162,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
                     <tr
                       key={obj.id}
                       className={`border-b border-gray-200 ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-blue-50`}
+                        obj.isBackedUp
+                          ? 'bg-gray-100 opacity-60'
+                          : index % 2 === 0
+                          ? 'bg-white'
+                          : 'bg-gray-50'
+                      } ${!obj.isBackedUp && 'hover:bg-blue-50'}`}
                     >
                       <td className='px-4 py-3'>
                         <input
                           type='checkbox'
                           checked={selectedObjects.has(obj.id)}
                           onChange={() => handleToggleObject(obj.id)}
-                          className='w-5 h-5 accent-blue-600 rounded cursor-pointer'
+                          disabled={obj.isBackedUp}
+                          className={`w-5 h-5 rounded ${
+                            obj.isBackedUp
+                              ? 'bg-gray-300 cursor-not-allowed'
+                              : 'accent-blue-600 cursor-pointer'
+                          }`}
                         />
                       </td>
-                      <td className='px-4 py-3 text-sm text-gray-900 font-medium'>{obj.name}</td>
-                      <td className='px-4 py-3 text-sm text-gray-700'>{obj.type}</td>
-                      <td className='px-4 py-3 text-sm text-gray-700'>{(obj.records as any)?.toLocaleString?.() || obj.records}</td>
-                      <td className='px-4 py-3 text-sm text-gray-700'>{obj.estimatedSize}</td>
+                      <td className='px-4 py-3 text-sm font-medium flex items-center gap-2'>
+                        <span className={obj.isBackedUp ? 'text-gray-600' : 'text-gray-900'}>{obj.name}</span>
+                        {obj.isBackedUp && (
+                          <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded'>Already Backed Up</span>
+                        )}
+                      </td>
+                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{obj.type}</td>
+                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{(obj.records as any)?.toLocaleString?.() || obj.records}</td>
+                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{obj.estimatedSize}</td>
                     </tr>
                   ))}
                 </tbody>

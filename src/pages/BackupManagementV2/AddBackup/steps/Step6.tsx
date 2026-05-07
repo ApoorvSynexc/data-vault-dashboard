@@ -572,7 +572,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
 
               const scheduleConfig: ScheduleConfig = {
                 timeZone,
-                type: frequency === 'One Time' && runMode === 'runNow' ? 'ONE_TIME' : 'INCREMENTAL',
+                type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
                 scheduling,
               };
               onNext(scheduleConfig);
