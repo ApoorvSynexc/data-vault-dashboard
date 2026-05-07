@@ -148,9 +148,9 @@ export default function FinalStep({
     <div className='bg-white rounded-lg border border-gray-200'>
       <button
         onClick={() => toggleSection(sectionKey)}
-        className='w-full flex items-center justify-between p-6 hover:bg-gray-50 transition-colors'
+        className='w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors'
       >
-        <div className='flex items-center gap-4'>
+        <div className='flex items-center gap-3'>
           <svg
             className={`w-5 h-5 text-gray-600 transform transition-transform ${isExpanded(sectionKey) ? 'rotate-90' : ''}`}
             fill='none'
@@ -159,7 +159,7 @@ export default function FinalStep({
           >
             <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
           </svg>
-          <h2 className='text-base font-semibold text-gray-900'>{title}</h2>
+          <h2 className='text-sm font-semibold text-gray-900'>{title}</h2>
         </div>
         <button
           onClick={(e) => {
@@ -168,13 +168,13 @@ export default function FinalStep({
               onEditStep(stepNumber);
             }
           }}
-          className='px-4 py-2 text-blue-600 font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+          className='px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
         >
           Edit
         </button>
       </button>
       {isExpanded(sectionKey) && (
-        <div className='px-6 pb-6 bg-gray-50 border-t border-gray-200'>
+        <div className='px-4 py-3 bg-gray-50 border-t border-gray-200'>
           {children}
         </div>
       )}
@@ -211,9 +211,9 @@ export default function FinalStep({
   }
 
   return (
-    <div className='h-screen bg-gray-50 p-8 flex flex-col overflow-hidden'>
+    <div className='h-screen bg-gray-50 p-6 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between mb-8 flex-shrink-0'>
+      <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Review & Create</h1>
           <p className='text-gray-600 mt-2'>Review your backup policy configuration before initiating backup.</p>
@@ -224,61 +224,61 @@ export default function FinalStep({
       </div>
 
       {/* Main Content */}
-      <div className='flex-grow overflow-y-auto min-h-0 space-y-4'>
+      <div className='flex-grow overflow-y-auto min-h-0 space-y-3'>
         {/* Source & Destination Section */}
         <SectionBox title='Source & Destination' sectionKey='source' stepNumber={1}>
-          <div className='grid grid-cols-2 gap-4'>
-            <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Source Platform</p>
-              <p className='font-medium text-gray-900'>Salesforce</p>
+          <div className='grid grid-cols-2 gap-3'>
+            <div className='bg-gray-100 rounded-lg p-3'>
+              <p className='text-xs text-gray-600 mb-1'>Source Platform</p>
+              <p className='text-sm font-medium text-gray-900'>Salesforce</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Destination Platform</p>
-              <p className='font-medium text-gray-900'>AWS</p>
+              <p className='text-xs text-gray-600 mb-1'>Destination Platform</p>
+              <p className='text-sm font-medium text-gray-900'>AWS</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Salesforce Connection</p>
-              <p className='font-medium text-gray-900'>Salesforce Production</p>
+              <p className='text-xs text-gray-600 mb-1'>Salesforce Connection</p>
+              <p className='text-sm font-medium text-gray-900'>Salesforce Production</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>AWS Connection</p>
-              <p className='font-medium text-gray-900'>AWS S3 Bucket</p>
+              <p className='text-xs text-gray-600 mb-1'>AWS Connection</p>
+              <p className='text-sm font-medium text-gray-900'>AWS S3 Bucket</p>
             </div>
           </div>
         </SectionBox>
 
         {/* Backup Strategy Section */}
         <SectionBox title='Backup Strategy' sectionKey='strategy' stepNumber={3}>
-          <div className='grid grid-cols-2 gap-4'>
-            <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Strategy Type</p>
-              <p className='font-medium text-gray-900'>{isRealTime ? 'Real-Time Sync' : 'Scheduled'}</p>
+          <div className='grid grid-cols-2 gap-3'>
+            <div className='bg-gray-100 rounded-lg p-3'>
+              <p className='text-xs text-gray-600 mb-1'>Strategy Type</p>
+              <p className='text-sm font-medium text-gray-900'>{isRealTime ? 'Real-Time Sync' : 'Scheduled'}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Data Modules</p>
-              <p className='font-medium text-gray-900'>Custom Selection</p>
+              <p className='text-xs text-gray-600 mb-1'>Data Modules</p>
+              <p className='text-sm font-medium text-gray-900'>Custom Selection</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Objects Selected</p>
-              <p className='font-medium text-gray-900'>{selectedObjectIds.length}</p>
+              <p className='text-xs text-gray-600 mb-1'>Objects Selected</p>
+              <p className='text-sm font-medium text-gray-900'>{selectedObjectIds.length}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Environment</p>
-              <p className='font-medium text-gray-900'>{environment}</p>
+              <p className='text-xs text-gray-600 mb-1'>Environment</p>
+              <p className='text-sm font-medium text-gray-900'>{environment}</p>
             </div>
           </div>
         </SectionBox>
 
         {/* Define Backup Policy Section */}
         <SectionBox title='Define Backup Policy' sectionKey='policy' stepNumber={4}>
-          <div className='grid grid-cols-2 gap-4'>
-            <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Policy Name</p>
-              <p className='font-medium text-gray-900'>{policyName}</p>
+          <div className='grid grid-cols-2 gap-3'>
+            <div className='bg-gray-100 rounded-lg p-3'>
+              <p className='text-xs text-gray-600 mb-1'>Policy Name</p>
+              <p className='text-sm font-medium text-gray-900'>{policyName}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-sm text-gray-600 mb-1'>Description</p>
-              <p className='font-medium text-gray-900'>{description || 'No description provided'}</p>
+              <p className='text-xs text-gray-600 mb-1'>Description</p>
+              <p className='text-sm font-medium text-gray-900'>{description || 'No description provided'}</p>
             </div>
           </div>
         </SectionBox>
@@ -288,47 +288,47 @@ export default function FinalStep({
           <SectionBox title='Backup Schedule' sectionKey='schedule' stepNumber={6}>
             <div className='grid grid-cols-2 gap-4'>
               <div className='bg-gray-100 rounded-lg p-4'>
-                <p className='text-sm text-gray-600 mb-1'>Frequency</p>
-                <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.frequency}</p>
+                <p className='text-xs text-gray-600 mb-1'>Frequency</p>
+                <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.frequency}</p>
               </div>
               <div className='bg-gray-100 rounded-lg p-4'>
-                <p className='text-sm text-gray-600 mb-1'>Time Zone</p>
-                <p className='font-medium text-gray-900'>{scheduleConfig.timeZone}</p>
+                <p className='text-xs text-gray-600 mb-1'>Time Zone</p>
+                <p className='text-sm font-medium text-gray-900'>{scheduleConfig.timeZone}</p>
               </div>
               {scheduleConfig.scheduling.startDate && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>Start Date</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.startDate}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Start Date</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.startDate}</p>
                 </div>
               )}
               {scheduleConfig.scheduling.endDate && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>End Date</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.endDate}</p>
+                  <p className='text-xs text-gray-600 mb-1'>End Date</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.endDate}</p>
                 </div>
               )}
               {scheduleConfig.scheduling.startTime && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>Starting Time</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.startTime}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Starting Time</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.startTime}</p>
                 </div>
               )}
               {scheduleConfig.scheduling.weekDays && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>Days</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.weekDays.join(', ')}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Days</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.weekDays.join(', ')}</p>
                 </div>
               )}
               {scheduleConfig.scheduling.monthDate && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>Day of Month</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.monthDate}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Day of Month</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.monthDate}</p>
                 </div>
               )}
               {scheduleConfig.scheduling.selectedMonths && (
                 <div className='bg-gray-100 rounded-lg p-4'>
-                  <p className='text-sm text-gray-600 mb-1'>Months</p>
-                  <p className='font-medium text-gray-900'>{scheduleConfig.scheduling.selectedMonths.join(', ')}</p>
+                  <p className='text-xs text-gray-600 mb-1'>Months</p>
+                  <p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.selectedMonths.join(', ')}</p>
                 </div>
               )}
             </div>
@@ -337,7 +337,7 @@ export default function FinalStep({
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between gap-4 flex-shrink-0 mt-8'>
+      <div className='flex justify-between gap-4 flex-shrink-0 mt-6'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
