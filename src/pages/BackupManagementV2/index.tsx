@@ -8,7 +8,7 @@ import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
-type BackupStatus = 'Completed' | 'Running' | 'Pending' | 'Failed';
+type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
 type BackupType = 'Realtime' | 'Schedule';
 
 type BackupConfigItem = {
@@ -440,10 +440,13 @@ function FilterBar({
         aria-label='Filter by status'
       >
         <option value='All'>All Statuses</option>
-        <option value='Completed'>Completed</option>
-        <option value='Running'>Running</option>
-        <option value='Pending'>Pending</option>
-        <option value='Failed'>Failed</option>
+        <option value='DRAFT'>Draft</option>
+        <option value='ACTIVE'>Active</option>
+        <option value='PENDING'>Pending</option>
+        <option value='SUCCESS'>Success</option>
+        <option value='FAILED'>Failed</option>
+        <option value='PAUSED'>Paused</option>
+        <option value='RESUMED'>Resumed</option>
       </select>
 
       {(filters.backupType !== 'All' || filters.status !== 'All') && (
@@ -549,12 +552,12 @@ export default function BackupManagementV2() {
       slug: item.slug,
       name: item.name,
       platform,
-      status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : item.backupStatus === 'PENDING' ? 'Pending' : item.backupStatus === 'FAILED' ? 'Failed' : 'Pending',
+      status: (item.backupStatus as BackupStatus) || 'PENDING',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
       dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
-      backupStatus: (item.backupStatus as 'DRAFT' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
+      backupStatus: (item.backupStatus as 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
     };
   });
 

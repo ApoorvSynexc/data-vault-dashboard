@@ -19,6 +19,7 @@ interface BackupObject {
   records: number;
   estimatedSize: string;
   isBackedUp?: boolean;
+  schedule?: 'realtime' | 'schedule' | null;
 }
 
 export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime' }: Step5Props) {
@@ -191,7 +192,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
                       <td className='px-4 py-3 text-sm font-medium flex items-center gap-2'>
                         <span className={obj.isBackedUp ? 'text-gray-600' : 'text-gray-900'}>{obj.name}</span>
                         {obj.isBackedUp && (
-                          <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded'>Already Backed Up</span>
+                          <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded'>
+                            Already Backed Up {obj.schedule ? `as ${obj.schedule === 'realtime' ? 'Realtime' : 'Scheduled'}` : ''}
+                          </span>
                         )}
                       </td>
                       <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{obj.type}</td>
