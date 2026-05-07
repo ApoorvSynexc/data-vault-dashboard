@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import WarningDialog from '../../../../components/WarningDialog';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -51,6 +52,7 @@ export default function FinalStep({
   const [isSuccess, setIsSuccess] = useState(false);
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
   const [isLoading, setIsLoading] = useState(false);
+  const [showRunConfirmation, setShowRunConfirmation] = useState(false);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -120,8 +122,7 @@ export default function FinalStep({
   };
 
   const handleRunBackup = async () => {
-    setSuccessType('run');
-    createBackupWithStatus('ACTIVE');
+    setShowRunConfirmation(true);
   };
 
   useEffect(() => {
@@ -366,6 +367,21 @@ export default function FinalStep({
           </button>
         </div>
       </div>
+
+      {/* Run Backup Confirmation Dialog */}
+      <WarningDialog
+        isOpen={showRunConfirmation}
+        title='Confirm Backup Creation'
+        message={`Are you sure you want to create and run this backup now? This will initiate the ${isRealTime ? 'real-time sync backup' : 'scheduled backup'} with the configured settings.`}
+        confirmLabel='Yes, Create Backup'
+        isLoading={isLoading || createBackupMutation.isPending}
+        onConfirm={() => {
+          setShowRunConfirmation(false);
+          setSuccessType('run');
+          createBackupWithStatus('ACTIVE');
+        }}
+        onCancel={() => setShowRunConfirmation(false)}
+      />
     </div>
   );
 }

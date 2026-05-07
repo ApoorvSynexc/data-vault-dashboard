@@ -131,7 +131,7 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
           {/* Important Notice */}
           <div className='bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6'>
             <p className='text-sm text-yellow-700'>
-              <span className='font-semibold'>I knowledge that real-time sync backup process will run trigger on my Salesforce org, I am allowing this process to proceed.</span>
+              <span className='font-semibold'>I acknowledge that real-time sync backup process will run trigger on my Salesforce org, I am allowing this process to proceed.</span>
             </p>
           </div>
 
