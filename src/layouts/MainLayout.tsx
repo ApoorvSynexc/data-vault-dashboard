@@ -48,6 +48,7 @@ export default function MainLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -77,18 +78,46 @@ export default function MainLayout() {
     <div className='flex h-screen w-full min-w-0 overflow-hidden'>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <aside className='w-56 flex flex-col shrink-0' style={{ background: '#1B3A8A' }}>
+      <aside className={`flex flex-col shrink-0 transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-16'}`} style={{ background: '#1B3A8A' }}>
 
         {/* Logo */}
-        <div className='flex items-center gap-2.5 px-4 py-4 border-b border-white/10'>
-          <div className='w-8 h-8 bg-blue-500 rounded-lg rotate-45 flex items-center justify-center shrink-0'>
-            <span className='-rotate-45 text-white text-[10px] font-bold'>DV</span>
+        {isSidebarOpen && (
+          <div className='flex items-center gap-2.5 px-4 py-4 border-b border-white/10 justify-between'>
+            <div className='flex items-center gap-2.5 min-w-0'>
+              <div className='w-8 h-8 bg-blue-500 rounded-lg rotate-45 flex items-center justify-center shrink-0'>
+                <span className='-rotate-45 text-white text-[10px] font-bold'>DV</span>
+              </div>
+              <div className='leading-tight min-w-0'>
+                <p className='text-white text-sm font-bold truncate'>360 DataVault</p>
+                <p className='text-white/50 text-[10px] truncate'>Backup Platform</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
+              title='Collapse sidebar'
+            >
+              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
+              </svg>
+            </button>
           </div>
-          <div className='leading-tight'>
-            <p className='text-white text-sm font-bold'>360 DataVault</p>
-            <p className='text-white/50 text-[10px]'>Backup Platform</p>
+        )}
+
+        {/* Collapsed Logo - Expand Button */}
+        {!isSidebarOpen && (
+          <div className='flex items-center justify-center px-4 py-4 border-b border-white/10'>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className='p-2 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors'
+              title='Expand sidebar'
+            >
+              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+              </svg>
+            </button>
           </div>
-        </div>
+        )}
 
         {/* Nav */}
         <nav className='flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto'>
@@ -99,15 +128,19 @@ export default function MainLayout() {
               end={to === '/'}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                  isSidebarOpen
+                    ? 'flex items-center gap-2.5 px-3 py-2'
+                    : 'flex items-center justify-center px-1 py-3',
+                  'rounded-lg text-[13px] font-medium transition-colors',
                   isActive
                     ? 'bg-white/15 text-white'
                     : 'text-white/60 hover:text-white hover:bg-white/8',
                 ].join(' ')
               }
+              title={!isSidebarOpen ? label : undefined}
             >
               <Icon />
-              {label}
+              {isSidebarOpen && <span>{label}</span>}
             </NavLink>
           ))}
         </nav>
