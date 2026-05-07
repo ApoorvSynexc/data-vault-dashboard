@@ -180,7 +180,14 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                   )}
 
                   {/* Add New Connection Button */}
-                  <button className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'>
+                  <button
+                    onClick={() => {
+                      if (selectedPlatform?.crmName.toLowerCase() === 'salesforce') {
+                        navigate('/connections/salesforce/connect');
+                      }
+                    }}
+                    className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'
+                  >
                     + Add New Connection
                   </button>
                 </div>

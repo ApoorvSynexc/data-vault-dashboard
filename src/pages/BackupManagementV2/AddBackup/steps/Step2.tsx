@@ -158,7 +158,10 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
                   )}
 
                   {/* Add New Connection Button */}
-                  <button className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'>
+                  <button
+                    onClick={() => navigate('/connections/aws/connect')}
+                    className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'
+                  >
                     + Add New Destination
                   </button>
                 </div>
