@@ -656,7 +656,7 @@ export default function BackupManagementV2() {
         <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
             <Typography as='h2' variant='pageTitle'>
-              Backup Management V2
+              Backup Management
             </Typography>
             <Typography className='mt-1' variant='body' color='muted'>
               Track schedules, performance, and intervention points across every protected workload.
