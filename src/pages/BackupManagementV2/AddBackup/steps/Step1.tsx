@@ -9,6 +9,7 @@ import type { ConnectedPlatform } from '../../../../services/platform/platform.s
 type Step1Props = {
   onNext: (platformId?: string) => void;
   strategy?: 'realtime' | 'scheduled';
+  initialSelectedPlatformId?: string | null;
 };
 
 const AVAILABLE_PLATFORMS = [
@@ -32,10 +33,12 @@ const AVAILABLE_PLATFORMS = [
   },
 ];
 
-export default function Step1({ onNext, strategy = 'realtime' }: Step1Props) {
+export default function Step1({ onNext, strategy = 'realtime', initialSelectedPlatformId }: Step1Props) {
   const navigate = useNavigate();
   const platformService = usePlatformService();
-  const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(
+    initialSelectedPlatformId ? AVAILABLE_PLATFORMS.find((p) => p.crmId === initialSelectedPlatformId) ?? null : null
+  );
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
 
   const getMaxSteps = () => {

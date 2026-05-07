@@ -21,21 +21,97 @@ type ScheduleConfig = {
 type Step6Props = {
   onNext: (scheduleConfig: ScheduleConfig) => void;
   onBack: () => void;
+  initialScheduleConfig?: ScheduleConfig | null;
 };
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
 
-export default function Step6({ onNext, onBack }: Step6Props) {
+const mapBackendFrequencyToFrontend = (frequency: string): FrequencyType => {
+  const frequencyMap: Record<string, FrequencyType> = {
+    'ONCE': 'One Time',
+    'HOURLY': 'Hourly',
+    'DAILY': 'Daily',
+    'WEEKLY': 'Weekly',
+    'MONTHLY': 'Monthly',
+    'CUSTOM': 'Custom',
+  };
+  return frequencyMap[frequency] || 'Daily';
+};
+
+const mapBackendDaysToFrontend = (days?: string[]): string[] => {
+  if (!days) return ['Mon'];
+  const dayMap: Record<string, string> = {
+    'MON': 'Mon',
+    'TUE': 'Tue',
+    'WED': 'Wed',
+    'THU': 'Thu',
+    'FRI': 'Fri',
+    'SAT': 'Sat',
+    'SUN': 'Sun',
+  };
+  return days.map(d => dayMap[d] || d);
+};
+
+const mapBackendMonthsToFrontend = (months?: string[]): string[] => {
+  if (!months) return ['Jan'];
+  const monthMap: Record<string, string> = {
+    'JAN': 'Jan',
+    'FEB': 'Feb',
+    'MAR': 'Mar',
+    'APR': 'Apr',
+    'MAY': 'May',
+    'JUN': 'Jun',
+    'JUL': 'Jul',
+    'AUG': 'Aug',
+    'SEP': 'Sep',
+    'OCT': 'Oct',
+    'NOV': 'Nov',
+    'DEC': 'Dec',
+  };
+  return months.map(m => monthMap[m] || m);
+};
+
+export default function Step6({ onNext, onBack, initialScheduleConfig }: Step6Props) {
   const navigate = useNavigate();
-  const [frequency, setFrequency] = useState<FrequencyType>('Daily');
-  const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>('runNow');
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon']);
-  const [selectedMonths, setSelectedMonths] = useState<string[]>(['Jan']);
-  const [dayOfMonth, setDayOfMonth] = useState('01');
-  const [startTime, setStartTime] = useState('12:00');
-  const [timeZone, setTimeZone] = useState(getDefaultTimezone().value);
-  const [startDate, setStartDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [endDate, setEndDate] = useState(dayjs().add(7, 'days').format('YYYY-MM-DD'));
+
+  const initializeState = () => {
+    if (initialScheduleConfig?.scheduling) {
+      const scheduling = initialScheduleConfig.scheduling;
+      return {
+        frequency: mapBackendFrequencyToFrontend(scheduling.frequency),
+        runMode: (!scheduling.startDate && !scheduling.startTime) ? 'runNow' as const : 'scheduleRun' as const,
+        selectedDays: mapBackendDaysToFrontend(scheduling.weekDays),
+        selectedMonths: mapBackendMonthsToFrontend(scheduling.selectedMonths),
+        dayOfMonth: String(scheduling.monthDate || '01').padStart(2, '0'),
+        startTime: scheduling.startTime || '12:00',
+        timeZone: initialScheduleConfig.timeZone,
+        startDate: scheduling.startDate || dayjs().format('YYYY-MM-DD'),
+        endDate: scheduling.endDate || dayjs().add(7, 'days').format('YYYY-MM-DD'),
+      };
+    }
+    return {
+      frequency: 'Daily' as FrequencyType,
+      runMode: 'runNow' as const,
+      selectedDays: ['Mon'],
+      selectedMonths: ['Jan'],
+      dayOfMonth: '01',
+      startTime: '12:00',
+      timeZone: getDefaultTimezone().value,
+      startDate: dayjs().format('YYYY-MM-DD'),
+      endDate: dayjs().add(7, 'days').format('YYYY-MM-DD'),
+    };
+  };
+
+  const initialState = initializeState();
+  const [frequency, setFrequency] = useState<FrequencyType>(initialState.frequency);
+  const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>(initialState.runMode);
+  const [selectedDays, setSelectedDays] = useState<string[]>(initialState.selectedDays);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>(initialState.selectedMonths);
+  const [dayOfMonth, setDayOfMonth] = useState(initialState.dayOfMonth);
+  const [startTime, setStartTime] = useState(initialState.startTime);
+  const [timeZone, setTimeZone] = useState(initialState.timeZone);
+  const [startDate, setStartDate] = useState(initialState.startDate);
+  const [endDate, setEndDate] = useState(initialState.endDate);
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
 

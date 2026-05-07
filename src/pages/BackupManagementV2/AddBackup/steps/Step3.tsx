@@ -4,15 +4,17 @@ import { useNavigate } from 'react-router-dom';
 type Step3Props = {
   onNext: (strategy: 'realtime' | 'scheduled', entireDatasetSelected: boolean) => void;
   onBack: () => void;
+  initialStrategy?: 'realtime' | 'scheduled';
+  initialEntireDatasetSelected?: boolean;
 };
 
 type BackupStrategy = 'realtime' | 'scheduled';
 
-export default function Step3({ onNext, onBack }: Step3Props) {
+export default function Step3({ onNext, onBack, initialStrategy = 'realtime', initialEntireDatasetSelected = false }: Step3Props) {
   const navigate = useNavigate();
-  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
-  const [realtimeDataSelection, setRealtimeDataSelection] = useState('');
-  const [scheduledDataSelection, setScheduledDataSelection] = useState('');
+  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>(initialStrategy);
+  const [realtimeDataSelection, setRealtimeDataSelection] = useState(initialStrategy === 'realtime' && initialEntireDatasetSelected ? 'entire' : '');
+  const [scheduledDataSelection, setScheduledDataSelection] = useState(initialStrategy === 'scheduled' && initialEntireDatasetSelected ? 'entire' : '');
 
   const getMaxSteps = () => {
     return selectedStrategy === 'realtime' ? 6 : 7;

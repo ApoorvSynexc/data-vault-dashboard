@@ -66,6 +66,7 @@ export default function AddBackup() {
       {currentStep === 1 && (
         <Step1
           strategy={selectedStrategy}
+          initialSelectedPlatformId={selectedPlatformId}
           onNext={(platformId) => {
             if (platformId) setSelectedPlatformId(platformId);
             handleNextStep();
@@ -75,6 +76,7 @@ export default function AddBackup() {
       {currentStep === 2 && (
         <Step2
           strategy={selectedStrategy}
+          initialDestinationId={destinationId}
           onNext={(destination) => {
             if (destination?.destinationId) {
               setDestinationId(destination.destinationId);
@@ -84,7 +86,14 @@ export default function AddBackup() {
           onBack={handlePrevStep}
         />
       )}
-      {currentStep === 3 && <Step3 onNext={handleStrategySelected} onBack={handlePrevStep} />}
+      {currentStep === 3 && (
+        <Step3
+          initialStrategy={selectedStrategy}
+          initialEntireDatasetSelected={entireDatasetSelected}
+          onNext={handleStrategySelected}
+          onBack={handlePrevStep}
+        />
+      )}
       {currentStep === 4 && (
         <Step4
           strategy={selectedStrategy}
@@ -113,6 +122,7 @@ export default function AddBackup() {
       )}
       {currentStep === 6 && selectedStrategy === 'scheduled' && (
         <Step6
+          initialScheduleConfig={scheduleConfig}
           onNext={(schedule) => {
             setScheduleConfig(schedule);
             handleNextStep();

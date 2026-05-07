@@ -9,6 +9,7 @@ type Step2Props = {
   onNext: (destination: Destination | null) => void;
   onBack: () => void;
   strategy?: 'realtime' | 'scheduled';
+  initialDestinationId?: string | null;
 };
 
 const DEFAULT_DESTINATION = {
@@ -17,10 +18,10 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Props) {
+export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId }: Step2Props) {
   const navigate = useNavigate();
   const destinationService = useDestinationService();
-  const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(null);
+  const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(DEFAULT_DESTINATION);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
 
   const getMaxSteps = () => {
@@ -38,12 +39,19 @@ export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Pr
 
   const connections = (connectionsData as any)?.data ?? connectionsData ?? [];
 
-  // Auto-select first connection when connections are fetched
+  // Auto-select first connection or restore initial when connections are fetched
   useEffect(() => {
-    if (connections.length > 0 && !isLoadingConnections && !selectedConnection) {
-      const firstConnection = connections[0];
-      // Fetch decrypted config for the selected connection
-      fetchAndSetConfig(firstConnection);
+    if (connections.length > 0 && !isLoadingConnections) {
+      if (initialDestinationId) {
+        const foundConnection = connections.find((conn: Destination) => conn.destinationId === initialDestinationId);
+        if (foundConnection) {
+          fetchAndSetConfig(foundConnection);
+        } else if (!selectedConnection) {
+          fetchAndSetConfig(connections[0]);
+        }
+      } else if (!selectedConnection) {
+        fetchAndSetConfig(connections[0]);
+      }
     }
   }, [connections, isLoadingConnections]);
 
