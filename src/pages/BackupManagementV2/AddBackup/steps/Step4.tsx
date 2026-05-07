@@ -18,6 +18,10 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
   const [policyNameError, setPolicyNameError] = useState(false);
 
   const isRealTime = strategy === 'realtime';
+  const getMaxSteps = () => {
+    return strategy === 'realtime' ? 6 : 7;
+  };
+  const maxSteps = getMaxSteps();
 
   const handleNext = () => {
     if (!policyName.trim()) {
@@ -45,7 +49,7 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
           <p className='text-gray-600 mt-2'>Fill in the required information to create a backup policy</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-          Step 4 of 5
+          Step 4 of {maxSteps}
         </span>
       </div>
 

@@ -99,6 +99,7 @@ export default function AddBackup() {
           crmId={selectedPlatformId}
           entireDatasetSelected={entireDatasetSelected}
           selectedObjectIds={selectedObjectIds}
+          strategy={selectedStrategy}
           onNext={(objectIds) => {
             setSelectedObjectIds(objectIds);
             handleNextStep();

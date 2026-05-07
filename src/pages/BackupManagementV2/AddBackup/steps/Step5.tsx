@@ -9,6 +9,7 @@ type Step5Props = {
   entireDatasetSelected?: boolean;
   crmId?: string | null;
   selectedObjectIds?: string[];
+  strategy?: 'realtime' | 'scheduled';
 };
 
 interface BackupObject {
@@ -20,11 +21,16 @@ interface BackupObject {
   isBackedUp?: boolean;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [] }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime' }: Step5Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
+
+  const getMaxSteps = () => {
+    return strategy === 'realtime' ? 6 : 7;
+  };
+  const maxSteps = getMaxSteps();
 
   // Fetch objects from API
   const { data: objectsData, isLoading, error } = useQuery({
@@ -83,7 +89,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
           <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-          Step 5 of 5
+          Step 5 of {maxSteps}
         </span>
       </div>
 
