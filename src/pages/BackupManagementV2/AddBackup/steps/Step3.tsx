@@ -14,6 +14,11 @@ export default function Step3({ onNext, onBack }: Step3Props) {
   const [realtimeDataSelection, setRealtimeDataSelection] = useState('');
   const [scheduledDataSelection, setScheduledDataSelection] = useState('');
 
+  const getMaxSteps = () => {
+    return selectedStrategy === 'realtime' ? 6 : 7;
+  };
+  const maxSteps = getMaxSteps();
+
   const handleEntireDatasetToggle = () => {
     if (selectedStrategy === 'realtime') {
       setRealtimeDataSelection(realtimeDataSelection === 'entire' ? '' : 'entire');
@@ -31,7 +36,7 @@ export default function Step3({ onNext, onBack }: Step3Props) {
           <p className='text-gray-600 mt-2'>Select how you want your data to be protected</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-          Step 3 of 5
+          Step 3 of {maxSteps}
         </span>
       </div>
 

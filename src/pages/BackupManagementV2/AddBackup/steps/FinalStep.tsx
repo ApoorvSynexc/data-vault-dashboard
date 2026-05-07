@@ -20,6 +20,7 @@ type ScheduleConfig = {
 
 type FinalStepProps = {
   onBack: () => void;
+  onEditStep?: (step: number) => void;
   strategy?: 'realtime' | 'scheduled';
   crmId?: string | null;
   selectedObjectIds?: string[];
@@ -32,6 +33,7 @@ type FinalStepProps = {
 
 export default function FinalStep({
   onBack,
+  onEditStep,
   strategy = 'realtime',
   crmId,
   selectedObjectIds = [],
@@ -134,10 +136,12 @@ export default function FinalStep({
   const SectionBox = ({
     title,
     sectionKey,
+    stepNumber,
     children
   }: {
     title: string;
     sectionKey: string;
+    stepNumber?: number;
     children: React.ReactNode
   }) => (
     <div className='bg-white rounded-lg border border-gray-200'>
@@ -159,6 +163,9 @@ export default function FinalStep({
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (stepNumber && onEditStep) {
+              onEditStep(stepNumber);
+            }
           }}
           className='px-4 py-2 text-blue-600 font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
         >
@@ -218,7 +225,7 @@ export default function FinalStep({
       {/* Main Content */}
       <div className='flex-grow overflow-y-auto min-h-0 space-y-4'>
         {/* Source & Destination Section */}
-        <SectionBox title='Source & Destination' sectionKey='source'>
+        <SectionBox title='Source & Destination' sectionKey='source' stepNumber={1}>
           <div className='grid grid-cols-2 gap-4'>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Source Platform</p>
@@ -240,7 +247,7 @@ export default function FinalStep({
         </SectionBox>
 
         {/* Backup Strategy Section */}
-        <SectionBox title='Backup Strategy' sectionKey='strategy'>
+        <SectionBox title='Backup Strategy' sectionKey='strategy' stepNumber={3}>
           <div className='grid grid-cols-2 gap-4'>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Strategy Type</p>
@@ -262,7 +269,7 @@ export default function FinalStep({
         </SectionBox>
 
         {/* Define Backup Policy Section */}
-        <SectionBox title='Define Backup Policy' sectionKey='policy'>
+        <SectionBox title='Define Backup Policy' sectionKey='policy' stepNumber={4}>
           <div className='grid grid-cols-2 gap-4'>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-sm text-gray-600 mb-1'>Policy Name</p>
@@ -277,7 +284,7 @@ export default function FinalStep({
 
         {/* Backup Schedule Section - Only for Scheduled Strategy */}
         {!isRealTime && scheduleConfig && (
-          <SectionBox title='Backup Schedule' sectionKey='schedule'>
+          <SectionBox title='Backup Schedule' sectionKey='schedule' stepNumber={6}>
             <div className='grid grid-cols-2 gap-4'>
               <div className='bg-gray-100 rounded-lg p-4'>
                 <p className='text-sm text-gray-600 mb-1'>Frequency</p>

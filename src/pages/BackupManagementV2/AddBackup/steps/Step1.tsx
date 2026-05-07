@@ -8,6 +8,7 @@ import type { ConnectedPlatform } from '../../../../services/platform/platform.s
 
 type Step1Props = {
   onNext: (platformId?: string) => void;
+  strategy?: 'realtime' | 'scheduled';
 };
 
 const AVAILABLE_PLATFORMS = [
@@ -31,11 +32,16 @@ const AVAILABLE_PLATFORMS = [
   },
 ];
 
-export default function Step1({ onNext }: Step1Props) {
+export default function Step1({ onNext, strategy = 'realtime' }: Step1Props) {
   const navigate = useNavigate();
   const platformService = usePlatformService();
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
+
+  const getMaxSteps = () => {
+    return strategy === 'realtime' ? 6 : 7;
+  };
+  const maxSteps = getMaxSteps();
 
   // Fetch connections only when a platform is selected
   const { data: connectionData, isLoading: isLoadingConnections } = useQuery({
@@ -73,7 +79,7 @@ export default function Step1({ onNext }: Step1Props) {
           <p className='text-gray-600 mt-2'>Select source and destination for your backup process</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-          Step 1 of 5
+          Step 1 of {maxSteps}
         </span>
       </div>
 

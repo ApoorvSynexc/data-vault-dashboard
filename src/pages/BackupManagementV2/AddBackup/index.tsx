@@ -64,13 +64,17 @@ export default function AddBackup() {
   return (
     <div>
       {currentStep === 1 && (
-        <Step1 onNext={(platformId) => {
-          if (platformId) setSelectedPlatformId(platformId);
-          handleNextStep();
-        }} />
+        <Step1
+          strategy={selectedStrategy}
+          onNext={(platformId) => {
+            if (platformId) setSelectedPlatformId(platformId);
+            handleNextStep();
+          }}
+        />
       )}
       {currentStep === 2 && (
         <Step2
+          strategy={selectedStrategy}
           onNext={(destination) => {
             if (destination?.destinationId) {
               setDestinationId(destination.destinationId);
@@ -120,6 +124,7 @@ export default function AddBackup() {
         <FinalStep
           strategy={selectedStrategy}
           onBack={handlePrevStep}
+          onEditStep={(step) => setCurrentStep(step as Step)}
           crmId={selectedPlatformId}
           policyName={policyName}
           description={description}
@@ -133,6 +138,7 @@ export default function AddBackup() {
         <FinalStep
           strategy={selectedStrategy}
           onBack={handlePrevStep}
+          onEditStep={(step) => setCurrentStep(step as Step)}
           crmId={selectedPlatformId}
           policyName={policyName}
           description={description}

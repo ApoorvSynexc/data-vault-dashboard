@@ -8,6 +8,7 @@ import type { Destination } from '../../../../services/destination/destination.s
 type Step2Props = {
   onNext: (destination: Destination | null) => void;
   onBack: () => void;
+  strategy?: 'realtime' | 'scheduled';
 };
 
 const DEFAULT_DESTINATION = {
@@ -16,11 +17,16 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext, onBack }: Step2Props) {
+export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Props) {
   const navigate = useNavigate();
   const destinationService = useDestinationService();
   const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
+
+  const getMaxSteps = () => {
+    return strategy === 'realtime' ? 6 : 7;
+  };
+  const maxSteps = getMaxSteps();
 
   // Fetch destinations when AWS is selected
   const { data: connectionsData, isLoading: isLoadingConnections } = useQuery({
@@ -65,7 +71,7 @@ export default function Step2({ onNext, onBack }: Step2Props) {
           <p className='text-gray-600 mt-2'>Select destination where your backup will be stored</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-          Step 2 of 5
+          Step 2 of {maxSteps}
         </span>
       </div>
 
