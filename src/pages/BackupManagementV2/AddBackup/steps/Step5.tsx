@@ -239,7 +239,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
           </button>
           <button
             onClick={() => onNext(Array.from(selectedObjects))}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            disabled={selectedObjects.size === 0}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              selectedObjects.size > 0
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             Next Step →
           </button>

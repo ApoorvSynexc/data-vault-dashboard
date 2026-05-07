@@ -48,7 +48,7 @@ export default function FinalStep({
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
   const isRealTime = strategy === 'realtime';
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy', 'schedule']));
   const [isSuccess, setIsSuccess] = useState(false);
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
   const [isLoading, setIsLoading] = useState(false);
