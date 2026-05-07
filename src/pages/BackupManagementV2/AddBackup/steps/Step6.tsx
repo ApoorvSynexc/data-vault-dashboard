@@ -23,11 +23,12 @@ type Step6Props = {
   onBack: () => void;
 };
 
-type FrequencyType = 'OFF' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
+type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
 
 export default function Step6({ onNext, onBack }: Step6Props) {
   const navigate = useNavigate();
   const [frequency, setFrequency] = useState<FrequencyType>('Daily');
+  const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>('runNow');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon']);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(['Jan']);
   const [dayOfMonth, setDayOfMonth] = useState('01');
@@ -94,7 +95,7 @@ export default function Step6({ onNext, onBack }: Step6Props) {
         {/* Frequency Buttons */}
         <div className='mb-8'>
           <div className='flex gap-2 flex-wrap'>
-            {(['OFF', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
+            {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
               <button
                 key={freq}
                 onClick={() => setFrequency(freq)}
@@ -111,12 +112,89 @@ export default function Step6({ onNext, onBack }: Step6Props) {
         </div>
 
         {/* Dynamic Content Based on Frequency */}
-        {frequency === 'OFF' && (
-          <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3'>
-            <svg className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' fill='currentColor' viewBox='0 0 20 20'>
-              <path fillRule='evenodd' d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z' clipRule='evenodd' />
-            </svg>
-            <p className='text-sm text-blue-700'>If you choose this option, you may not be able to automate this backup in future, this option is best suitable for one time backup.</p>
+        {frequency === 'One Time' && (
+          <div className='space-y-6'>
+            {/* Info Message */}
+            <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3'>
+              <svg className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' fill='currentColor' viewBox='0 0 20 20'>
+                <path fillRule='evenodd' d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z' clipRule='evenodd' />
+              </svg>
+              <p className='text-sm text-blue-700'>If you choose this option, you may not be able to automate this backup in future, this option is best suitable for one time backup.</p>
+            </div>
+
+            {/* Run Mode Selection */}
+            <div className='space-y-3'>
+              <label className='flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors' style={{borderColor: runMode === 'runNow' ? '#3b82f6' : '#d1d5db', backgroundColor: runMode === 'runNow' ? '#eff6ff' : 'transparent'}}>
+                <input
+                  type='radio'
+                  name='runMode'
+                  value='runNow'
+                  checked={runMode === 'runNow'}
+                  onChange={(e) => setRunMode(e.target.value as 'runNow' | 'scheduleRun')}
+                  className='mt-1'
+                />
+                <div>
+                  <p className='font-medium text-gray-900'>Run Now</p>
+                  <p className='text-sm text-gray-600'>Backup will run once hit Run Backup</p>
+                </div>
+              </label>
+
+              <label className='flex items-start gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors' style={{borderColor: runMode === 'scheduleRun' ? '#3b82f6' : '#d1d5db', backgroundColor: runMode === 'scheduleRun' ? '#eff6ff' : 'transparent'}}>
+                <input
+                  type='radio'
+                  name='runMode'
+                  value='scheduleRun'
+                  checked={runMode === 'scheduleRun'}
+                  onChange={(e) => setRunMode(e.target.value as 'runNow' | 'scheduleRun')}
+                  className='mt-1'
+                />
+                <div>
+                  <p className='font-medium text-gray-900'>Schedule Backup Run</p>
+                  <p className='text-sm text-gray-600'>Backup will run at scheduled time</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Schedule Fields - Only show when Schedule Run is selected */}
+            {runMode === 'scheduleRun' && (
+              <div className='space-y-6 pt-4 border-t border-gray-200'>
+                <div className='grid grid-cols-2 gap-6'>
+                  <div>
+                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
+                    <input
+                      type='date'
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      placeholder='Select Date'
+                      className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                    <input
+                      type='time'
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                  <select
+                    value={timeZone}
+                    onChange={(e) => setTimeZone(e.target.value)}
+                    className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  >
+                    {TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -424,11 +502,19 @@ export default function Step6({ onNext, onBack }: Step6Props) {
           <button
             onClick={() => {
               // Validate required fields
-              if (frequency !== 'OFF' && !startDate) {
+              if (frequency !== 'One Time' && !startDate) {
                 alert('Please select a start date');
                 return;
               }
-              if (frequency !== 'OFF' && !startTime) {
+              if (frequency !== 'One Time' && !startTime) {
+                alert('Please select a starting time');
+                return;
+              }
+              if (frequency === 'One Time' && runMode === 'scheduleRun' && !startDate) {
+                alert('Please select a start date');
+                return;
+              }
+              if (frequency === 'One Time' && runMode === 'scheduleRun' && !startTime) {
                 alert('Please select a starting time');
                 return;
               }
@@ -442,11 +528,16 @@ export default function Step6({ onNext, onBack }: Step6Props) {
               }
 
               const scheduling: any = {
-                frequency: frequency === 'OFF' ? 'ONCE' : frequency.toUpperCase(),
+                frequency: frequency === 'One Time' ? 'ONCE' : frequency.toUpperCase(),
                 interval: 1,
               };
 
-              if (frequency === 'Hourly') {
+              if (frequency === 'One Time') {
+                if (runMode === 'scheduleRun') {
+                  scheduling.startDate = startDate;
+                  scheduling.startTime = startTime;
+                }
+              } else if (frequency === 'Hourly') {
                 scheduling.interval = parseInt(backupIn.split(' ')[0]) || 1;
                 scheduling.startDate = startDate;
                 scheduling.startTime = startTime;
