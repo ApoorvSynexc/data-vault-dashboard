@@ -154,7 +154,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig }: Step6Pr
   };
 
   return (
-    <div className='h-screen bg-gray-50 p-8 flex flex-col overflow-hidden'>
+    <div className='h-full bg-gray-50 p-8 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-8 flex-shrink-0'>
         <div>

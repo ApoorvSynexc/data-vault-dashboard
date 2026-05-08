@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
@@ -31,10 +31,19 @@ export default function BackupDetails() {
 
   const backupData = mockBackupData;
 
+  useEffect(() => {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   return (
-    <div className='h-screen bg-gray-50 flex flex-col overflow-hidden'>
+    <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header - Fixed */}
-      <div className='flex-shrink-0 bg-white border-b border-gray-200 p-6'>
+      <div className='flex-shrink-0 bg-gray-50 border-b border-gray-200 px-6 pt-6 pb-3'>
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-4'>
             <button
@@ -63,7 +72,7 @@ export default function BackupDetails() {
         </div>
 
         {/* Tabs */}
-        <div className='flex border-b border-gray-200'>
+        <div className='flex'>
           <button
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-3 font-medium border-b-2 transition-colors ${

@@ -6,49 +6,51 @@ export default function Overview({ backup }: OverviewProps) {
   return (
     <div className='space-y-4'>
       {/* Status Overview Cards */}
-      <div className='grid grid-cols-4 gap-3 bg-gray-50 rounded-lg p-4'>
-        <div>
-          <div className='flex items-center gap-2 mb-1'>
-            <svg className='w-4 h-4 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
-              <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' />
-            </svg>
-            <span className='text-xs font-medium text-gray-600'>Status</span>
+      <div className='bg-white rounded border border-gray-200 p-4'>
+        <div className='grid grid-cols-4 gap-3'>
+          <div className='bg-gray-50 rounded p-3'>
+            <div className='flex items-center gap-2 mb-1'>
+              <svg className='w-4 h-4 text-green-600' fill='currentColor' viewBox='0 0 20 20'>
+                <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z' />
+              </svg>
+              <span className='text-xs font-medium text-gray-600'>Status</span>
+            </div>
+            <p className='text-sm font-semibold text-green-600'>{backup?.backupStatus}</p>
+            <p className='text-xs text-gray-500'>Successfully Completed</p>
           </div>
-          <p className='text-sm font-semibold text-green-600'>{backup?.backupStatus}</p>
-          <p className='text-xs text-gray-500'>Successfully Completed</p>
-        </div>
 
-        <div>
-          <div className='flex items-center gap-2 mb-1'>
-            <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z' />
-            </svg>
-            <span className='text-xs font-medium text-gray-600'>Last Run</span>
+          <div className='bg-gray-50 rounded p-3'>
+            <div className='flex items-center gap-2 mb-1'>
+              <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
+                <path d='M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.3A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z' />
+              </svg>
+              <span className='text-xs font-medium text-gray-600'>Last Run</span>
+            </div>
+            <p className='text-sm font-semibold text-gray-900'>Today 08:00 AM</p>
+            <p className='text-xs text-gray-500'>April 10, 2026</p>
           </div>
-          <p className='text-sm font-semibold text-gray-900'>Today 08:00 AM</p>
-          <p className='text-xs text-gray-500'>April 10, 2026</p>
-        </div>
 
-        <div>
-          <div className='flex items-center gap-2 mb-1'>
-            <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v-1h8v1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3h2v3h-2z' />
-            </svg>
-            <span className='text-xs font-medium text-gray-600'>Data Size</span>
+          <div className='bg-gray-50 rounded p-3'>
+            <div className='flex items-center gap-2 mb-1'>
+              <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
+                <path d='M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v-1h8v1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3h2v3h-2z' />
+              </svg>
+              <span className='text-xs font-medium text-gray-600'>Data Size</span>
+            </div>
+            <p className='text-sm font-semibold text-gray-900'>146.3 GB</p>
+            <p className='text-xs text-gray-500'>+7.4% vs last backup</p>
           </div>
-          <p className='text-sm font-semibold text-gray-900'>146.3 GB</p>
-          <p className='text-xs text-gray-500'>+7.4% vs last backup</p>
-        </div>
 
-        <div>
-          <div className='flex items-center gap-2 mb-1'>
-            <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M7 3a1 1 0 000 2h6a1 1 0 000-2H7zM4 7a1 1 0 011-1h10a1 1 0 011 1v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z' />
-            </svg>
-            <span className='text-xs font-medium text-gray-600'>Objects</span>
+          <div className='bg-gray-50 rounded p-3'>
+            <div className='flex items-center gap-2 mb-1'>
+              <svg className='w-4 h-4 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
+                <path d='M7 3a1 1 0 000 2h6a1 1 0 000-2H7zM4 7a1 1 0 011-1h10a1 1 0 011 1v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z' />
+              </svg>
+              <span className='text-xs font-medium text-gray-600'>Objects</span>
+            </div>
+            <p className='text-sm font-semibold text-gray-900'>152</p>
+            <p className='text-xs text-gray-500'>12,424,545 Records</p>
           </div>
-          <p className='text-sm font-semibold text-gray-900'>152</p>
-          <p className='text-xs text-gray-500'>12,424,545 Records</p>
         </div>
       </div>
 

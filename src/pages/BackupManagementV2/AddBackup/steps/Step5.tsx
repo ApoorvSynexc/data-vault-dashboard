@@ -82,9 +82,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
   };
 
   return (
-    <div className='h-screen bg-gray-50 p-8 flex flex-col overflow-hidden'>
+    <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between mb-8 flex-shrink-0'>
+      <div className='flex items-start justify-between p-8 pb-4 flex-shrink-0'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Data Scope</h1>
           <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
@@ -95,9 +95,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 p-6 mb-8 flex flex-col flex-grow min-h-0'>
+      <div className='bg-white rounded-lg border border-gray-200 mx-8 flex flex-col flex-grow min-h-0 overflow-y-auto'>
         {/* Search and Filter */}
-        <div className='mb-6 flex items-center gap-4 justify-between flex-shrink-0'>
+        <div className='p-6 pb-4 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
             <input
               type='text'
@@ -146,7 +146,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
         {/* Table */}
         {!isLoading && !error && (
           <>
-            <div className='overflow-x-auto overflow-y-auto flex-1 min-h-0'>
+            <div className='overflow-x-auto px-6'>
               <table className='w-full'>
                 <thead>
                   <tr className='border-b border-gray-200'>
@@ -216,14 +216,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
 
         {/* Pagination Info */}
         {!isLoading && !error && (
-          <div className='mt-6 text-sm text-gray-600 flex-shrink-0'>
+          <div className='p-6 pt-4 text-sm text-gray-600 flex-shrink-0'>
             Showing {filteredObjects.length} of {objects.length} Objects
           </div>
         )}
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between flex-shrink-0'>
+      <div className='flex justify-between flex-shrink-0 p-8 pt-6'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'

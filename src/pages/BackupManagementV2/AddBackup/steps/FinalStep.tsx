@@ -183,7 +183,7 @@ export default function FinalStep({
 
   if (isSuccess) {
     return (
-      <div className='h-screen bg-gray-50 flex flex-col items-center justify-center'>
+      <div className='h-full bg-gray-50 flex flex-col items-center justify-center'>
         <div className='text-center'>
           {/* Success Icon with Animation */}
           <div className='relative mb-6'>
@@ -211,7 +211,7 @@ export default function FinalStep({
   }
 
   return (
-    <div className='h-screen bg-gray-50 p-6 flex flex-col overflow-hidden'>
+    <div className='h-full bg-gray-50 p-6 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>

@@ -71,7 +71,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
   const isSelected = selectedDestination?.provider === DEFAULT_DESTINATION.provider;
 
   return (
-    <div className='min-h-screen bg-gray-50 p-8'>
+    <div className='h-full bg-gray-50 p-8 overflow-y-auto'>
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-8'>
         <div>

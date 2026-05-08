@@ -74,7 +74,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   }, [connections, selectedConnection]);
 
   return (
-    <div className='min-h-screen bg-gray-50 p-8'>
+    <div className='h-full bg-gray-50 p-8 overflow-y-auto'>
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-8'>
         <div>
