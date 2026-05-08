@@ -1,9 +1,38 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
+
+const ErrorMessageCell = ({ errorMessage }: { errorMessage?: string }) => {
+  const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
+
+  if (!errorMessage) {
+    return <span className='text-xs text-gray-500'>--</span>;
+  }
+
+  return (
+    <div className='relative inline-block'>
+      <span
+        className='cursor-help text-red-600 text-xs'
+        onMouseEnter={() => setHoveredJobId('error')}
+        onMouseLeave={() => setHoveredJobId(null)}
+      >
+        {errorMessage.length > 50
+          ? errorMessage.substring(0, 50) + '...'
+          : errorMessage}
+      </span>
+
+      {hoveredJobId === 'error' && (
+        <div className='absolute bottom-full left-0 mb-2 z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-normal max-w-xs break-words'>
+          {errorMessage}
+          <div className='absolute top-full left-2 w-2 h-2 bg-gray-900 transform rotate-45'></div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 type BackupHistoryProps = {
   backup: any;
@@ -69,7 +98,9 @@ const calculateJobDataSize = (job: any) => {
 export default function BackupHistory(_: BackupHistoryProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
+  const [resumingJobId, setResumingJobId] = useState<string | null>(null);
 
   const { data: jobsResponse } = useQuery({
     queryKey: ['backup-jobs', slug],
@@ -81,23 +112,58 @@ export default function BackupHistory(_: BackupHistoryProps) {
     enabled: !!slug,
   });
 
+  const { data: statsResponse } = useQuery({
+    queryKey: ['backup-stats', slug],
+    queryFn: async () => {
+      if (!slug) return null;
+      const response = await backupConfigService.getStats(slug);
+      return response?.data;
+    },
+    enabled: !!slug,
+  });
+
   const allJobs = (jobsResponse as any)?.data || [];
   const itemsPerPage = 10;
   const totalItems = allJobs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  // Calculate stats from real data
+  // Get stats from API
+  const apiStats = statsResponse as any;
+  const completedJobsCount = typeof apiStats?.completedJobs === 'number'
+    ? apiStats.completedJobs
+    : (apiStats?.completedJobs?.count || 0);
+  const runningJobsCount = typeof apiStats?.runningJobs === 'number'
+    ? apiStats.runningJobs
+    : (apiStats?.runningJobs?.count || 0);
+  const failedJobsCount = typeof apiStats?.failedJobs === 'number'
+    ? apiStats.failedJobs
+    : (apiStats?.failedJobs?.count || 0);
+  const totalDataBackedUp = apiStats?.dataProcessed?.bytes || 0;
+  const totalRuns = completedJobsCount + runningJobsCount + failedJobsCount;
+
   const stats = {
-    totalRuns: totalItems,
-    successful: allJobs.filter((j: any) => j.status === 'SUCCESS').length,
-    failed: allJobs.filter((j: any) => j.status === 'FAILED').length,
-    totalDataBackedUp: allJobs.reduce((sum: number, j: any) => sum + (j.sizeInBytes || 0), 0),
+    totalRuns,
+    successful: completedJobsCount,
+    failed: failedJobsCount,
+    totalDataBackedUp,
   };
 
   // Paginate jobs
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedJobs = allJobs.slice(startIndex, endIndex);
+
+  const handleResume = async (backupJobId: string) => {
+    setResumingJobId(backupJobId);
+    try {
+      await backupConfigService.resumeBackupJob(backupJobId);
+      queryClient.invalidateQueries({ queryKey: ['backup-jobs', slug] });
+      setResumingJobId(null);
+    } catch (error) {
+      console.error('Failed to resume backup job:', error);
+      setResumingJobId(null);
+    }
+  };
 
   return (
     <div className='space-y-4'>
@@ -156,20 +222,25 @@ export default function BackupHistory(_: BackupHistoryProps) {
           <table className='w-full text-sm'>
             <thead>
               <tr className='border-b border-gray-200'>
+                <th className='text-left px-4 py-3 font-medium text-gray-600'>#</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Start Time</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Status</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Duration</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Data Size</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Objects</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Backup Type</th>
+                <th className='text-left px-4 py-3 font-medium text-gray-600'>Error Message</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Action</th>
               </tr>
             </thead>
             <tbody>
               {paginatedJobs.length > 0 ? (
-                paginatedJobs.map((row: any) => (
-                  <tr key={row.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-gray-900'>{row.startedAt ? dayjs(row.startedAt).format('MMM D, YYYY h:mm A') : '--'}</td>
+                paginatedJobs.map((row: any, index: number) => {
+                  const serialNumber = (currentPage - 1) * itemsPerPage + index + 1;
+                  return (
+                    <tr key={row.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
+                      <td className='px-4 py-3 text-sm text-gray-600'>{serialNumber}</td>
+                      <td className='px-4 py-3 text-gray-900'>{row.startedAt ? dayjs(row.startedAt).format('MMM D, YYYY h:mm A') : '--'}</td>
                     <td className='px-4 py-3'>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(row.status)}`}>
                         {getStatusDisplayText(row.status)}
@@ -179,16 +250,34 @@ export default function BackupHistory(_: BackupHistoryProps) {
                     <td className='px-4 py-3 text-gray-900'>{formatBytes(calculateJobDataSize(row))}</td>
                     <td className='px-4 py-3 text-gray-900'>{row.object?.length || row.recordCount || 0}</td>
                     <td className='px-4 py-3 text-gray-900'>{row.jobType === 'BULK' ? 'Scheduled' : 'Realtime'}</td>
-                    <td className='px-4 py-3 text-gray-400 cursor-pointer hover:text-gray-600'>
-                      <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-                        <path d='M10.5 1.5H9.5V0h1v1.5zm0 17H9.5v1.5h1V18.5zM19 9.5v1h1.5v-1H19zM0 9.5v1h1.5v-1H0zm14.243-5.243l.707-.707L18.9 7.793l-.707.707-4.65-4.65zm-8.486 8.486l.707-.707 4.65 4.65-.707.707-4.65-4.65zM18.9 12.207l.707.707-4.65 4.65-.707-.707 4.65-4.65zM7.793 1.1l.707.707-4.65 4.65-.707-.707 4.65-4.65z' />
-                      </svg>
+                    <td className='px-4 py-3'>
+                      <ErrorMessageCell errorMessage={row.errorMessage} />
+                    </td>
+                    <td className='px-4 py-3'>
+                      {row.status === 'FAILED' ? (
+                        <button
+                          type='button'
+                          disabled={resumingJobId === row.backupJobId}
+                          onClick={() => handleResume(row.backupJobId)}
+                          className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
+                        >
+                          {resumingJobId === row.backupJobId ? (
+                            <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
+                          ) : (
+                            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+                              <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
+                            </svg>
+                          )}
+                          {resumingJobId === row.backupJobId ? 'Resuming…' : 'Resume'}
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={7} className='px-4 py-8 text-center text-sm text-gray-500'>
+                  <td colSpan={9} className='px-4 py-8 text-center text-sm text-gray-500'>
                     No backup history found.
                   </td>
                 </tr>

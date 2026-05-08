@@ -48,6 +48,8 @@ type TableProps<TRow> = {
   showPageNumbers?: boolean;
   /** Custom styling for pagination container */
   paginationClassName?: string;
+  /** Show serial number column. Default: false */
+  showSerialNumber?: boolean;
 } & SelectableTableProps<TRow>;
 
 export default function Table<TRow>({
@@ -71,6 +73,7 @@ export default function Table<TRow>({
   getRowId,
   isRowSelectable,
   getRowClassName,
+  showSerialNumber = false,
 }: TableProps<TRow>) {
   const [internalPage, setInternalPage] = useState(1);
 
@@ -109,15 +112,20 @@ export default function Table<TRow>({
         <div
           className={
             !isLegacyPagination && !pagination?.onPageChange
-              ? `overflow-y-auto ${scrollContainerHeight} h-full`
+              ? `overflow-y-auto ${scrollContainerHeight} h-full relative`
               : maxHeightClassName
-                ? `overflow-y-auto ${maxHeightClassName} h-full`
-                : 'h-full'
+                ? `overflow-y-auto ${maxHeightClassName} h-full relative`
+                : 'h-full relative'
           }
         >
           <table className={`w-full ${minWidthClassName}`}>
-            <thead className='sticky top-0 z-10 bg-white'>
-              <tr className='border-b border-gray-200'>
+            <thead className='sticky top-0 z-20 bg-white'>
+              <tr className='border-b border-gray-200 shadow-sm'>
+                {showSerialNumber && (
+                  <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>
+                    #
+                  </th>
+                )}
                 {showCheckbox && (
                   <th className='px-4 py-3 text-left'>
                     <input
@@ -187,8 +195,12 @@ export default function Table<TRow>({
                 paginatedRows.map((row, index) => {
                   const isSelected = selectedIds?.has(getRowId?.(row) || getRowKey(row, index));
                   const computedRowClassName = getRowClassName?.(row, isSelected || false) || (typeof rowClassName === 'function' ? rowClassName(row, isSelected) : rowClassName);
+                  const serialNumber = (activePage - 1) * safePageSize + index + 1;
                   return (
                     <tr key={getRowKey(row, index)} className={computedRowClassName}>
+                      {showSerialNumber && (
+                        <td className='px-4 py-3 text-sm text-gray-600'>{serialNumber}</td>
+                      )}
                       {showCheckbox && (
                         <td className='px-4 py-3'>
                           <input
@@ -223,7 +235,7 @@ export default function Table<TRow>({
                 })
               ) : (
                 <tr>
-                  <td colSpan={columns.length} className='px-4 py-10 text-center text-sm text-gray-500'>
+                  <td colSpan={columns.length + (showSerialNumber ? 1 : 0) + (showCheckbox ? 1 : 0)} className='px-4 py-10 text-center text-sm text-gray-500'>
                     {emptyState ?? 'No records found.'}
                   </td>
                 </tr>

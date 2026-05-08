@@ -532,6 +532,7 @@ export default function Dashboard() {
             getRowKey={(job, index) => `${job.name}-${job.platform}-${index}`}
             minWidthClassName='min-w-[880px]'
             maxHeightClassName='max-h-[320px]'
+            showSerialNumber={true}
           />
         </div>
 

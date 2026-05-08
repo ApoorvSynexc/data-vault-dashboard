@@ -650,6 +650,7 @@ export default function BackupManagement() {
                 }
               },
             }}
+            showSerialNumber={true}
           />
         )}
       </Panel>

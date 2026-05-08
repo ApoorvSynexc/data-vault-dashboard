@@ -8,7 +8,7 @@ import {
 import Typography from '../../components/Typography';
 import Table, { type TableColumn } from '../../components/Table';
 import type { PlatformType } from './AddBackupModal';
-import { capitalize, formatDateTime, formatDate } from '../../utils';
+import { capitalize, formatDateTime } from '../../utils';
 
 type ConfigStatus = 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
 type BackupStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
@@ -573,6 +573,7 @@ export default function BackupDetail() {
                 }
               },
             }}
+            showSerialNumber={true}
           />
         )}
       </section>

@@ -183,6 +183,7 @@ export default function ObjectsNData(_: ObjectsNDataProps) {
         itemsPerPage={8}
         showPageNumbers={true}
         emptyState='No objects found matching your search.'
+        showSerialNumber={true}
       />
     </div>
   );

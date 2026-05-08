@@ -174,7 +174,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
                 }`}
                 emptyState='No objects found matching your search.'
                 showPagination={false}
-                height='100%'
+                height='500px'
+                showSerialNumber={true}
               />
             </div>
 

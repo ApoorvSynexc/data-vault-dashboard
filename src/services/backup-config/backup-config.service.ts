@@ -243,7 +243,9 @@ export function useBackupConfigService() {
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.resume, { query: { backupJobId } }),
     deleteBackupConfig: (backupConfigId: string) =>
       api.delete<void>(BACKUP_CONFIG_ENDPOINTS.delete, { query: { backupConfigId } }),
-    getStats: () =>
-      api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats),
+    getStats: (slug?: string) => {
+      const query = slug ? { slug } : {};
+      return api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats, { query });
+    },
   };
 }
