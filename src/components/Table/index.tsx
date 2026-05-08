@@ -34,6 +34,8 @@ type TableProps<TRow> = {
   emptyState?: ReactNode;
   minWidthClassName?: string;
   maxHeightClassName?: string;
+  /** Minimum height of the table container (e.g., 'min-h-96', 'min-h-[500px]') */
+  minHeightClassName?: string;
   /** Legacy pagination prop for backward compatibility */
   pagination?: TablePaginationConfig;
   /** New pagination control: true to show pagination, false for inner scroll */
@@ -56,6 +58,7 @@ export default function Table<TRow>({
   emptyState,
   minWidthClassName = 'min-w-full',
   maxHeightClassName,
+  minHeightClassName,
   pagination,
   showPagination = false,
   height = 'h-96',
@@ -99,17 +102,17 @@ export default function Table<TRow>({
   const scrollContainerHeight = height === 'h-96' ? 'max-h-96' : height.startsWith('h-') ? `max-${height}` : height;
 
   return (
-    <div className='bg-white rounded border border-gray-200'>
+    <div className={`bg-white rounded border border-gray-200 flex flex-col ${minHeightClassName || ''}`}>
       {/* Horizontal scroll wrapper */}
-      <div className='overflow-x-auto'>
+      <div className='overflow-x-auto flex-1'>
         {/* Vertical scroll wrapper - only when not using legacy pagination */}
         <div
           className={
             !isLegacyPagination && !pagination?.onPageChange
-              ? `overflow-y-auto ${scrollContainerHeight}`
+              ? `overflow-y-auto ${scrollContainerHeight} h-full`
               : maxHeightClassName
-                ? `overflow-y-auto ${maxHeightClassName}`
-                : ''
+                ? `overflow-y-auto ${maxHeightClassName} h-full`
+                : 'h-full'
           }
         >
           <table className={`w-full ${minWidthClassName}`}>

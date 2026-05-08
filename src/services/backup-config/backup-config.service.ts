@@ -177,7 +177,7 @@ export function useBackupConfigService() {
       api.post<void>(BACKUP_CONFIG_ENDPOINTS.create, payload),
     listBackupConfigs: async (pagination = true, cursor?: string) => {
       const response = await api.get<BackupConfigListApiResponse>(BACKUP_CONFIG_ENDPOINTS.list, {
-        query: { pagination, cursor, limit: 20 },
+        query: { pagination, cursor, limit: 25 },
       });
 
       return response;

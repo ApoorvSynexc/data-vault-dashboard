@@ -505,7 +505,7 @@ export default function BackupManagementV2() {
   const listObject = (backupQuery.data as any)?.data ?? null;
   const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
   const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
-    limit: 20,
+    limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
     totalPages: 1,
@@ -682,7 +682,8 @@ export default function BackupManagementV2() {
             rows={filteredBackups}
             getRowKey={(row) => row.id}
             rowClassName='border-t border-gray-100'
-            minWidthClassName='min-w-[960px]'
+            // minWidthClassName='min-w-[960px]'
+            minHeightClassName='min-h-[500px]'
             pagination={{
               currentPage,
               pageSize: apiMeta.limit ?? 10,
