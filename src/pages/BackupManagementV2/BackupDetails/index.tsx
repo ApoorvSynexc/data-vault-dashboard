@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
 import ObjectsNData from './ObjectsNData';
+import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
+import { capitalize } from '../../../utils';
 
 type TabType = 'overview' | 'history' | 'objects';
 
@@ -28,8 +31,19 @@ export default function BackupDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const backupConfigService = useBackupConfigService();
 
-  const backupData = mockBackupData;
+  const { data: backupDetail } = useQuery({
+    queryKey: ['backup-detail', slug],
+    queryFn: async () => {
+      if (!slug) return null;
+      const response = await backupConfigService.getBackupConfig(slug);
+      return (response as any)?.data || null;
+    },
+    enabled: !!slug,
+  });
+
+  const backupData = (backupDetail as any) || mockBackupData;
 
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden';
@@ -57,15 +71,15 @@ export default function BackupDetails() {
             <div>
               <div className='flex items-center gap-2'>
                 <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
-                  <span className='text-xs font-bold text-blue-600'>SF</span>
+                  <span className='text-xs font-bold text-blue-600'>{(backupData?.crmDetail?.crmName || backupData?.crmName || 'SF')?.charAt(0).toUpperCase()}</span>
                 </div>
-                <h1 className='text-2xl font-bold text-gray-900'>{backupData?.name}</h1>
+                <h1 className='text-2xl font-bold text-gray-900'>{backupData?.name || 'Backup'}</h1>
                 <span className='px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'>
-                  ✓ {backupData?.backupStatus}
+                  ✓ {backupData?.backupStatus || 'ACTIVE'}
                 </span>
               </div>
               <p className='text-sm text-gray-600 mt-1'>
-                {backupData?.crmName} • {backupData?.environment} • Backup ID: {slug}
+                {backupData?.crmDetail?.crmName || backupData?.crmName} • {backupData?.environment ? capitalize(backupData.environment) : 'N/A'} • Backup ID: {slug}
               </p>
             </div>
           </div>

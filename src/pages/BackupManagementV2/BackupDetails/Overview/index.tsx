@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import { formatBytes, formatDate, formatTime, formatDateTime } from '../../../../utils';
+import { formatBytes, formatDate, formatTime, formatDateTime, capitalize, calculateNextRun } from '../../../../utils';
 
 type OverviewProps = {
   backup: any;
@@ -63,8 +63,8 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Last Run</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>{formatDateTime(displayData?.lastBackupAt)}</p>
-            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? formatDate(displayData.lastBackupAt) : 'Never'}</p>
+            <p className='text-sm font-semibold text-gray-900'>{formatDateTime(displayData?.lastBackupAt, displayData?.scheduleConfig?.timeZone)}</p>
+            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? formatDate(displayData.lastBackupAt, displayData?.scheduleConfig?.timeZone) : 'Never'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -100,32 +100,32 @@ export default function Overview({ backup }: OverviewProps) {
             <h3 className='text-sm font-semibold text-gray-900 mb-4'>Backup Details</h3>
             <div className='space-y-3'>
               <div className='flex justify-between'>
-                <span className='text-xs text-gray-600'>Platform</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.crmName || displayData?.platform || 'N/A'}</span>
-              </div>
-              <div className='flex justify-between'>
-                <span className='text-xs text-gray-600'>Organization</span>
+                <span className='text-xs text-gray-600'>Name</span>
                 <span className='text-xs font-medium text-gray-900'>{displayData?.name || 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
+                <span className='text-xs text-gray-600'>Source Platform</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.crmDetail?.crmName || displayData?.crmName || displayData?.platform || 'N/A'}</span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-xs text-gray-600'>Destination Platform</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.destinationId ? 'Cloud Storage' : 'N/A'}</span>
+              </div>
+              <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Environment</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.environment || 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.environment ? capitalize(displayData.environment) : 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Backup Type</span>
-                <span className='text-xs font-medium text-gray-900'>Full Backup</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.type ? capitalize(displayData.scheduleConfig.type) : 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
-                <span className='text-xs text-gray-600'>Total Records</span>
-                <span className='text-xs font-medium text-gray-900'>12,424,545 Records</span>
+                <span className='text-xs text-gray-600'>Total Objects</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.objects?.length || 0} Objects</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Triggered By</span>
                 <span className='text-xs font-medium text-gray-900'>{displayData?.schedule === 'REALTIME' ? 'Realtime' : displayData?.schedule === 'SCHEDULE' ? 'Schedule' : 'N/A'}</span>
-              </div>
-              <div className='flex justify-between'>
-                <span className='text-xs text-gray-600'>API Version</span>
-                <span className='text-xs font-medium text-gray-900'>v58.0</span>
               </div>
             </div>
           </div>
@@ -143,11 +143,19 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
-                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? formatTime(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`) : 'N/A'}</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? formatTime(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`, displayData?.scheduleConfig?.timeZone) : 'N/A'}</p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
-                <p className='text-xs font-medium text-gray-900'>Tomorrow, 02:00 AM</p>
+                <p className='text-xs font-medium text-gray-900'>
+                  {calculateNextRun(
+                    displayData?.scheduleConfig?.scheduling?.startTime,
+                    displayData?.scheduleConfig?.scheduling?.startDate,
+                    displayData?.scheduleConfig?.scheduling?.frequency,
+                    displayData?.scheduleConfig?.scheduling?.interval,
+                    displayData?.scheduleConfig?.timeZone
+                  )}
+                </p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time Zone</p>
@@ -185,20 +193,6 @@ export default function Overview({ backup }: OverviewProps) {
                   <div className='flex items-center gap-1.5'>
                     <span className='w-1.5 h-1.5 rounded-full bg-purple-500'></span>
                     <span className='text-gray-600'>Custom Object</span>
-                  </div>
-                  <span className='font-medium text-gray-900'>1.1 GB</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-1.5'>
-                    <span className='w-1.5 h-1.5 rounded-full bg-orange-500'></span>
-                    <span className='text-gray-600'>File & Attachment</span>
-                  </div>
-                  <span className='font-medium text-gray-900'>1.1 GB</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-1.5'>
-                    <span className='w-1.5 h-1.5 rounded-full bg-green-500'></span>
-                    <span className='text-gray-600'>Meta Data</span>
                   </div>
                   <span className='font-medium text-gray-900'>1.1 GB</span>
                 </div>
