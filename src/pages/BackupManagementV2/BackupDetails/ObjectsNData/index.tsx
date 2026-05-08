@@ -1,8 +1,20 @@
 import { useState } from 'react';
+import type { TableColumn } from '../../../../components/Table';
+import Table from '../../../../components/Table';
 
 type ObjectsNDataProps = {
   backup: any;
 };
+
+interface BackupObject {
+  id: number;
+  name: string;
+  type: 'Standard' | 'Custom';
+  records: number;
+  dataSize: string;
+  lastModified: string;
+  changes: number;
+}
 
 const mockObjectsData = {
   stats: {
@@ -12,20 +24,18 @@ const mockObjectsData = {
     lastBackup: 'Apr 24, 2026, 02:00 AM',
   },
   objects: [
-    { id: 1, name: 'Accounts', type: 'Standard', records: 12323, dataSize: '5.2 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 243 },
-    { id: 2, name: 'Contact', type: 'Standard', records: 12323, dataSize: '8.2 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 223 },
-    { id: 3, name: 'Leads', type: 'Standard', records: 34323, dataSize: '5.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 345 },
-    { id: 4, name: 'Loads', type: 'Custom', records: 45323, dataSize: '8.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 335 },
-    { id: 5, name: 'Opportunity', type: 'Standard', records: 4333, dataSize: '1.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 45 },
-    { id: 6, name: 'Opportunity Product', type: 'Custom', records: 43233, dataSize: '1.3 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 85 },
+    { id: 1, name: 'Accounts', type: 'Standard' as const, records: 12323, dataSize: '5.2 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 243 },
+    { id: 2, name: 'Contact', type: 'Standard' as const, records: 12323, dataSize: '8.2 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 223 },
+    { id: 3, name: 'Leads', type: 'Standard' as const, records: 34323, dataSize: '5.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 345 },
+    { id: 4, name: 'Loads', type: 'Custom' as const, records: 45323, dataSize: '8.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 335 },
+    { id: 5, name: 'Opportunity', type: 'Standard' as const, records: 4333, dataSize: '1.7 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 45 },
+    { id: 6, name: 'Opportunity Product', type: 'Custom' as const, records: 43233, dataSize: '1.3 GB', lastModified: 'Apr 24, 2026, 02:00 AM', changes: 85 },
   ],
 };
 
 export default function ObjectsNData(_: ObjectsNDataProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
 
   const filteredObjects = mockObjectsData.objects.filter((obj) => {
     const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -33,8 +43,51 @@ export default function ObjectsNData(_: ObjectsNDataProps) {
     return matchesSearch && matchesFilter;
   });
 
-  const totalItems = 152;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const columns: TableColumn<BackupObject>[] = [
+    {
+      key: 'name',
+      header: 'Object',
+      render: (obj) => <span className='font-medium text-gray-900'>{obj.name}</span>,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      width: '120px',
+      render: (obj) => (
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+            obj.type === 'Standard'
+              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              : 'bg-purple-50 text-purple-700 border border-purple-200'
+          }`}
+        >
+          {obj.type}
+        </span>
+      ),
+    },
+    {
+      key: 'records',
+      header: 'Records',
+      render: (obj) => obj.records.toLocaleString(),
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      render: (obj) => obj.dataSize,
+    },
+    {
+      key: 'lastModified',
+      header: 'Last Modified',
+      render: (obj) => obj.lastModified,
+    },
+    {
+      key: 'changes',
+      header: 'Changes',
+      width: '100px',
+      className: 'text-green-600 font-medium',
+      render: (obj) => `+${obj.changes}`,
+    },
+  ];
 
   return (
     <div className='space-y-4'>
@@ -121,87 +174,16 @@ export default function ObjectsNData(_: ObjectsNDataProps) {
         </div>
       </div>
 
-      {/* Objects Table */}
-      <div className='bg-white rounded border border-gray-200'>
-        <div className='overflow-x-auto'>
-          <table className='w-full text-sm'>
-            <thead>
-              <tr className='border-b border-gray-200'>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Object</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Type</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Records</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Data Size</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Last Modified</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Changes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredObjects.length > 0 ? (
-                filteredObjects.map((obj) => (
-                  <tr key={obj.id} className='border-b border-gray-200 hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-gray-900 font-medium'>{obj.name}</td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
-                          obj.type === 'Standard'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-purple-50 text-purple-700 border border-purple-200'
-                        }`}
-                      >
-                        {obj.type}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-gray-900'>{obj.records.toLocaleString()}</td>
-                    <td className='px-4 py-3 text-gray-900'>{obj.dataSize}</td>
-                    <td className='px-4 py-3 text-gray-900'>{obj.lastModified}</td>
-                    <td className='px-4 py-3 text-green-600 font-medium'>+{obj.changes}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className='px-4 py-8 text-center text-gray-500'>
-                    No objects found matching your search.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
-          <p className='text-sm text-gray-600'>Showing {Math.min(itemsPerPage, filteredObjects.length)} of {totalItems} Objects</p>
-          <div className='flex gap-1'>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50'
-              disabled={currentPage === 1}
-            >
-              ←
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 text-sm rounded-lg border transition-colors ${
-                  currentPage === page
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50'
-              disabled={currentPage === totalPages}
-            >
-              →
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Objects Table using custom Table component */}
+      <Table<BackupObject>
+        columns={columns}
+        rows={filteredObjects}
+        getRowKey={(obj) => String(obj.id)}
+        showPagination={true}
+        itemsPerPage={8}
+        showPageNumbers={true}
+        emptyState='No objects found matching your search.'
+      />
     </div>
   );
 }
