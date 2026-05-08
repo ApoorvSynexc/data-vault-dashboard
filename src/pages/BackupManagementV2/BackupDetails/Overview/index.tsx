@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { formatBytes } from '../../../../utils';
 
 type OverviewProps = {
   backup: any;
@@ -73,8 +74,8 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Data Size</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>{displayData?.sizeInBytes ? `${(displayData.sizeInBytes / (1024 ** 3)).toFixed(1)} GB` : '0 GB'}</p>
-            <p className='text-xs text-gray-500'>+7.4% vs last backup</p>
+            <p className='text-sm font-semibold text-gray-900'>{formatBytes(displayData?.sizeInBytes)}</p>
+            <p className='text-xs text-gray-500'>Current Backup Size</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -168,7 +169,7 @@ export default function Overview({ backup }: OverviewProps) {
                   <circle cx='50' cy='50' r='40' fill='none' stroke='#10b981' strokeWidth='8' strokeDasharray='125 360' strokeDashoffset='-31' />
                 </svg>
                 <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                  <p className='text-sm font-bold text-gray-900'>{displayData?.sizeInBytes ? `${(displayData.sizeInBytes / (1024 ** 3)).toFixed(2)} GB` : '0 GB'}</p>
+                  <p className='text-sm font-bold text-gray-900'>{formatBytes(displayData?.sizeInBytes)}</p>
                   <p className='text-[10px] text-gray-600'>TOTAL SIZE</p>
                 </div>
               </div>

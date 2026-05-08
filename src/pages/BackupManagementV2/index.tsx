@@ -6,6 +6,7 @@ import type { PlatformType } from '../BackupManagement/AddBackupModal';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
+import { formatBytes } from '../../utils';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
@@ -94,13 +95,6 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
     return typeof val === 'number' ? val : null;
   }
 
-  function formatBytes(bytes: number): string {
-    if (!bytes) return '--';
-    if (bytes >= 1_099_511_627_776) return `${(bytes / 1_099_511_627_776).toFixed(1)} TB`;
-    if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-    if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
 
   const dataProcessed = stats?.dataProcessed;
   const dataValue = dataProcessed ? formatBytes(dataProcessed.bytes) : '--';
