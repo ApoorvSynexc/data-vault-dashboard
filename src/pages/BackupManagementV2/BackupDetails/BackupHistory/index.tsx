@@ -1,48 +1,103 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { formatBytes } from '../../../../utils';
+import dayjs from 'dayjs';
 
 type BackupHistoryProps = {
   backup: any;
 };
 
-const mockBackupHistory = {
-  stats: {
-    totalRuns: 28,
-    successful: 27,
-    failed: 1,
-    totalDataBackedUp: '148.3 GB',
-  },
-  data: [
-    { id: 1, startTime: 'Apr 24, 2026, 02:00 AM', status: 'Completed', duration: '38m 10s', dataSize: '5.1 GB', objects: 152, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 2, startTime: 'Apr 23, 2026, 02:00 AM', status: 'Completed', duration: '40m 17s', dataSize: '5.1 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 3, startTime: 'Apr 22, 2026, 02:00 AM', status: 'Completed', duration: '40m 15s', dataSize: '5 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 4, startTime: 'Apr 21, 2026, 02:00 AM', status: 'Failed', duration: '---', dataSize: '---', objects: 0, dataBackup: 'Full', backupType: 'Scheduled' },
-    { id: 5, startTime: 'Apr 20, 2026, 02:00 AM', status: 'Completed', duration: '40m 18s', dataSize: '4.9 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 6, startTime: 'Apr 19, 2026, 02:00 AM', status: 'Completed', duration: '40m 11s', dataSize: '4.8 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 7, startTime: 'Apr 18, 2026, 02:00 AM', status: 'Completed', duration: '40m 11s', dataSize: '4.8 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 8, startTime: 'Apr 17, 2026, 02:00 AM', status: 'Completed', duration: '40m 11s', dataSize: '4.8 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 9, startTime: 'Apr 16, 2026, 02:00 AM', status: 'Completed', duration: '40m 11s', dataSize: '4.8 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-    { id: 10, startTime: 'Apr 15, 2026, 02:00 AM', status: 'Completed', duration: '40m 11s', dataSize: '4.8 GB', objects: 151, dataBackup: 'Full Backup', backupType: 'Scheduled' },
-  ],
-};
-
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Completed':
+  const upperStatus = status?.toUpperCase();
+  switch (upperStatus) {
+    case 'SUCCESS':
       return 'bg-green-100 text-green-700';
-    case 'Failed':
+    case 'FAILED':
       return 'bg-red-100 text-red-700';
-    case 'In Progress':
+    case 'RUNNING':
       return 'bg-yellow-100 text-yellow-700';
+    case 'PENDING':
+      return 'bg-blue-100 text-blue-700';
     default:
       return 'bg-gray-100 text-gray-700';
   }
 };
 
+const getStatusDisplayText = (status: string) => {
+  const upperStatus = status?.toUpperCase();
+  switch (upperStatus) {
+    case 'SUCCESS':
+      return 'Completed';
+    case 'FAILED':
+      return 'Failed';
+    case 'RUNNING':
+      return 'In Progress';
+    case 'PENDING':
+      return 'Pending';
+    default:
+      return status;
+  }
+};
+
+const calculateDuration = (startedAt?: string, completedAt?: string) => {
+  if (!startedAt || !completedAt) return '--';
+  const start = dayjs(startedAt);
+  const end = dayjs(completedAt);
+  const diffMs = end.diff(start, 'ms');
+
+  if (diffMs < 0) return '--';
+
+  const minutes = Math.floor(diffMs / 60000);
+  const seconds = Math.floor((diffMs % 60000) / 1000);
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+};
+
+const calculateJobDataSize = (job: any) => {
+  if (job.object && Array.isArray(job.object)) {
+    const totalSize = job.object.reduce((sum: number, obj: any) => sum + (obj.sizeInBytes || 0), 0);
+    return totalSize;
+  }
+  return job.sizeInBytes || 0;
+};
+
 export default function BackupHistory(_: BackupHistoryProps) {
+  const { slug } = useParams();
+  const backupConfigService = useBackupConfigService();
   const [currentPage, setCurrentPage] = useState(1);
+
+  const { data: jobsResponse } = useQuery({
+    queryKey: ['backup-jobs', slug],
+    queryFn: async () => {
+      if (!slug) return null;
+      const response = await backupConfigService.listBackupJobs(slug, true, undefined, 50);
+      return response;
+    },
+    enabled: !!slug,
+  });
+
+  const allJobs = (jobsResponse as any)?.data || [];
   const itemsPerPage = 10;
-  const totalItems = 28;
+  const totalItems = allJobs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  // Calculate stats from real data
+  const stats = {
+    totalRuns: totalItems,
+    successful: allJobs.filter((j: any) => j.status === 'SUCCESS').length,
+    failed: allJobs.filter((j: any) => j.status === 'FAILED').length,
+    totalDataBackedUp: allJobs.reduce((sum: number, j: any) => sum + (j.sizeInBytes || 0), 0),
+  };
+
+  // Paginate jobs
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedJobs = allJobs.slice(startIndex, endIndex);
 
   return (
     <div className='space-y-4'>
@@ -56,7 +111,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Total Runs</span>
             </div>
-            <p className='text-lg font-bold text-gray-900'>{mockBackupHistory.stats.totalRuns}</p>
+            <p className='text-lg font-bold text-gray-900'>{stats.totalRuns}</p>
             <p className='text-xs text-gray-500'>+15 last 30 days</p>
           </div>
 
@@ -67,8 +122,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Successful</span>
             </div>
-            <p className='text-lg font-bold text-green-600'>{mockBackupHistory.stats.successful}</p>
-            <p className='text-xs text-gray-500'>96.4% success rate</p>
+            <p className='text-lg font-bold text-green-600'>{stats.successful}</p>
+            <p className='text-xs text-gray-500'>{totalItems > 0 ? `${Math.round((stats.successful / totalItems) * 100)}% success rate` : 'N/A'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -78,8 +133,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Failed</span>
             </div>
-            <p className='text-lg font-bold text-red-600'>01</p>
-            <p className='text-xs text-gray-500'>3.6% failure rate</p>
+            <p className='text-lg font-bold text-red-600'>{String(stats.failed).padStart(2, '0')}</p>
+            <p className='text-xs text-gray-500'>{totalItems > 0 ? `${Math.round((stats.failed / totalItems) * 100)}% failure rate` : 'N/A'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -89,8 +144,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Total Data Backed up</span>
             </div>
-            <p className='text-lg font-bold text-gray-900'>{mockBackupHistory.stats.totalDataBackedUp}</p>
-            <p className='text-xs text-gray-500'>+12.4 GB in last 30 days</p>
+            <p className='text-lg font-bold text-gray-900'>{formatBytes(stats.totalDataBackedUp)}</p>
+            <p className='text-xs text-gray-500'>Across all backups</p>
           </div>
         </div>
       </div>
@@ -106,69 +161,77 @@ export default function BackupHistory(_: BackupHistoryProps) {
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Duration</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Data Size</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Objects</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Data Backup</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Backup Type</th>
                 <th className='text-left px-4 py-3 font-medium text-gray-600'>Action</th>
               </tr>
             </thead>
             <tbody>
-              {mockBackupHistory.data.map((row) => (
-                <tr key={row.id} className='border-b border-gray-200 hover:bg-gray-50'>
-                  <td className='px-4 py-3 text-gray-900'>{row.startTime}</td>
-                  <td className='px-4 py-3'>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(row.status)}`}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className='px-4 py-3 text-gray-900'>{row.duration}</td>
-                  <td className='px-4 py-3 text-gray-900'>{row.dataSize}</td>
-                  <td className='px-4 py-3 text-gray-900'>{row.objects}</td>
-                  <td className='px-4 py-3 text-gray-900'>{row.dataBackup}</td>
-                  <td className='px-4 py-3 text-gray-900'>{row.backupType}</td>
-                  <td className='px-4 py-3 text-gray-400 cursor-pointer hover:text-gray-600'>
-                    <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-                      <path d='M10.5 1.5H9.5V0h1v1.5zm0 17H9.5v1.5h1V18.5zM19 9.5v1h1.5v-1H19zM0 9.5v1h1.5v-1H0zm14.243-5.243l.707-.707L18.9 7.793l-.707.707-4.65-4.65zm-8.486 8.486l.707-.707 4.65 4.65-.707.707-4.65-4.65zM18.9 12.207l.707.707-4.65 4.65-.707-.707 4.65-4.65zM7.793 1.1l.707.707-4.65 4.65-.707-.707 4.65-4.65z' />
-                    </svg>
+              {paginatedJobs.length > 0 ? (
+                paginatedJobs.map((row: any) => (
+                  <tr key={row.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
+                    <td className='px-4 py-3 text-gray-900'>{row.startedAt ? dayjs(row.startedAt).format('MMM D, YYYY h:mm A') : '--'}</td>
+                    <td className='px-4 py-3'>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(row.status)}`}>
+                        {getStatusDisplayText(row.status)}
+                      </span>
+                    </td>
+                    <td className='px-4 py-3 text-gray-900'>{calculateDuration(row.startedAt, row.completedAt)}</td>
+                    <td className='px-4 py-3 text-gray-900'>{formatBytes(calculateJobDataSize(row))}</td>
+                    <td className='px-4 py-3 text-gray-900'>{row.object?.length || row.recordCount || 0}</td>
+                    <td className='px-4 py-3 text-gray-900'>{row.jobType === 'BULK' ? 'Scheduled' : 'Realtime'}</td>
+                    <td className='px-4 py-3 text-gray-400 cursor-pointer hover:text-gray-600'>
+                      <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
+                        <path d='M10.5 1.5H9.5V0h1v1.5zm0 17H9.5v1.5h1V18.5zM19 9.5v1h1.5v-1H19zM0 9.5v1h1.5v-1H0zm14.243-5.243l.707-.707L18.9 7.793l-.707.707-4.65-4.65zm-8.486 8.486l.707-.707 4.65 4.65-.707.707-4.65-4.65zM18.9 12.207l.707.707-4.65 4.65-.707-.707 4.65-4.65zM7.793 1.1l.707.707-4.65 4.65-.707-.707 4.65-4.65z' />
+                      </svg>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className='px-4 py-8 text-center text-sm text-gray-500'>
+                    No backup history found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
-          <p className='text-sm text-gray-600'>Showing 10 of {totalItems}</p>
-          <div className='flex gap-1'>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50'
-              disabled={currentPage === 1}
-            >
-              ← Previous
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        {totalPages > 1 && (
+          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
+            <p className='text-sm text-gray-600'>Showing {Math.min(itemsPerPage, paginatedJobs.length)} of {totalItems}</p>
+            <div className='flex gap-1'>
               <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 text-sm rounded-lg border transition-colors ${
-                  currentPage === page
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                disabled={currentPage === 1}
               >
-                {page}
+                ← Previous
               </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50'
-              disabled={currentPage === totalPages}
-            >
-              Next →
-            </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 text-sm rounded-lg border transition-colors ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                disabled={currentPage === totalPages}
+              >
+                Next →
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
