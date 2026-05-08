@@ -204,12 +204,13 @@ export function useBackupConfigService() {
         }),
       );
     },
-    getObjectCountList: async (crmId: string) => {
-      const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
-        query: { crmId },
+    getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
+      const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
+        crmId,
+        objectApiNames,
       });
-      
-      return response
+
+      return response;
     },
     getObjectFields: async (crmId: string, objectName: string) => {
       const response = await api.get<ObjectFieldApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectFields, {
