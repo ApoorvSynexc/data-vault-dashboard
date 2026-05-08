@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import type { TableColumn } from '../../../../components/Table';
+import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
 type Step5Props = {
@@ -58,28 +60,37 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
     });
   }, [searchQuery, selectedFilter, objects]);
 
-  const handleToggleObject = (id: string) => {
-    const object = objects.find((obj) => obj.id === id);
-    if (object?.isBackedUp) {
-      return;
-    }
-    const newSelected = new Set(selectedObjects);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedObjects(newSelected);
-  };
-
-  const handleSelectAll = () => {
-    const selectableObjects = filteredObjects.filter((obj) => !obj.isBackedUp);
-    if (selectedObjects.size === selectableObjects.length) {
-      setSelectedObjects(new Set());
-    } else {
-      setSelectedObjects(new Set(selectableObjects.map((obj) => obj.id)));
-    }
-  };
+  const columns: TableColumn<BackupObject>[] = [
+    {
+      key: 'name',
+      header: 'Object',
+      render: (obj) => (
+        <div className='flex items-center gap-2'>
+          <span className={obj.isBackedUp ? 'text-gray-600' : 'text-gray-900'}>{obj.name}</span>
+          {obj.isBackedUp && (
+            <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded whitespace-nowrap'>
+              Already Backed Up {obj.schedule ? `as ${obj.schedule === 'realtime' ? 'Realtime' : 'Scheduled'}` : ''}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{obj.type}</span>,
+    },
+    {
+      key: 'records',
+      header: 'Records',
+      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{(obj.records as any)?.toLocaleString?.() || obj.records}</span>,
+    },
+    {
+      key: 'estimatedSize',
+      header: 'Estimated Data Size',
+      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{obj.estimatedSize}</span>,
+    },
+  ];
 
   return (
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
@@ -95,7 +106,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 mx-8 flex flex-col flex-grow min-h-0 overflow-y-auto'>
+      <div className='bg-white rounded-lg border border-gray-200 mx-8 flex flex-col flex-grow min-h-0'>
         {/* Search and Filter */}
         <div className='p-6 pb-4 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
@@ -143,82 +154,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
           </div>
         )}
 
-        {/* Table */}
+        {/* Table Container - Scrollable */}
         {!isLoading && !error && (
           <>
-            <div className='overflow-x-auto px-6'>
-              <table className='w-full'>
-                <thead>
-                  <tr className='border-b border-gray-200'>
-                    <th className='px-4 py-3 text-left'>
-                      <input
-                        type='checkbox'
-                        checked={selectedObjects.size === filteredObjects.filter((obj) => !obj.isBackedUp).length && filteredObjects.filter((obj) => !obj.isBackedUp).length > 0}
-                        onChange={handleSelectAll}
-                        className='w-5 h-5 accent-blue-600 rounded cursor-pointer'
-                      />
-                    </th>
-                    <th className='px-4 py-3 text-left text-sm font-semibold text-gray-900'>Object</th>
-                    <th className='px-4 py-3 text-left text-sm font-semibold text-gray-900'>Type</th>
-                    <th className='px-4 py-3 text-left text-sm font-semibold text-gray-900'>Records</th>
-                    <th className='px-4 py-3 text-left text-sm font-semibold text-gray-900'>Estimated Data Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredObjects.map((obj, index) => (
-                    <tr
-                      key={obj.id}
-                      className={`border-b border-gray-200 ${
-                        obj.isBackedUp
-                          ? 'bg-gray-100 opacity-60'
-                          : index % 2 === 0
-                          ? 'bg-white'
-                          : 'bg-gray-50'
-                      } ${!obj.isBackedUp && 'hover:bg-blue-50'}`}
-                    >
-                      <td className='px-4 py-3'>
-                        <input
-                          type='checkbox'
-                          checked={selectedObjects.has(obj.id)}
-                          onChange={() => handleToggleObject(obj.id)}
-                          disabled={obj.isBackedUp}
-                          className={`w-5 h-5 rounded ${
-                            obj.isBackedUp
-                              ? 'bg-gray-300 cursor-not-allowed'
-                              : 'accent-blue-600 cursor-pointer'
-                          }`}
-                        />
-                      </td>
-                      <td className='px-4 py-3 text-sm font-medium flex items-center gap-2'>
-                        <span className={obj.isBackedUp ? 'text-gray-600' : 'text-gray-900'}>{obj.name}</span>
-                        {obj.isBackedUp && (
-                          <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded'>
-                            Already Backed Up {obj.schedule ? `as ${obj.schedule === 'realtime' ? 'Realtime' : 'Scheduled'}` : ''}
-                          </span>
-                        )}
-                      </td>
-                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{obj.type}</td>
-                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{(obj.records as any)?.toLocaleString?.() || obj.records}</td>
-                      <td className={`px-4 py-3 text-sm ${obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}`}>{obj.estimatedSize}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className='h-[40vh] overflow-y-auto px-6 py-4'>
+              <Table<BackupObject>
+                columns={columns}
+                rows={filteredObjects}
+                getRowKey={(obj) => obj.id}
+                getRowId={(obj) => obj.id}
+                showCheckbox={true}
+                selectedIds={selectedObjects}
+                onSelectionChange={setSelectedObjects}
+                isRowSelectable={(obj) => !obj.isBackedUp}
+                getRowClassName={(obj) => `border-b border-gray-200 ${
+                  obj.isBackedUp
+                    ? 'bg-gray-100 opacity-60'
+                    : 'hover:bg-blue-50'
+                }`}
+                emptyState='No objects found matching your search.'
+                showPagination={false}
+                height='100%'
+              />
             </div>
 
-            {filteredObjects.length === 0 && !isLoading && (
-              <div className='text-center py-12 text-gray-500'>
-                <p>No objects found matching your search.</p>
-              </div>
-            )}
+            {/* Pagination Info */}
+            <div className='p-6 pt-4 text-sm text-gray-600 flex-shrink-0 border-t border-gray-200'>
+              Showing {filteredObjects.length} of {objects.length} Objects
+            </div>
           </>
-        )}
-
-        {/* Pagination Info */}
-        {!isLoading && !error && (
-          <div className='p-6 pt-4 text-sm text-gray-600 flex-shrink-0'>
-            Showing {filteredObjects.length} of {objects.length} Objects
-          </div>
         )}
       </div>
 

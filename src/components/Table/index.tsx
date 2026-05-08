@@ -10,6 +10,15 @@ export type TableColumn<TRow> = {
   width?: string;
 };
 
+export type SelectableTableProps<TRow> = {
+  showCheckbox?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
+  getRowId?: (row: TRow) => string;
+  isRowSelectable?: (row: TRow) => boolean;
+  getRowClassName?: (row: TRow, isSelected: boolean) => string;
+};
+
 type TablePaginationConfig = {
   currentPage: number;
   pageSize: number;
@@ -21,7 +30,7 @@ type TableProps<TRow> = {
   columns: TableColumn<TRow>[];
   rows: TRow[];
   getRowKey: (row: TRow, index: number) => string;
-  rowClassName?: string;
+  rowClassName?: string | ((row: TRow, isSelected?: boolean) => string);
   emptyState?: ReactNode;
   minWidthClassName?: string;
   maxHeightClassName?: string;
@@ -37,7 +46,7 @@ type TableProps<TRow> = {
   showPageNumbers?: boolean;
   /** Custom styling for pagination container */
   paginationClassName?: string;
-};
+} & SelectableTableProps<TRow>;
 
 export default function Table<TRow>({
   columns,
@@ -53,6 +62,12 @@ export default function Table<TRow>({
   itemsPerPage = 10,
   showPageNumbers = true,
   paginationClassName,
+  showCheckbox = false,
+  selectedIds,
+  onSelectionChange,
+  getRowId,
+  isRowSelectable,
+  getRowClassName,
 }: TableProps<TRow>) {
   const [internalPage, setInternalPage] = useState(1);
 
@@ -100,6 +115,55 @@ export default function Table<TRow>({
           <table className={`w-full ${minWidthClassName}`}>
             <thead className='sticky top-0 z-10 bg-white'>
               <tr className='border-b border-gray-200'>
+                {showCheckbox && (
+                  <th className='px-4 py-3 text-left'>
+                    <input
+                      type='checkbox'
+                      checked={(() => {
+                        const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
+                        return (
+                          selectableRows.length > 0 &&
+                          selectableRows.every((row) => {
+                            const id = getRowId?.(row) || getRowKey(row, 0);
+                            return selectedIds?.has(id);
+                          })
+                        );
+                      })()}
+                      ref={(input) => {
+                        if (input) {
+                          const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
+                          const selectedCount = selectableRows.filter((row) => {
+                            const id = getRowId?.(row) || getRowKey(row, 0);
+                            return selectedIds?.has(id);
+                          }).length;
+                          input.indeterminate = selectedCount > 0 && selectedCount < selectableRows.length;
+                        }
+                      }}
+                      onChange={() => {
+                        const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
+                        const allSelected = selectableRows.every((row) => {
+                          const id = getRowId?.(row) || getRowKey(row, 0);
+                          return selectedIds?.has(id);
+                        });
+
+                        const newSelected = new Set(selectedIds || []);
+                        if (allSelected) {
+                          selectableRows.forEach((row) => {
+                            const id = getRowId?.(row) || getRowKey(row, 0);
+                            newSelected.delete(id);
+                          });
+                        } else {
+                          selectableRows.forEach((row) => {
+                            const id = getRowId?.(row) || getRowKey(row, 0);
+                            newSelected.add(id);
+                          });
+                        }
+                        onSelectionChange?.(newSelected);
+                      }}
+                      className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
+                    />
+                  </th>
+                )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
@@ -117,19 +181,43 @@ export default function Table<TRow>({
 
             <tbody>
               {paginatedRows.length > 0 ? (
-                paginatedRows.map((row, index) => (
-                  <tr key={getRowKey(row, index)} className={rowClassName}>
-                    {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={['px-4 py-3', column.className ?? ''].join(' ')}
-                        style={column.width ? { width: column.width } : undefined}
-                      >
-                        {column.render(row, index)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                paginatedRows.map((row, index) => {
+                  const isSelected = selectedIds?.has(getRowId?.(row) || getRowKey(row, index));
+                  const computedRowClassName = getRowClassName?.(row, isSelected || false) || (typeof rowClassName === 'function' ? rowClassName(row, isSelected) : rowClassName);
+                  return (
+                    <tr key={getRowKey(row, index)} className={computedRowClassName}>
+                      {showCheckbox && (
+                        <td className='px-4 py-3'>
+                          <input
+                            type='checkbox'
+                            checked={isSelected || false}
+                            onChange={() => {
+                              const id = getRowId?.(row) || getRowKey(row, index);
+                              const newSelected = new Set(selectedIds || []);
+                              if (newSelected.has(id)) {
+                                newSelected.delete(id);
+                              } else {
+                                newSelected.add(id);
+                              }
+                              onSelectionChange?.(newSelected);
+                            }}
+                            disabled={!isRowSelectable?.(row)}
+                            className='w-5 h-5 rounded accent-blue-600 cursor-pointer disabled:cursor-not-allowed'
+                          />
+                        </td>
+                      )}
+                      {columns.map((column) => (
+                        <td
+                          key={column.key}
+                          className={['px-4 py-3', column.className ?? ''].join(' ')}
+                          style={column.width ? { width: column.width } : undefined}
+                        >
+                          {column.render(row, index)}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={columns.length} className='px-4 py-10 text-center text-sm text-gray-500'>
