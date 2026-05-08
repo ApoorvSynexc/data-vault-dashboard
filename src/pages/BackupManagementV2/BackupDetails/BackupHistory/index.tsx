@@ -38,7 +38,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export default function BackupHistory({ backup }: BackupHistoryProps) {
+export default function BackupHistory(_: BackupHistoryProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const totalItems = 28;
@@ -96,8 +96,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
       </div>
 
       {/* Backup History Table */}
-      <div className='bg-white rounded border border-gray-200 p-4'>
-        <h2 className='text-sm font-semibold text-gray-900 mb-4'>Backup History</h2>
+      <div className='bg-white rounded border border-gray-200'>
         <div className='overflow-x-auto'>
           <table className='w-full text-sm'>
             <thead>
@@ -138,7 +137,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
         </div>
 
         {/* Pagination */}
-        <div className='mt-4 flex items-center justify-between'>
+        <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
           <p className='text-sm text-gray-600'>Showing 10 of {totalItems}</p>
           <div className='flex gap-1'>
             <button

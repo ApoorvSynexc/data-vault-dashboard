@@ -21,7 +21,7 @@ const mockObjectsData = {
   ],
 };
 
-export default function ObjectsNData({ backup }: ObjectsNDataProps) {
+export default function ObjectsNData(_: ObjectsNDataProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(1);
