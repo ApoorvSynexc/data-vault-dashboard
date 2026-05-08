@@ -574,7 +574,7 @@ export default function BackupManagementV2() {
       render: (row) => (
         <div className='flex min-w-0 items-center gap-3'>
           <PlatformBadge platform={row.platform as PlatformType} size='sm' />
-          <Link to={`/backup-management/${row.slug}`} className='whitespace-normal'>
+          <Link to={`/backup-management-v2/details/${row.id}`} className='whitespace-normal'>
             <Typography as='span' variant='label' color='secondary' className='underline hover:text-blue-600'>
               {row.name}
             </Typography>
@@ -620,7 +620,7 @@ export default function BackupManagementV2() {
       header: 'Action',
       render: (row) => (
         <div className='flex items-center gap-2 text-gray-400'>
-          <Link to={`/backup-management/${row.slug}`} className='transition hover:text-gray-600' aria-label='View details'>
+          <Link to={`/backup-management-v2/details/${row.id}`} className='transition hover:text-gray-600' aria-label='View details'>
             <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
               <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
               <circle cx='12' cy='12' r='3' />

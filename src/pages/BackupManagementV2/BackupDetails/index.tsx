@@ -1,0 +1,108 @@
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Overview from './Overview';
+import BackupHistory from './BackupHistory';
+import ObjectsNData from './ObjectsNData';
+
+type TabType = 'overview' | 'history' | 'objects';
+
+// Mock data
+const mockBackupData = {
+  backupConfigId: '1',
+  name: 'Salesforce Production Backup',
+  crmName: 'Salesforce',
+  environment: 'Production',
+  backupStatus: 'ACTIVE',
+  schedule: 'SCHEDULE',
+  description: 'Daily backup of Salesforce production environment',
+  lastBackupAt: new Date().toISOString(),
+  sizeInBytes: 146300000000,
+  scheduleConfig: {
+    scheduling: {
+      frequency: 'DAILY',
+    },
+  },
+};
+
+export default function BackupDetails() {
+  const { backupId } = useParams();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  const backupData = mockBackupData;
+
+  return (
+    <div className='h-screen bg-gray-50 flex flex-col overflow-hidden'>
+      {/* Header - Fixed */}
+      <div className='flex-shrink-0 bg-white border-b border-gray-200 p-6'>
+        <div className='flex items-center justify-between mb-6'>
+          <div className='flex items-center gap-4'>
+            <button
+              onClick={() => navigate('/backup-management')}
+              className='flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 hover:bg-gray-50'
+            >
+              <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
+              </svg>
+            </button>
+            <div>
+              <div className='flex items-center gap-2'>
+                <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
+                  <span className='text-xs font-bold text-blue-600'>SF</span>
+                </div>
+                <h1 className='text-2xl font-bold text-gray-900'>{backupData?.name}</h1>
+                <span className='px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'>
+                  ✓ {backupData?.backupStatus}
+                </span>
+              </div>
+              <p className='text-sm text-gray-600 mt-1'>
+                {backupData?.crmName} • {backupData?.environment} • Backup ID: {backupId}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className='flex border-b border-gray-200'>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeTab === 'history'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Backup History
+          </button>
+          <button
+            onClick={() => setActiveTab('objects')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeTab === 'objects'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Objects & Data
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content - Scrollable */}
+      <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-6'>
+        {activeTab === 'overview' && <Overview backup={backupData} />}
+        {activeTab === 'history' && <BackupHistory backup={backupData} />}
+        {activeTab === 'objects' && <ObjectsNData backup={backupData} />}
+      </div>
+    </div>
+  );
+}

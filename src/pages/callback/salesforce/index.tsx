@@ -24,7 +24,7 @@ export default function SalesforceCallback() {
   });
 
   if (isSuccess) {
-    return <Navigate to='/platforms' replace />;
+    return <Navigate to='/connections/salesforce' replace />;
   }
 
   return (
