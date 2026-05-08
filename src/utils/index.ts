@@ -1,7 +1,18 @@
 import dayjs from 'dayjs';
 
-export function formatDate(date: Date | string): string {
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return '--';
   return dayjs(date).format('MMM D, YYYY');
+}
+
+export function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return '--';
+  return dayjs(date).format('h:mm A');
+}
+
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '--';
+  return dayjs(date).format('MMM D, YYYY h:mm A');
 }
 
 export function capitalize(value: string): string {

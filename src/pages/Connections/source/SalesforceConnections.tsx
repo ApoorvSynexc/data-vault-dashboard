@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import WarningDialog from '../../../components/WarningDialog';
 import { usePlatformService, type ConnectedPlatform } from '../../../services/platform/platform.service';
+import { formatDate } from '../../../utils';
 
 function SalesforceLogo() {
   return (
@@ -202,7 +203,7 @@ export default function SalesforceConnections() {
                           <span className='mr-1'>{org.isConnected ? getStatusIcon(org.status) : '○'}</span>
                           {org.isConnected ? org.status.charAt(0) + org.status.slice(1).toLowerCase() : 'Disconnected'}
                         </p>
-                        <p className='text-xs text-gray-500'>Connected on {new Date(org.createdAt).toLocaleDateString()}</p>
+                        <p className='text-xs text-gray-500'>Connected on {formatDate(org.createdAt)}</p>
                       </div>
 
                       {org.isConnected ? (

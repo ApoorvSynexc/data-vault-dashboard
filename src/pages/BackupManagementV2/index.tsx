@@ -6,7 +6,7 @@ import type { PlatformType } from '../BackupManagement/AddBackupModal';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
-import { formatBytes } from '../../utils';
+import { formatBytes, formatDateTime } from '../../utils';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
@@ -549,8 +549,8 @@ export default function BackupManagementV2() {
       status: (item.backupStatus as BackupStatus) || 'PENDING',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
-      lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
-      dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
+      lastRun: formatDateTime(item.lastBackupAt),
+      dataSize: formatBytes(item.sizeInBytes),
       backupStatus: (item.backupStatus as 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
     };
   });

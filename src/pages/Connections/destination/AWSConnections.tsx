@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import WarningDialog from '../../../components/WarningDialog';
 import { useDestinationService } from '../../../services/destination/destination.service';
+import { formatDate } from '../../../utils';
 
 function AWSLogo() {
   return (
@@ -74,13 +75,6 @@ export default function AWSConnections() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
 
   return (
     <div className='flex w-full min-w-0 flex-col gap-6'>

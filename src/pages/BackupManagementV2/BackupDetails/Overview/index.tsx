@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import { formatBytes } from '../../../../utils';
+import { formatBytes, formatDate, formatTime, formatDateTime } from '../../../../utils';
 
 type OverviewProps = {
   backup: any;
@@ -63,8 +63,8 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Last Run</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>{displayData?.lastBackupAt ? new Date(displayData.lastBackupAt).toLocaleString() : 'N/A'}</p>
-            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? new Date(displayData.lastBackupAt).toLocaleDateString() : 'Never'}</p>
+            <p className='text-sm font-semibold text-gray-900'>{formatDateTime(displayData?.lastBackupAt)}</p>
+            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? formatDate(displayData.lastBackupAt) : 'Never'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -143,7 +143,7 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
-                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? new Date(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? formatTime(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`) : 'N/A'}</p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>

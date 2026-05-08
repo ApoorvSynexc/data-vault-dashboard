@@ -6,6 +6,7 @@ import Table, { type TableColumn } from '../../components/Table';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
+import { formatDateTime, formatBytes } from '../../utils';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'Completed' | 'Running' | 'Pending' | 'Failed';
@@ -504,8 +505,8 @@ export default function BackupManagement() {
       status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : item.backupStatus === 'PENDING' ? 'Pending' : item.backupStatus === 'FAILED' ? 'Failed' : 'Pending',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleType,
-      lastRun: item.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString() : '--',
-      dataSize: item.sizeInBytes ? `${(item.sizeInBytes / (1024 * 1024)).toFixed(2)} MB` : '--',
+      lastRun: formatDateTime(item.lastBackupAt),
+      dataSize: item.sizeInBytes ? formatBytes(item.sizeInBytes) : '--',
     };
   });
 
