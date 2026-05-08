@@ -39,7 +39,7 @@ const router = createBrowserRouter([
           { path: '/change-password', element: <ChangePassword /> },
           { path: '/backup-management', element: <BackupManagementV2 /> },
           { path: '/backup-management/add', element: <AddBackup /> },
-          { path: '/backup-management-v2/details/:backupId', element: <BackupDetails /> },
+          { path: '/backup-management-v2/details/:slug', element: <BackupDetails /> },
           { path: '/backup-management/:slug', element: <BackupDetail /> },
           { path: '/connections', element: <Connectors /> },
           { path: '/connections/salesforce', element: <SalesforceConnections /> },

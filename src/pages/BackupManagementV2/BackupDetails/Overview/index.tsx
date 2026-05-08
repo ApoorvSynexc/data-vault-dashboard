@@ -1,8 +1,44 @@
+import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+
 type OverviewProps = {
   backup: any;
 };
 
 export default function Overview({ backup }: OverviewProps) {
+  const { slug } = useParams();
+  const backupConfigService = useBackupConfigService();
+
+  const { data: backupDetail, isLoading, error } = useQuery({
+    queryKey: ['backup-detail', slug],
+    queryFn: async () => {
+      if (!slug) return null;
+      const response = await backupConfigService.getBackupConfig(slug);
+      return response?.data?.data || null;
+    },
+    enabled: !!slug,
+  });
+
+  // Merge API data with backup prop for fallback
+  const displayData = backupDetail || backup;
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center py-12'>
+        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='text-center py-12 text-red-600'>
+        <p>Failed to load backup details. Please try again.</p>
+      </div>
+    );
+  }
+
   return (
     <div className='space-y-4'>
       {/* Status Overview Cards */}
@@ -15,7 +51,7 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Status</span>
             </div>
-            <p className='text-sm font-semibold text-green-600'>{backup?.backupStatus}</p>
+            <p className='text-sm font-semibold text-green-600'>{displayData?.backupStatus || 'N/A'}</p>
             <p className='text-xs text-gray-500'>Successfully Completed</p>
           </div>
 
@@ -26,8 +62,8 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Last Run</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>Today 08:00 AM</p>
-            <p className='text-xs text-gray-500'>April 10, 2026</p>
+            <p className='text-sm font-semibold text-gray-900'>{displayData?.lastBackupAt ? new Date(displayData.lastBackupAt).toLocaleString() : 'N/A'}</p>
+            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? new Date(displayData.lastBackupAt).toLocaleDateString() : 'Never'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -37,7 +73,7 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Data Size</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>146.3 GB</p>
+            <p className='text-sm font-semibold text-gray-900'>{displayData?.sizeInBytes ? `${(displayData.sizeInBytes / (1024 ** 3)).toFixed(1)} GB` : '0 GB'}</p>
             <p className='text-xs text-gray-500'>+7.4% vs last backup</p>
           </div>
 
@@ -64,15 +100,15 @@ export default function Overview({ backup }: OverviewProps) {
             <div className='space-y-3'>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Platform</span>
-                <span className='text-xs font-medium text-gray-900'>{backup?.crmName}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.crmName || displayData?.platform || 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Organization</span>
-                <span className='text-xs font-medium text-gray-900'>{backup?.name}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.name || 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Environment</span>
-                <span className='text-xs font-medium text-gray-900'>{backup?.environment}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.environment || 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Backup Type</span>
@@ -102,7 +138,7 @@ export default function Overview({ backup }: OverviewProps) {
             <div className='grid grid-cols-2 gap-4'>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Frequency</p>
-                <p className='text-xs font-medium text-gray-900'>Daily</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.frequency || 'Daily'}</p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time</p>

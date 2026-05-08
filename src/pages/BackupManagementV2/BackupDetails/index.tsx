@@ -25,7 +25,7 @@ const mockBackupData = {
 };
 
 export default function BackupDetails() {
-  const { backupId } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
@@ -65,7 +65,7 @@ export default function BackupDetails() {
                 </span>
               </div>
               <p className='text-sm text-gray-600 mt-1'>
-                {backupData?.crmName} • {backupData?.environment} • Backup ID: {backupId}
+                {backupData?.crmName} • {backupData?.environment} • Backup ID: {slug}
               </p>
             </div>
           </div>
