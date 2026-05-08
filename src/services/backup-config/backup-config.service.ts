@@ -13,6 +13,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   update: '/v1/backup-config',
   delete: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
+  objectCountList: '/v1/backup-config/objects-count',
   objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
   resume: '/v1/backup-job/resume',
@@ -202,6 +203,13 @@ export function useBackupConfigService() {
           schedule: item.schedule,
         }),
       );
+    },
+    getObjectCountList: async (crmId: string) => {
+      const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
+        query: { crmId },
+      });
+      
+      return response
     },
     getObjectFields: async (crmId: string, objectName: string) => {
       const response = await api.get<ObjectFieldApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectFields, {
