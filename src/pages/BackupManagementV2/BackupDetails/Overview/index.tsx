@@ -22,8 +22,6 @@ export default function Overview({ backup }: OverviewProps) {
 
   // Merge API data with backup prop for fallback
   const displayData = backupDetail || backup;
-  console.log({backupDetail});
-  
 
   if (isLoading) {
     return (
@@ -54,7 +52,7 @@ export default function Overview({ backup }: OverviewProps) {
               <span className='text-xs font-medium text-gray-600'>Status</span>
             </div>
             <p className='text-sm font-semibold text-green-600'>{displayData?.backupStatus || 'N/A'}</p>
-            <p className='text-xs text-gray-500'>Successfully Completed</p>
+            <p className='text-xs text-gray-500'>{displayData?.backupStatus === 'SUCCESS' ? 'Successfully Completed' : displayData?.backupStatus === 'FAILED' ? 'Failed' : 'Pending'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -86,8 +84,8 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Objects</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>152</p>
-            <p className='text-xs text-gray-500'>12,424,545 Records</p>
+            <p className='text-sm font-semibold text-gray-900'>{displayData?.objects?.length || 0}</p>
+            <p className='text-xs text-gray-500'>{displayData?.objectNames?.length || 0} Objects Selected</p>
           </div>
         </div>
       </div>
@@ -122,7 +120,7 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Triggered By</span>
-                <span className='text-xs font-medium text-gray-900'>Schedule</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.schedule === 'REALTIME' ? 'Realtime' : displayData?.schedule === 'SCHEDULE' ? 'Schedule' : 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>API Version</span>
@@ -140,11 +138,11 @@ export default function Overview({ backup }: OverviewProps) {
             <div className='grid grid-cols-2 gap-4'>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Frequency</p>
-                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.frequency || 'Daily'}</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.frequency || '----'}</p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
-                <p className='text-xs font-medium text-gray-900'>02:00 AM</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? new Date(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}</p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
@@ -152,7 +150,7 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time Zone</p>
-                <p className='text-xs font-medium text-gray-900'>(GMT-04:00) America/New_York</p>
+                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.timeZone || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -170,7 +168,7 @@ export default function Overview({ backup }: OverviewProps) {
                   <circle cx='50' cy='50' r='40' fill='none' stroke='#10b981' strokeWidth='8' strokeDasharray='125 360' strokeDashoffset='-31' />
                 </svg>
                 <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                  <p className='text-sm font-bold text-gray-900'>6.2 GB</p>
+                  <p className='text-sm font-bold text-gray-900'>{displayData?.sizeInBytes ? `${(displayData.sizeInBytes / (1024 ** 3)).toFixed(2)} GB` : '0 GB'}</p>
                   <p className='text-[10px] text-gray-600'>TOTAL SIZE</p>
                 </div>
               </div>
@@ -234,45 +232,6 @@ export default function Overview({ backup }: OverviewProps) {
             </div>
             <a href='#' className='block mt-3 text-[11px] font-medium text-blue-600 hover:underline text-center'>View All →</a>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Backup Runs */}
-      <div className='bg-white rounded border border-gray-200 p-4'>
-        <h3 className='text-sm font-semibold text-gray-900 mb-4'>Recent Backup Runs</h3>
-        <div className='overflow-x-auto'>
-          <table className='w-full text-xs'>
-            <thead>
-              <tr className='border-b border-gray-200'>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Start Time</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Status</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Duration</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Data Size</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Objects</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Data Backup</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Backup Type</th>
-                <th className='text-left px-2 py-2 font-medium text-gray-600'>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[1, 2, 3, 4].map((i) => (
-                <tr key={i} className='border-b border-gray-200 hover:bg-gray-50'>
-                  <td className='px-2 py-2 text-gray-900'>Apr 2{4-i}, 2026, 02:00 AM</td>
-                  <td className='px-2 py-2'><span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700'>Completed</span></td>
-                  <td className='px-2 py-2 text-gray-900'>40m 10s</td>
-                  <td className='px-2 py-2 text-gray-900'>5.2 GB</td>
-                  <td className='px-2 py-2 text-gray-900'>152</td>
-                  <td className='px-2 py-2 text-gray-900'>Full Backup</td>
-                  <td className='px-2 py-2 text-gray-900'>Scheduled</td>
-                  <td className='px-2 py-2 text-gray-400'>
-                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={1.5} d='M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z' />
-                    </svg>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
