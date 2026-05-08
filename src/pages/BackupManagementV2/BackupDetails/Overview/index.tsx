@@ -15,13 +15,15 @@ export default function Overview({ backup }: OverviewProps) {
     queryFn: async () => {
       if (!slug) return null;
       const response = await backupConfigService.getBackupConfig(slug);
-      return response?.data?.data || null;
+      return response?.data || null;
     },
     enabled: !!slug,
   });
 
   // Merge API data with backup prop for fallback
   const displayData = backupDetail || backup;
+  console.log({backupDetail});
+  
 
   if (isLoading) {
     return (
