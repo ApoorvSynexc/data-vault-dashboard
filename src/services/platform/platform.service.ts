@@ -36,6 +36,7 @@ export type ConnectPlatformResponse = {
 export type ConnectOptions = {
   environment?: 'production' | 'sandbox' | 'custom';
   customUrl?: string;
+  name?: string;
 };
 
 export function usePlatformService() {
@@ -48,6 +49,7 @@ export function usePlatformService() {
       const query: Record<string, string | undefined> = { crmName: crmType.toLowerCase() };
       if (options?.environment) query.environment = options.environment;
       if (options?.customUrl) query.customUrl = options.customUrl;
+      if (options?.name) query.name = options.name;
       return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
     },
     reconnectPlatform: async (crmId: string, options?: ConnectOptions) => {

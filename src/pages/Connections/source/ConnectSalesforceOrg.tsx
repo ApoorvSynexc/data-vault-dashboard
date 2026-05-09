@@ -67,6 +67,7 @@ export default function ConnectSalesforceOrg() {
       const response = await platformService.connectPlatform('Salesforce', {
         environment,
         customUrl: environment === 'custom' ? customUrl : undefined,
+        name: connectionName,
       });
 
       if (typeof response === 'string') {
