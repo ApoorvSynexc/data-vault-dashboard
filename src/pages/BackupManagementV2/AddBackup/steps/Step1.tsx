@@ -46,7 +46,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   };
   const maxSteps = getMaxSteps();
 
-  // Fetch connections only when a platform is selected
+  // Fetch connections only when a platform is selected - staleTime 0 to always show latest connections
   const { data: connectionData, isLoading: isLoadingConnections } = useQuery({
     queryKey: ['platform-connections', selectedPlatform?.crmId],
     queryFn: async () => {
@@ -54,7 +54,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
       return Array.isArray(result) ? result : [];
     },
     enabled: !!selectedPlatform,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   });
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];

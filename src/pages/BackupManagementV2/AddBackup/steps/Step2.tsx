@@ -29,12 +29,12 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
   };
   const maxSteps = getMaxSteps();
 
-  // Fetch destinations when AWS is selected
+  // Fetch destinations when AWS is selected - staleTime 0 to always show latest destinations
   const { data: connectionsData, isLoading: isLoadingConnections } = useQuery({
     queryKey: ['step2-destinations', selectedDestination?.provider],
     queryFn: async () => destinationService.listDestinations(),
     enabled: !!selectedDestination,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   });
 
   const connections = (connectionsData as any)?.data ?? connectionsData ?? [];
