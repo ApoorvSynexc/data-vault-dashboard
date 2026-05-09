@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
+import JobDetailsModal from './JobDetailsModal';
 
 const ErrorMessageCell = ({ errorMessage }: { errorMessage?: string }) => {
   const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const { data: jobsResponse } = useQuery({
     queryKey: ['backup-jobs', slug],
@@ -254,23 +256,36 @@ export default function BackupHistory(_: BackupHistoryProps) {
                       <ErrorMessageCell errorMessage={row.errorMessage} />
                     </td>
                     <td className='px-4 py-3'>
-                      {row.status === 'FAILED' ? (
+                      <div className='flex items-center gap-2'>
+                        {row.status === 'FAILED' ? (
+                          <button
+                            type='button'
+                            disabled={resumingJobId === row.backupJobId}
+                            onClick={() => handleResume(row.backupJobId)}
+                            className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
+                          >
+                            {resumingJobId === row.backupJobId ? (
+                              <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
+                            ) : (
+                              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+                                <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
+                              </svg>
+                            )}
+                            {resumingJobId === row.backupJobId ? 'Resuming…' : 'Resume'}
+                          </button>
+                        ) : null}
                         <button
                           type='button'
-                          disabled={resumingJobId === row.backupJobId}
-                          onClick={() => handleResume(row.backupJobId)}
-                          className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
+                          onClick={() => setSelectedJobId(row.backupJobId)}
+                          className='text-gray-400 hover:text-gray-600 transition'
+                          aria-label='View details'
                         >
-                          {resumingJobId === row.backupJobId ? (
-                            <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
-                          ) : (
-                            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
-                              <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
-                            </svg>
-                          )}
-                          {resumingJobId === row.backupJobId ? 'Resuming…' : 'Resume'}
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+                            <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+                            <circle cx='12' cy='12' r='3' />
+                          </svg>
                         </button>
-                      ) : null}
+                      </div>
                     </td>
                   </tr>
                   );
@@ -322,6 +337,14 @@ export default function BackupHistory(_: BackupHistoryProps) {
           </div>
         )}
       </div>
+
+      {/* Job Details Modal */}
+      {selectedJobId && (
+        <JobDetailsModal
+          job={allJobs.find((j: any) => j.backupJobId === selectedJobId)}
+          onClose={() => setSelectedJobId(null)}
+        />
+      )}
     </div>
   );
 }
