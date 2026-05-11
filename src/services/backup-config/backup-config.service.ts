@@ -10,8 +10,10 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
   list: '/v1/backup-config/list',
   detail: '/v1/backup-config',
+  update: '/v1/backup-config',
   delete: '/v1/backup-config',
   objectList: '/v1/backup-config/objects',
+  objectCountList: '/v1/backup-config/objects-count',
   objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
   resume: '/v1/backup-job/resume',
@@ -176,7 +178,7 @@ export function useBackupConfigService() {
       api.post<void>(BACKUP_CONFIG_ENDPOINTS.create, payload),
     listBackupConfigs: async (pagination = true, cursor?: string) => {
       const response = await api.get<BackupConfigListApiResponse>(BACKUP_CONFIG_ENDPOINTS.list, {
-        query: { pagination, cursor, limit: 20 },
+        query: { pagination, cursor, limit: 25 },
       });
 
       return response;
@@ -202,6 +204,14 @@ export function useBackupConfigService() {
         }),
       );
     },
+    getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
+      const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
+        crmId,
+        objectApiNames,
+      });
+
+      return response;
+    },
     getObjectFields: async (crmId: string, objectName: string) => {
       const response = await api.get<ObjectFieldApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectFields, {
         query: { crmId, objectName },
@@ -225,6 +235,8 @@ export function useBackupConfigService() {
       });
       return response;
     },
+    updateBackupConfig: (backupConfigId: string, payload: Record<string, unknown>) =>
+      api.put<void>(BACKUP_CONFIG_ENDPOINTS.update, payload, { query: { backupConfigId } }),
     listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
       const query: any = { slug, pagination, cursor, limit };
       if (status) {
@@ -240,7 +252,9 @@ export function useBackupConfigService() {
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.resume, { query: { backupJobId } }),
     deleteBackupConfig: (backupConfigId: string) =>
       api.delete<void>(BACKUP_CONFIG_ENDPOINTS.delete, { query: { backupConfigId } }),
-    getStats: () =>
-      api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats),
+    getStats: (slug?: string) => {
+      const query = slug ? { slug } : {};
+      return api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats, { query });
+    },
   };
 }

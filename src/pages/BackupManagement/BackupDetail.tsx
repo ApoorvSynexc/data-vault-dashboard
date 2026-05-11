@@ -8,7 +8,7 @@ import {
 import Typography from '../../components/Typography';
 import Table, { type TableColumn } from '../../components/Table';
 import type { PlatformType } from './AddBackupModal';
-import { capitalize } from '../../utils';
+import { capitalize, formatDateTime } from '../../utils';
 
 type ConfigStatus = 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
 type BackupStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
@@ -249,13 +249,13 @@ function buildJobColumns(
       key: 'startedAt',
       header: 'Started At',
       className: 'text-xs text-gray-500',
-      render: (row) => (row.startedAt ? new Date(row.startedAt).toLocaleString() : '--'),
+      render: (row) => formatDateTime(row.startedAt),
     },
     {
       key: 'completedAt',
       header: 'Completed At',
       className: 'text-xs text-gray-500',
-      render: (row) => (row.completedAt ? new Date(row.completedAt).toLocaleString() : '--'),
+      render: (row) => formatDateTime(row.completedAt),
     },
     {
       key: 'destination',
@@ -360,9 +360,7 @@ export default function BackupDetail() {
   const configStatus: ConfigStatus = detail?.status ?? '';
   const backupStatus: BackupStatus = detail?.backupStatus ?? '';
   const schedule: ScheduleType = detail?.schedule ?? '';
-  const lastBackupAt = detail?.lastBackupAt
-    ? new Date(detail.lastBackupAt).toLocaleString()
-    : '--';
+  const lastBackupAt = formatDateTime(detail?.lastBackupAt);
   const dataSize = detail?.sizeInBytes
     ? `${(detail.sizeInBytes / (1024 * 1024)).toFixed(2)} MB`
     : '--';
@@ -575,6 +573,7 @@ export default function BackupDetail() {
                 }
               },
             }}
+            showSerialNumber={true}
           />
         )}
       </section>

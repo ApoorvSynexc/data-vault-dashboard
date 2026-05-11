@@ -1,6 +1,19 @@
 import type { ForgotPasswordForm, LoginForm, SendOtpPayload, SignupForm, VerifyOtpPayload } from '../../pages/auth/auth.types';
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
+export type SocialLoginInitResponse = {
+  authorizationUrl: string;
+};
+
+export type SocialLoginCallbackResponse = {
+  authProvider: string;
+  providerUserId: string;
+  email: string;
+  name: string;
+  access_token?: string;
+  refresh_token?: string;
+};
+
 export function useAuthService() {
   const api = useHttpRequest();
 
@@ -18,5 +31,11 @@ export function useAuthService() {
     verifyOtp: async <TResponse>(payload: VerifyOtpPayload) => (await api.post<TResponse>('/v1/auth/verify-otp', payload)).data,
     forgotPassword: async <TResponse>(payload: ForgotPasswordForm) => (await api.post<TResponse>('/auth/forgot-password', payload)).data,
     logout: async () => (await api.post('/v1/auth/logout')).data,
+    initiateSocialLogin: async (authProvider: string) =>
+      (await api.get<SocialLoginInitResponse>('/v1/auth/social-login', { query: { authProvider } })).data,
+    handleSocialLoginCallback: async (authProvider: string, code: string, state: string) =>
+      (await api.get<SocialLoginCallbackResponse>('/v1/auth/social-login/callback', {
+        query: { authProvider, code, state },
+      })).data,
   };
 }

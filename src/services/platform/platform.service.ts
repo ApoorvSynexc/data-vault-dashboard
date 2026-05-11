@@ -33,20 +33,31 @@ export type ConnectPlatformResponse = {
   redirectUrl: string;
 };
 
+export type ConnectOptions = {
+  environment?: 'production' | 'sandbox' | 'custom';
+  customUrl?: string;
+  name?: string;
+};
+
 export function usePlatformService() {
   const api = useHttpRequest();
 
   return {
     getConnectedPlatforms: async () =>
       (await api.get<ConnectedPlatform[]>(PLATFORM_ENDPOINTS.list)).data,
-    connectPlatform: async (crmType: CrmPlatform) =>
-      (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
-        query: { crmName: crmType.toLowerCase() },
-      })).data,
-    reconnectPlatform: async (crmId: string) =>
-      (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, {
-        query: { crmId },
-      })).data,
+    connectPlatform: async (crmType: CrmPlatform, options?: ConnectOptions) => {
+      const query: Record<string, string | undefined> = { crmName: crmType.toLowerCase() };
+      if (options?.environment) query.environment = options.environment;
+      if (options?.customUrl) query.customUrl = options.customUrl;
+      if (options?.name) query.name = options.name;
+      return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
+    },
+    reconnectPlatform: async (crmId: string, options?: ConnectOptions) => {
+      const query: Record<string, string | undefined> = { crmId };
+      if (options?.environment) query.environment = options.environment;
+      if (options?.customUrl) query.customUrl = options.customUrl;
+      return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
+    },
     callbackPlatform: async (payload: { crmName: CrmPlatform; code: string; state: string }) =>
       (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.callback, {
         query: { crmName: payload.crmName.toLowerCase(), code: payload.code, state: payload.state },

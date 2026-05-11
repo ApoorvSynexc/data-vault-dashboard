@@ -24,12 +24,12 @@ export interface LoginResponse {
 export interface SendOtpPayload {
   channel: 'EMAIL';
   contact: string;
-  otpType: 'SIGNUP' | 'FORGOT-PASSWORD';
+  otpType: 'SIGNUP' | 'FORGOT-PASSWORD' | 'LOGIN';
 }
 
 export interface VerifyOtpPayload {
   channel: 'EMAIL';
   contact: string;
   otp: string;
-  otpType: 'SIGNUP' | 'FORGOT-PASSWORD';
+  otpType: 'SIGNUP' | 'FORGOT-PASSWORD' | 'LOGIN';
 }

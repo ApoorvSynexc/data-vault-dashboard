@@ -17,6 +17,7 @@ const Icons = {
   backup:     () => ico(<><polyline points='16 16 12 12 8 16' /><line x1='12' y1='12' x2='12' y2='21' /><path d='M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3' /></>),
   restore:    () => ico(<><polyline points='1 4 1 10 7 10' /><path d='M3.51 15a9 9 0 101.85-4.36L1 10' /></>),
   archive:    () => ico(<><polyline points='21 8 21 21 3 21 3 8' /><rect x='1' y='3' width='22' height='5' /><line x1='10' y1='12' x2='14' y2='12' /></>),
+  connectors: () => ico(<><path d='M10 3H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z' /><path d='M18 3h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z' /><path d='M10 15H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z' /><path d='M18 15h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z' /></>),
   platforms:  () => ico(<><circle cx='6' cy='6' r='2' /><circle cx='12' cy='6' r='2' /><circle cx='18' cy='6' r='2' /><circle cx='6' cy='12' r='2' /><circle cx='12' cy='12' r='2' /><circle cx='18' cy='12' r='2' /><circle cx='6' cy='18' r='2' /><circle cx='12' cy='18' r='2' /><circle cx='18' cy='18' r='2' /></>),
   storage:    () => ico(<><ellipse cx='12' cy='5' rx='9' ry='3' /><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' /><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' /></>),
   activity:   () => ico(<><polyline points='22 12 18 12 15 21 9 3 6 12 2 12' /></>),
@@ -34,7 +35,7 @@ const mainNav = [
   { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup     },
   { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore    },
   { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive    },
-  { to: '/platforms',          label: 'Platforms',           Icon: Icons.platforms  },
+  { to: '/connections',         label: 'Connections',          Icon: Icons.connectors },
   { to: '/storage',            label: 'Storage & Retention', Icon: Icons.storage    },
   { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity   },
   { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports    },
@@ -47,6 +48,7 @@ export default function MainLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -76,18 +78,46 @@ export default function MainLayout() {
     <div className='flex h-screen w-full min-w-0 overflow-hidden'>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <aside className='w-56 flex flex-col shrink-0' style={{ background: '#1B3A8A' }}>
+      <aside className={`flex flex-col shrink-0 transition-all duration-300 ${isSidebarOpen ? 'w-56' : 'w-16'}`} style={{ background: '#1B3A8A' }}>
 
         {/* Logo */}
-        <div className='flex items-center gap-2.5 px-4 py-4 border-b border-white/10'>
-          <div className='w-8 h-8 bg-blue-500 rounded-lg rotate-45 flex items-center justify-center shrink-0'>
-            <span className='-rotate-45 text-white text-[10px] font-bold'>DV</span>
+        {isSidebarOpen && (
+          <div className='flex items-center gap-2.5 px-4 py-4 border-b border-white/10 justify-between'>
+            <div className='flex items-center gap-2.5 min-w-0'>
+              <div className='w-8 h-8 bg-blue-500 rounded-lg rotate-45 flex items-center justify-center shrink-0'>
+                <span className='-rotate-45 text-white text-[10px] font-bold'>DV</span>
+              </div>
+              <div className='leading-tight min-w-0'>
+                <p className='text-white text-sm font-bold truncate'>360 DataVault</p>
+                <p className='text-white/50 text-[10px] truncate'>Backup Platform</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
+              title='Collapse sidebar'
+            >
+              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
+              </svg>
+            </button>
           </div>
-          <div className='leading-tight'>
-            <p className='text-white text-sm font-bold'>360 DataVault</p>
-            <p className='text-white/50 text-[10px]'>Backup Platform</p>
+        )}
+
+        {/* Collapsed Logo - Expand Button */}
+        {!isSidebarOpen && (
+          <div className='flex items-center justify-center px-4 py-4 border-b border-white/10'>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className='p-2 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors'
+              title='Expand sidebar'
+            >
+              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+              </svg>
+            </button>
           </div>
-        </div>
+        )}
 
         {/* Nav */}
         <nav className='flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto'>
@@ -98,15 +128,19 @@ export default function MainLayout() {
               end={to === '/'}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                  isSidebarOpen
+                    ? 'flex items-center gap-2.5 px-3 py-2'
+                    : 'flex items-center justify-center px-1 py-3',
+                  'rounded-lg text-[13px] font-medium transition-colors',
                   isActive
                     ? 'bg-white/15 text-white'
                     : 'text-white/60 hover:text-white hover:bg-white/8',
                 ].join(' ')
               }
+              title={!isSidebarOpen ? label : undefined}
             >
               <Icon />
-              {label}
+              {isSidebarOpen && <span>{label}</span>}
             </NavLink>
           ))}
         </nav>
