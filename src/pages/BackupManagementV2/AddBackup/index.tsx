@@ -10,6 +10,11 @@ import FinalStep from './steps/FinalStep';
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
+type SelectedObject = {
+  id: string;
+  type: 'STANDARD' | 'CUSTOM';
+};
+
 export default function AddBackup() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
@@ -18,7 +23,7 @@ export default function AddBackup() {
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
   const environment = 'Production';
-  const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
+  const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>([]);
   const [destinationId, setDestinationId] = useState<string | null>(null);
 
   const getMaxSteps = () => {
@@ -111,10 +116,10 @@ export default function AddBackup() {
         <Step5
           crmId={selectedPlatformId}
           entireDatasetSelected={entireDatasetSelected}
-          selectedObjectIds={selectedObjectIds}
+          selectedObjectIds={selectedObjects.map((o) => o.id)}
           strategy={selectedStrategy}
-          onNext={(objectIds) => {
-            setSelectedObjectIds(objectIds);
+          onNext={(objects) => {
+            setSelectedObjects(objects);
             handleNextStep();
           }}
           onBack={handlePrevStep}
@@ -139,7 +144,7 @@ export default function AddBackup() {
           policyName={policyName}
           description={description}
           environment={environment}
-          selectedObjectIds={selectedObjectIds}
+          selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
         />
@@ -153,7 +158,7 @@ export default function AddBackup() {
           policyName={policyName}
           description={description}
           environment={environment}
-          selectedObjectIds={selectedObjectIds}
+          selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
         />

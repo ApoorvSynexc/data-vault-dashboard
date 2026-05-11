@@ -5,8 +5,13 @@ import type { TableColumn } from '../../../../components/Table';
 import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
+type SelectedObject = {
+  id: string;
+  type: 'STANDARD' | 'CUSTOM';
+};
+
 type Step5Props = {
-  onNext: (selectedObjectIds: string[]) => void;
+  onNext: (selectedObjects: SelectedObject[]) => void;
   onBack: () => void;
   entireDatasetSelected?: boolean;
   crmId?: string | null;
@@ -76,8 +81,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         const objectCounts: Record<string, number> = {};
         if (response?.data?.objects && Array.isArray(response.data.objects)) {
           response.data.objects.forEach((obj: any) => {
-            if (obj.objectApiName && obj.recordCount !== undefined) {
-              objectCounts[obj.objectApiName] = obj.recordCount;
+            if (obj.apiName && obj.recordCount !== undefined) {
+              objectCounts[obj.apiName] = obj.recordCount;
             }
           });
         }
@@ -382,7 +387,17 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             ← Back
           </button>
           <button
-            onClick={() => onNext(Array.from(selectedObjects))}
+            onClick={() => {
+              const selectedObjectsData = Array.from(selectedObjects).map((id) => {
+                const obj = objectsWithCounts.find((o) => o.id === id);
+                const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
+                return {
+                  id,
+                  type,
+                };
+              });
+              onNext(selectedObjectsData);
+            }}
             disabled={selectedObjects.size === 0}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               selectedObjects.size > 0
