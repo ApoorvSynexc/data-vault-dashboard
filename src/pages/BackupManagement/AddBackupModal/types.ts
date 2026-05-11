@@ -105,6 +105,7 @@ export type DataScopeRow = {
   type: string;
   estimatedSize: string;
   backupMode: 'realtime' | 'schedule' | 'both';
+  recordCount?: number;
   isCustom?: boolean;
   isBackedUp?: boolean;
   schedule?: 'schedule' | 'realtime';
