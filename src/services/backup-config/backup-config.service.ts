@@ -204,6 +204,35 @@ export function useBackupConfigService() {
         }),
       );
     },
+    getObjectListPaginated: async (crmId: string, offset: number = 0, limit: number = 20) => {
+      const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {
+        query: { crmId },
+      });
+
+      if (!response.data) {
+        throw new Error('Invalid response from objectList API');
+      }
+
+      const allObjects = response.data.objects.map(
+        (item): DataScopeRow => ({
+          id: item.apiName,
+          name: item.label,
+          type: 'Object',
+          estimatedSize: '--',
+          backupMode: 'both',
+          isBackedUp: item.isBackedUp,
+          schedule: item.schedule,
+        }),
+      );
+
+      // Client-side pagination
+      const paginatedObjects = allObjects.slice(offset, offset + limit);
+
+      return {
+        objects: paginatedObjects,
+        totalRecords: allObjects.length,
+      };
+    },
     getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
       const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
         crmId,
