@@ -19,6 +19,8 @@ interface BackupObject {
   name: string;
   type: string;
   estimatedSize: string;
+  recordCount?: number;
+  dataSize?: string;
   isCustom: boolean;
   isBackedUp?: boolean;
   schedule?: 'realtime' | 'schedule' | null;
@@ -54,7 +56,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     queryKey: ['backup-objects-count', crmId, currentPage],
     queryFn: async () => {
       if (allObjects.length === 0) {
-        return { totalRecords: 0 };
+        return { objectCounts: {} };
       }
       const objectApiNames = allObjects.map((obj) => obj.id);
       const BATCH_SIZE = 10;
@@ -63,20 +65,45 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       const batchEnd = batchStart + BATCH_SIZE;
       const currentBatch = objectApiNames.slice(batchStart, batchEnd);
 
-      if (currentBatch.length > 0) {
-        await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
+      if (currentBatch.length === 0) {
+        return { objectCounts: {} };
       }
 
-      return { totalRecords: allObjects.length };
+      try {
+        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
+
+        // Create a map of objectApiName -> recordCount from the response
+        const objectCounts: Record<string, number> = {};
+        if (response?.data?.objects && Array.isArray(response.data.objects)) {
+          response.data.objects.forEach((obj: any) => {
+            if (obj.objectApiName && obj.recordCount !== undefined) {
+              objectCounts[obj.objectApiName] = obj.recordCount;
+            }
+          });
+        }
+
+        return { objectCounts };
+      } catch (error) {
+        console.error('Failed to fetch object counts:', error);
+        return { objectCounts: {} };
+      }
     },
     enabled: !!crmId && allObjects.length > 0,
   });
 
-  const totalRecords = countResponse?.totalRecords ?? allObjects.length;
+  // Merge record counts into objects
+  const objectsWithCounts = useMemo(() => {
+    return allObjects.map((obj) => ({
+      ...obj,
+      recordCount: countResponse?.objectCounts?.[obj.id] ?? undefined,
+    }));
+  }, [allObjects, countResponse?.objectCounts]);
+
+  const totalRecords = allObjects.length;
 
   // Client-side pagination from cached data
   const offset = currentPage * ITEMS_PER_PAGE;
-  const objects = allObjects.slice(offset, offset + ITEMS_PER_PAGE);
+  const objects = objectsWithCounts.slice(offset, offset + ITEMS_PER_PAGE);
 
   const isLoading = isLoadingObjects || isLoadingCount;
   const error = objectsError;
@@ -128,7 +155,40 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         </span>
       ),
     },
+    {
+      key: 'recordCount',
+      header: 'Records',
+      render: (obj) => (
+        <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+          {obj.recordCount?.toLocaleString() ?? '--'}
+        </span>
+      ),
+    },
+    {
+      key: 'dataSize',
+      header: 'Estimated data size',
+      render: (obj) => {
+        const calculateDataSize = (recordCount?: number) => {
+          if (!recordCount) return '--';
+          const sizeInKB = recordCount * 2;
+          if (sizeInKB >= 1024 * 1024) {
+            return `${(sizeInKB / (1024 * 1024)).toFixed(2)} GB`;
+          } else if (sizeInKB >= 1024) {
+            return `${(sizeInKB / 1024).toFixed(2)} MB`;
+          }
+          return `${sizeInKB} KB`;
+        };
+        return (
+          <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+            {calculateDataSize(obj.recordCount)}
+          </span>
+        );
+      },
+    },
   ];
+
+  console.log({filteredObjects});
+  
 
   return (
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
