@@ -19,11 +19,17 @@ type ScheduleConfig = {
   };
 };
 
+type SelectedObject = {
+  id: string;
+  type: 'STANDARD' | 'CUSTOM';
+};
+
 type FinalStepProps = {
   onBack: () => void;
   onEditStep?: (step: number) => void;
   strategy?: 'realtime' | 'scheduled';
   crmId?: string | null;
+  selectedObjects?: SelectedObject[];
   selectedObjectIds?: string[];
   policyName?: string;
   description?: string;
@@ -37,6 +43,7 @@ export default function FinalStep({
   onEditStep,
   strategy = 'realtime',
   crmId,
+  selectedObjects = [],
   selectedObjectIds = [],
   policyName = 'Salesforce Production Backup',
   description = '',
@@ -93,19 +100,27 @@ export default function FinalStep({
     }
 
     setIsLoading(true);
+    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
+    const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
+
     const payload: any = {
       crmId,
       name: policyName,
       description,
       environment: environment.toUpperCase(),
       destinationId,
-      objectNames: selectedObjectIds,
+      objectNames: objectIds,
       schedule: isRealTime ? 'REALTIME' : 'SCHEDULE',
-      objects: selectedObjectIds.map((id) => ({
-        name: id,
-        condition: { type: 'AND' },
-        field: [],
-      })),
+      objects: objectsToUse.map((obj) => {
+        const objId = typeof obj === 'string' ? obj : obj.id;
+        const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
+        return {
+          name: objId,
+          type: objType,
+          condition: { type: 'AND' },
+          field: [],
+        };
+      }),
       backupStatus,
     };
 
@@ -260,7 +275,7 @@ export default function FinalStep({
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-xs text-gray-600 mb-1'>Objects Selected</p>
-              <p className='text-sm font-medium text-gray-900'>{selectedObjectIds.length}</p>
+              <p className='text-sm font-medium text-gray-900'>{selectedObjects.length > 0 ? selectedObjects.length : selectedObjectIds.length}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-xs text-gray-600 mb-1'>Environment</p>
