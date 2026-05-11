@@ -57,6 +57,7 @@ type BackupConfigListApiResponse = {
 type ObjectListApiItem = {
   label: string;
   apiName: string;
+  isCustom?: boolean;
   isBackedUp?: boolean;
   schedule?: 'schedule' | 'realtime';
 };
@@ -199,6 +200,7 @@ export function useBackupConfigService() {
           type: 'Object',
           estimatedSize: '--',
           backupMode: 'both',
+          isCustom: item.isCustom ?? false,
           isBackedUp: item.isBackedUp,
           schedule: item.schedule,
         }),
@@ -220,6 +222,7 @@ export function useBackupConfigService() {
           type: 'Object',
           estimatedSize: '--',
           backupMode: 'both',
+          isCustom: item.isCustom ?? false,
           isBackedUp: item.isBackedUp,
           schedule: item.schedule,
         }),

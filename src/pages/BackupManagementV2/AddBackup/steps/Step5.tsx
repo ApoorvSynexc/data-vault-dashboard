@@ -17,9 +17,9 @@ type Step5Props = {
 interface BackupObject {
   id: string;
   name: string;
-  type: 'Standard' | 'Custom';
-  records: number;
+  type: string;
   estimatedSize: string;
+  isCustom: boolean;
   isBackedUp?: boolean;
   schedule?: 'realtime' | 'schedule' | null;
 }
@@ -86,7 +86,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const filteredObjects = useMemo(() => {
     return objects.filter((obj) => {
       const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter = selectedFilter === 'All' || obj.type === selectedFilter;
+      let matchesFilter = true;
+
+      if (selectedFilter === 'Standard') {
+        matchesFilter = !obj.isCustom;
+      } else if (selectedFilter === 'Custom') {
+        matchesFilter = obj.isCustom;
+      }
+      // 'All' matches everything
+
       return matchesSearch && matchesFilter;
     });
   }, [searchQuery, selectedFilter, objects]);
@@ -114,17 +122,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     {
       key: 'type',
       header: 'Type',
-      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{obj.type}</span>,
-    },
-    {
-      key: 'records',
-      header: 'Records',
-      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{(obj.records as any)?.toLocaleString?.() || obj.records}</span>,
-    },
-    {
-      key: 'estimatedSize',
-      header: 'Estimated Data Size',
-      render: (obj) => <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>{obj.estimatedSize}</span>,
+      render: (obj) => (
+        <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+          {obj.isCustom ? 'Custom' : 'Standard'}
+        </span>
+      ),
     },
   ];
 
