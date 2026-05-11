@@ -192,8 +192,9 @@ export default function SalesforceConnections() {
                         <rect x='4' y='4' width='16' height='16' rx='2' />
                       </svg>
                       <div>
-                        <p className='font-medium text-gray-900'>{org.crmProfile.name}</p>
-                        <p className='text-xs text-gray-500'>{org.crmProfile.instanceUrl}</p>
+                        <p className='font-medium text-gray-900'>{org.name}</p>
+                        <p className='text-xs text-gray-500'>{org.crmProfile.name}</p>
+                        <p className='text-xs text-gray-500'>{org.crmProfile.email}</p>
                       </div>
                     </div>
 

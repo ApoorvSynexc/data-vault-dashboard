@@ -99,7 +99,9 @@ function PlatformCard({
           </div>
         )}
         <div className='min-w-0'>
-          <p className='truncate text-xs font-medium text-gray-800'>{platform.crmProfile.name}</p>
+          <p className='truncate text-xs font-medium text-gray-800'>{platform.name}</p>
+          <p className='truncate text-[11px] text-gray-400'>{platform.crmProfile.name}</p>
+          <p className='truncate text-[11px] text-gray-400'>{platform.crmProfile.organizationId}</p>
           <p className='truncate text-[11px] text-gray-400'>{platform.crmProfile.email}</p>
         </div>
       </div>

@@ -21,6 +21,7 @@ export type CrmProfile = {
 export type ConnectedPlatform = {
   crmId: string;
   crmName: string;
+  name: string;
   isConnected: boolean;
   status: 'ACTIVE' | 'INACTIVE' | 'ERROR';
   crmProfile: CrmProfile;

@@ -153,12 +153,15 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                         </div>
                         <div className='flex-1 min-w-0'>
                           <p className='font-semibold text-gray-900 truncate'>
-                            {connection.crmProfile?.name || connection.crmName}
+                            {connection.name}
                           </p>
-                          <p className='text-sm text-gray-600 truncate'>
+                          <p className='text-xs text-gray-600 truncate'>
+                            {connection.crmProfile?.name}
+                          </p>
+                          <p className='text-xs text-gray-600 truncate'>
                             Org ID: {connection.crmProfile?.organizationId}
                           </p>
-                          <p className='text-sm text-gray-600 truncate'>
+                          <p className='text-xs text-gray-600 truncate'>
                             Email: {connection.crmProfile?.email}
                           </p>
                         </div>
