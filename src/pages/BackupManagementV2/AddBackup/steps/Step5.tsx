@@ -216,30 +216,87 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               />
             </div>
 
-            {/* Pagination Info and Controls */}
+            {/* Pagination Controls */}
             <div className='p-6 pt-4 flex-shrink-0 border-t border-gray-200'>
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-gray-600'>
                   Showing {objects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
                 </div>
-                <div className='flex items-center gap-2'>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-                    disabled={currentPage === 0}
-                    className='px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
-                  >
-                    ← Previous
-                  </button>
-                  <span className='text-sm text-gray-600 px-2'>
-                    Page {currentPage + 1} of {Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(prev => prev + 1)}
-                    disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
-                    className='px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
-                  >
-                    Next →
-                  </button>
+
+                <div className='flex items-center gap-4'>
+                  {/* Page Number Pagination */}
+                  <div className='flex items-center gap-2'>
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                      disabled={currentPage === 0}
+                      className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                    >
+                      &lt;
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className='flex items-center gap-1'>
+                      {(() => {
+                        const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
+                        const pages: (number | string)[] = [];
+                        const maxVisiblePages = 5;
+                        const halfVisible = Math.floor(maxVisiblePages / 2);
+
+                        if (totalPages <= maxVisiblePages) {
+                          for (let i = 0; i < totalPages; i++) {
+                            pages.push(i);
+                          }
+                        } else {
+                          pages.push(0);
+                          if (currentPage > halfVisible + 1) pages.push('...');
+
+                          const start = Math.max(1, currentPage - halfVisible);
+                          const end = Math.min(totalPages - 1, currentPage + halfVisible);
+
+                          for (let i = start; i <= end; i++) {
+                            if (!pages.includes(i)) pages.push(i);
+                          }
+
+                          if (currentPage < totalPages - halfVisible - 2) pages.push('...');
+                          if (!pages.includes(totalPages - 1)) pages.push(totalPages - 1);
+                        }
+
+                        return pages.map((page, idx) => {
+                          if (page === '...') {
+                            return (
+                              <span key={`dots-${idx}`} className='px-2 text-gray-400'>
+                                ...
+                              </span>
+                            );
+                          }
+                          const pageNum = page as number;
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+                              }`}
+                            >
+                              {pageNum + 1}
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                      disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
+                      className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                    >
+                      &gt;
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
