@@ -24,33 +24,32 @@ interface BackupObject {
   schedule?: 'realtime' | 'schedule' | null;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime' }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime' }: Step5Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
+  const [currentPage, setCurrentPage] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
   };
   const maxSteps = getMaxSteps();
 
-  // Fetch objects from API
-  const { data: objectsData, isLoading, error } = useQuery({
-    queryKey: ['backup-objects', crmId],
-    queryFn: async () => backupConfigService.getObjectList(crmId ?? ''),
+  // Fetch paginated objects from API
+  const { data: objectsResponse, isLoading, error } = useQuery({
+    queryKey: ['backup-objects', crmId, currentPage],
+    queryFn: async () => {
+      const offset = currentPage * ITEMS_PER_PAGE;
+      return backupConfigService.getObjectListPaginated(crmId ?? '', offset, ITEMS_PER_PAGE);
+    },
     enabled: !!crmId,
   });
 
-  const objects: BackupObject[] = (objectsData as any)?.data ?? objectsData ?? [];
+  const objects: BackupObject[] = (objectsResponse?.objects as any) ?? [];
+  const totalRecords = objectsResponse?.totalRecords ?? 0;
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
-
-  // Auto-select all objects when entireDatasetSelected is true and objects are loaded
-  useEffect(() => {
-    if (entireDatasetSelected && objects.length > 0) {
-      setSelectedObjects(new Set(objects.map((obj) => obj.id)));
-    }
-  }, [entireDatasetSelected, objects]);
 
   const filteredObjects = useMemo(() => {
     return objects.filter((obj) => {
@@ -59,6 +58,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
       return matchesSearch && matchesFilter;
     });
   }, [searchQuery, selectedFilter, objects]);
+
+  // When search/filter changes, reset to first page
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery, selectedFilter]);
 
   const columns: TableColumn<BackupObject>[] = [
     {
@@ -179,9 +183,32 @@ export default function Step5({ onNext, onBack, entireDatasetSelected = false, c
               />
             </div>
 
-            {/* Pagination Info */}
-            <div className='p-6 pt-4 text-sm text-gray-600 flex-shrink-0 border-t border-gray-200'>
-              Showing {filteredObjects.length} of {objects.length} Objects
+            {/* Pagination Info and Controls */}
+            <div className='p-6 pt-4 flex-shrink-0 border-t border-gray-200'>
+              <div className='flex items-center justify-between'>
+                <div className='text-sm text-gray-600'>
+                  Showing {objects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
+                </div>
+                <div className='flex items-center gap-2'>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                    disabled={currentPage === 0}
+                    className='px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                  >
+                    ← Previous
+                  </button>
+                  <span className='text-sm text-gray-600 px-2'>
+                    Page {currentPage + 1} of {Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
+                    className='px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50'
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         )}
