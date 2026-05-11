@@ -50,6 +50,8 @@ type TableProps<TRow> = {
   paginationClassName?: string;
   /** Show serial number column. Default: false */
   showSerialNumber?: boolean;
+  /** Starting number for serial number column. Default: 1. Useful for external pagination */
+  serialNumberStart?: number;
 } & SelectableTableProps<TRow>;
 
 export default function Table<TRow>({
@@ -74,6 +76,7 @@ export default function Table<TRow>({
   isRowSelectable,
   getRowClassName,
   showSerialNumber = false,
+  serialNumberStart = 1,
 }: TableProps<TRow>) {
   const [internalPage, setInternalPage] = useState(1);
 
@@ -195,7 +198,7 @@ export default function Table<TRow>({
                 paginatedRows.map((row, index) => {
                   const isSelected = selectedIds?.has(getRowId?.(row) || getRowKey(row, index));
                   const computedRowClassName = getRowClassName?.(row, isSelected || false) || (typeof rowClassName === 'function' ? rowClassName(row, isSelected) : rowClassName);
-                  const serialNumber = (activePage - 1) * safePageSize + index + 1;
+                  const serialNumber = serialNumberStart + index;
                   return (
                     <tr key={getRowKey(row, index)} className={computedRowClassName}>
                       {showSerialNumber && (
