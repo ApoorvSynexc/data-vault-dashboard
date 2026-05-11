@@ -252,45 +252,87 @@ export default function Table<TRow>({
       {usePagination && (
         <div className={`flex items-center justify-between border-t border-gray-200 px-4 py-3 ${paginationClassName || ''}`}>
           <p className='text-sm text-gray-600'>
-            Showing {Math.min(safePageSize, paginatedRows.length)} of {totalRecords}
+            Showing {(activePage - 1) * safePageSize + 1} to {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
           </p>
-          <div className='flex gap-1'>
-            {/* Previous Button */}
-            <button
-              type='button'
-              onClick={() => handlePageChange(activePage - 1)}
-              disabled={activePage <= 1}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              ← Prev
-            </button>
 
-            {/* Page Numbers */}
-            {showPageNumbers &&
-              Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  type='button'
-                  onClick={() => handlePageChange(page)}
-                  className={`px-3 py-1 text-sm rounded-lg border transition-colors ${
-                    activePage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+          <div className='flex items-center gap-4'>
+            {/* Pagination Controls */}
+            <div className='flex items-center gap-2'>
+              {/* Previous Button */}
+              <button
+                type='button'
+                onClick={() => handlePageChange(activePage - 1)}
+                disabled={activePage <= 1}
+                className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+              >
+                &lt;
+              </button>
 
-            {/* Next Button */}
-            <button
-              type='button'
-              onClick={() => handlePageChange(activePage + 1)}
-              disabled={activePage >= totalPages}
-              className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Next →
-            </button>
+              {/* Page Numbers */}
+              {showPageNumbers && (
+                <div className='flex items-center gap-1'>
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const maxVisiblePages = 5;
+                    const halfVisible = Math.floor(maxVisiblePages / 2);
+
+                    if (totalPages <= maxVisiblePages) {
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      pages.push(1);
+                      if (activePage > halfVisible + 1) pages.push('...');
+
+                      const start = Math.max(2, activePage - halfVisible);
+                      const end = Math.min(totalPages - 1, activePage + halfVisible);
+
+                      for (let i = start; i <= end; i++) {
+                        if (!pages.includes(i)) pages.push(i);
+                      }
+
+                      if (activePage < totalPages - halfVisible - 1) pages.push('...');
+                      if (!pages.includes(totalPages)) pages.push(totalPages);
+                    }
+
+                    return pages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`dots-${idx}`} className='px-2 text-gray-400'>
+                            ...
+                          </span>
+                        );
+                      }
+                      const pageNum = page as number;
+                      return (
+                        <button
+                          key={pageNum}
+                          type='button'
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                            activePage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+
+              {/* Next Button */}
+              <button
+                type='button'
+                onClick={() => handlePageChange(activePage + 1)}
+                disabled={activePage >= totalPages}
+                className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+              >
+                &gt;
+              </button>
+            </div>
           </div>
         </div>
       )}

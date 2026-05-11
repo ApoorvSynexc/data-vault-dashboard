@@ -304,35 +304,80 @@ export default function BackupHistory(_: BackupHistoryProps) {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
-            <p className='text-sm text-gray-600'>Showing {Math.min(itemsPerPage, paginatedJobs.length)} of {totalItems}</p>
-            <div className='flex gap-1'>
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                disabled={currentPage === 1}
-              >
-                ← Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <p className='text-sm text-gray-600'>Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}</p>
+            <div className='flex items-center gap-4'>
+              {/* Pagination Controls */}
+              <div className='flex items-center gap-2'>
+                {/* Previous Button */}
                 <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm rounded-lg border transition-colors ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
                 >
-                  {page}
+                  &lt;
                 </button>
-              ))}
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                className='px-2 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                disabled={currentPage === totalPages}
-              >
-                Next →
-              </button>
+
+                {/* Page Numbers */}
+                <div className='flex items-center gap-1'>
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const maxVisiblePages = 5;
+                    const halfVisible = Math.floor(maxVisiblePages / 2);
+
+                    if (totalPages <= maxVisiblePages) {
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      pages.push(1);
+                      if (currentPage > halfVisible + 1) pages.push('...');
+
+                      const start = Math.max(2, currentPage - halfVisible);
+                      const end = Math.min(totalPages - 1, currentPage + halfVisible);
+
+                      for (let i = start; i <= end; i++) {
+                        if (!pages.includes(i)) pages.push(i);
+                      }
+
+                      if (currentPage < totalPages - halfVisible - 1) pages.push('...');
+                      if (!pages.includes(totalPages)) pages.push(totalPages);
+                    }
+
+                    return pages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`dots-${idx}`} className='px-2 text-gray-400'>
+                            ...
+                          </span>
+                        );
+                      }
+                      const pageNum = page as number;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                >
+                  &gt;
+                </button>
+              </div>
             </div>
           </div>
         )}
