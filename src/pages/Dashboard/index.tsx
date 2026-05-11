@@ -1,5 +1,26 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
+import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
+import Frame from '../../assets/icons/Frame.svg';
+import Frame1 from '../../assets/icons/Frame-1.svg';
+import Frame2 from '../../assets/icons/Frame-2.svg';
+import Frame3 from '../../assets/icons/Frame-3.svg';
+import Frame4 from '../../assets/icons/Frame-4.svg';
+import Frame5 from '../../assets/icons/Frame-5.svg';
+import Frame6 from '../../assets/icons/Frame-6.svg';
+import Frame7 from '../../assets/icons/Frame-7.svg';
+import Frame8 from '../../assets/icons/Frame-8.svg';
+import Frame9 from '../../assets/icons/Frame-9.svg';
+import Frame10 from '../../assets/icons/Frame-10.svg';
+import Frame11 from '../../assets/icons/Frame-11.svg';
+import Frame12 from '../../assets/icons/Frame-12.svg';
+import Frame13 from '../../assets/icons/Frame-13.svg';
+import Frame14 from '../../assets/icons/Frame-14.svg';
+import Frame15 from '../../assets/icons/Frame-15.svg';
+import Frame16 from '../../assets/icons/Frame-16.svg';
+import Frame17 from '../../assets/icons/Frame-17.svg';
 
 type StatusType = 'Completed' | 'Running' | 'Scheduled' | 'Failed';
 
@@ -313,6 +334,88 @@ const healthChecks = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const backupConfigService = useBackupConfigService();
+
+  const { data: backupListData } = useQuery({
+    queryKey: ['backup-config-list'],
+    queryFn: () => backupConfigService.listBackupConfigs(true, undefined),
+    staleTime: 60_000,
+  });
+
+  const backupList = Array.isArray(backupListData?.data) ? backupListData.data : (backupListData?.data?.data ?? []);
+  const hasBackups = backupList && backupList.length > 0;
+
+  useEffect(() => {
+    if (!hasBackups) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+      };
+    }
+  }, [hasBackups]);
+
+  if (!hasBackups) {
+    const frameImages = [
+      Frame,
+      Frame1,
+      Frame2,
+      Frame3,
+      Frame4,
+      Frame5,
+      Frame6,
+      Frame7,
+      Frame8,
+      Frame9,
+      Frame10,
+      Frame11,
+      Frame12,
+      Frame13,
+      Frame14,
+      Frame15,
+      Frame16,
+      Frame17,
+    ];
+
+    return (
+      <div className='w-full h-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-white'>
+        {/* Background Icons Pattern */}
+        <div className='absolute inset-0 pointer-events-none overflow-hidden'>
+          <div className='grid grid-cols-6 gap-8 p-8 opacity-20'>
+            {frameImages.map((imgSrc, i) => (
+              <div key={i} className='aspect-square flex items-center justify-center'>
+                <img
+                  src={imgSrc}
+                  alt={`decoration-${i}`}
+                  className='w-20 h-20 object-contain'
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className='relative z-10 text-center max-w-md'>
+          <h1 className='text-4xl font-bold text-gray-900 mb-4'>Welcome User !</h1>
+          <p className='text-lg text-gray-600 mb-8'>
+            Currently you dont have any backup to get started with your dashboard !
+          </p>
+          <button
+            onClick={() => navigate('/backup-management')}
+            className='inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors'
+          >
+            Lets Start Backup
+            <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='flex flex-col gap-5'>
       <h2 className='text-lg font-bold text-gray-800'>Dashboard Overview</h2>
@@ -429,6 +532,7 @@ export default function Dashboard() {
             getRowKey={(job, index) => `${job.name}-${job.platform}-${index}`}
             minWidthClassName='min-w-[880px]'
             maxHeightClassName='max-h-[320px]'
+            showSerialNumber={true}
           />
         </div>
 

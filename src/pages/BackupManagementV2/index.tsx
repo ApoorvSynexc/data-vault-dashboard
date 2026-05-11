@@ -1,15 +1,15 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import AddBackupModal, { type PlatformType } from './AddBackupModal';
 import Table, { type TableColumn } from '../../components/Table';
+import type { PlatformType } from '../BackupManagement/AddBackupModal';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
-import { formatDateTime, formatBytes } from '../../utils';
+import { formatBytes, formatDateTime } from '../../utils';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
-type BackupStatus = 'Completed' | 'Running' | 'Pending' | 'Failed';
+type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
 type BackupType = 'Realtime' | 'Schedule';
 
 type BackupConfigItem = {
@@ -37,9 +37,10 @@ type BackupRow = {
   platform: PlatformType;
   status: BackupStatus;
   backupType: BackupType;
-  scheduleType: string;
+  scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
+  backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
 };
 
 function Panel({
@@ -94,13 +95,6 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
     return typeof val === 'number' ? val : null;
   }
 
-  function formatBytes(bytes: number): string {
-    if (!bytes) return '--';
-    if (bytes >= 1_099_511_627_776) return `${(bytes / 1_099_511_627_776).toFixed(1)} TB`;
-    if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-    if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
 
   const dataProcessed = stats?.dataProcessed;
   const dataValue = dataProcessed ? formatBytes(dataProcessed.bytes) : '--';
@@ -259,21 +253,6 @@ function PlatformBadge({
   );
 }
 
-function StatusBadge({ status }: { status: BackupStatus }) {
-  const styles: Record<BackupStatus, string> = {
-    Completed: 'bg-emerald-100 text-emerald-700',
-    Running: 'bg-amber-100 text-amber-700',
-    Pending: 'bg-blue-100 text-blue-700',
-    Failed: 'bg-red-100 text-red-700',
-  };
-
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status]}`}>
-      {status}
-    </span>
-  );
-}
-
 function BackupTypeBadge({ type }: { type: BackupType }) {
   const styles: Record<BackupType, string> = {
     Realtime: 'bg-violet-100 text-violet-700',
@@ -299,6 +278,57 @@ function BackupTypeBadge({ type }: { type: BackupType }) {
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[type]}`}>
       {icons[type]}
       {type}
+    </span>
+  );
+}
+
+function ScheduleFrequencyBadge({ frequency }: { frequency: string }) {
+  if (frequency === '--') {
+    return <span className='inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold text-gray-500'>--</span>;
+  }
+
+  const styles: Record<string, string> = {
+    'Hourly': 'bg-orange-100 text-orange-700',
+    'Daily': 'bg-cyan-100 text-cyan-700',
+    'Weekly': 'bg-green-100 text-green-700',
+    'Monthly': 'bg-purple-100 text-purple-700',
+    'Custom': 'bg-indigo-100 text-indigo-700',
+    'Once': 'bg-gray-100 text-gray-700',
+  };
+
+  const style = styles[frequency] || 'bg-gray-100 text-gray-700';
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style}`}>
+      {frequency}
+    </span>
+  );
+}
+
+function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
+  const styles: Record<string, string> = {
+    'DRAFT': 'bg-yellow-100 text-yellow-700',
+    'ACTIVE': 'bg-blue-100 text-blue-700',
+    'PENDING': 'bg-blue-100 text-blue-700',
+    'SUCCESS': 'bg-green-100 text-green-700',
+    'FAILED': 'bg-red-100 text-red-700',
+    'PAUSED': 'bg-gray-100 text-gray-700',
+    'RESUMED': 'bg-purple-100 text-purple-700',
+  };
+
+  const labels: Record<string, string> = {
+    'DRAFT': 'Draft',
+    'ACTIVE': 'Active',
+    'PENDING': 'Pending',
+    'SUCCESS': 'Success',
+    'FAILED': 'Failed',
+    'PAUSED': 'Paused',
+    'RESUMED': 'Resumed',
+  };
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[backupStatus] || styles['PENDING']}`}>
+      {labels[backupStatus] || backupStatus}
     </span>
   );
 }
@@ -404,10 +434,13 @@ function FilterBar({
         aria-label='Filter by status'
       >
         <option value='All'>All Statuses</option>
-        <option value='Completed'>Completed</option>
-        <option value='Running'>Running</option>
-        <option value='Pending'>Pending</option>
-        <option value='Failed'>Failed</option>
+        <option value='DRAFT'>Draft</option>
+        <option value='ACTIVE'>Active</option>
+        <option value='PENDING'>Pending</option>
+        <option value='SUCCESS'>Success</option>
+        <option value='FAILED'>Failed</option>
+        <option value='PAUSED'>Paused</option>
+        <option value='RESUMED'>Resumed</option>
       </select>
 
       {(filters.backupType !== 'All' || filters.status !== 'All') && (
@@ -423,8 +456,8 @@ function FilterBar({
   );
 }
 
-export default function BackupManagement() {
-  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+export default function BackupManagementV2() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -444,17 +477,35 @@ export default function BackupManagement() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'ACTIVE' | 'PAUSED' | 'RESUMED' }) =>
+      backupConfigService.updateBackupConfig(backupConfigId, { backupStatus }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update backup status:', error);
+      alert('Failed to update backup status. Please try again.');
+    },
+  });
+
+  const queryFn = useCallback(() =>
+    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
+    [currentCursor]
+  );
+
   const backupQuery = useQuery({
     queryKey: ['backup-config-list', currentCursor],
-    queryFn: () => backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
-    staleTime: 10_000,
+    queryFn,
+    staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 
   const listObject = (backupQuery.data as any)?.data ?? null;
   const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
   const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
-    limit: 20,
+    limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
     totalPages: 1,
@@ -469,22 +520,19 @@ export default function BackupManagement() {
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
     }
-  }, [backupQuery.data, currentPage, cursorMap]);
+  }, [backupQuery.data, currentPage]);
 
-  const getScheduleTypeLabel = (frequency?: string): string => {
+  const getScheduleFrequencyDisplay = (frequency?: string): string => {
     if (!frequency) return '--';
-    const frequencyMap: Record<string, string> = {
+    const freqMap: Record<string, string> = {
       'HOURLY': 'Hourly',
       'DAILY': 'Daily',
       'WEEKLY': 'Weekly',
       'MONTHLY': 'Monthly',
       'CUSTOM': 'Custom',
-      'HOUR': 'Hourly',
-      'DAY': 'Daily',
-      'WEEK': 'Weekly',
-      'MONTH': 'Monthly',
+      'ONCE': 'Once',
     };
-    return frequencyMap[frequency] || frequency;
+    return freqMap[frequency] || frequency;
   };
 
   const parsedRows: BackupRow[] = (apiDataArray as BackupConfigItem[]).map((item) => {
@@ -493,20 +541,17 @@ export default function BackupManagement() {
         ? (item.platform as PlatformType)
         : 'Salesforce';
 
-    const scheduleType = item.schedule === 'REALTIME'
-      ? 'Real-Time'
-      : getScheduleTypeLabel(item.scheduleConfig?.scheduling?.frequency);
-
     return {
       id: item.backupConfigId,
       slug: item.slug,
       name: item.name,
       platform,
-      status: item.backupStatus === 'SUCCESS' ? 'Completed' : item.backupStatus === 'RUNNING' ? 'Running' : item.backupStatus === 'PENDING' ? 'Pending' : item.backupStatus === 'FAILED' ? 'Failed' : 'Pending',
+      status: (item.backupStatus as BackupStatus) || 'PENDING',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
-      scheduleType,
+      scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: formatDateTime(item.lastBackupAt),
-      dataSize: item.sizeInBytes ? formatBytes(item.sizeInBytes) : '--',
+      dataSize: formatBytes(item.sizeInBytes),
+      backupStatus: (item.backupStatus as 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
     };
   });
 
@@ -523,7 +568,7 @@ export default function BackupManagement() {
       render: (row) => (
         <div className='flex min-w-0 items-center gap-3'>
           <PlatformBadge platform={row.platform as PlatformType} size='sm' />
-          <Link to={`/backup-management/${row.slug}`} className='whitespace-normal'>
+          <Link to={`/backup-management-v2/details/${row.slug}`} className='whitespace-normal'>
             <Typography as='span' variant='label' color='secondary' className='underline hover:text-blue-600'>
               {row.name}
             </Typography>
@@ -543,15 +588,14 @@ export default function BackupManagement() {
       render: (row) => <BackupTypeBadge type={row.backupType} />,
     },
     {
-      key: 'scheduleType',
+      key: 'scheduleFrequency',
       header: 'Schedule Type',
-      className: 'text-xs text-gray-500',
-      render: (row) => row.scheduleType,
+      render: (row) => row.backupType === 'Schedule' ? <ScheduleFrequencyBadge frequency={row.scheduleFrequency} /> : <span className='text-gray-400 text-[10px]'>N/A</span>,
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => <StatusBadge status={row.status} />,
+      key: 'backupStatus',
+      header: 'Backup Status',
+      render: (row) => <BackupStatusBadge backupStatus={row.backupStatus} />,
     },
     {
       key: 'lastRun',
@@ -570,7 +614,7 @@ export default function BackupManagement() {
       header: 'Action',
       render: (row) => (
         <div className='flex items-center gap-2 text-gray-400'>
-          <Link to={`/backup-management/${row.slug}`} className='transition hover:text-gray-600' aria-label='View details'>
+          <Link to={`/backup-management-v2/details/${row.slug}`} className='transition hover:text-gray-600' aria-label='View details'>
             <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
               <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
               <circle cx='12' cy='12' r='3' />
@@ -579,8 +623,18 @@ export default function BackupManagement() {
           <ActionDropdown
             key={row.id}
             items={[
-              { label: 'Run Now' },
-              { label: 'Pause' },
+              ...(row.backupStatus === 'DRAFT' ? [{
+                label: 'Activate',
+                onClick: () => updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'ACTIVE' }),
+              }] : []),
+              ...(row.backupStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
+              ...(row.backupStatus !== 'DRAFT' ? [{
+                label: row.backupStatus === 'PAUSED' ? 'Resume' : 'Pause',
+                onClick: () => {
+                  const newStatus = row.backupStatus === 'PAUSED' ? 'RESUMED' : 'PAUSED';
+                  updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: newStatus });
+                },
+              }] : []),
               { label: 'Manage' },
               { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
             ]}
@@ -605,8 +659,8 @@ export default function BackupManagement() {
 
           <button
             type='button'
-            onClick={() => setIsCreatingBackup(true)}
-            className='inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
+            onClick={() => navigate('/backup-management/add')}
+            className='inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition'
           >
             + New Backup
           </button>
@@ -628,7 +682,8 @@ export default function BackupManagement() {
             rows={filteredBackups}
             getRowKey={(row) => row.id}
             rowClassName='border-t border-gray-100'
-            minWidthClassName='min-w-[960px]'
+            // minWidthClassName='min-w-[960px]'
+            minHeightClassName='min-h-[500px]'
             pagination={{
               currentPage,
               pageSize: apiMeta.limit ?? 10,
@@ -654,12 +709,6 @@ export default function BackupManagement() {
           />
         )}
       </Panel>
-
-      <AddBackupModal
-        isOpen={isCreatingBackup}
-        onClose={() => setIsCreatingBackup(false)}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['backup-config-list'] })}
-      />
 
       <WarningDialog
         isOpen={!!deleteTarget}
