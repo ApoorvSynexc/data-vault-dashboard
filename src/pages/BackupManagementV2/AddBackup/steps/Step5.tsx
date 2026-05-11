@@ -104,19 +104,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     }));
   }, [allObjects, countResponse?.objectCounts]);
 
-  const totalRecords = allObjects.length;
-
-  // Client-side pagination from cached data
-  const offset = currentPage * ITEMS_PER_PAGE;
-  const objects = objectsWithCounts.slice(offset, offset + ITEMS_PER_PAGE);
-
   const isLoading = isLoadingObjects || isLoadingCount;
   const error = objectsError;
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
 
-  const filteredObjects = useMemo(() => {
-    return objects.filter((obj) => {
+  // Filter across all objects first
+  const allFilteredObjects = useMemo(() => {
+    return objectsWithCounts.filter((obj) => {
       const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
       let matchesFilter = true;
 
@@ -129,7 +124,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
       return matchesSearch && matchesFilter;
     });
-  }, [searchQuery, selectedFilter, objects]);
+  }, [searchQuery, selectedFilter, objectsWithCounts]);
+
+  const totalRecords = allFilteredObjects.length;
+
+  // Client-side pagination from filtered data
+  const offset = currentPage * ITEMS_PER_PAGE;
+  const filteredObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
 
   // When search/filter changes, reset to first page
   useEffect(() => {
@@ -287,7 +288,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             <div className='p-6 pt-4 flex-shrink-0 border-t border-gray-200'>
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-gray-600'>
-                  Showing {objects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
+                  Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
                 </div>
 
                 <div className='flex items-center gap-4'>
