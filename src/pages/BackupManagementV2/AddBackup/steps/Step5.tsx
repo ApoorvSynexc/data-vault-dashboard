@@ -30,25 +30,57 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 10;
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
   };
   const maxSteps = getMaxSteps();
 
-  // Fetch paginated objects from API
-  const { data: objectsResponse, isLoading, error } = useQuery({
-    queryKey: ['backup-objects', crmId, currentPage],
+  // Fetch all objects ONCE and cache them
+  const { data: allObjectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
+    queryKey: ['backup-objects-all', crmId],
     queryFn: async () => {
-      const offset = currentPage * ITEMS_PER_PAGE;
-      return backupConfigService.getObjectListPaginated(crmId ?? '', offset, ITEMS_PER_PAGE);
+      const response = await backupConfigService.getObjectList(crmId ?? '');
+      return response;
     },
     enabled: !!crmId,
   });
 
-  const objects: BackupObject[] = (objectsResponse?.objects as any) ?? [];
-  const totalRecords = objectsResponse?.totalRecords ?? 0;
+  const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
+
+  // Fetch object count API lazily - only for current page's batch
+  const { data: countResponse, isLoading: isLoadingCount } = useQuery({
+    queryKey: ['backup-objects-count', crmId, currentPage],
+    queryFn: async () => {
+      if (allObjects.length === 0) {
+        return { totalRecords: 0 };
+      }
+      const objectApiNames = allObjects.map((obj) => obj.id);
+      const BATCH_SIZE = 10;
+      const batchIndex = currentPage;
+      const batchStart = batchIndex * BATCH_SIZE;
+      const batchEnd = batchStart + BATCH_SIZE;
+      const currentBatch = objectApiNames.slice(batchStart, batchEnd);
+
+      if (currentBatch.length > 0) {
+        await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
+      }
+
+      return { totalRecords: allObjects.length };
+    },
+    enabled: !!crmId && allObjects.length > 0,
+  });
+
+  const totalRecords = countResponse?.totalRecords ?? allObjects.length;
+
+  // Client-side pagination from cached data
+  const offset = currentPage * ITEMS_PER_PAGE;
+  const objects = allObjects.slice(offset, offset + ITEMS_PER_PAGE);
+
+  const isLoading = isLoadingObjects || isLoadingCount;
+  const error = objectsError;
+
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
 
   const filteredObjects = useMemo(() => {
