@@ -212,6 +212,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 showPagination={false}
                 height='500px'
                 showSerialNumber={true}
+                serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
               />
             </div>
 
