@@ -286,9 +286,9 @@ export default function BackupHistory(_: BackupHistoryProps) {
   ];
 
   return (
-    <div className='space-y-2'>
-      {/* Stats Cards */}
-      <div className='bg-white rounded border border-gray-200 p-4'>
+    <div className='flex flex-col h-full gap-2'>
+      {/* Stats Cards - Fixed Height */}
+      <div className='bg-white rounded border border-gray-200 p-4 flex-shrink-0'>
         <div className='grid grid-cols-4 gap-3'>
           <div className='bg-gray-50 rounded p-3'>
             <div className='flex items-center gap-2 mb-1'>
@@ -336,8 +336,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
       </div>
 
-      {/* Backup History Table */}
-      <div className='bg-white rounded border border-gray-200 flex flex-col' style={{ height: 'calc(100vh - 280px)' }}>
+      {/* Backup History Table - Grows to fill available space */}
+      <div className='bg-white rounded border border-gray-200 flex flex-col flex-1 min-h-0'>
         <div className='flex-1 overflow-y-auto' style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties & { scrollbarWidth?: string; msOverflowStyle?: string }}>
           <style>{`
             div::-webkit-scrollbar {
