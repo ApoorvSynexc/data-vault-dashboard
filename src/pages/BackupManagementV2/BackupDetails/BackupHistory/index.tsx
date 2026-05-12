@@ -1,10 +1,29 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
+import type { TableColumn } from '../../../../components/Table';
+import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
 import JobDetailsModal from './JobDetailsModal';
+
+interface BackupJob {
+  backupJobId: string;
+  startedAt?: string;
+  completedAt?: string;
+  status?: string;
+  object?: BackupJobObject[];
+  sizeInBytes?: number;
+  jobType?: string;
+  errorMessage?: string;
+}
+
+interface BackupJobObject {
+  name: string;
+  status: string;
+  totalRecordCount?: number;
+}
 
 const ErrorMessageCell = ({ errorMessage }: { errorMessage?: string }) => {
   const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
@@ -100,28 +119,18 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<{ [page: number]: string | null }>({ 1: null });
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const itemsPerPage = 20;
 
   const { data: jobsResponse } = useQuery({
-    queryKey: ['backup-jobs', slug, currentPage, cursors[currentPage]],
+    queryKey: ['backup-jobs', slug, cursor],
     queryFn: async () => {
       if (!slug) return null;
-      const cursor = cursors[currentPage] || undefined;
-      const response = await backupConfigService.listBackupJobs(slug, true, cursor, itemsPerPage);
-
-      // Store the next cursor for the next page
-      if (response?.meta?.nextCursor) {
-        setCursors((prev) => {
-          const newCursors = { ...prev };
-          newCursors[currentPage + 1] = (response.meta!.nextCursor as string) || null;
-          return newCursors;
-        });
-      }
-
+      const response = await backupConfigService.listBackupJobs(slug, true, cursor || undefined, itemsPerPage);
       return response;
     },
     enabled: !!slug,
@@ -140,9 +149,9 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const currentJobs = (jobsResponse as any)?.data || [];
   const apiMeta = (jobsResponse as any)?.meta;
   const totalItems = apiMeta?.totalRecords || 0;
-  const totalPages = apiMeta?.totalPages || 1;
-  const hasNextPage = apiMeta?.nextCursor !== null && apiMeta?.nextCursor !== undefined;
-  const hasPrevPage = currentPage > 1;
+  const nextCursor = apiMeta?.nextCursor || null;
+  const hasNextPage = nextCursor !== null && nextCursor !== undefined;
+  const hasPrevPage = pageIndex > 0;
 
   // Get stats from API
   const apiStats = statsResponse as any;
@@ -165,8 +174,23 @@ export default function BackupHistory(_: BackupHistoryProps) {
     totalDataBackedUp,
   };
 
-  // Use the current page jobs directly from API
-  const paginatedJobs = currentJobs;
+  const handleNext = () => {
+    if (nextCursor) {
+      setCursorHistory([...cursorHistory, nextCursor]);
+      setCursor(nextCursor);
+      setPageIndex(pageIndex + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (hasPrevPage) {
+      const newHistory = cursorHistory.slice(0, -1);
+      const prevCursor = newHistory[newHistory.length - 1] || null;
+      setCursorHistory(newHistory);
+      setCursor(prevCursor);
+      setPageIndex(pageIndex - 1);
+    }
+  };
 
   const handleResume = async (backupJobId: string) => {
     setResumingJobId(backupJobId);
@@ -179,6 +203,85 @@ export default function BackupHistory(_: BackupHistoryProps) {
       setResumingJobId(null);
     }
   };
+
+  // Define columns for the Table component
+  const columns: TableColumn<BackupJob>[] = [
+    {
+      key: 'startedAt',
+      header: 'Start Time',
+      render: (job) => job.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY h:mm A') : '--',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (job) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(job.status || '')}`}>
+          {getStatusDisplayText(job.status || '')}
+        </span>
+      ),
+    },
+    {
+      key: 'duration',
+      header: 'Duration',
+      render: (job) => calculateDuration(job.startedAt, job.completedAt),
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      render: (job) => formatBytes(calculateJobDataSize(job)),
+    },
+    {
+      key: 'objects',
+      header: 'Objects',
+      render: (job) => job.object?.length || 0,
+    },
+    {
+      key: 'jobType',
+      header: 'Backup Type',
+      render: (job) => job.jobType === 'BULK' ? 'Scheduled' : 'Realtime',
+    },
+    {
+      key: 'errorMessage',
+      header: 'Error Message',
+      render: (job) => <ErrorMessageCell errorMessage={job.errorMessage} />,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (job) => (
+        <div className='flex items-center gap-2'>
+          {job.status === 'FAILED' ? (
+            <button
+              type='button'
+              disabled={resumingJobId === job.backupJobId}
+              onClick={() => handleResume(job.backupJobId)}
+              className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
+            >
+              {resumingJobId === job.backupJobId ? (
+                <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
+              ) : (
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
+                  <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
+                </svg>
+              )}
+              {resumingJobId === job.backupJobId ? 'Resuming…' : 'Resume'}
+            </button>
+          ) : null}
+          <button
+            type='button'
+            onClick={() => setSelectedJobId(job.backupJobId)}
+            className='text-gray-400 hover:text-gray-600 transition'
+            aria-label='View details'
+          >
+            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+              <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+              <circle cx='12' cy='12' r='3' />
+            </svg>
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className='space-y-2'>
@@ -232,126 +335,46 @@ export default function BackupHistory(_: BackupHistoryProps) {
       </div>
 
       {/* Backup History Table */}
-      <div className='bg-white rounded border border-gray-200'>
-        <div className='overflow-x-auto'>
-          <table className='w-full text-sm'>
-            <thead>
-              <tr className='border-b border-gray-200'>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>#</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Start Time</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Status</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Duration</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Data Size</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Objects</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Backup Type</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Error Message</th>
-                <th className='text-left px-4 py-3 font-medium text-gray-600'>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedJobs.length > 0 ? (
-                paginatedJobs.map((row: any, index: number) => {
-                  const serialNumber = (currentPage - 1) * itemsPerPage + index + 1;
-                  return (
-                    <tr key={row.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
-                      <td className='px-4 py-3 text-sm text-gray-600'>{String(serialNumber).padStart(2, '0')}</td>
-                      <td className='px-4 py-3 text-gray-900'>{row.startedAt ? dayjs(row.startedAt).format('MMM D, YYYY h:mm A') : '--'}</td>
-                    <td className='px-4 py-3'>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(row.status)}`}>
-                        {getStatusDisplayText(row.status)}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-gray-900'>{calculateDuration(row.startedAt, row.completedAt)}</td>
-                    <td className='px-4 py-3 text-gray-900'>{formatBytes(calculateJobDataSize(row))}</td>
-                    <td className='px-4 py-3 text-gray-900'>{row.object?.length || row.recordCount || 0}</td>
-                    <td className='px-4 py-3 text-gray-900'>{row.jobType === 'BULK' ? 'Scheduled' : 'Realtime'}</td>
-                    <td className='px-4 py-3'>
-                      <ErrorMessageCell errorMessage={row.errorMessage} />
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center gap-2'>
-                        {row.status === 'FAILED' ? (
-                          <button
-                            type='button'
-                            disabled={resumingJobId === row.backupJobId}
-                            onClick={() => handleResume(row.backupJobId)}
-                            className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
-                          >
-                            {resumingJobId === row.backupJobId ? (
-                              <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
-                            ) : (
-                              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
-                                <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
-                              </svg>
-                            )}
-                            {resumingJobId === row.backupJobId ? 'Resuming…' : 'Resume'}
-                          </button>
-                        ) : null}
-                        <button
-                          type='button'
-                          onClick={() => setSelectedJobId(row.backupJobId)}
-                          className='text-gray-400 hover:text-gray-600 transition'
-                          aria-label='View details'
-                        >
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-                            <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-                            <circle cx='12' cy='12' r='3' />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={9} className='px-4 py-8 text-center text-sm text-gray-500'>
-                    No backup history found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <div className='bg-white rounded border border-gray-200 flex flex-col' style={{ height: 'calc(100vh - 280px)' }}>
+        <div className='flex-1 overflow-y-auto' style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties & { scrollbarWidth?: string; msOverflowStyle?: string }}>
+          <style>{`
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          <Table<BackupJob>
+            columns={columns}
+            rows={currentJobs}
+            getRowKey={(job) => job.backupJobId}
+            showPagination={false}
+            showSerialNumber={true}
+            serialNumberStart={pageIndex * itemsPerPage + 1}
+            emptyState='No backup history found.'
+          />
         </div>
 
-        {/* Pagination */}
-        {(hasPrevPage || hasNextPage) && (
-          <div className='flex items-center justify-between border-t border-gray-200 px-4 py-3'>
-            <p className='text-sm text-gray-600'>
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
-            </p>
-
-            <div className='flex items-center gap-4'>
-              {/* Pagination Controls */}
-              <div className='flex items-center gap-2'>
-                {/* Previous Button */}
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={!hasPrevPage}
-                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-                >
-                  &lt;
-                </button>
-
-                {/* Page Number Display */}
-                <div className='flex items-center gap-1'>
-                  <span className='px-3 py-1 text-sm font-medium text-gray-700'>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                </div>
-
-                {/* Next Button */}
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={!hasNextPage}
-                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-                >
-                  &gt;
-                </button>
-              </div>
-            </div>
+        {/* Custom Pagination */}
+        <div className='p-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0'>
+          <div className='text-sm text-gray-600'>
+            Showing {currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to {pageIndex * itemsPerPage + currentJobs.length} of {totalItems}
           </div>
-        )}
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={handlePrev}
+              disabled={!hasPrevPage}
+              className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!hasNextPage}
+              className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
+            >
+              Next →
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Job Details Modal */}
