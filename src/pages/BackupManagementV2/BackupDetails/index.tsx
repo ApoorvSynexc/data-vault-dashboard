@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
-import ObjectsNData from './ObjectsNData';
+// import ObjectsNData from './ObjectsNData'; // commented out
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import { capitalize } from '../../../utils';
 import salesforceLogo from '../../../assets/icons/salesforce_logo.svg';
@@ -112,7 +112,8 @@ export default function BackupDetails() {
           >
             Backup History
           </button>
-          <button
+          {/* Objects & Data tab - commented out */}
+          {/* <button
             onClick={() => setActiveTab('objects')}
             className={`px-4 py-3 font-medium border-b-2 transition-colors ${
               activeTab === 'objects'
@@ -121,7 +122,7 @@ export default function BackupDetails() {
             }`}
           >
             Objects & Data
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -129,7 +130,8 @@ export default function BackupDetails() {
       <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-4'>
         {activeTab === 'overview' && <Overview backup={backupData} />}
         {activeTab === 'history' && <BackupHistory backup={backupData} />}
-        {activeTab === 'objects' && <ObjectsNData backup={backupData} />}
+        {/* Objects & Data tab - commented out */}
+        {/* {activeTab === 'objects' && <ObjectsNData backup={backupData} />} */}
       </div>
     </div>
   );
