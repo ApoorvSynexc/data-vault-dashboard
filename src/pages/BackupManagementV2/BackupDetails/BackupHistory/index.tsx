@@ -7,6 +7,7 @@ import { useBackupConfigService } from '../../../../services/backup-config/backu
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
 import JobDetailsModal from './JobDetailsModal';
+import ChangesDetailModal from './ChangesDetailModal';
 
 interface BackupJob {
   backupJobId: string;
@@ -124,6 +125,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState<string | null>(null);
   const itemsPerPage = 20;
 
   const { data: jobsResponse } = useQuery({
@@ -269,7 +271,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
           ) : null}
           <button
             type='button'
-            onClick={() => setSelectedJobId(job.backupJobId)}
+            onClick={() => setSelectedJobForDetails(job.backupJobId)}
             className='text-gray-400 hover:text-gray-600 transition'
             aria-label='View details'
           >
@@ -382,6 +384,15 @@ export default function BackupHistory(_: BackupHistoryProps) {
         <JobDetailsModal
           job={currentJobs.find((j: any) => j.backupJobId === selectedJobId)}
           onClose={() => setSelectedJobId(null)}
+        />
+      )}
+
+      {/* Changes Detail Modal */}
+      {selectedJobForDetails && (
+        <ChangesDetailModal
+          isOpen={true}
+          onClose={() => setSelectedJobForDetails(null)}
+          job={currentJobs.find((j: any) => j.backupJobId === selectedJobForDetails)}
         />
       )}
     </div>
