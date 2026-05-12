@@ -207,20 +207,20 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   return (
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between p-8 pb-4 flex-shrink-0'>
+      <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Data Scope</h1>
-          <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
+          <h1 className='text-2xl font-bold text-gray-900'>Data Scope</h1>
+          <p className='text-sm text-gray-600 mt-1'>Select object that you want to backup in scheduled backup</p>
         </div>
-        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+        <span className='text-xs font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 5 of {maxSteps}
         </span>
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 mx-8 flex flex-col flex-grow min-h-0'>
+      <div className='bg-white rounded-lg border border-gray-200 mx-6 my-4 flex flex-col flex-grow min-h-0'>
         {/* Search and Filter */}
-        <div className='p-6 pb-4 flex items-center gap-4 justify-between flex-shrink-0'>
+        <div className='px-6 py-3 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
             <input
               type='text'
@@ -269,7 +269,23 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         {/* Table Container - Scrollable */}
         {!isLoading && !error && (
           <>
-            <div className='h-[40vh] overflow-y-auto px-6 py-4'>
+            <style>{`
+              table {
+                border-collapse: separate;
+                border-spacing: 0;
+              }
+              table thead {
+                position: sticky !important;
+                top: 0 !important;
+                background-color: white !important;
+                z-index: 30 !important;
+              }
+              table thead th {
+                position: relative;
+                background-color: white !important;
+              }
+            `}</style>
+            <div className='flex-1 min-h-0 max-h-96 px-6 py-2 overflow-hidden'>
               <Table<BackupObject>
                 columns={columns}
                 rows={filteredObjects}
@@ -286,14 +302,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 }`}
                 emptyState='No objects found matching your search.'
                 showPagination={false}
-                height='500px'
+                minHeightClassName='min-h-0'
                 showSerialNumber={true}
                 serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
               />
             </div>
 
             {/* Pagination Controls */}
-            <div className='p-6 pt-4 flex-shrink-0 border-t border-gray-200'>
+            <div className='px-6 py-3 flex-shrink-0 border-t border-gray-200'>
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-gray-600'>
                   Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
@@ -381,7 +397,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between flex-shrink-0 p-8 pt-6'>
+      <div className='flex justify-between flex-shrink-0 px-8 py-4'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
