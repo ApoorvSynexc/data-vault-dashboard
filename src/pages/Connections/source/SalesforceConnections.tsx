@@ -198,7 +198,7 @@ export default function SalesforceConnections() {
                       </div>
                     </div>
 
-                    <div className='flex items-center gap-4'>
+                    <div className='flex items-center gap-3'>
                       <div className='text-right'>
                         <p className={`text-sm font-semibold ${org.isConnected ? getStatusColor(org.status) : 'text-gray-600'}`}>
                           <span className='mr-1'>{org.isConnected ? getStatusIcon(org.status) : '○'}</span>
@@ -206,6 +206,17 @@ export default function SalesforceConnections() {
                         </p>
                         <p className='text-xs text-gray-500'>Connected on {formatDate(org.createdAt)}</p>
                       </div>
+
+                      <button
+                        type='button'
+                        onClick={() => navigate(`/connections/salesforce/edit/${org.crmId}`)}
+                        className='inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50'
+                      >
+                        <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
+                          <path d='M11.586 2.686l.828-.828a2 2 0 012.828 0l2.828 2.828a2 2 0 010 2.828l-.828.828m-2.83-2.83l-2.5 2.5a2 2 0 00-.5 1.06V9h1.06a2 2 0 001.06-.5l2.5-2.5m0-2.83l2.83 2.83M3 7v10a2 2 0 002 2h10a2 2 0 002-2V7' strokeLinecap='round' strokeLinejoin='round' />
+                        </svg>
+                        Edit
+                      </button>
 
                       {org.isConnected ? (
                         <button
