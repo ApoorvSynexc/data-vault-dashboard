@@ -11,17 +11,18 @@ interface ObjectDetail {
   id: string;
   name: string;
   type: 'Standard' | 'Custom';
+  status: string;
   newRecords: number;
   updatedRecords: number;
   deletedRecords: number;
-  totalChanges: number;
+  errorMessage?: string;
 }
 
 export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDetailModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [hoveredErrorId, setHoveredErrorId] = useState<string | null>(null);
 
   const itemsPerPage = 5;
 
@@ -31,10 +32,11 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
     id: obj.bulkJobId || `${idx}`,
     name: obj.name || 'Unknown',
     type: obj.name?.includes('__c') ? 'Custom' : 'Standard',
+    status: obj.status || 'UNKNOWN',
     newRecords: obj.insertCount || 0,
     updatedRecords: obj.completedRecordCount || 0,
     deletedRecords: 0,
-    totalChanges: (obj.insertCount || 0) + (obj.completedRecordCount || 0),
+    errorMessage: obj.errorMessage,
   }));
 
   const filteredData = transformedData.filter((item: ObjectDetail) => {
@@ -58,10 +60,22 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
     objectsSynced: transformedData.length,
   };
 
-  const toggleExpandedRow = (id: string) => {
-    setExpandedRows(prev =>
-      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
-    );
+  const getStatusColor = (status: string) => {
+    const upperStatus = status?.toUpperCase();
+    switch (upperStatus) {
+      case 'COMPLETED':
+      case 'SUCCESS':
+        return 'bg-green-100 text-green-800';
+      case 'FAILED':
+        return 'bg-red-100 text-red-800';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'IN_PROGRESS':
+      case 'RUNNING':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const startedAt = job.startedAt ? new Date(job.startedAt) : null;
@@ -155,10 +169,11 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
                   <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900 w-12'>#</th>
                   <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Object</th>
                   <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Type</th>
+                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Status</th>
                   <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>New Records</th>
                   <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>Updated Records</th>
                   <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>Deleted Records</th>
-                  <th className='px-6 py-3 text-right text-sm font-semibold text-gray-900'>Total Changes</th>
+                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Error Message</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,21 +188,37 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
                         {item.type}
                       </span>
                     </td>
+                    <td className='px-6 py-4 text-sm text-gray-600'>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </td>
                     <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.newRecords}</td>
                     <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.updatedRecords}</td>
                     <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.deletedRecords}</td>
-                    <td className='px-6 py-4 text-sm text-right'>
-                      <div className='flex items-center justify-end gap-3'>
-                        <span className='text-green-600 font-medium'>+{item.totalChanges}</span>
-                        <button
-                          onClick={() => toggleExpandedRow(item.id)}
-                          className='text-gray-400 hover:text-gray-600'
-                        >
-                          <svg className={`w-4 h-4 transition-transform ${expandedRows.includes(item.id) ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 14l-7 7m0 0l-7-7m7 7V3' />
-                          </svg>
-                        </button>
-                      </div>
+                    <td className='px-6 py-4 text-sm text-gray-600'>
+                      {item.errorMessage ? (
+                        <div className='relative inline-block'>
+                          <span
+                            className='text-red-600 text-xs cursor-help'
+                            onMouseEnter={() => setHoveredErrorId(item.id)}
+                            onMouseLeave={() => setHoveredErrorId(null)}
+                          >
+                            {item.errorMessage.length > 50
+                              ? item.errorMessage.substring(0, 50) + '...'
+                              : item.errorMessage}
+                          </span>
+
+                          {hoveredErrorId === item.id && (
+                            <div className='absolute bottom-full left-0 mb-2 z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-normal max-w-xs break-words'>
+                              {item.errorMessage}
+                              <div className='absolute top-full left-2 w-2 h-2 bg-gray-900 transform rotate-45'></div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400 text-xs'>--</span>
+                      )}
                     </td>
                   </tr>
                 ))}
