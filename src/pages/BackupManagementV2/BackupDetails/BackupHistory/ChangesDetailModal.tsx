@@ -24,7 +24,7 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredErrorId, setHoveredErrorId] = useState<string | null>(null);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 50;
 
   if (!isOpen || !job) return null;
 
