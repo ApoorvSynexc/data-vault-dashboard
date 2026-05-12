@@ -5,7 +5,7 @@ type ChangesDetailModalProps = {
   isOpen: boolean;
   onClose: () => void;
   job?: any;
-  onRefresh?: () => void;
+  onRefresh?: () => Promise<void>;
 };
 
 interface ObjectDetail {
@@ -161,15 +161,18 @@ export default function ChangesDetailModal({ isOpen, onClose, job, onRefresh }: 
                 </button>
               ))}
               <button
-                onClick={() => {
+                onClick={async () => {
                   setIsRefreshing(true);
-                  if (onRefresh) {
-                    onRefresh();
+                  try {
+                    if (onRefresh) {
+                      await onRefresh();
+                    }
+                  } finally {
+                    setIsRefreshing(false);
                   }
-                  setIsRefreshing(false);
                 }}
                 disabled={isRefreshing}
-                className='p-2 text-gray-600 hover:text-gray-900 transition disabled:opacity-50'
+                className='p-2 text-gray-600 hover:text-gray-900 transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed'
                 title='Refresh data'
               >
                 <svg
