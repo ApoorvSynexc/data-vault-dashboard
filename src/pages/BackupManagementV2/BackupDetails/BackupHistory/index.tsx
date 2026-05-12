@@ -337,29 +337,30 @@ export default function BackupHistory(_: BackupHistoryProps) {
       </div>
 
       {/* Backup History Table - Grows to fill available space */}
-      <div className='bg-white rounded border border-gray-200 flex flex-col flex-1 min-h-0'>
-        <div className='flex-1 overflow-y-auto'>
-          <style>{`
-            table {
-              border-collapse: separate;
-              border-spacing: 0;
-            }
-            table thead {
-              position: sticky !important;
-              top: 0 !important;
-              background-color: white !important;
-              z-index: 30 !important;
-            }
-            table thead th {
-              position: relative;
-              background-color: white !important;
-            }
-          `}</style>
+      <div className='flex flex-col flex-1 min-h-0 gap-0'>
+        <style>{`
+          table {
+            border-collapse: separate;
+            border-spacing: 0;
+          }
+          table thead {
+            position: sticky !important;
+            top: 0 !important;
+            background-color: white !important;
+            z-index: 30 !important;
+          }
+          table thead th {
+            position: relative;
+            background-color: white !important;
+          }
+        `}</style>
+        <div className='flex-1 min-h-0 flex flex-col'>
           <Table<BackupJob>
             columns={columns}
             rows={currentJobs}
             getRowKey={(job) => job.backupJobId}
             showPagination={false}
+            minHeightClassName='min-h-0'
             showSerialNumber={true}
             serialNumberStart={pageIndex * itemsPerPage + 1}
             emptyState='No backup history found.'
@@ -367,7 +368,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
 
         {/* Custom Pagination */}
-        <div className='p-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0'>
+        <div className='p-4 border border-gray-200 flex items-center justify-between flex-shrink-0 bg-white rounded-b'>
           <div className='text-sm text-gray-600'>
             Showing {currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to {pageIndex * itemsPerPage + currentJobs.length} of {totalItems}
           </div>
