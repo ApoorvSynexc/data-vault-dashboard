@@ -101,14 +101,26 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
+  const [cursors, setCursors] = useState<{ [page: number]: string | null }>({ 1: null });
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const itemsPerPage = 20;
 
   const { data: jobsResponse } = useQuery({
-    queryKey: ['backup-jobs', slug],
+    queryKey: ['backup-jobs', slug, currentPage, cursors[currentPage]],
     queryFn: async () => {
       if (!slug) return null;
-      const response = await backupConfigService.listBackupJobs(slug, true, undefined, 50);
+      const cursor = cursors[currentPage];
+      const response = await backupConfigService.listBackupJobs(slug, true, cursor, itemsPerPage);
+
+      // Store the next cursor for the next page
+      if (response?.meta?.nextCursor) {
+        setCursors(prev => ({
+          ...prev,
+          [currentPage + 1]: response.meta.nextCursor
+        }));
+      }
+
       return response;
     },
     enabled: !!slug,
@@ -124,10 +136,12 @@ export default function BackupHistory(_: BackupHistoryProps) {
     enabled: !!slug,
   });
 
-  const allJobs = (jobsResponse as any)?.data || [];
-  const itemsPerPage = 10;
-  const totalItems = allJobs.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const currentJobs = (jobsResponse as any)?.data || [];
+  const apiMeta = (jobsResponse as any)?.meta;
+  const totalItems = apiMeta?.totalRecords || 0;
+  const totalPages = apiMeta?.totalPages || 1;
+  const hasNextPage = apiMeta?.nextCursor !== null && apiMeta?.nextCursor !== undefined;
+  const hasPrevPage = currentPage > 1;
 
   // Get stats from API
   const apiStats = statsResponse as any;
@@ -150,10 +164,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
     totalDataBackedUp,
   };
 
-  // Paginate jobs
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedJobs = allJobs.slice(startIndex, endIndex);
+  // Use the current page jobs directly from API
+  const paginatedJobs = currentJobs;
 
   const handleResume = async (backupJobId: string) => {
     setResumingJobId(backupJobId);
@@ -241,7 +253,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
                   const serialNumber = (currentPage - 1) * itemsPerPage + index + 1;
                   return (
                     <tr key={row.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
-                      <td className='px-4 py-3 text-sm text-gray-600'>{serialNumber}</td>
+                      <td className='px-4 py-3 text-sm text-gray-600'>{String(serialNumber).padStart(2, '0')}</td>
                       <td className='px-4 py-3 text-gray-900'>{row.startedAt ? dayjs(row.startedAt).format('MMM D, YYYY h:mm A') : '--'}</td>
                     <td className='px-4 py-3'>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(row.status)}`}>
@@ -302,7 +314,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {(hasPrevPage || hasNextPage) && (
           <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
             <p className='text-sm text-gray-600'>Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}</p>
             <div className='flex items-center gap-4'>
@@ -311,68 +323,23 @@ export default function BackupHistory(_: BackupHistoryProps) {
                 {/* Previous Button */}
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
+                  disabled={!hasPrevPage}
                   className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
                 >
                   &lt;
                 </button>
 
-                {/* Page Numbers */}
+                {/* Page Number Display */}
                 <div className='flex items-center gap-1'>
-                  {(() => {
-                    const pages: (number | string)[] = [];
-                    const maxVisiblePages = 5;
-                    const halfVisible = Math.floor(maxVisiblePages / 2);
-
-                    if (totalPages <= maxVisiblePages) {
-                      for (let i = 1; i <= totalPages; i++) {
-                        pages.push(i);
-                      }
-                    } else {
-                      pages.push(1);
-                      if (currentPage > halfVisible + 1) pages.push('...');
-
-                      const start = Math.max(2, currentPage - halfVisible);
-                      const end = Math.min(totalPages - 1, currentPage + halfVisible);
-
-                      for (let i = start; i <= end; i++) {
-                        if (!pages.includes(i)) pages.push(i);
-                      }
-
-                      if (currentPage < totalPages - halfVisible - 1) pages.push('...');
-                      if (!pages.includes(totalPages)) pages.push(totalPages);
-                    }
-
-                    return pages.map((page, idx) => {
-                      if (page === '...') {
-                        return (
-                          <span key={`dots-${idx}`} className='px-2 text-gray-400'>
-                            ...
-                          </span>
-                        );
-                      }
-                      const pageNum = page as number;
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                            currentPage === pageNum
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    });
-                  })()}
+                  <span className='px-3 py-1 text-sm font-medium text-gray-700'>
+                    Page {currentPage} of {totalPages}
+                  </span>
                 </div>
 
                 {/* Next Button */}
                 <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={!hasNextPage}
                   className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
                 >
                   &gt;
