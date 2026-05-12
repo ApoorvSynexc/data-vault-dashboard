@@ -39,12 +39,12 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
     errorMessage: obj.errorMessage,
   }));
 
+  const uniqueStatuses = Array.from(new Set(transformedData.map(item => item.status))).sort();
+
   const filteredData = transformedData.filter((item: ObjectDetail) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeFilter === 'New') return matchesSearch && item.newRecords > 0;
-    if (activeFilter === 'Updated') return matchesSearch && item.updatedRecords > 0;
-    if (activeFilter === 'Deleted') return matchesSearch && item.deletedRecords > 0;
-    return matchesSearch;
+    if (activeFilter === 'All') return matchesSearch;
+    return matchesSearch && item.status === activeFilter;
   });
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -142,7 +142,7 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
               />
             </div>
             <div className='flex gap-2'>
-              {['All', 'New', 'Updated', 'Deleted'].map(filter => (
+              {['All', ...uniqueStatuses].map(filter => (
                 <button
                   key={filter}
                   onClick={() => {
