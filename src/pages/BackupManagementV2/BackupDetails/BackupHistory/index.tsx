@@ -314,9 +314,12 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
 
         {/* Pagination */}
-        {(hasPrevPage || hasNextPage) && (
-          <div className='flex items-center justify-between px-4 py-3 border-t border-gray-200'>
-            <p className='text-sm text-gray-600'>Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}</p>
+        {totalPages > 1 && (
+          <div className='flex items-center justify-between border-t border-gray-200 px-4 py-3'>
+            <p className='text-sm text-gray-600'>
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
+            </p>
+
             <div className='flex items-center gap-4'>
               {/* Pagination Controls */}
               <div className='flex items-center gap-2'>
@@ -329,11 +332,56 @@ export default function BackupHistory(_: BackupHistoryProps) {
                   &lt;
                 </button>
 
-                {/* Page Number Display */}
+                {/* Page Numbers */}
                 <div className='flex items-center gap-1'>
-                  <span className='px-3 py-1 text-sm font-medium text-gray-700'>
-                    Page {currentPage} of {totalPages}
-                  </span>
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const maxVisiblePages = 5;
+                    const halfVisible = Math.floor(maxVisiblePages / 2);
+
+                    if (totalPages <= maxVisiblePages) {
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      pages.push(1);
+                      if (currentPage > halfVisible + 1) pages.push('...');
+
+                      const start = Math.max(2, currentPage - halfVisible);
+                      const end = Math.min(totalPages - 1, currentPage + halfVisible);
+
+                      for (let i = start; i <= end; i++) {
+                        if (!pages.includes(i)) pages.push(i);
+                      }
+
+                      if (currentPage < totalPages - halfVisible - 1) pages.push('...');
+                      if (!pages.includes(totalPages)) pages.push(totalPages);
+                    }
+
+                    return pages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`dots-${idx}`} className='px-2 text-gray-400'>
+                            ...
+                          </span>
+                        );
+                      }
+                      const pageNum = page as number;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                            currentPage === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Next Button */}
