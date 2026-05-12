@@ -338,10 +338,21 @@ export default function BackupHistory(_: BackupHistoryProps) {
 
       {/* Backup History Table - Grows to fill available space */}
       <div className='bg-white rounded border border-gray-200 flex flex-col flex-1 min-h-0'>
-        <div className='flex-1 overflow-y-auto' style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties & { scrollbarWidth?: string; msOverflowStyle?: string }}>
+        <div className='flex-1 overflow-y-auto'>
           <style>{`
-            div::-webkit-scrollbar {
-              display: none;
+            table {
+              border-collapse: separate;
+              border-spacing: 0;
+            }
+            table thead {
+              position: sticky !important;
+              top: 0 !important;
+              background-color: white !important;
+              z-index: 30 !important;
+            }
+            table thead th {
+              position: relative;
+              background-color: white !important;
             }
           `}</style>
           <Table<BackupJob>
