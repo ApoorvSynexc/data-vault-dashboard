@@ -109,6 +109,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
 
+  // Auto-select all objects if entire dataset is selected
+  useEffect(() => {
+    if (_entireDatasetSelected && objectsWithCounts.length > 0 && selectedObjects.size === 0) {
+      const allObjectIds = objectsWithCounts.map((obj) => obj.id);
+      setSelectedObjects(new Set(allObjectIds));
+    }
+  }, [_entireDatasetSelected, objectsWithCounts, selectedObjects.size]);
+
   // Filter across all objects first
   const allFilteredObjects = useMemo(() => {
     return objectsWithCounts.filter((obj) => {
