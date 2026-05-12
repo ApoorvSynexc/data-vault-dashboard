@@ -405,6 +405,9 @@ export default function BackupHistory(_: BackupHistoryProps) {
           isOpen={true}
           onClose={() => setSelectedJobForDetails(null)}
           job={currentJobs.find((j: any) => j.backupJobId === selectedJobForDetails)}
+          onRefresh={() => {
+            queryClient.invalidateQueries({ queryKey: ['backup-jobs', slug] });
+          }}
         />
       )}
     </div>

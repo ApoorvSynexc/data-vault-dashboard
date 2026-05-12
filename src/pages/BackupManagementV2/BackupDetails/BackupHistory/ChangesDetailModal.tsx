@@ -5,6 +5,7 @@ type ChangesDetailModalProps = {
   isOpen: boolean;
   onClose: () => void;
   job?: any;
+  onRefresh?: () => void;
 };
 
 interface ObjectDetail {
@@ -18,11 +19,12 @@ interface ObjectDetail {
   errorMessage?: string;
 }
 
-export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDetailModalProps) {
+export default function ChangesDetailModal({ isOpen, onClose, job, onRefresh }: ChangesDetailModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredErrorId, setHoveredErrorId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const itemsPerPage = 50;
 
@@ -141,7 +143,7 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
                 className='w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
             </div>
-            <div className='flex gap-2'>
+            <div className='flex gap-2 items-center'>
               {['All', ...uniqueStatuses].map(filter => (
                 <button
                   key={filter}
@@ -158,6 +160,32 @@ export default function ChangesDetailModal({ isOpen, onClose, job }: ChangesDeta
                   {filter}
                 </button>
               ))}
+              <button
+                onClick={() => {
+                  setIsRefreshing(true);
+                  if (onRefresh) {
+                    onRefresh();
+                  }
+                  setIsRefreshing(false);
+                }}
+                disabled={isRefreshing}
+                className='p-2 text-gray-600 hover:text-gray-900 transition disabled:opacity-50'
+                title='Refresh data'
+              >
+                <svg
+                  className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+                  />
+                </svg>
+              </button>
             </div>
           </div>
 
