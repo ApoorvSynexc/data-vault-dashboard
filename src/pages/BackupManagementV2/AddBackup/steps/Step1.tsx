@@ -14,6 +14,7 @@ type Step1Props = {
 
 const AVAILABLE_PLATFORMS = [
   {
+    name: 'Salesforce',
     crmId: 'salesforce-1',
     crmName: 'Salesforce',
     isConnected: true,
