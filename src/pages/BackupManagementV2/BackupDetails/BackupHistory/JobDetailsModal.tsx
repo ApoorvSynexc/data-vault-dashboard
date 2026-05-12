@@ -225,7 +225,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
       <ChangesDetailModal
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
-        startedAt={startedAt}
+        job={job}
       />
     </div>
   );
