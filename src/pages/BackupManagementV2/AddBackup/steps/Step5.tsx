@@ -79,10 +79,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
         // Create a map of objectApiName -> recordCount from the response
         const objectCounts: Record<string, number> = {};
-        if (response?.data?.objects && Array.isArray(response.data.objects)) {
-          response.data.objects.forEach((obj: any) => {
-            if (obj.apiName && obj.recordCount !== undefined) {
-              objectCounts[obj.apiName] = obj.recordCount;
+        const results = (response?.data as any)?.results;
+        if (Array.isArray(results)) {
+          results.forEach((obj: any) => {
+            if (obj.objectApiName && obj.recordCount !== undefined) {
+              objectCounts[obj.objectApiName] = obj.recordCount;
             }
           });
         }
@@ -200,9 +201,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       },
     },
   ];
-
-  console.log({filteredObjects});
-  
 
   return (
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
