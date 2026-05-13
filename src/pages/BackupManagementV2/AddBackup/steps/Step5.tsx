@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TableColumn } from '../../../../components/Table';
 import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useDebounce } from '../../../../hooks/useDebounce';
 
 type SelectedObject = {
   id: string;
@@ -35,6 +36,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
   const ITEMS_PER_PAGE = 10;
@@ -56,27 +58,29 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
 
-  // Fetch object count API lazily - only for current page's batch
+  // Filter + paginate from raw allObjects first (no counts yet)
+  const allFilteredObjects = useMemo(() => {
+    return allObjects.filter((obj) => {
+      const matchesSearch = obj.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      if (selectedFilter === 'Standard') return matchesSearch && !obj.isCustom;
+      if (selectedFilter === 'Custom') return matchesSearch && obj.isCustom;
+      return matchesSearch;
+    });
+  }, [debouncedSearchQuery, selectedFilter, allObjects]);
+
+  const totalRecords = allFilteredObjects.length;
+  const offset = currentPage * ITEMS_PER_PAGE;
+  const currentPageObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
+
+  // Fetch counts only for the objects visible on the current page
+  const currentPageIds = currentPageObjects.map((o) => o.id);
+
   const { data: countResponse, isLoading: isLoadingCount } = useQuery({
-    queryKey: ['backup-objects-count', crmId, currentPage],
+    queryKey: ['backup-objects-count', crmId, currentPageIds],
     queryFn: async () => {
-      if (allObjects.length === 0) {
-        return { objectCounts: {} };
-      }
-      const objectApiNames = allObjects.map((obj) => obj.id);
-      const BATCH_SIZE = 10;
-      const batchIndex = currentPage;
-      const batchStart = batchIndex * BATCH_SIZE;
-      const batchEnd = batchStart + BATCH_SIZE;
-      const currentBatch = objectApiNames.slice(batchStart, batchEnd);
-
-      if (currentBatch.length === 0) {
-        return { objectCounts: {} };
-      }
-
+      if (currentPageIds.length === 0) return { objectCounts: {} };
       try {
-        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
-
+        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentPageIds);
         const objectCounts: Record<string, number> = {};
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
@@ -87,23 +91,23 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             }
           });
         }
-
         return { objectCounts };
       } catch (error) {
         console.error('Failed to fetch object counts:', error);
         return { objectCounts: {} };
       }
     },
-    enabled: !!crmId && allObjects.length > 0,
+    enabled: !!crmId && currentPageIds.length > 0,
   });
 
-  // Merge record counts into objects
-  const objectsWithCounts = useMemo(() => {
-    return allObjects.map((obj) => ({
+  // Merge counts into the current page objects
+  const filteredObjects = useMemo(() => {
+    return currentPageObjects.map((obj) => ({
       ...obj,
       recordCount: countResponse?.objectCounts?.[obj.id] ?? undefined,
     }));
-  }, [allObjects, countResponse?.objectCounts]);
+  }, [currentPageObjects, countResponse?.objectCounts]);
+
 
   const isLoading = isLoadingObjects || isLoadingCount;
   const error = objectsError;
@@ -112,39 +116,16 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   // Auto-select all objects if entire dataset is selected
   useEffect(() => {
-    if (_entireDatasetSelected && objectsWithCounts.length > 0 && selectedObjects.size === 0) {
-      const allObjectIds = objectsWithCounts.map((obj) => obj.id);
-      setSelectedObjects(new Set(allObjectIds));
+    if (_entireDatasetSelected && allObjects.length > 0 && selectedObjects.size === 0) {
+      setSelectedObjects(new Set(allObjects.map((obj) => obj.id)));
     }
-  }, [_entireDatasetSelected, objectsWithCounts, selectedObjects.size]);
-
-  // Filter across all objects first
-  const allFilteredObjects = useMemo(() => {
-    return objectsWithCounts.filter((obj) => {
-      const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
-      let matchesFilter = true;
-
-      if (selectedFilter === 'Standard') {
-        matchesFilter = !obj.isCustom;
-      } else if (selectedFilter === 'Custom') {
-        matchesFilter = obj.isCustom;
-      }
-      // 'All' matches everything
-
-      return matchesSearch && matchesFilter;
-    });
-  }, [searchQuery, selectedFilter, objectsWithCounts]);
-
-  const totalRecords = allFilteredObjects.length;
-
-  // Client-side pagination from filtered data
-  const offset = currentPage * ITEMS_PER_PAGE;
-  const filteredObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
+  }, [_entireDatasetSelected, allObjects, selectedObjects.size]);
 
   // When search/filter changes, reset to first page
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, selectedFilter]);
+  }, [debouncedSearchQuery, selectedFilter]);
+
 
   const columns: TableColumn<BackupObject>[] = [
     {
@@ -412,7 +393,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           <button
             onClick={() => {
               const selectedObjectsData = Array.from(selectedObjects).map((id) => {
-                const obj = objectsWithCounts.find((o) => o.id === id);
+                const obj = allObjects.find((o) => o.id === id);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
                 return {
                   id,
