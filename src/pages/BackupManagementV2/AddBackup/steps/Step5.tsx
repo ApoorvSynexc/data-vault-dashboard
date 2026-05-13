@@ -77,7 +77,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       try {
         const response = await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
 
-        // Create a map of objectApiName -> recordCount from the response
         const objectCounts: Record<string, number> = {};
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
