@@ -113,7 +113,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
     >
       <div
         className='bg-white rounded-2xl w-full flex flex-col'
-        style={{ maxWidth: '1024px', maxHeight: '92vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+        style={{ maxWidth: '1024px', height: '86vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
       >
         {/* ── Header ── */}
         <div className='flex items-start justify-between px-7 pt-6 pb-4 flex-shrink-0'>

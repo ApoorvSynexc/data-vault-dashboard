@@ -115,7 +115,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}>
-      <div className='bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto' style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+      <div className='bg-white rounded-2xl w-full flex flex-col' style={{ maxWidth: '1024px', height: '86vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
 
         {/* ── Header ── */}
         <div className='flex items-center justify-between px-8 pt-7 pb-5' style={{ borderBottom: '1.5px solid #F1F5F9' }}>
@@ -174,7 +174,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
         </div>
 
         {/* ── Two-column body ── */}
-        <div className='grid grid-cols-2 gap-5 px-6 pb-7'>
+        <div className='grid grid-cols-2 gap-5 px-6 pb-7 flex-1 overflow-y-auto'>
 
           {/* Left — Job Details */}
           <div className='rounded-xl p-6' style={{ border: '1.5px solid #E8EDF5' }}>

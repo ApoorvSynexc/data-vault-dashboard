@@ -61,7 +61,11 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
   // Filter connections by selected platform type (case-insensitive)
   const connections = selectedPlatform
-    ? allConnections.filter((conn: any) => conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase())
+    ? allConnections.filter((conn: any) =>
+        conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
+        conn.isConnected === true &&
+        conn.status === 'ACTIVE'
+      )
     : [];
   const platformMeta = selectedPlatform ? CRM_PLATFORM_META[selectedPlatform.crmName as keyof typeof CRM_PLATFORM_META] : null;
 

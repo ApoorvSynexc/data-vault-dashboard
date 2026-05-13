@@ -20,7 +20,7 @@ export function formatTime(date: Date | string | null | undefined, tz?: string):
 export function formatDateTime(date: Date | string | null | undefined, tz?: string): string {
   if (!date) return '--';
   const d = tz ? dayjs(date).tz(tz) : dayjs(date);
-  return d.format('MMM D, YYYY h:mm A z');
+  return d.format('MMM D, YYYY h:mm A');
 }
 
 export function capitalize(value: string): string {
@@ -56,7 +56,7 @@ export function calculateNextRun(
 
     // Handle one-time backups
     if (freq === 'ONCE') {
-      return baseDateTime.isBefore(now) ? '--' : baseDateTime.format('MMM D, YYYY h:mm A z');
+      return baseDateTime.isBefore(now) ? '--' : baseDateTime.format('MMM D, YYYY h:mm A');
     }
 
     let nextRun = baseDateTime;
@@ -64,7 +64,7 @@ export function calculateNextRun(
     // If base time is in the future, use it as next run
     if (nextRun.isAfter(now)) {
       if (tz) nextRun = nextRun.tz(tz);
-      return nextRun.format('MMM D, YYYY h:mm A z');
+      return nextRun.format('MMM D, YYYY h:mm A');
     }
 
     // Calculate how many intervals have passed and get the next occurrence
