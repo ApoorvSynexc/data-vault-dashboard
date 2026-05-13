@@ -85,6 +85,13 @@
   box-sizing: border-box;
 }
 
+button, [role="button"], [role="checkbox"], [role="radio"],
+input[type="checkbox"], input[type="radio"], input[type="submit"],
+input[type="reset"], input[type="button"], input[type="file"],
+select, label[for], a[href], summary {
+  cursor: pointer;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
