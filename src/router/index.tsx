@@ -17,6 +17,7 @@ import BackupDetail from '../pages/BackupManagement/BackupDetail';
 import Connectors from '../pages/Connections/Connectors';
 import SalesforceConnections from '../pages/Connections/source/SalesforceConnections';
 import ConnectSalesforceOrg from '../pages/Connections/source/ConnectSalesforceOrg';
+import EditSalesforceConnection from '../pages/Connections/source/EditSalesforceConnection';
 import AWSConnections from '../pages/Connections/destination/AWSConnections';
 import ConnectAWSBucket from '../pages/Connections/destination/ConnectAWSBucket';
 import EditAWSBucket from '../pages/Connections/destination/EditAWSBucket';
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
           { path: '/connections', element: <Connectors /> },
           { path: '/connections/salesforce', element: <SalesforceConnections /> },
           { path: '/connections/salesforce/connect', element: <ConnectSalesforceOrg /> },
+          { path: '/connections/salesforce/edit/:crmId', element: <EditSalesforceConnection /> },
           { path: '/connections/aws', element: <AWSConnections /> },
           { path: '/connections/aws/connect', element: <ConnectAWSBucket /> },
           { path: '/connections/aws/edit/:destinationId', element: <EditAWSBucket /> },

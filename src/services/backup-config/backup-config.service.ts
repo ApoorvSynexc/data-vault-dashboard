@@ -239,7 +239,7 @@ export function useBackupConfigService() {
     getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
       const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
         crmId,
-        objectApiNames,
+        apiNames: objectApiNames,
       });
 
       return response;

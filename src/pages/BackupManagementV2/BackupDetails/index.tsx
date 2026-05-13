@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
-import ObjectsNData from './ObjectsNData';
+// import ObjectsNData from './ObjectsNData'; // commented out
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import { capitalize } from '../../../utils';
+import salesforceLogo from '../../../assets/icons/salesforce_logo.svg';
 
 type TabType = 'overview' | 'history' | 'objects';
 
@@ -70,9 +71,13 @@ export default function BackupDetails() {
             </button>
             <div>
               <div className='flex items-center gap-2'>
-                <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
-                  <span className='text-xs font-bold text-blue-600'>{(backupData?.crmDetail?.crmName || backupData?.crmName || 'SF')?.charAt(0).toUpperCase()}</span>
-                </div>
+                {(backupData?.crmDetail?.crmName || backupData?.crmName || '').toLowerCase() === 'salesforce' ? (
+                  <img src={salesforceLogo} alt='Salesforce' className='h-8 w-auto' />
+                ) : (
+                  <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
+                    <span className='text-xs font-bold text-blue-600'>{(backupData?.crmDetail?.crmName || backupData?.crmName || 'SF')?.charAt(0).toUpperCase()}</span>
+                  </div>
+                )}
                 <h1 className='text-2xl font-bold text-gray-900'>{backupData?.name || 'Backup'}</h1>
                 <span className='px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'>
                   ✓ {backupData?.backupStatus || 'ACTIVE'}
@@ -107,7 +112,8 @@ export default function BackupDetails() {
           >
             Backup History
           </button>
-          <button
+          {/* Objects & Data tab - commented out */}
+          {/* <button
             onClick={() => setActiveTab('objects')}
             className={`px-4 py-3 font-medium border-b-2 transition-colors ${
               activeTab === 'objects'
@@ -116,7 +122,7 @@ export default function BackupDetails() {
             }`}
           >
             Objects & Data
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -124,7 +130,8 @@ export default function BackupDetails() {
       <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-4'>
         {activeTab === 'overview' && <Overview backup={backupData} />}
         {activeTab === 'history' && <BackupHistory backup={backupData} />}
-        {activeTab === 'objects' && <ObjectsNData backup={backupData} />}
+        {/* Objects & Data tab - commented out */}
+        {/* {activeTab === 'objects' && <ObjectsNData backup={backupData} />} */}
       </div>
     </div>
   );

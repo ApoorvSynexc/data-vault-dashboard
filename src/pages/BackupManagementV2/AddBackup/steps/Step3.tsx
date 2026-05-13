@@ -9,225 +9,212 @@ type Step3Props = {
 };
 
 type BackupStrategy = 'realtime' | 'scheduled';
+type DataMode = 'entire' | 'partial';
 
 export default function Step3({ onNext, onBack, initialStrategy = 'realtime', initialEntireDatasetSelected = false }: Step3Props) {
   const navigate = useNavigate();
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>(initialStrategy);
-  const [realtimeDataSelection, setRealtimeDataSelection] = useState(initialStrategy === 'realtime' && initialEntireDatasetSelected ? 'entire' : '');
-  const [scheduledDataSelection, setScheduledDataSelection] = useState(initialStrategy === 'scheduled' && initialEntireDatasetSelected ? 'entire' : '');
+  const [dataMode, setDataMode] = useState<DataMode>(initialEntireDatasetSelected ? 'entire' : 'partial');
 
-  const getMaxSteps = () => {
-    return selectedStrategy === 'realtime' ? 6 : 7;
-  };
-  const maxSteps = getMaxSteps();
-
-  const handleEntireDatasetToggle = () => {
-    if (selectedStrategy === 'realtime') {
-      setRealtimeDataSelection(realtimeDataSelection === 'entire' ? '' : 'entire');
-    } else {
-      setScheduledDataSelection(scheduledDataSelection === 'entire' ? '' : 'entire');
-    }
-  };
+  const maxSteps = selectedStrategy === 'realtime' ? 6 : 7;
 
   return (
-    <div className='h-full bg-gray-50 p-8 overflow-y-auto'>
-      {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between mb-8'>
+    <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
+
+      {/* Header */}
+      <div className='flex items-start justify-between px-8 py-5 flex-shrink-0'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Choose Backup Strategy</h1>
-          <p className='text-gray-600 mt-2'>Select how you want your data to be protected</p>
+          <h1 className='text-2xl font-bold text-gray-900'>Choose Backup Strategy</h1>
+          <p className='text-sm text-gray-500 mt-1'>Select how you want your data to be protected</p>
         </div>
-        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+        <span className='text-xs font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 3 of {maxSteps}
         </span>
       </div>
 
-      {/* Main Content */}
-      <div className='space-y-6'>
-        {/* Backup Strategy Selection */}
-        <div className='grid grid-cols-2 gap-6'>
-          {/* Real-Time Sync Backup */}
-          <button
-            onClick={() => setSelectedStrategy('realtime')}
-            className={`p-6 rounded-lg border-2 transition-all text-left ${
-              selectedStrategy === 'realtime'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className='flex items-start justify-between'>
-              <div className='flex-1'>
-                <div className='flex items-center gap-3 mb-3'>
-                  <div className='w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center'>
-                    <svg className='w-6 h-6 text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <circle cx='12' cy='12' r='10' strokeWidth='2' />
-                      <circle cx='12' cy='12' r='3' fill='currentColor' stroke='none' />
-                    </svg>
-                  </div>
-                  <h3 className='text-lg font-semibold text-gray-900'>Real-Time Sync Backup</h3>
-                </div>
-                <p className='text-sm text-gray-600 mb-4'>
-                  Continuously capture and protects every change instantly
-                </p>
-                <div className='space-y-2'>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    Instant data protection
-                  </div>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    No Scheduling required
-                  </div>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    Ideal for critical data
-                  </div>
-                </div>
-              </div>
-              {selectedStrategy === 'realtime' && (
-                <div className='flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center ml-4'>
-                  <svg className='w-4 h-4 text-white' fill='currentColor' viewBox='0 0 20 20'>
-                    <path
-                      fillRule='evenodd'
-                      d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                      clipRule='evenodd'
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
-          </button>
+      {/* Scrollable body */}
+      <div className='flex-1 overflow-y-auto px-8 pb-4 flex flex-col gap-6 min-h-0'>
 
-          {/* Scheduled Backup */}
-          <button
-            onClick={() => setSelectedStrategy('scheduled')}
-            className={`p-6 rounded-lg border-2 transition-all text-left ${
-              selectedStrategy === 'scheduled'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className='flex items-start justify-between'>
-              <div className='flex-1'>
-                <div className='flex items-center gap-3 mb-3'>
-                  <div className='w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center'>
-                    <svg className='w-6 h-6 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <circle cx='12' cy='12' r='10' strokeWidth='2' />
-                      <polyline points='12 6 12 12 16 14' strokeWidth='2' strokeLinecap='round' />
-                    </svg>
-                  </div>
-                  <h3 className='text-lg font-semibold text-gray-900'>Scheduled Backup</h3>
-                </div>
-                <p className='text-sm text-gray-600 mb-4'>
-                  Run automated backups at defined intervals
-                </p>
-                <div className='space-y-2'>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    Flexible scheduling
-                  </div>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    Optimized resource usage
-                  </div>
-                  <div className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg className='w-5 h-5 text-blue-600' fill='currentColor' viewBox='0 0 20 20'>
-                      <path
-                        fillRule='evenodd'
-                        d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                    Best for non-critical data
-                  </div>
-                </div>
-              </div>
-              {selectedStrategy === 'scheduled' && (
-                <div className='flex-shrink-0 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center ml-4'>
-                  <svg className='w-4 h-4 text-white' fill='currentColor' viewBox='0 0 20 20'>
-                    <path
-                      fillRule='evenodd'
-                      d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'
-                      clipRule='evenodd'
-                    />
+        {/* ── Backup Data Selection Mode ── */}
+        <div>
+          <h2 className='text-sm font-semibold text-gray-800 mb-3'>Backup Data Selection Mode</h2>
+          <div className='grid grid-cols-2 gap-4'>
+
+            {/* Entire Dataset */}
+            <button
+              type='button'
+              onClick={() => setDataMode('entire')}
+              className='flex items-center justify-between p-5 rounded-xl border-2 text-left transition-all'
+              style={dataMode === 'entire'
+                ? { borderColor: '#155DFC', background: '#EFF6FF' }
+                : { borderColor: '#E5E7EB', background: '#fff' }}
+            >
+              <div className='flex items-center gap-4'>
+                <div className='w-10 h-10 flex items-center justify-center flex-shrink-0' style={{ color: dataMode === 'entire' ? '#155DFC' : '#9CA3AF' }}>
+                  <svg width='32' height='32' viewBox='0 0 32 32' fill='none'>
+                    <path d='M6 9l4 4-4 4' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
+                    <path d='M6 17l4 4-4 4' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
+                    <path d='M14 11h12M14 19h12' stroke='currentColor' strokeWidth='2' strokeLinecap='round' />
                   </svg>
                 </div>
-              )}
-            </div>
-          </button>
+                <div>
+                  <p className='font-semibold text-gray-900'>Entire Dataset</p>
+                  <p className='text-xs text-gray-500 mt-0.5 leading-snug'>
+                    Default all data modules are checked marked, selection can be made mannually
+                  </p>
+                </div>
+              </div>
+              <div className='flex-shrink-0 ml-4 w-5 h-5 rounded-full border-2 flex items-center justify-center'
+                style={dataMode === 'entire' ? { borderColor: '#155DFC' } : { borderColor: '#D1D5DB' }}>
+                {dataMode === 'entire' && (
+                  <div className='w-2.5 h-2.5 rounded-full' style={{ background: '#155DFC' }} />
+                )}
+              </div>
+            </button>
+
+            {/* Partial Dataset */}
+            <button
+              type='button'
+              onClick={() => setDataMode('partial')}
+              className='flex items-center justify-between p-5 rounded-xl border-2 text-left transition-all'
+              style={dataMode === 'partial'
+                ? { borderColor: '#155DFC', background: '#EFF6FF' }
+                : { borderColor: '#E5E7EB', background: '#fff' }}
+            >
+              <div className='flex items-center gap-4'>
+                <div className='w-10 h-10 flex items-center justify-center flex-shrink-0' style={{ color: dataMode === 'partial' ? '#155DFC' : '#9CA3AF' }}>
+                  <svg width='32' height='32' viewBox='0 0 32 32' fill='none'>
+                    <rect x='5' y='8' width='8' height='3' rx='1' stroke='currentColor' strokeWidth='2' />
+                    <rect x='5' y='16' width='8' height='3' rx='1' stroke='currentColor' strokeWidth='2' />
+                    <path d='M17 10h10M17 18h6' stroke='currentColor' strokeWidth='2' strokeLinecap='round' />
+                  </svg>
+                </div>
+                <div>
+                  <p className='font-semibold' style={{ color: dataMode === 'partial' ? '#155DFC' : '#111827' }}>Partial Dataset</p>
+                  <p className='text-xs text-gray-500 mt-0.5 leading-snug'>
+                    Select manually the objects to capture in backup process.
+                  </p>
+                </div>
+              </div>
+              <div className='flex-shrink-0 ml-4 w-5 h-5 rounded-full border-2 flex items-center justify-center'
+                style={dataMode === 'partial' ? { borderColor: '#155DFC' } : { borderColor: '#D1D5DB' }}>
+                {dataMode === 'partial' && (
+                  <div className='w-2.5 h-2.5 rounded-full' style={{ background: '#155DFC' }} />
+                )}
+              </div>
+            </button>
+
+          </div>
         </div>
 
-        {/* Data Selection */}
-        <button
-          onClick={handleEntireDatasetToggle}
-          className='w-full bg-white rounded-lg border-2 border-gray-200 p-6 hover:border-blue-300 hover:bg-blue-50 transition-all text-left'
-        >
-          <div className='flex items-start gap-4'>
-            <input
-              type='checkbox'
-              id='entire-dataset'
-              checked={selectedStrategy === 'realtime' ? realtimeDataSelection === 'entire' : scheduledDataSelection === 'entire'}
-              onChange={(e) => {
-                e.stopPropagation();
-                if (selectedStrategy === 'realtime') {
-                  setRealtimeDataSelection(e.target.checked ? 'entire' : '');
-                } else {
-                  setScheduledDataSelection(e.target.checked ? 'entire' : '');
-                }
-              }}
-              className='w-5 h-5 mt-1 accent-blue-600 rounded cursor-pointer'
-            />
-            <div className='flex-1'>
-              <label htmlFor='entire-dataset' className='font-semibold text-gray-900 cursor-pointer'>
-                Entire Dataset
-              </label>
-              <p className='text-sm text-gray-600 mt-1'>
-                Select entire org, if no manual selection of data modules required
+        {/* ── Backup Type ── */}
+        <div>
+          <h2 className='text-sm font-semibold text-gray-800 mb-3'>Backup Type</h2>
+          <div className='grid grid-cols-2 gap-4'>
+
+            {/* Real-Time Sync Backup */}
+            <button
+              type='button'
+              onClick={() => setSelectedStrategy('realtime')}
+              className='relative p-6 rounded-xl border-2 text-left transition-all'
+              style={selectedStrategy === 'realtime'
+                ? { borderColor: '#155DFC', background: '#EFF6FF' }
+                : { borderColor: '#E5E7EB', background: '#fff' }}
+            >
+              <div className='flex items-center gap-3 mb-3'>
+                <div className='w-12 h-12 rounded-full border-2 flex items-center justify-center flex-shrink-0'
+                  style={{ borderColor: selectedStrategy === 'realtime' ? '#155DFC' : '#D1D5DB' }}>
+                  <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke={selectedStrategy === 'realtime' ? '#155DFC' : '#9CA3AF'} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='9' />
+                    <polyline points='12 7 12 12 9 15' />
+                    <path d='M16.5 3.5A9 9 0 0 1 21 12' />
+                    <path d='M16.5 3.5l1 2.5-2.5.5' />
+                  </svg>
+                </div>
+                <h3 className='text-base font-bold' style={{ color: selectedStrategy === 'realtime' ? '#155DFC' : '#111827' }}>
+                  Real-Time Sync Backup
+                </h3>
+              </div>
+              <p className='text-sm text-gray-500 mb-4'>
+                Continuously capture and protects every change instantly
               </p>
-            </div>
+              <hr className='border-gray-200 mb-4' />
+              <div className='space-y-2.5'>
+                {['Instant data protection', 'No Scheduling required', 'Ideal for critical data'].map((item) => (
+                  <div key={item} className='flex items-center gap-2 text-sm text-gray-700'>
+                    <svg width='18' height='18' viewBox='0 0 20 20' fill='none'>
+                      <circle cx='10' cy='10' r='9' stroke='#155DFC' strokeWidth='1.5' />
+                      <path d='M6 10l3 3 5-5' stroke='#155DFC' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+                    </svg>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </button>
+
+            {/* Scheduled Backup */}
+            <button
+              type='button'
+              onClick={() => setSelectedStrategy('scheduled')}
+              className='relative p-6 rounded-xl border-2 text-left transition-all'
+              style={selectedStrategy === 'scheduled'
+                ? { borderColor: '#155DFC', background: '#EFF6FF' }
+                : { borderColor: '#E5E7EB', background: '#fff' }}
+            >
+              {selectedStrategy === 'scheduled' && (
+                <div className='absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center' style={{ background: '#155DFC' }}>
+                  <svg width='14' height='14' viewBox='0 0 20 20' fill='white'>
+                    <path fillRule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clipRule='evenodd' />
+                  </svg>
+                </div>
+              )}
+              <div className='flex items-center gap-3 mb-3'>
+                <div className='w-12 h-12 rounded-full border-2 flex items-center justify-center flex-shrink-0'
+                  style={{ borderColor: selectedStrategy === 'scheduled' ? '#155DFC' : '#D1D5DB' }}>
+                  <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke={selectedStrategy === 'scheduled' ? '#155DFC' : '#9CA3AF'} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                    <rect x='3' y='4' width='18' height='18' rx='2' />
+                    <line x1='16' y1='2' x2='16' y2='6' />
+                    <line x1='8' y1='2' x2='8' y2='6' />
+                    <line x1='3' y1='10' x2='21' y2='10' />
+                    <circle cx='15' cy='16' r='3' />
+                    <polyline points='15 14.5 15 16 16 17' />
+                  </svg>
+                </div>
+                <h3 className='text-base font-bold' style={{ color: selectedStrategy === 'scheduled' ? '#155DFC' : '#111827' }}>
+                  Scheduled Backup
+                </h3>
+              </div>
+              <p className='text-sm text-gray-500 mb-4'>
+                Runs automatically at scheduled time with defined intervals
+              </p>
+              <hr className='border-gray-200 mb-4' />
+              <div className='space-y-2.5'>
+                {['Flexible scheduling', 'Optimized resource usage', 'Best for non-critical data'].map((item) => (
+                  <div key={item} className='flex items-center gap-2 text-sm text-gray-700'>
+                    <svg width='18' height='18' viewBox='0 0 20 20' fill='none'>
+                      <circle cx='10' cy='10' r='9' stroke='#155DFC' strokeWidth='1.5' />
+                      <path d='M6 10l3 3 5-5' stroke='#155DFC' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round' />
+                    </svg>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </button>
+
           </div>
-        </button>
+        </div>
+
       </div>
 
       {/* Action Buttons */}
-      <div className='mt-12 flex justify-between'>
+      <div className='flex justify-between flex-shrink-0 px-8 py-4 border-t border-gray-100 bg-gray-50'>
         <button
           onClick={() => navigate('/backup-management')}
-          className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+          className='px-6 py-2 text-blue-600 font-medium border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors'
         >
           Cancel
         </button>
-        <div className='flex gap-4'>
+        <div className='flex gap-3'>
           <button
             onClick={onBack}
             className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
@@ -235,13 +222,15 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
             ← Back
           </button>
           <button
-            onClick={() => onNext(selectedStrategy, selectedStrategy === 'realtime' ? realtimeDataSelection === 'entire' : scheduledDataSelection === 'entire')}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            onClick={() => onNext(selectedStrategy, dataMode === 'entire')}
+            className='px-6 py-2 rounded-lg font-medium text-white transition-colors'
+            style={{ background: '#155DFC' }}
           >
             Next Step →
           </button>
         </div>
       </div>
+
     </div>
   );
 }
