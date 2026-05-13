@@ -58,35 +58,32 @@ type BackupHistoryProps = {
   backup: any;
 };
 
-const getStatusColor = (status: string) => {
-  const upperStatus = status?.toUpperCase();
+const isPartiallyFailed = (job: BackupJob) => {
+  if (job.status?.toUpperCase() !== 'SUCCESS') return false;
+  return (job.object || []).some((o) => o.status?.toUpperCase() === 'FAILED');
+};
+
+const getStatusColor = (job: BackupJob) => {
+  if (isPartiallyFailed(job)) return 'bg-yellow-100 text-yellow-700';
+  const upperStatus = job.status?.toUpperCase();
   switch (upperStatus) {
-    case 'SUCCESS':
-      return 'bg-green-100 text-green-700';
-    case 'FAILED':
-      return 'bg-red-100 text-red-700';
-    case 'RUNNING':
-      return 'bg-yellow-100 text-yellow-700';
-    case 'PENDING':
-      return 'bg-blue-100 text-blue-700';
-    default:
-      return 'bg-gray-100 text-gray-700';
+    case 'SUCCESS': return 'bg-green-100 text-green-700';
+    case 'FAILED':  return 'bg-red-100 text-red-700';
+    case 'RUNNING': return 'bg-yellow-100 text-yellow-700';
+    case 'PENDING': return 'bg-blue-100 text-blue-700';
+    default:        return 'bg-gray-100 text-gray-700';
   }
 };
 
-const getStatusDisplayText = (status: string) => {
-  const upperStatus = status?.toUpperCase();
+const getStatusDisplayText = (job: BackupJob) => {
+  if (isPartiallyFailed(job)) return 'Partially Failed';
+  const upperStatus = job.status?.toUpperCase();
   switch (upperStatus) {
-    case 'SUCCESS':
-      return 'Completed';
-    case 'FAILED':
-      return 'Failed';
-    case 'RUNNING':
-      return 'In Progress';
-    case 'PENDING':
-      return 'Pending';
-    default:
-      return status;
+    case 'SUCCESS': return 'Completed';
+    case 'FAILED':  return 'Failed';
+    case 'RUNNING': return 'In Progress';
+    case 'PENDING': return 'Pending';
+    default:        return job.status || '';
   }
 };
 
@@ -215,8 +212,8 @@ export default function BackupHistory(_: BackupHistoryProps) {
       key: 'status',
       header: 'Status',
       render: (job) => (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(job.status || '')}`}>
-          {getStatusDisplayText(job.status || '')}
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(job)}`}>
+          {getStatusDisplayText(job)}
         </span>
       ),
     },
