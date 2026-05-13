@@ -17,7 +17,6 @@ const AVAILABLE_PLATFORMS = [
     name: 'Salesforce',
     crmId: 'salesforce-1',
     crmName: 'Salesforce',
-    name: 'Salesforce',
     isConnected: true,
     status: 'ACTIVE' as const,
     crmProfile: {
