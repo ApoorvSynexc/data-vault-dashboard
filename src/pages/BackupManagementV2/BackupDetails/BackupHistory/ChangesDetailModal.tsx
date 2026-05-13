@@ -242,6 +242,9 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                     <SortIcon active={sortField === 'type'} dir={sortDir} />
                   </span>
                 </th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '12%' }}>
+                  Status
+                </th>
                 {['New Records', 'Updated Records', 'Deleted Records', 'Total Changes'].map(h => (
                   <th key={h} className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>
                     {h}
@@ -253,7 +256,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
             <tbody>
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                  <td colSpan={8} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
                     No objects found.
                   </td>
                 </tr>
@@ -270,6 +273,10 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                   {/* Type */}
                   <td className='px-5 py-3.5'>
                     <span className='text-sm' style={{ color: '#374151' }}>{item.type}</span>
+                  </td>
+                  {/* Status */}
+                  <td className='px-5 py-3.5'>
+                    <StatusBadge status={item.status} />
                   </td>
                   {/* New Records */}
                   <td className='px-5 py-3.5'>
@@ -325,6 +332,26 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
         </div>
       </div>
     </div>
+  );
+}
+
+/* ── Status Badge ── */
+function StatusBadge({ status }: { status: string }) {
+  const s = status?.toUpperCase();
+  let bg = '#F3F4F6', color = '#374151';
+  if (s === 'SUCCESS' || s === 'COMPLETED') { bg = 'rgba(0,128,32,0.1)'; color = '#008020'; }
+  else if (s === 'FAILED') { bg = 'rgba(242,68,0,0.1)'; color = '#F24400'; }
+  else if (s === 'RUNNING' || s === 'IN_PROGRESS') { bg = 'rgba(21,93,252,0.1)'; color = '#155DFC'; }
+  else if (s === 'PENDING') { bg = 'rgba(234,179,8,0.1)'; color = '#A16207'; }
+  const label = s === 'SUCCESS' || s === 'COMPLETED' ? 'Completed'
+    : s === 'FAILED' ? 'Failed'
+    : s === 'RUNNING' || s === 'IN_PROGRESS' ? 'Running'
+    : s === 'PENDING' ? 'Pending'
+    : status || 'Unknown';
+  return (
+    <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap' style={{ background: bg, color }}>
+      {label}
+    </span>
   );
 }
 
