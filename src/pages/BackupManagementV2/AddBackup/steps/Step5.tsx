@@ -81,8 +81,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
           results.forEach((obj: any) => {
-            if (obj.objectApiName && obj.recordCount !== undefined) {
-              objectCounts[obj.objectApiName] = obj.recordCount;
+            const key = obj.apiName ?? obj.objectApiName;
+            if (key && obj.recordCount !== undefined) {
+              objectCounts[key] = obj.recordCount;
             }
           });
         }
