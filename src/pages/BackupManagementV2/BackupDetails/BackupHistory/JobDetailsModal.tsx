@@ -57,7 +57,7 @@ const IconClock = () => (
 );
 
 export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) {
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [view, setView] = useState<'job' | 'changes'>('job');
   if (!job) return null;
 
   const startedAt = job.startedAt ? new Date(job.startedAt) : null;
@@ -101,6 +101,17 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
     { value: updatedRecordsCount, label: 'Updated Records', color: '#155DFC', icon: <IconEdit /> },
     { value: deletedRecordsCount, label: 'Deleted Records', color: '#F24400', icon: <IconTrash /> },
   ];
+
+  if (view === 'changes') {
+    return (
+      <ChangesDetailModal
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setView('job')}
+        job={job}
+      />
+    );
+  }
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)' }}>
@@ -207,7 +218,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
                 <h3 className='text-lg font-bold' style={{ color: '#111827' }}>Changes Overview</h3>
               </div>
               <button
-                onClick={() => setShowDetailsModal(true)}
+                onClick={() => setView('changes')}
                 className='text-sm font-semibold transition hover:opacity-70'
                 style={{ color: '#155DFC' }}
               >
@@ -282,11 +293,6 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
         </div>
       </div>
 
-      <ChangesDetailModal
-        isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        job={job}
-      />
     </div>
   );
 }
