@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 type ChangesDetailModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
   job?: any;
   onRefresh?: () => Promise<void>;
 };
@@ -16,316 +17,366 @@ interface ObjectDetail {
   newRecords: number;
   updatedRecords: number;
   deletedRecords: number;
+  totalChanges: number;
   errorMessage?: string;
 }
 
-export default function ChangesDetailModal({ isOpen, onClose, job, onRefresh }: ChangesDetailModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hoveredErrorId, setHoveredErrorId] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+type FilterType = 'All' | 'New' | 'Updated' | 'Deleted';
 
-  const itemsPerPage = 50;
+export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRefresh }: ChangesDetailModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sortField, setSortField] = useState<'name' | 'type' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const itemsPerPage = 10;
 
   if (!isOpen || !job) return null;
 
-  const transformedData: ObjectDetail[] = (job.object || []).map((obj: any, idx: number) => ({
-    id: obj.bulkJobId || `${idx}`,
-    name: obj.name || 'Unknown',
-    type: obj.name?.includes('__c') ? 'Custom' : 'Standard',
-    status: obj.status || 'UNKNOWN',
-    newRecords: obj.insertCount || 0,
-    updatedRecords: obj.completedRecordCount || 0,
-    deletedRecords: 0,
-    errorMessage: obj.errorMessage,
-  }));
-
-  const uniqueStatuses = Array.from(new Set(transformedData.map(item => item.status))).sort();
-
-  const filteredData = transformedData.filter((item: ObjectDetail) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeFilter === 'All') return matchesSearch;
-    return matchesSearch && item.status === activeFilter;
+  const transformedData: ObjectDetail[] = (job.object || []).map((obj: any, idx: number) => {
+    const nr = obj.insertCount || 0;
+    const ur = obj.completedRecordCount || 0;
+    const dr = 0;
+    return {
+      id: obj.bulkJobId || `${idx}`,
+      name: obj.name || 'Unknown',
+      type: obj.name?.includes('__c') ? 'Custom' : 'Standard',
+      status: obj.status || 'UNKNOWN',
+      newRecords: nr,
+      updatedRecords: ur,
+      deletedRecords: dr,
+      totalChanges: nr + ur + dr,
+      errorMessage: obj.errorMessage,
+    };
   });
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  // Stats
+  const newObjectsAdded = transformedData.filter(o => o.newRecords > 0).length;
+  const newRecordsTotal = transformedData.reduce((s, o) => s + o.newRecords, 0);
+  const updatedRecordsTotal = transformedData.reduce((s, o) => s + o.updatedRecords, 0);
+  const deletedRecordsTotal = transformedData.reduce((s, o) => s + o.deletedRecords, 0);
+  const objectsSynced = transformedData.length;
+
+  const statCards = [
+    { value: newObjectsAdded,     label: 'New Object Added',  color: '#008020', icon: <IconBox color='#008020' /> },
+    { value: newRecordsTotal,     label: 'New Records',       color: '#008020', icon: <IconFile color='#008020' /> },
+    { value: updatedRecordsTotal, label: 'Updated Records',   color: '#155DFC', icon: <IconEdit color='#155DFC' /> },
+    { value: deletedRecordsTotal, label: 'Deleted Records',   color: '#F24400', icon: <IconTrash color='#F24400' /> },
+    { value: objectsSynced,       label: 'Objects Synced',    color: '#155DFC', icon: <IconSync color='#155DFC' /> },
+  ];
+
+  // Filter
+  let filtered = transformedData.filter(item =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  if (activeFilter === 'New')     filtered = filtered.filter(o => o.newRecords > 0);
+  if (activeFilter === 'Updated') filtered = filtered.filter(o => o.updatedRecords > 0);
+  if (activeFilter === 'Deleted') filtered = filtered.filter(o => o.deletedRecords > 0);
+
+  // Sort
+  if (sortField) {
+    filtered = [...filtered].sort((a, b) => {
+      const va = a[sortField].toLowerCase();
+      const vb = b[sortField].toLowerCase();
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
   const startIdx = (currentPage - 1) * itemsPerPage;
-  const endIdx = startIdx + itemsPerPage;
-  const paginatedData = filteredData.slice(startIdx, endIdx);
+  const paginatedData = filtered.slice(startIdx, startIdx + itemsPerPage);
 
-  const stats = {
-    newObjectsAdded: transformedData.filter((obj: ObjectDetail) => obj.newRecords > 0).length,
-    newRecords: transformedData.reduce((sum: number, obj: ObjectDetail) => sum + obj.newRecords, 0),
-    updatedRecords: transformedData.reduce((sum: number, obj: ObjectDetail) => sum + obj.updatedRecords, 0),
-    deletedRecords: 0,
-    objectsSynced: transformedData.length,
-  };
-
-  const getStatusColor = (status: string) => {
-    const upperStatus = status?.toUpperCase();
-    switch (upperStatus) {
-      case 'COMPLETED':
-      case 'SUCCESS':
-        return 'bg-green-100 text-green-800';
-      case 'FAILED':
-        return 'bg-red-100 text-red-800';
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'IN_PROGRESS':
-      case 'RUNNING':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const toggleSort = (field: 'name' | 'type') => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
   };
 
   const startedAt = job.startedAt ? new Date(job.startedAt) : null;
 
+  // Pagination numbers
+  const pageNums: number[] = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) pageNums.push(i);
+  } else if (currentPage <= 3) {
+    pageNums.push(1, 2, 3, 4, 5);
+  } else if (currentPage >= totalPages - 2) {
+    for (let i = totalPages - 4; i <= totalPages; i++) pageNums.push(i);
+  } else {
+    for (let i = currentPage - 2; i <= currentPage + 2; i++) pageNums.push(i);
+  }
+
   return (
-    <div className='fixed inset-0 backdrop-blur-sm bg-black/20 flex items-center justify-center z-50 p-4'>
-      <div className='bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto'>
-        {/* Header */}
-        <div className='flex items-start justify-between p-6 border-b border-gray-200 sticky top-0 bg-white'>
-          <div>
-            <h2 className='text-xl font-semibold text-gray-900'>
-              Object Details - {startedAt ? dayjs(startedAt).format('MMM D, YYYY | h:mm A') : 'N/A'}
-            </h2>
-            <p className='text-sm text-gray-600 mt-1'>Object updates details in backups →</p>
+    <div
+      className='fixed inset-0 z-[60] flex items-center justify-center p-4'
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+    >
+      <div
+        className='bg-white rounded-2xl w-full flex flex-col'
+        style={{ maxWidth: '1024px', maxHeight: '92vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+      >
+        {/* ── Header ── */}
+        <div className='flex items-start justify-between px-7 pt-6 pb-4 flex-shrink-0'>
+          <div className='flex items-center gap-3'>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className='p-1.5 rounded-lg hover:bg-gray-100 transition flex-shrink-0'
+                style={{ color: '#6B7280' }}
+                title='Back'
+              >
+                <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+                  <path d='M19 12H5M12 5l-7 7 7 7' />
+                </svg>
+              </button>
+            )}
+            <div>
+              <h2 className='font-bold' style={{ fontSize: '20px', color: '#111827' }}>
+                Object Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | hh:mm A')}` : ''}
+              </h2>
+              <p className='text-sm mt-1' style={{ color: '#64748B' }}>Object updates details in backup →</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className='text-gray-400 hover:text-gray-600 p-1'
+            className='p-1.5 rounded-lg hover:bg-gray-100 transition mt-0.5'
+            style={{ color: '#6B7280' }}
           >
-            <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+            <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+              <path d='M18 6L6 18M6 6l12 12' />
             </svg>
           </button>
         </div>
 
-        {/* Content */}
-        <div className='p-6 space-y-6'>
-          {/* Stats Cards */}
+        {/* ── Stat Cards ── */}
+        <div className='px-7 pb-4 flex-shrink-0'>
           <div className='grid grid-cols-5 gap-3'>
-            <div className='text-center p-3 bg-green-50 rounded-lg border border-green-200'>
-              <div className='text-2xl font-bold text-green-600'>{stats.newObjectsAdded}</div>
-              <p className='text-xs text-gray-600 mt-1'>New Object Added</p>
-            </div>
-            <div className='text-center p-3 bg-blue-50 rounded-lg border border-blue-200'>
-              <div className='text-2xl font-bold text-blue-600'>{stats.newRecords}</div>
-              <p className='text-xs text-gray-600 mt-1'>New Records</p>
-            </div>
-            <div className='text-center p-3 bg-orange-50 rounded-lg border border-orange-200'>
-              <div className='text-2xl font-bold text-orange-600'>{stats.updatedRecords}</div>
-              <p className='text-xs text-gray-600 mt-1'>Updated Records</p>
-            </div>
-            <div className='text-center p-3 bg-red-50 rounded-lg border border-red-200'>
-              <div className='text-2xl font-bold text-red-600'>{stats.deletedRecords}</div>
-              <p className='text-xs text-gray-600 mt-1'>Deleted Records</p>
-            </div>
-            <div className='text-center p-3 bg-purple-50 rounded-lg border border-purple-200'>
-              <div className='text-2xl font-bold text-purple-600'>{stats.objectsSynced}</div>
-              <p className='text-xs text-gray-600 mt-1'>Objects Synced</p>
-            </div>
-          </div>
-
-          {/* Search and Filters */}
-          <div className='flex items-center gap-4'>
-            <div className='flex-1'>
-              <input
-                type='text'
-                placeholder='Search Object'
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className='w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-            <div className='flex gap-2 items-center'>
-              {['All', ...uniqueStatuses].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => {
-                    setActiveFilter(filter);
-                    setCurrentPage(1);
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                    activeFilter === filter
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
-              <button
-                onClick={async () => {
-                  setIsRefreshing(true);
-                  try {
-                    if (onRefresh) {
-                      await onRefresh();
-                    }
-                  } finally {
-                    setIsRefreshing(false);
-                  }
-                }}
-                disabled={isRefreshing}
-                className='p-2 text-gray-600 hover:text-gray-900 transition disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed'
-                title='Refresh data'
+            {statCards.map(({ value, label, color, icon }) => (
+              <div
+                key={label}
+                className='rounded-xl px-4 pt-3 pb-3 flex flex-col gap-0.5'
+                style={{ border: '1.5px solid #E8EDF5', background: '#fff' }}
               >
-                <svg
-                  className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`}
-                  fill='none'
-                  stroke='currentColor'
-                  viewBox='0 0 24 24'
-                >
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className='border border-gray-200 rounded-lg overflow-hidden'>
-            <table className='w-full'>
-              <thead className='bg-gray-50 border-b border-gray-200'>
-                <tr>
-                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900 w-12'>#</th>
-                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Object</th>
-                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Type</th>
-                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Status</th>
-                  <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>New Records</th>
-                  <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>Updated Records</th>
-                  <th className='px-6 py-3 text-center text-sm font-semibold text-gray-900'>Deleted Records</th>
-                  <th className='px-6 py-3 text-left text-sm font-semibold text-gray-900'>Error Message</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.map((item: ObjectDetail, idx: number) => (
-                  <tr key={item.id} className='border-b border-gray-200 hover:bg-gray-50'>
-                    <td className='px-6 py-4 text-sm text-gray-600 w-12'>{startIdx + idx + 1}</td>
-                    <td className='px-6 py-4 text-sm text-gray-900'>{item.name}</td>
-                    <td className='px-6 py-4 text-sm text-gray-600'>
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        item.type === 'Standard' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'
-                      }`}>
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4 text-sm text-gray-600'>
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusColor(item.status)}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.newRecords}</td>
-                    <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.updatedRecords}</td>
-                    <td className='px-6 py-4 text-sm text-center text-gray-900'>{item.deletedRecords}</td>
-                    <td className='px-6 py-4 text-sm text-gray-600'>
-                      {item.errorMessage ? (
-                        <div className='relative inline-block'>
-                          <span
-                            className='text-red-600 text-xs cursor-help'
-                            onMouseEnter={() => setHoveredErrorId(item.id)}
-                            onMouseLeave={() => setHoveredErrorId(null)}
-                          >
-                            {item.errorMessage.length > 50
-                              ? item.errorMessage.substring(0, 50) + '...'
-                              : item.errorMessage}
-                          </span>
-
-                          {hoveredErrorId === item.id && (
-                            <div className='absolute bottom-full left-0 mb-2 z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-normal max-w-xs break-words'>
-                              {item.errorMessage}
-                              <div className='absolute top-full left-2 w-2 h-2 bg-gray-900 transform rotate-45'></div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className='text-gray-400 text-xs'>--</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className='flex items-center justify-between'>
-            <p className='text-sm text-gray-600'>
-              Showing {filteredData.length > 0 ? startIdx + 1 : 0} of {filteredData.length} Object
-            </p>
-            <div className='flex items-center gap-2'>
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className='px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                ← Prev
-              </button>
-
-              <div className='flex gap-1'>
-                {currentPage > 2 && (
-                  <>
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      className='px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50'
-                    >
-                      1
-                    </button>
-                    {currentPage > 3 && <span className='text-gray-400 px-1'>...</span>}
-                  </>
-                )}
-
-                {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                  const pageNum = currentPage - 1 + i;
-                  if (pageNum < 1 || pageNum > totalPages) return null;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded text-sm font-medium transition ${
-                        currentPage === pageNum
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-
-                {currentPage < totalPages - 1 && (
-                  <>
-                    {currentPage < totalPages - 2 && <span className='text-gray-400 px-1'>...</span>}
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className='px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50'
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
+                <div className='flex items-start justify-between'>
+                  <div>
+                    <span className='text-2xl font-bold leading-tight block' style={{ color }}>{value}</span>
+                    <span className='text-xs mt-0.5 block' style={{ color: '#64748B' }}>{label}</span>
+                  </div>
+                  <div className='mt-0.5'>{icon}</div>
+                </div>
               </div>
+            ))}
+          </div>
+        </div>
 
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className='px-3 py-1 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                Next →
-              </button>
+        {/* ── Search + Filter ── */}
+        <div className='px-7 pb-3 flex items-center gap-2 flex-shrink-0'>
+          <div className='relative'>
+            <div className='absolute inset-y-0 left-3 flex items-center pointer-events-none'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' />
+              </svg>
             </div>
+            <input
+              type='text'
+              placeholder='Search Object'
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className='pl-8 pr-4 py-1.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+              style={{ border: '1.5px solid #E5E7EB', color: '#33363F', width: '200px' }}
+            />
+          </div>
+
+          {(['All', 'New', 'Updated', 'Deleted'] as FilterType[]).map(f => (
+            <button
+              key={f}
+              onClick={() => { setActiveFilter(f); setCurrentPage(1); }}
+              className='px-4 py-1.5 rounded-full text-sm font-medium transition'
+              style={activeFilter === f
+                ? { background: '#155DFC', color: '#fff' }
+                : { background: '#F3F4F6', color: '#374151' }
+              }
+            >
+              {f}
+            </button>
+          ))}
+
+          <button
+            onClick={async () => {
+              setIsRefreshing(true);
+              try { if (onRefresh) await onRefresh(); }
+              finally { setIsRefreshing(false); }
+            }}
+            disabled={isRefreshing}
+            className='p-1.5 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 ml-1'
+            style={{ color: '#64748B' }}
+          >
+            <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+            </svg>
+          </button>
+        </div>
+
+        {/* ── Table ── */}
+        <div className='flex-1 overflow-auto mx-7 rounded-xl' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+          <table className='w-full' style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>
+                <th
+                  className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-pointer select-none'
+                  style={{ color: '#374151', width: '22%' }}
+                  onClick={() => toggleSort('name')}
+                >
+                  <span className='flex items-center gap-1'>
+                    Object
+                    <SortIcon active={sortField === 'name'} dir={sortDir} />
+                  </span>
+                </th>
+                <th
+                  className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-pointer select-none'
+                  style={{ color: '#374151', width: '13%' }}
+                  onClick={() => toggleSort('type')}
+                >
+                  <span className='flex items-center gap-1'>
+                    Type
+                    <SortIcon active={sortField === 'type'} dir={sortDir} />
+                  </span>
+                </th>
+                {['New Records', 'Updated Records', 'Deleted Records', 'Total Changes'].map(h => (
+                  <th key={h} className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>
+                    {h}
+                  </th>
+                ))}
+                <th style={{ width: '40px' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                    No objects found.
+                  </td>
+                </tr>
+              ) : paginatedData.map((item, idx) => (
+                <tr
+                  key={item.id}
+                  style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
+                  className='hover:bg-gray-50 transition-colors'
+                >
+                  {/* Object Name */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm font-medium' style={{ color: '#111827' }}>{item.name}</span>
+                  </td>
+                  {/* Type */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm' style={{ color: '#374151' }}>{item.type}</span>
+                  </td>
+                  {/* New Records */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm' style={{ color: '#374151' }}>{item.newRecords}</span>
+                  </td>
+                  {/* Updated Records */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm' style={{ color: '#374151' }}>{item.updatedRecords}</span>
+                  </td>
+                  {/* Deleted Records */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm' style={{ color: '#374151' }}>{item.deletedRecords}</span>
+                  </td>
+                  {/* Total Changes */}
+                  <td className='px-5 py-3.5'>
+                    {item.totalChanges > 0
+                      ? <span className='text-sm font-medium' style={{ color: '#008020' }}>+{item.totalChanges}</span>
+                      : <span className='text-sm' style={{ color: '#374151' }}>0</span>
+                    }
+                  </td>
+                  {/* Chevron */}
+                  <td className='pr-4 py-3.5 text-center'>
+                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <polyline points='6 9 12 15 18 9' />
+                    </svg>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Pagination ── */}
+        <div className='flex items-center justify-between px-7 py-4 flex-shrink-0'>
+          <p className='text-sm font-medium' style={{ color: '#155DFC' }}>
+            Showing {Math.min(startIdx + itemsPerPage, filtered.length)} of {filtered.length} Object
+          </p>
+          <div className='flex items-center gap-1'>
+            {pageNums.map(n => (
+              <button
+                key={n}
+                onClick={() => setCurrentPage(n)}
+                className='w-7 h-7 rounded-md text-xs font-medium transition flex items-center justify-center'
+                style={currentPage === n
+                  ? { background: '#155DFC', color: '#fff' }
+                  : { background: '#F3F4F6', color: '#374151' }
+                }
+              >
+                {n}
+              </button>
+            ))}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ── Icons ── */
+function IconBox({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z' />
+    </svg>
+  );
+}
+function IconFile({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' /><polyline points='14 2 14 8 20 8' />
+    </svg>
+  );
+}
+function IconEdit({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7' />
+      <path d='M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z' />
+    </svg>
+  );
+}
+function IconSync({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='23 4 23 10 17 10' /><polyline points='1 20 1 14 7 14' />
+      <path d='M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15' />
+    </svg>
+  );
+}
+function IconTrash({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='3 6 5 6 21 6' />
+      <path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6' />
+      <path d='M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2' />
+    </svg>
+  );
+}
+function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  return (
+    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke={active ? '#155DFC' : '#9CA3AF'} strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+      {active && dir === 'asc'
+        ? <polyline points='18 15 12 9 6 15' />
+        : active && dir === 'desc'
+        ? <polyline points='6 9 12 15 18 9' />
+        : <><polyline points='8 9 12 5 16 9' /><polyline points='8 15 12 19 16 15' /></>
+      }
+    </svg>
   );
 }
