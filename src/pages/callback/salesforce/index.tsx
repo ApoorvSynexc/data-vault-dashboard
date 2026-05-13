@@ -9,6 +9,9 @@ export default function SalesforceCallback() {
 
   const code = searchParams.get('code') ?? '';
   const state = searchParams.get('state') ?? '';
+  const errorParam = searchParams.get('error') ?? '';
+  const errorDescription = searchParams.get('error_description') ?? '';
+  const hasErrorParam = Boolean(errorParam);
   const hasRequiredParams = Boolean(code && state);
 
   const { isLoading, isSuccess, error } = useQuery({
@@ -46,7 +49,19 @@ export default function SalesforceCallback() {
           Salesforce Callback
         </Typography>
 
-        {!hasRequiredParams ? (
+        {hasErrorParam ? (
+          <>
+            <Typography className='mt-2' variant='body' color='danger'>
+              {errorDescription ? decodeURIComponent(errorDescription).replace(/\+/g, ' ') : `Authentication failed: ${errorParam}`}
+            </Typography>
+            <Link
+              to='/connections/salesforce'
+              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+            >
+              Back To Connections
+            </Link>
+          </>
+        ) : !hasRequiredParams ? (
           <>
             <Typography className='mt-2' variant='body' color='muted'>
               Missing required `code` or `state` query parameters.

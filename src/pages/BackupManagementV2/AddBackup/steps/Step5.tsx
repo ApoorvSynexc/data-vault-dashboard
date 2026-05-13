@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { TableColumn } from '../../../../components/Table';
 import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useDebounce } from '../../../../hooks/useDebounce';
 
 type SelectedObject = {
   id: string;
@@ -35,6 +36,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
   const ITEMS_PER_PAGE = 10;
@@ -56,53 +58,56 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
 
-  // Fetch object count API lazily - only for current page's batch
+  // Filter + paginate from raw allObjects first (no counts yet)
+  const allFilteredObjects = useMemo(() => {
+    return allObjects.filter((obj) => {
+      const matchesSearch = obj.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      if (selectedFilter === 'Standard') return matchesSearch && !obj.isCustom;
+      if (selectedFilter === 'Custom') return matchesSearch && obj.isCustom;
+      return matchesSearch;
+    });
+  }, [debouncedSearchQuery, selectedFilter, allObjects]);
+
+  const totalRecords = allFilteredObjects.length;
+  const offset = currentPage * ITEMS_PER_PAGE;
+  const currentPageObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
+
+  // Fetch counts only for the objects visible on the current page
+  const currentPageIds = currentPageObjects.map((o) => o.id);
+
   const { data: countResponse, isLoading: isLoadingCount } = useQuery({
-    queryKey: ['backup-objects-count', crmId, currentPage],
+    queryKey: ['backup-objects-count', crmId, currentPageIds],
     queryFn: async () => {
-      if (allObjects.length === 0) {
-        return { objectCounts: {} };
-      }
-      const objectApiNames = allObjects.map((obj) => obj.id);
-      const BATCH_SIZE = 10;
-      const batchIndex = currentPage;
-      const batchStart = batchIndex * BATCH_SIZE;
-      const batchEnd = batchStart + BATCH_SIZE;
-      const currentBatch = objectApiNames.slice(batchStart, batchEnd);
-
-      if (currentBatch.length === 0) {
-        return { objectCounts: {} };
-      }
-
+      if (currentPageIds.length === 0) return { objectCounts: {} };
       try {
-        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentBatch);
-
-        // Create a map of objectApiName -> recordCount from the response
+        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentPageIds);
         const objectCounts: Record<string, number> = {};
-        if (response?.data?.objects && Array.isArray(response.data.objects)) {
-          response.data.objects.forEach((obj: any) => {
-            if (obj.apiName && obj.recordCount !== undefined) {
-              objectCounts[obj.apiName] = obj.recordCount;
+        const results = (response?.data as any)?.results;
+        if (Array.isArray(results)) {
+          results.forEach((obj: any) => {
+            const key = obj.apiName ?? obj.objectApiName;
+            if (key && obj.recordCount !== undefined) {
+              objectCounts[key] = obj.recordCount;
             }
           });
         }
-
         return { objectCounts };
       } catch (error) {
         console.error('Failed to fetch object counts:', error);
         return { objectCounts: {} };
       }
     },
-    enabled: !!crmId && allObjects.length > 0,
+    enabled: !!crmId && currentPageIds.length > 0,
   });
 
-  // Merge record counts into objects
-  const objectsWithCounts = useMemo(() => {
-    return allObjects.map((obj) => ({
+  // Merge counts into the current page objects
+  const filteredObjects = useMemo(() => {
+    return currentPageObjects.map((obj) => ({
       ...obj,
       recordCount: countResponse?.objectCounts?.[obj.id] ?? undefined,
     }));
-  }, [allObjects, countResponse?.objectCounts]);
+  }, [currentPageObjects, countResponse?.objectCounts]);
+
 
   const isLoading = isLoadingObjects || isLoadingCount;
   const error = objectsError;
@@ -111,39 +116,16 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   // Auto-select all objects if entire dataset is selected
   useEffect(() => {
-    if (_entireDatasetSelected && objectsWithCounts.length > 0 && selectedObjects.size === 0) {
-      const allObjectIds = objectsWithCounts.map((obj) => obj.id);
-      setSelectedObjects(new Set(allObjectIds));
+    if (_entireDatasetSelected && allObjects.length > 0 && selectedObjects.size === 0) {
+      setSelectedObjects(new Set(allObjects.map((obj) => obj.id)));
     }
-  }, [_entireDatasetSelected, objectsWithCounts, selectedObjects.size]);
-
-  // Filter across all objects first
-  const allFilteredObjects = useMemo(() => {
-    return objectsWithCounts.filter((obj) => {
-      const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
-      let matchesFilter = true;
-
-      if (selectedFilter === 'Standard') {
-        matchesFilter = !obj.isCustom;
-      } else if (selectedFilter === 'Custom') {
-        matchesFilter = obj.isCustom;
-      }
-      // 'All' matches everything
-
-      return matchesSearch && matchesFilter;
-    });
-  }, [searchQuery, selectedFilter, objectsWithCounts]);
-
-  const totalRecords = allFilteredObjects.length;
-
-  // Client-side pagination from filtered data
-  const offset = currentPage * ITEMS_PER_PAGE;
-  const filteredObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
+  }, [_entireDatasetSelected, allObjects, selectedObjects.size]);
 
   // When search/filter changes, reset to first page
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, selectedFilter]);
+  }, [debouncedSearchQuery, selectedFilter]);
+
 
   const columns: TableColumn<BackupObject>[] = [
     {
@@ -201,26 +183,23 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     },
   ];
 
-  console.log({filteredObjects});
-  
-
   return (
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between p-8 pb-4 flex-shrink-0'>
+      <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Data Scope</h1>
-          <p className='text-gray-600 mt-2'>Select object that you want to backup in scheduled backup</p>
+          <h1 className='text-2xl font-bold text-gray-900'>Data Scope</h1>
+          <p className='text-sm text-gray-600 mt-1'>Select object that you want to backup in scheduled backup</p>
         </div>
-        <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
+        <span className='text-xs font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 5 of {maxSteps}
         </span>
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 mx-8 flex flex-col flex-grow min-h-0'>
+      <div className='bg-white rounded-lg border border-gray-200 mx-6 my-4 flex flex-col flex-grow min-h-0'>
         {/* Search and Filter */}
-        <div className='p-6 pb-4 flex items-center gap-4 justify-between flex-shrink-0'>
+        <div className='px-6 py-3 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
             <input
               type='text'
@@ -269,7 +248,23 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         {/* Table Container - Scrollable */}
         {!isLoading && !error && (
           <>
-            <div className='h-[40vh] overflow-y-auto px-6 py-4'>
+            <style>{`
+              table {
+                border-collapse: separate;
+                border-spacing: 0;
+              }
+              table thead {
+                position: sticky !important;
+                top: 0 !important;
+                background-color: white !important;
+                z-index: 30 !important;
+              }
+              table thead th {
+                position: relative;
+                background-color: white !important;
+              }
+            `}</style>
+            <div className='flex-1 min-h-0 max-h-96 px-6 py-2 overflow-hidden'>
               <Table<BackupObject>
                 columns={columns}
                 rows={filteredObjects}
@@ -286,14 +281,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 }`}
                 emptyState='No objects found matching your search.'
                 showPagination={false}
-                height='500px'
+                minHeightClassName='min-h-0'
                 showSerialNumber={true}
                 serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
               />
             </div>
 
             {/* Pagination Controls */}
-            <div className='p-6 pt-4 flex-shrink-0 border-t border-gray-200'>
+            <div className='px-6 py-3 flex-shrink-0 border-t border-gray-200'>
               <div className='flex items-center justify-between'>
                 <div className='text-sm text-gray-600'>
                   Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
@@ -381,7 +376,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between flex-shrink-0 p-8 pt-6'>
+      <div className='flex justify-between flex-shrink-0 px-8 py-4'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
@@ -398,7 +393,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           <button
             onClick={() => {
               const selectedObjectsData = Array.from(selectedObjects).map((id) => {
-                const obj = objectsWithCounts.find((o) => o.id === id);
+                const obj = allObjects.find((o) => o.id === id);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
                 return {
                   id,

@@ -7,7 +7,6 @@ import { useBackupConfigService } from '../../../../services/backup-config/backu
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
 import JobDetailsModal from './JobDetailsModal';
-import ChangesDetailModal from './ChangesDetailModal';
 
 interface BackupJob {
   backupJobId: string;
@@ -125,7 +124,6 @@ export default function BackupHistory(_: BackupHistoryProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [resumingJobId, setResumingJobId] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [selectedJobForDetails, setSelectedJobForDetails] = useState<string | null>(null);
   const itemsPerPage = 20;
 
   const { data: jobsResponse } = useQuery({
@@ -271,7 +269,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
           ) : null}
           <button
             type='button'
-            onClick={() => setSelectedJobForDetails(job.backupJobId)}
+            onClick={() => setSelectedJobId(job.backupJobId)}
             className='text-gray-400 hover:text-gray-600 transition'
             aria-label='View details'
           >
@@ -286,9 +284,9 @@ export default function BackupHistory(_: BackupHistoryProps) {
   ];
 
   return (
-    <div className='space-y-2'>
-      {/* Stats Cards */}
-      <div className='bg-white rounded border border-gray-200 p-4'>
+    <div className='flex flex-col h-full gap-2'>
+      {/* Stats Cards - Fixed Height */}
+      <div className='bg-white rounded border border-gray-200 p-4 flex-shrink-0'>
         <div className='grid grid-cols-4 gap-3'>
           <div className='bg-gray-50 rounded p-3'>
             <div className='flex items-center gap-2 mb-1'>
@@ -336,19 +334,31 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
       </div>
 
-      {/* Backup History Table */}
-      <div className='bg-white rounded border border-gray-200 flex flex-col' style={{ height: 'calc(100vh - 280px)' }}>
-        <div className='flex-1 overflow-y-auto' style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties & { scrollbarWidth?: string; msOverflowStyle?: string }}>
-          <style>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
+      {/* Backup History Table - Grows to fill available space */}
+      <div className='flex flex-col flex-1 min-h-0 gap-0'>
+        <style>{`
+          table {
+            border-collapse: separate;
+            border-spacing: 0;
+          }
+          table thead {
+            position: sticky !important;
+            top: 0 !important;
+            background-color: white !important;
+            z-index: 30 !important;
+          }
+          table thead th {
+            position: relative;
+            background-color: white !important;
+          }
+        `}</style>
+        <div className='flex-1 min-h-0 flex flex-col'>
           <Table<BackupJob>
             columns={columns}
             rows={currentJobs}
             getRowKey={(job) => job.backupJobId}
             showPagination={false}
+            minHeightClassName='min-h-0'
             showSerialNumber={true}
             serialNumberStart={pageIndex * itemsPerPage + 1}
             emptyState='No backup history found.'
@@ -356,7 +366,7 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
 
         {/* Custom Pagination */}
-        <div className='p-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0'>
+        <div className='p-4 border border-gray-200 flex items-center justify-between flex-shrink-0 bg-white rounded-b'>
           <div className='text-sm text-gray-600'>
             Showing {currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to {pageIndex * itemsPerPage + currentJobs.length} of {totalItems}
           </div>
@@ -387,14 +397,6 @@ export default function BackupHistory(_: BackupHistoryProps) {
         />
       )}
 
-      {/* Changes Detail Modal */}
-      {selectedJobForDetails && (
-        <ChangesDetailModal
-          isOpen={true}
-          onClose={() => setSelectedJobForDetails(null)}
-          job={currentJobs.find((j: any) => j.backupJobId === selectedJobForDetails)}
-        />
-      )}
     </div>
   );
 }
