@@ -60,6 +60,7 @@ export default function FinalStep({
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
   const [isLoading, setIsLoading] = useState(false);
   const [showRunConfirmation, setShowRunConfirmation] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -82,9 +83,9 @@ export default function FinalStep({
       setSuccessType('run');
       setIsSuccess(true);
     },
-    onError: (error) => {
-      console.error('Failed to create backup:', error);
-      alert('Failed to create backup. Please try again.');
+    onError: (error: any) => {
+      setIsLoading(false);
+      setApiError(error?.message || 'Failed to create backup. Please try again.');
     },
   });
 
@@ -100,6 +101,7 @@ export default function FinalStep({
     }
 
     setIsLoading(true);
+    setApiError(null);
     const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
 
@@ -107,7 +109,6 @@ export default function FinalStep({
       crmId,
       name: policyName,
       description,
-      environment: environment.toUpperCase(),
       destinationId,
       objectNames: objectIds,
       schedule: isRealTime ? 'REALTIME' : 'SCHEDULE',
@@ -351,8 +352,18 @@ export default function FinalStep({
         )}
       </div>
 
+      {/* Error Message */}
+      {apiError && (
+        <div className='flex-shrink-0 mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
+          <svg className='w-4 h-4 text-red-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'>
+            <circle cx='12' cy='12' r='10'/><path d='M12 8v4M12 16h.01' strokeLinecap='round'/>
+          </svg>
+          <p className='text-sm text-red-600'>{apiError}</p>
+        </div>
+      )}
+
       {/* Action Buttons */}
-      <div className='flex justify-between gap-4 flex-shrink-0 mt-6'>
+      <div className='flex justify-between gap-4 flex-shrink-0 mt-4'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'

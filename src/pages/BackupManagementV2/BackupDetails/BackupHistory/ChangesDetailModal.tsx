@@ -35,8 +35,8 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
 
   const transformedData: ObjectDetail[] = (job.object || []).map((obj: any, idx: number) => {
     const nr = obj.insertCount || 0;
-    const ur = obj.completedRecordCount || 0;
-    const dr = 0;
+    const ur = obj.updateCount || 0;
+    const dr = obj.deleteCount || 0;
     return {
       id: obj.bulkJobId || `${idx}`,
       name: obj.name || 'Unknown',

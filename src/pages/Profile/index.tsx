@@ -169,6 +169,7 @@ function PersonalInfoCard({
         <div className='flex flex-col gap-1'>
           <label className='text-sm font-medium text-gray-700'>Gender</label>
           <select
+            key={state.values.gender}
             name='gender'
             defaultValue={state.values.gender}
             className={[

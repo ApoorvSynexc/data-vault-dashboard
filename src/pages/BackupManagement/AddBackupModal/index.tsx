@@ -278,7 +278,6 @@ export default function AddBackupModal({ isOpen, onClose, onSuccess }: AddBackup
       crmId,
       name: policyName,
       description,
-      environment: environment.toUpperCase(),
       objectNames,
       schedule: scheduleMode === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects,

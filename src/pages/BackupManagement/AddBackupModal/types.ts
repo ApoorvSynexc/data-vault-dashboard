@@ -66,7 +66,6 @@ export type CreateBackupPayload = {
   crmId: string;
   name: string;
   description: string;
-  environment: string;
   objectNames: string[];
   schedule: CreateBackupSchedule;
   scheduleConfig?: {

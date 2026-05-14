@@ -92,6 +92,12 @@ export default function Dashboard() {
     staleTime: 60_000,
   });
 
+  const { data: overviewData } = useQuery({
+    queryKey: ['dashboard-overview'],
+    queryFn: () => backupConfigService.getDashboardOverview(),
+    staleTime: 60_000,
+  });
+
   /* ── derived values ── */
   const backupList = Array.isArray((backupListData as any)?.data)
     ? (backupListData as any).data
@@ -99,15 +105,26 @@ export default function Dashboard() {
 
   const hasBackups = backupList && backupList.length > 0;
 
-  // stats: response.data = { completedJobs: { count, vsYesterday }, runningJobs: { count }, failedJobs: { count }, dataProcessed: { bytes, weeklyChangePercent } }
+  // stats: for system health / jobs summary sidebar
   const apiStats = (statsData as any)?.data ?? {};
   const completedJobs = apiStats?.completedJobs?.count ?? 0;
   const runningJobs   = apiStats?.runningJobs?.count ?? 0;
   const failedJobs    = apiStats?.failedJobs?.count ?? 0;
-  const dataBytes     = apiStats?.dataProcessed?.bytes ?? 0;
-  const weeklyChange  = apiStats?.dataProcessed?.weeklyChangePercent ?? 0;
   const totalRuns     = completedJobs + runningJobs + failedJobs;
   const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
+
+  // overview API: KPI cards
+  const overview = (overviewData as any)?.data ?? {};
+  const kpiProtectedRecords = overview?.protectedRecords?.value ?? '--';
+  const kpiProtectedChange  = overview?.protectedRecords?.change;
+  const kpiProtectedPeriod  = overview?.protectedRecords?.period;
+  const kpiStorageValue     = overview?.storageUsed?.value ?? '--';
+  const kpiStorageChange    = overview?.storageUsed?.change;
+  const kpiStoragePeriod    = overview?.storageUsed?.period;
+  const kpiSuccessRate      = overview?.backupSuccessRate?.value ?? '--';
+  const kpiSuccessPeriod    = overview?.backupSuccessRate?.period;
+  const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
+  const kpiRunning          = overview?.activeJobs?.running ?? 0;
 
   // jobs: response.data = [] (direct array), meta.totalRecords
   const recentJobs: any[] = Array.isArray((jobsData as any)?.data) ? (jobsData as any).data : [];
@@ -165,25 +182,26 @@ export default function Dashboard() {
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
           label='Protected Records'
-          value='--'
+          value={String(kpiProtectedRecords)}
+          sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
           label='Storage Used'
-          value={formatBytes(dataBytes) || '--'}
-          sub={weeklyChange ? `${weeklyChange > 0 ? '+' : ''}${weeklyChange}% vs last week` : undefined}
+          value={kpiStorageValue || '--'}
+          sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
           label='Backup Success Rate'
-          value={`${successRate}%`}
-          sub='Last 7 days'
+          value={kpiSuccessRate || '--'}
+          sub={kpiSuccessPeriod ?? undefined}
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
           label='Active Jobs'
-          value={String(runningJobs)}
-          sub={runningJobs > 0 ? `${runningJobs} Running` : 'No active jobs'}
+          value={String(kpiActiveJobs)}
+          sub={kpiRunning > 0 ? `${kpiRunning} Running` : 'No active jobs'}
         />
       </div>
 
