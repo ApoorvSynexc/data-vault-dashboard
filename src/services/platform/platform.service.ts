@@ -6,6 +6,8 @@ export const PLATFORM_ENDPOINTS = {
   connect:    '/v1/crm/connect',
   callback:   '/v1/crm/callback',
   disconnect: '/v1/crm/disconnect',
+  update:     '/v1/crm',
+  delete:     '/v1/crm',
 } as const;
 
 export type CrmProfile = {
@@ -65,6 +67,14 @@ export function usePlatformService() {
       })).data,
     disconnectPlatform: async (crmId: string) =>
       (await api.delete<void>(PLATFORM_ENDPOINTS.disconnect, {
+        query: { crmId },
+      })).data,
+    deletePlatform: async (crmId: string) =>
+      (await api.delete<void>(PLATFORM_ENDPOINTS.delete, {
+        query: { crmId },
+      })).data,
+    updatePlatform: async (crmId: string, name: string) =>
+      (await api.put<void>(PLATFORM_ENDPOINTS.update, { crmId, name }, {
         query: { crmId },
       })).data,
   };
