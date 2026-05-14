@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { usePlatformService } from '../../../services/platform/platform.service';
 
@@ -10,7 +10,6 @@ export default function EditSalesforceConnection() {
   const queryClient = useQueryClient();
   const platformService = usePlatformService();
   const [connectionName, setConnectionName] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { data: allPlatforms, isLoading } = useQuery({
@@ -28,30 +27,24 @@ export default function EditSalesforceConnection() {
     }
   }, [selectedPlatform]);
 
-  const handleSave = async () => {
+  const updateMutation = useMutation({
+    mutationFn: () => platformService.updatePlatform(crmId!, connectionName.trim()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platforms'] });
+      navigate('/connections/salesforce');
+    },
+    onError: (err: any) => {
+      setError(err?.message || 'Failed to update connection name');
+    },
+  });
+
+  const handleSave = () => {
     if (!connectionName.trim()) {
       setError('Connection name cannot be empty');
       return;
     }
-
-    setIsSaving(true);
     setError(null);
-
-    try {
-      // TODO: Update the API call once the backend endpoint is available
-      // For now, we'll show a success message
-      // await platformService.updateConnectionName(crmId, connectionName);
-
-      // Invalidate the query to refetch the updated data
-      queryClient.invalidateQueries({ queryKey: ['platforms'] });
-
-      // Navigate back to the connections page
-      navigate('/connections/salesforce');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update connection name');
-    } finally {
-      setIsSaving(false);
-    }
+    updateMutation.mutate();
   };
 
   if (isLoading) {
@@ -178,14 +171,14 @@ export default function EditSalesforceConnection() {
           <div className='flex gap-3 pt-4'>
             <button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={updateMutation.isPending}
               className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
             >
-              {isSaving ? 'Saving...' : 'Save Changes'}
+              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </button>
             <button
               onClick={() => navigate('/connections/salesforce')}
-              disabled={isSaving}
+              disabled={updateMutation.isPending}
               className='inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60'
             >
               Cancel
