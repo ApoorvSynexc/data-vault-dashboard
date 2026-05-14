@@ -460,6 +460,7 @@ export default function BackupManagementV2() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
@@ -474,6 +475,10 @@ export default function BackupManagementV2() {
       setDeleteTarget(null);
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
+    },
+    onError: (error: any) => {
+      const msg = error?.message || 'Failed to delete backup. Please try again.';
+      setDeleteError(msg);
     },
   });
 
@@ -716,8 +721,9 @@ export default function BackupManagementV2() {
         message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone and all associated job history will be permanently removed.`}
         confirmLabel='Delete'
         isLoading={deleteMutation.isPending}
-        onConfirm={() => deleteMutation.mutate(deleteTarget!.id)}
-        onCancel={() => { setDeleteTarget(null); deleteMutation.reset(); }}
+        error={deleteError}
+        onConfirm={() => { setDeleteError(null); deleteMutation.mutate(deleteTarget!.id); }}
+        onCancel={() => { setDeleteTarget(null); setDeleteError(null); deleteMutation.reset(); }}
       />
     </div>
   );

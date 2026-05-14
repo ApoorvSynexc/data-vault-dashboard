@@ -7,6 +7,7 @@ type WarningDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   isLoading?: boolean;
+  error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -18,6 +19,7 @@ export default function WarningDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   isLoading = false,
+  error,
   onConfirm,
   onCancel,
 }: WarningDialogProps) {
@@ -48,6 +50,11 @@ export default function WarningDialog({
           </div>
         </div>
 
+        {error && (
+          <div className='px-6 pb-2'>
+            <p className='text-xs font-medium text-red-600'>{error}</p>
+          </div>
+        )}
         <div className='flex justify-end gap-3 px-6 py-4'>
           <button
             type='button'
