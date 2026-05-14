@@ -288,5 +288,7 @@ export function useBackupConfigService() {
       const query = slug ? { slug } : {};
       return api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats, { query });
     },
+    getDashboardOverview: () =>
+      api.get<any>('/v1/dashboard/overview'),
   };
 }
