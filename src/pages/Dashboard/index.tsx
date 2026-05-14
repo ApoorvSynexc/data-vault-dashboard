@@ -88,7 +88,7 @@ export default function Dashboard() {
 
   const { data: jobsData } = useQuery({
     queryKey: ['dashboard-recent-jobs'],
-    queryFn: () => backupConfigService.listBackupJobs('', true, undefined, 5),
+    queryFn: () => backupConfigService.listBackupJobs('', true, undefined, 10),
     staleTime: 60_000,
   });
 
@@ -111,7 +111,6 @@ export default function Dashboard() {
 
   // jobs: response.data = [] (direct array), meta.totalRecords
   const recentJobs: any[] = Array.isArray((jobsData as any)?.data) ? (jobsData as any).data : [];
-  const totalJobsCount = (jobsData as any)?.meta?.totalRecords ?? totalRuns;
 
   /* ── no-backup state: lock scroll ── */
   useEffect(() => {
@@ -183,7 +182,7 @@ export default function Dashboard() {
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
           label='Active Jobs'
-          value={String(totalRuns)}
+          value={String(runningJobs)}
           sub={runningJobs > 0 ? `${runningJobs} Running` : 'No active jobs'}
         />
       </div>
@@ -194,7 +193,7 @@ export default function Dashboard() {
         {/* Left: Recent Jobs table */}
         <div className='rounded-xl bg-white flex flex-col' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
           <div className='flex items-center justify-between px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
-            <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs</h3>
+            <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
             <button
               onClick={() => navigate('/backup-management')}
               className='text-xs font-medium hover:underline'
@@ -204,8 +203,16 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* sticky header */}
-          <table className='w-full flex-shrink-0' style={{ borderCollapse: 'collapse' }}>
+          {/* fixed header */}
+          <table className='w-full' style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
                 {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
@@ -215,60 +222,64 @@ export default function Dashboard() {
             </thead>
           </table>
 
-          {/* scrollable body — max 5 rows */}
-          <div className='overflow-y-auto' style={{ maxHeight: '280px' }}>
-            <table className='w-full' style={{ borderCollapse: 'collapse' }}>
-              <tbody>
-                {recentJobs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
-                  </tr>
-                ) : recentJobs.slice(0, 5).map((job: any) => {
-                  const st = getJobStatus(job.status);
-                  const startMs = job.startedAt ? dayjs(job.startedAt) : null;
-                  const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
-                  const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
-                  const duration = diffMs !== null
-                    ? diffMs < 60000 ? `${Math.floor(diffMs / 1000)}s`
-                    : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
-                    : '--';
-                  const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
-                  return (
-                    <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
-                      <td className='px-5 py-3'>
-                        <div className='flex items-center gap-2'>
-                          <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
-                            {(job.objectApiName || 'B')[0].toUpperCase()}
-                          </div>
-                          <span className='text-sm font-light' style={{ color: '#0A0A0A' }}>
-                            {job.objectApiName || 'Backup Job'}
-                          </span>
+          {/* scrollable body */}
+          <div className='overflow-y-auto' style={{ maxHeight: '420px' }}>
+          <table className='w-full' style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
+            <tbody>
+              {recentJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
+                </tr>
+              ) : recentJobs.slice(0, 10).map((job: any) => {
+                const st = getJobStatus(job.status);
+                const startMs = job.startedAt ? dayjs(job.startedAt) : null;
+                const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
+                const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
+                const duration = diffMs !== null
+                  ? diffMs < 60000 ? `${Math.floor(diffMs / 1000)}s`
+                  : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
+                  : '--';
+                const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
+                return (
+                  <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
+                    <td className='px-5 py-3'>
+                      <div className='flex items-center gap-2 overflow-hidden'>
+                        <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
+                          {(job.objectApiName || 'B')[0].toUpperCase()}
                         </div>
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
-                        {job.jobType === 'BULK' ? 'Backup' : 'Realtime'}
-                      </td>
-                      <td className='px-5 py-3'>
-                        <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium' style={{ background: st.bg, color: st.color }}>
-                          {st.label}
+                        <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>
+                          {job.objectApiName || 'Backup Job'}
                         </span>
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
-                        {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{duration}</td>
-                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                    </td>
+                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
+                      {job.jobType === 'BULK' ? 'Backup' : 'Realtime'}
+                    </td>
+                    <td className='px-5 py-3'>
+                      <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium' style={{ background: st.bg, color: st.color }}>
+                        {st.label}
+                      </span>
+                    </td>
+                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
+                      {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
+                    </td>
+                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{duration}</td>
+                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
           </div>
 
-          {/* footer */}
-          <div className='px-5 py-2.5 flex-shrink-0' style={{ borderTop: '1px solid #E2E8F0' }}>
-            <p className='text-sm' style={{ color: '#64748B' }}>Showing {Math.min(recentJobs.length, 5)} of {totalJobsCount} jobs</p>
-          </div>
         </div>
 
         {/* Right column */}

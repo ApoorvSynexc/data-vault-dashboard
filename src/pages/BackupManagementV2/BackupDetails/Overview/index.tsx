@@ -184,10 +184,29 @@ export default function Overview({ backup }: OverviewProps) {
             <h3 className='text-sm font-semibold text-gray-900 mb-4'>Data Snapshot</h3>
             <div className='flex flex-col items-center'>
               <div className='relative w-28 h-28 mb-4'>
-                <svg className='w-full h-full' viewBox='0 0 100 100'>
-                  <circle cx='50' cy='50' r='40' fill='none' stroke='#e5e7eb' strokeWidth='8' />
-                  <circle cx='50' cy='50' r='40' fill='none' stroke='#10b981' strokeWidth='8' strokeDasharray='125 360' strokeDashoffset='-31' />
-                </svg>
+                {(() => {
+                  const C = 2 * Math.PI * 40; // ≈ 251.3
+                  const stdLen = totalSizeBytes > 0 ? (standardSizeBytes / totalSizeBytes) * C : 0;
+                  const cusLen = totalSizeBytes > 0 ? (customSizeBytes / totalSizeBytes) * C : 0;
+                  return (
+                    <svg className='w-full h-full' viewBox='0 0 100 100'>
+                      <circle cx='50' cy='50' r='40' fill='none' stroke='#e5e7eb' strokeWidth='8' />
+                      {/* standard — blue, starts at top (-90°) */}
+                      <circle cx='50' cy='50' r='40' fill='none' stroke='#3b82f6' strokeWidth='8'
+                        strokeDasharray={`${stdLen} ${C - stdLen}`}
+                        strokeDashoffset={C / 4}
+                        strokeLinecap='round' />
+                      {/* custom — purple, starts after standard */}
+                      {cusLen > 0 && (
+                        <circle cx='50' cy='50' r='40' fill='none' stroke='#a855f7' strokeWidth='8'
+                          strokeDasharray={`${cusLen} ${C - cusLen}`}
+                          strokeDashoffset={C / 4 - stdLen}
+                          strokeLinecap='round' />
+                      )}
+                    </svg>
+                  );
+                })()}
+
                 <div className='absolute inset-0 flex flex-col items-center justify-center'>
                   <p className='text-sm font-bold text-gray-900'>{totalSizeBytes > 0 ? formatBytes(totalSizeBytes) : '--'}</p>
                   <p className='text-[10px] text-gray-600'>TOTAL SIZE</p>
