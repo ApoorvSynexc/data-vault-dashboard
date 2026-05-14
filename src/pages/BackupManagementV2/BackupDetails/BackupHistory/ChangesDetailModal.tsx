@@ -216,7 +216,15 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
         </div>
 
         {/* ── Table ── */}
-        <div className='flex-1 overflow-auto mx-7 rounded-xl' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+        <div className='flex-1 overflow-auto mx-7 rounded-xl relative' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+          {isRefreshing && (
+            <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/80 backdrop-blur-sm'>
+              <svg className='w-8 h-8 animate-spin text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+              </svg>
+              <p className='text-sm font-medium text-gray-500'>Refreshing data...</p>
+            </div>
+          )}
           <table className='w-full' style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>

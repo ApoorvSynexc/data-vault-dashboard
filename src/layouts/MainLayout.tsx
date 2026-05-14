@@ -200,7 +200,7 @@ export default function MainLayout() {
                   My Profile
                 </Link>
 
-                <Link
+                {/* <Link
                   to='/change-password'
                   onClick={() => setIsUserMenuOpen(false)}
                   className='flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50'
@@ -210,7 +210,7 @@ export default function MainLayout() {
                     <path d='M7 11V7a5 5 0 0 1 10 0v4' />
                   </svg>
                   Change Password
-                </Link>
+                </Link> */}
 
                 <div className='my-1 border-t border-gray-100' />
 

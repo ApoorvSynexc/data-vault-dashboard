@@ -306,20 +306,6 @@ function EmailCard({
             <p className='text-sm font-medium text-gray-700'>Current email</p>
             <p className='mt-0.5 text-sm text-gray-900'>{currentEmail}</p>
           </div>
-          <div className='flex flex-col items-end gap-1'>
-            <button
-              type='button'
-              onClick={() => { setSuccess(false); setStep('input'); }}
-              className='rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100'
-            >
-              Change Email
-            </button>
-            {success && (
-              <p className='flex items-center gap-1 text-xs font-medium text-green-600'>
-                <CheckIcon className='h-3.5 w-3.5' /> Email updated successfully
-              </p>
-            )}
-          </div>
         </div>
       )}
 

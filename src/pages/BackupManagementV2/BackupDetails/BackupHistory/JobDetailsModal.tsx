@@ -5,6 +5,7 @@ import ChangesDetailModal from './ChangesDetailModal';
 type JobDetailsModalProps = {
   job: any;
   onClose: () => void;
+  onRefresh?: () => Promise<void>;
 };
 
 const getStatusStyle = (status: string) => {
@@ -51,7 +52,7 @@ const IconClock = () => (
   </div>
 );
 
-export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) {
+export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsModalProps) {
   const [view, setView] = useState<'job' | 'changes'>('job');
   if (!job) return null;
 
@@ -70,11 +71,10 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
   const objectsList: any[] = job.object || [];
   const totalDataSize = objectsList.reduce((sum: number, obj: any) => sum + (obj.sizeInBytes || 0), 0);
 
-  const newObjectsAdded = objectsList.filter((o: any) => (o.insertCount || 0) > 0).length;
   const newRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.insertCount || 0), 0);
-  const updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.completedRecordCount || 0), 0);
-  const deletedRecordsCount = 0;
-  const totalRecords = newObjectsAdded + newRecordsCount + updatedRecordsCount + deletedRecordsCount;
+  const updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.updateCount || 0), 0);
+  const deletedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.deleteCount || 0), 0);
+  const totalRecords = newRecordsCount + updatedRecordsCount + deletedRecordsCount;
 
   const statusStyle = getStatusStyle(job.status);
 
@@ -101,6 +101,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
         onClose={onClose}
         onBack={() => setView('job')}
         job={job}
+        onRefresh={onRefresh}
       />
     );
   }
