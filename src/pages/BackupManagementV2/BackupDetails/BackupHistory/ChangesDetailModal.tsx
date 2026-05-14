@@ -17,7 +17,6 @@ interface ObjectDetail {
   newRecords: number;
   updatedRecords: number;
   deletedRecords: number;
-  totalChanges: number;
   errorMessage?: string;
 }
 
@@ -46,7 +45,6 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
       newRecords: nr,
       updatedRecords: ur,
       deletedRecords: dr,
-      totalChanges: nr + ur + dr,
       errorMessage: obj.errorMessage,
     };
   });
@@ -245,7 +243,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '12%' }}>
                   Status
                 </th>
-                {['New Records', 'Updated Records', 'Deleted Records', 'Total Changes'].map(h => (
+                {['New Records', 'Updated Records', 'Deleted Records'].map(h => (
                   <th key={h} className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>
                     {h}
                   </th>
@@ -256,7 +254,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
             <tbody>
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
                     No objects found.
                   </td>
                 </tr>
@@ -289,13 +287,6 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                   {/* Deleted Records */}
                   <td className='px-5 py-3.5'>
                     <span className='text-sm' style={{ color: '#374151' }}>{item.deletedRecords}</span>
-                  </td>
-                  {/* Total Changes */}
-                  <td className='px-5 py-3.5'>
-                    {item.totalChanges > 0
-                      ? <span className='text-sm font-medium' style={{ color: '#008020' }}>+{item.totalChanges}</span>
-                      : <span className='text-sm' style={{ color: '#374151' }}>0</span>
-                    }
                   </td>
                   {/* Chevron */}
                   <td className='pr-4 py-3.5 text-center'>

@@ -248,15 +248,24 @@ export default function Dashboard() {
                   : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
                   : '--';
                 const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
+                const bulkObjects: any[] = job.object || [];
+                const jobName = job.objectApiName
+                  ? job.objectApiName
+                  : bulkObjects.length > 0
+                    ? bulkObjects.length === 1
+                      ? bulkObjects[0].name
+                      : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
+                    : 'Backup Job';
+                const initials = jobName[0]?.toUpperCase() ?? 'B';
                 return (
                   <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
                     <td className='px-5 py-3'>
                       <div className='flex items-center gap-2 overflow-hidden'>
                         <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
-                          {(job.objectApiName || 'B')[0].toUpperCase()}
+                          {initials}
                         </div>
                         <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>
-                          {job.objectApiName || 'Backup Job'}
+                          {jobName}
                         </span>
                       </div>
                     </td>
