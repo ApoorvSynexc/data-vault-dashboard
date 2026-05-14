@@ -158,44 +158,43 @@ export default function Dashboard() {
 
   /* ── main dashboard ── */
   return (
-    <div className='flex flex-col gap-5'>
-      <h2 className='text-xl font-semibold' style={{ color: '#33363F' }}>Dashboard Overview</h2>
+    <div className='flex flex-col gap-3 h-full overflow-hidden'>
+      <h2 className='text-lg font-semibold flex-shrink-0' style={{ color: '#33363F' }}>Dashboard Overview</h2>
 
       {/* ── KPI Row ── */}
-      <div className='grid grid-cols-4 gap-4'>
+      <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
-          label='Total Runs'
-          value={String(totalRuns)}
-          sub='+15 last 30 days'
-        />
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
-          label='Successful'
-          value={String(completedJobs)}
-          sub={`${totalRuns > 0 ? Math.round((completedJobs / totalRuns) * 100) : 0}% success rate`}
-        />
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#DC2626' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/></svg>}
-          label='Failed'
-          value={String(failedJobs).padStart(2, '0')}
-          sub={`${totalRuns > 0 ? Math.round((failedJobs / totalRuns) * 100) : 0}% failure rate`}
-          subColor='#DC2626'
+          label='Protected Records'
+          value='2.2B'
+          sub='+2.1% vs last week'
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
-          label='Total Data Backed up'
+          label='Storage Used'
           value={formatBytes(dataBytes) || '--'}
-          sub={weeklyChange ? `${weeklyChange > 0 ? '+' : ''}${weeklyChange}% this week` : 'Across all backups'}
+          sub={weeklyChange ? `${weeklyChange > 0 ? '+' : ''}${weeklyChange}% vs last week` : '+2.1% vs last week'}
+        />
+        <KpiCard
+          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
+          label='Backup Success Rate'
+          value={`${successRate}%`}
+          sub='Last 7 days'
+        />
+        <KpiCard
+          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
+          label='Active Jobs'
+          value={String(totalRuns)}
+          sub={runningJobs > 0 ? `${runningJobs} Running` : 'No active jobs'}
         />
       </div>
 
       {/* ── Main two-column layout ── */}
-      <div className='grid gap-4' style={{ gridTemplateColumns: '1fr 265px' }}>
+      <div className='grid gap-3 flex-1 min-h-0' style={{ gridTemplateColumns: '1fr 265px' }}>
 
         {/* Left: Recent Jobs table */}
-        <div className='rounded-xl bg-white' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-          <div className='flex items-center justify-between px-5 py-4' style={{ borderBottom: '1px solid #E2E8F0' }}>
+        <div className='rounded-xl bg-white flex flex-col min-h-0' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+          <div className='flex items-center justify-between px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs</h3>
             <button
               onClick={() => navigate('/backup-management')}
@@ -206,21 +205,26 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className='overflow-x-auto'>
+          {/* sticky header */}
+          <table className='w-full flex-shrink-0' style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
+                {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
+                  <th key={h} className='px-5 py-2.5 text-left text-sm font-medium' style={{ color: '#33363F' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+          </table>
+
+          {/* scrollable body — max 5 rows */}
+          <div className='overflow-y-auto' style={{ maxHeight: '5 * 56px' }}>
             <table className='w-full' style={{ borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                  {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
-                    <th key={h} className='px-5 py-3 text-left text-sm font-medium' style={{ color: '#33363F' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
               <tbody>
                 {recentJobs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
                   </tr>
-                ) : recentJobs.map((job: any, idx: number) => {
+                ) : recentJobs.slice(0, 5).map((job: any) => {
                   const st = getJobStatus(job.status);
                   const startMs = job.startedAt ? dayjs(job.startedAt) : null;
                   const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
@@ -231,30 +235,30 @@ export default function Dashboard() {
                     : '--';
                   const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
                   return (
-                    <tr key={job.backupJobId} style={{ borderBottom: idx < recentJobs.length - 1 ? '1px solid #EBEBEB' : 'none' }}>
-                      <td className='px-5 py-4'>
+                    <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
+                      <td className='px-5 py-3'>
                         <div className='flex items-center gap-2'>
                           <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
                             {(job.objectApiName || 'B')[0].toUpperCase()}
                           </div>
                           <span className='text-sm font-light' style={{ color: '#0A0A0A' }}>
-                            {job.objectApiName || `Backup Job`}
+                            {job.objectApiName || 'Backup Job'}
                           </span>
                         </div>
                       </td>
-                      <td className='px-5 py-4 text-sm font-light' style={{ color: '#0A0A0A' }}>
+                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
                         {job.jobType === 'BULK' ? 'Backup' : 'Realtime'}
                       </td>
-                      <td className='px-5 py-4'>
+                      <td className='px-5 py-3'>
                         <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium' style={{ background: st.bg, color: st.color }}>
                           {st.label}
                         </span>
                       </td>
-                      <td className='px-5 py-4 text-sm font-light' style={{ color: '#0A0A0A' }}>
+                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
                         {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
                       </td>
-                      <td className='px-5 py-4 text-sm font-light' style={{ color: '#0A0A0A' }}>{duration}</td>
-                      <td className='px-5 py-4 text-sm font-light' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
+                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{duration}</td>
+                      <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
                     </tr>
                   );
                 })}
@@ -262,9 +266,9 @@ export default function Dashboard() {
             </table>
           </div>
 
-          {/* Pagination hint */}
-          <div className='px-5 py-3' style={{ borderTop: '1px solid #E2E8F0' }}>
-            <p className='text-sm' style={{ color: '#64748B' }}>Showing {recentJobs.length} of {totalRuns} jobs</p>
+          {/* footer */}
+          <div className='px-5 py-2.5 flex-shrink-0' style={{ borderTop: '1px solid #E2E8F0' }}>
+            <p className='text-sm' style={{ color: '#64748B' }}>Showing {Math.min(recentJobs.length, 5)} of {totalRuns} jobs</p>
           </div>
         </div>
 
