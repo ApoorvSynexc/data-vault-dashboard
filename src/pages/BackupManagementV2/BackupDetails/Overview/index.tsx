@@ -24,6 +24,18 @@ export default function Overview({ backup }: OverviewProps) {
   // Merge API data with backup prop for fallback
   const displayData = backupDetail || backup;
 
+  // objects array from detail API already has type: 'STANDARD' | 'CUSTOM'
+  const objects: any[] = displayData?.objects ?? [];
+
+  // sizes from API — no extra call needed
+  const totalSizeBytes: number = displayData?.sizeInBytes ?? 0;
+  const standardSizeBytes = objects.filter((o: any) => o.type?.toUpperCase() === 'STANDARD').reduce((s: number, o: any) => s + (o.sizeInBytes ?? 0), 0);
+  const customSizeBytes   = objects.filter((o: any) => o.type?.toUpperCase() === 'CUSTOM').reduce((s: number, o: any) => s + (o.sizeInBytes ?? 0), 0);
+
+  const top5 = [...objects]
+    .sort((a, b) => (b.sizeInBytes ?? 0) - (a.sizeInBytes ?? 0))
+    .slice(0, 5);
+
   if (isLoading) {
     return (
       <div className='flex items-center justify-center py-12'>
@@ -74,7 +86,7 @@ export default function Overview({ backup }: OverviewProps) {
               </svg>
               <span className='text-xs font-medium text-gray-600'>Data Size</span>
             </div>
-            <p className='text-sm font-semibold text-gray-900'>{formatBytes(displayData?.sizeInBytes)}</p>
+            <p className='text-sm font-semibold text-gray-900'>{totalSizeBytes > 0 ? formatBytes(totalSizeBytes) : '--'}</p>
             <p className='text-xs text-gray-500'>Current Backup Size</p>
           </div>
 
@@ -109,7 +121,7 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Destination Platform</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.destinationId ? 'Cloud Storage' : 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.destinationDetail?.destinationName ?? displayData?.destinationDetail?.type ?? (displayData?.destinationId ? 'Cloud Storage' : 'N/A')}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Environment</span>
@@ -177,7 +189,7 @@ export default function Overview({ backup }: OverviewProps) {
                   <circle cx='50' cy='50' r='40' fill='none' stroke='#10b981' strokeWidth='8' strokeDasharray='125 360' strokeDashoffset='-31' />
                 </svg>
                 <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                  <p className='text-sm font-bold text-gray-900'>{formatBytes(displayData?.sizeInBytes)}</p>
+                  <p className='text-sm font-bold text-gray-900'>{totalSizeBytes > 0 ? formatBytes(totalSizeBytes) : '--'}</p>
                   <p className='text-[10px] text-gray-600'>TOTAL SIZE</p>
                 </div>
               </div>
@@ -187,14 +199,14 @@ export default function Overview({ backup }: OverviewProps) {
                     <span className='w-1.5 h-1.5 rounded-full bg-blue-500'></span>
                     <span className='text-gray-600'>Standard Object</span>
                   </div>
-                  <span className='font-medium text-gray-900'>3.1 GB</span>
+                  <span className='font-medium text-gray-900'>{standardSizeBytes > 0 ? formatBytes(standardSizeBytes) : '--'}</span>
                 </div>
                 <div className='flex items-center justify-between'>
                   <div className='flex items-center gap-1.5'>
                     <span className='w-1.5 h-1.5 rounded-full bg-purple-500'></span>
                     <span className='text-gray-600'>Custom Object</span>
                   </div>
-                  <span className='font-medium text-gray-900'>1.1 GB</span>
+                  <span className='font-medium text-gray-900'>{customSizeBytes > 0 ? formatBytes(customSizeBytes) : '--'}</span>
                 </div>
               </div>
             </div>
@@ -204,28 +216,15 @@ export default function Overview({ backup }: OverviewProps) {
           <div className='bg-white rounded border border-gray-200 p-4'>
             <h3 className='text-sm font-semibold text-gray-900 mb-4'>Top 5 Largest Object</h3>
             <div className='space-y-2 text-[11px]'>
-              <div className='flex items-center justify-between'>
-                <span className='text-gray-900 font-medium'>Account</span>
-                <span className='text-gray-600'>765 MB</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-gray-900 font-medium'>Opportunity</span>
-                <span className='text-gray-600'>565 MB</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-gray-900 font-medium'>Contact</span>
-                <span className='text-gray-600'>465 MB</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-gray-900 font-medium'>Case</span>
-                <span className='text-gray-600'>365 MB</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-gray-900 font-medium'>Lead</span>
-                <span className='text-gray-600'>340 MB</span>
-              </div>
+              {top5.length === 0 ? (
+                <p className='text-gray-500 text-center py-2'>No data available</p>
+              ) : top5.map((o) => (
+                <div key={o.name} className='flex items-center justify-between'>
+                  <span className='text-gray-900 font-medium'>{o.name}</span>
+                  <span className='text-gray-600'>{o.sizeInBytes ? formatBytes(o.sizeInBytes) : '--'}</span>
+                </div>
+              ))}
             </div>
-            <a href='#' className='block mt-3 text-[11px] font-medium text-blue-600 hover:underline text-center'>View All →</a>
           </div>
         </div>
       </div>
