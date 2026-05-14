@@ -97,20 +97,6 @@ export default function Dashboard() {
     ? (backupListData as any).data
     : [];
 
-  const firstCrmId: string | null = backupList[0]?.crmId ?? null;
-  const allObjectNames: string[] = [...new Set<string>(backupList.flatMap((b: any) => (b.objectNames ?? []) as string[]))];
-
-  const { data: objectCountData } = useQuery({
-    queryKey: ['dashboard-object-count', firstCrmId, allObjectNames],
-    queryFn: () => backupConfigService.getObjectCountList(firstCrmId!, allObjectNames),
-    enabled: !!firstCrmId && allObjectNames.length > 0,
-    staleTime: 60_000,
-  });
-
-  const objectCountResults: any[] = (objectCountData as any)?.data?.results ?? [];
-  const protectedRecords = objectCountResults.length > 0
-    ? objectCountResults.reduce((sum: number, o: any) => sum + (o.recordCount ?? 0), 0)
-    : null;
   const hasBackups = backupList && backupList.length > 0;
 
   // stats: response.data = { completedJobs: { count, vsYesterday }, runningJobs: { count }, failedJobs: { count }, dataProcessed: { bytes, weeklyChangePercent } }
@@ -180,7 +166,7 @@ export default function Dashboard() {
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
           label='Protected Records'
-          value={protectedRecords !== null ? protectedRecords.toLocaleString() : '--'}
+          value='--'
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
