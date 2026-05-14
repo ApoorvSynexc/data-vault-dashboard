@@ -24,12 +24,6 @@ import Frame16 from '../../assets/icons/Frame-16.svg';
 import Frame17 from '../../assets/icons/Frame-17.svg';
 
 /* ── helpers ── */
-function getStatNum(v: number | { count?: number; total?: number; value?: number } | undefined): number {
-  if (typeof v === 'number') return v;
-  if (v && typeof v === 'object') return v.count ?? v.total ?? v.value ?? 0;
-  return 0;
-}
-
 function getJobStatus(status?: string): { label: string; bg: string; color: string } {
   const s = status?.toUpperCase();
   if (s === 'SUCCESS' || s === 'COMPLETED') return { label: 'Completed', bg: '#DCFCE7', color: '#16A34A' };
@@ -99,19 +93,39 @@ export default function Dashboard() {
   });
 
   /* ── derived values ── */
-  const backupList = Array.isArray(backupListData?.data) ? backupListData.data : (backupListData?.data?.data ?? []);
+  const backupList = Array.isArray((backupListData as any)?.data)
+    ? (backupListData as any).data
+    : [];
+
+  const firstCrmId: string | null = backupList[0]?.crmId ?? null;
+  const allObjectNames: string[] = [...new Set<string>(backupList.flatMap((b: any) => (b.objectNames ?? []) as string[]))];
+
+  const { data: objectCountData } = useQuery({
+    queryKey: ['dashboard-object-count', firstCrmId, allObjectNames],
+    queryFn: () => backupConfigService.getObjectCountList(firstCrmId!, allObjectNames),
+    enabled: !!firstCrmId && allObjectNames.length > 0,
+    staleTime: 60_000,
+  });
+
+  const objectCountResults: any[] = (objectCountData as any)?.data?.results ?? [];
+  const protectedRecords = objectCountResults.length > 0
+    ? objectCountResults.reduce((sum: number, o: any) => sum + (o.recordCount ?? 0), 0)
+    : null;
   const hasBackups = backupList && backupList.length > 0;
 
-  const apiStats = (statsData?.data as any) ?? {};
-  const completedJobs = getStatNum(apiStats?.completedJobs);
-  const runningJobs   = getStatNum(apiStats?.runningJobs);
-  const failedJobs    = getStatNum(apiStats?.failedJobs);
+  // stats: response.data = { completedJobs: { count, vsYesterday }, runningJobs: { count }, failedJobs: { count }, dataProcessed: { bytes, weeklyChangePercent } }
+  const apiStats = (statsData as any)?.data ?? {};
+  const completedJobs = apiStats?.completedJobs?.count ?? 0;
+  const runningJobs   = apiStats?.runningJobs?.count ?? 0;
+  const failedJobs    = apiStats?.failedJobs?.count ?? 0;
   const dataBytes     = apiStats?.dataProcessed?.bytes ?? 0;
   const weeklyChange  = apiStats?.dataProcessed?.weeklyChangePercent ?? 0;
   const totalRuns     = completedJobs + runningJobs + failedJobs;
   const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
 
-  const recentJobs: any[] = (jobsData as any)?.data ?? [];
+  // jobs: response.data = [] (direct array), meta.totalRecords
+  const recentJobs: any[] = Array.isArray((jobsData as any)?.data) ? (jobsData as any).data : [];
+  const totalJobsCount = (jobsData as any)?.meta?.totalRecords ?? totalRuns;
 
   /* ── no-backup state: lock scroll ── */
   useEffect(() => {
@@ -158,7 +172,7 @@ export default function Dashboard() {
 
   /* ── main dashboard ── */
   return (
-    <div className='flex flex-col gap-3 h-full overflow-hidden'>
+    <div className='flex flex-col gap-3'>
       <h2 className='text-lg font-semibold flex-shrink-0' style={{ color: '#33363F' }}>Dashboard Overview</h2>
 
       {/* ── KPI Row ── */}
@@ -166,14 +180,13 @@ export default function Dashboard() {
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
           label='Protected Records'
-          value='2.2B'
-          sub='+2.1% vs last week'
+          value={protectedRecords !== null ? protectedRecords.toLocaleString() : '--'}
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
           label='Storage Used'
           value={formatBytes(dataBytes) || '--'}
-          sub={weeklyChange ? `${weeklyChange > 0 ? '+' : ''}${weeklyChange}% vs last week` : '+2.1% vs last week'}
+          sub={weeklyChange ? `${weeklyChange > 0 ? '+' : ''}${weeklyChange}% vs last week` : undefined}
         />
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
@@ -190,10 +203,10 @@ export default function Dashboard() {
       </div>
 
       {/* ── Main two-column layout ── */}
-      <div className='grid gap-3 flex-1 min-h-0' style={{ gridTemplateColumns: '1fr 265px' }}>
+      <div className='grid gap-3' style={{ gridTemplateColumns: '1fr 265px' }}>
 
         {/* Left: Recent Jobs table */}
-        <div className='rounded-xl bg-white flex flex-col min-h-0' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+        <div className='rounded-xl bg-white flex flex-col' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
           <div className='flex items-center justify-between px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs</h3>
             <button
@@ -217,7 +230,7 @@ export default function Dashboard() {
           </table>
 
           {/* scrollable body — max 5 rows */}
-          <div className='overflow-y-auto' style={{ maxHeight: '5 * 56px' }}>
+          <div className='overflow-y-auto' style={{ maxHeight: '280px' }}>
             <table className='w-full' style={{ borderCollapse: 'collapse' }}>
               <tbody>
                 {recentJobs.length === 0 ? (
@@ -268,7 +281,7 @@ export default function Dashboard() {
 
           {/* footer */}
           <div className='px-5 py-2.5 flex-shrink-0' style={{ borderTop: '1px solid #E2E8F0' }}>
-            <p className='text-sm' style={{ color: '#64748B' }}>Showing {Math.min(recentJobs.length, 5)} of {totalRuns} jobs</p>
+            <p className='text-sm' style={{ color: '#64748B' }}>Showing {Math.min(recentJobs.length, 5)} of {totalJobsCount} jobs</p>
           </div>
         </div>
 
@@ -286,10 +299,14 @@ export default function Dashboard() {
               </span>
             </div>
             <ul className='mt-4 flex flex-col gap-1.5'>
-              {['Storage Replication Active', 'Encryption Enabled', `No failures (7 days)`].map(item => (
-                <li key={item} className='flex items-center gap-2 text-sm' style={{ color: '#33363F' }}>
+              {[
+                `${backupList.length} active backup${backupList.length !== 1 ? 's' : ''}`,
+                `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
+                failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
+              ].map((item, i) => (
+                <li key={i} className='flex items-center gap-2 text-sm' style={{ color: '#33363F' }}>
                   <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
-                    <circle cx='12' cy='12' r='10' fill='url(#hg)' />
+                    <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : 'url(#hg)'} />
                     <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
                     <defs>
                       <linearGradient id='hg' x1='0' y1='0' x2='0' y2='1'>
