@@ -26,11 +26,6 @@ const getStatusLabel = (status: string) => {
 };
 
 /* ── small icons for the stat cards ── */
-const IconBox = () => (
-  <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-    <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z' />
-  </svg>
-);
 const IconFile = () => (
   <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
     <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' /><polyline points='14 2 14 8 20 8' />
@@ -83,9 +78,7 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
 
   const statusStyle = getStatusStyle(job.status);
 
-  // Figma colors: New Objects Added = blue, New Records = green, Updated Records = light blue, Deleted Records = red
   const chartSegments = [
-    { value: newObjectsAdded, color: '#155DFC', label: 'New Objects Added' },
     { value: newRecordsCount, color: '#008020', label: 'New Records' },
     { value: updatedRecordsCount, color: '#93C5FD', label: 'Updated Records' },
     { value: deletedRecordsCount, color: '#F24400', label: 'Deleted Records' },
@@ -96,7 +89,6 @@ export default function JobDetailsModal({ job, onClose }: JobDetailsModalProps) 
   const C = 2 * Math.PI * R;
 
   const statCards = [
-    { value: newObjectsAdded, label: 'New Object Added', color: '#008020', icon: <IconBox /> },
     { value: newRecordsCount, label: 'New Records', color: '#008020', icon: <IconFile /> },
     { value: updatedRecordsCount, label: 'Updated Records', color: '#155DFC', icon: <IconEdit /> },
     { value: deletedRecordsCount, label: 'Deleted Records', color: '#F24400', icon: <IconTrash /> },
