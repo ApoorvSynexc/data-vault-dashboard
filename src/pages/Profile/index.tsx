@@ -224,7 +224,6 @@ function EmailCard({
   const [countdown, setCountdown] = useState(0);
   const [resendPending, setResendPending] = useState(false);
   const [resendError, setResendError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -274,7 +273,6 @@ function EmailCard({
       await verifyOtp({ channel: 'EMAIL', contact: newEmail, otp, otpType: 'SIGNUP' });
       await updateProfile({ contact: { email: newEmail } });
       await onSaved();
-      setSuccess(true);
       setStep('idle');
       setNewEmail('');
       return { submitError: '' };

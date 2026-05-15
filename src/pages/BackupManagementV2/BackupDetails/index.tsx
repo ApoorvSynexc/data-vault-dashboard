@@ -47,10 +47,6 @@ export default function BackupDetails() {
 
   const backupData = (backupDetail as any) || mockBackupData;
 
-  // Derive schedule from triggerResults when schedule field is absent
-  const derivedSchedule = backupData?.schedule
-    ?? (backupData?.triggerResults ? 'REALTIME' : undefined);
-
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
