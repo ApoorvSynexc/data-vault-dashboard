@@ -133,12 +133,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       header: 'Object',
       render: (obj) => (
         <div className='flex items-center gap-2'>
-          <span className={obj.isBackedUp ? 'text-gray-600' : 'text-gray-900'}>{obj.name}</span>
-          {obj.isBackedUp && (
-            <span className='text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded whitespace-nowrap'>
-              Already Backed Up {obj.schedule ? `as ${obj.schedule === 'realtime' ? 'Realtime' : 'Scheduled'}` : ''}
-            </span>
-          )}
+          <span className='text-gray-900'>{obj.name}</span>
         </div>
       ),
     },
@@ -146,7 +141,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       key: 'type',
       header: 'Type',
       render: (obj) => (
-        <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+        <span className='text-gray-700'>
           {obj.isCustom ? 'Custom' : 'Standard'}
         </span>
       ),
@@ -155,7 +150,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       key: 'recordCount',
       header: 'Records',
       render: (obj) => (
-        <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+        <span className='text-gray-700'>
           {obj.recordCount?.toLocaleString() ?? '--'}
         </span>
       ),
@@ -175,7 +170,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           return `${sizeInKB} KB`;
         };
         return (
-          <span className={obj.isBackedUp ? 'text-gray-500' : 'text-gray-700'}>
+          <span className='text-gray-700'>
             {calculateDataSize(obj.recordCount)}
           </span>
         );
@@ -273,12 +268,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 showCheckbox={true}
                 selectedIds={selectedObjects}
                 onSelectionChange={setSelectedObjects}
-                isRowSelectable={(obj) => !obj.isBackedUp}
-                getRowClassName={(obj) => `border-b border-gray-200 ${
-                  obj.isBackedUp
-                    ? 'bg-gray-100 opacity-60'
-                    : 'hover:bg-blue-50'
-                }`}
+                getRowClassName={() => 'border-b border-gray-200 hover:bg-blue-50'}
                 emptyState='No objects found matching your search.'
                 showPagination={false}
                 minHeightClassName='min-h-0'
