@@ -219,7 +219,7 @@ export default function Table<TRow>({
                               }
                               onSelectionChange?.(newSelected);
                             }}
-                            disabled={!isRowSelectable?.(row)}
+                            disabled={isRowSelectable ? !isRowSelectable(row) : false}
                             className='w-5 h-5 rounded accent-blue-600 cursor-pointer disabled:cursor-not-allowed'
                           />
                         </td>
