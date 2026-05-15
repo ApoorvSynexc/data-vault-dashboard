@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import dayjs from 'dayjs';
 
 type ChangesDetailModalProps = {
@@ -29,6 +29,15 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sortField, setSortField] = useState<'name' | 'type' | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
   const itemsPerPage = 10;
 
   if (!isOpen || !job) return null;
@@ -38,7 +47,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
     const ur = obj.updateCount || 0;
     const dr = obj.deleteCount || 0;
     return {
-      id: obj.bulkJobId || `${idx}`,
+      id: obj.bulkJobId ? obj.bulkJobId : `obj-${idx}`,
       name: obj.name || 'Unknown',
       type: obj.name?.includes('__c') ? 'Custom' : 'Standard',
       status: obj.status || 'UNKNOWN',
@@ -267,9 +276,9 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                   </td>
                 </tr>
               ) : paginatedData.map((item, idx) => (
+                <React.Fragment key={item.id}>
                 <tr
-                  key={item.id}
-                  style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
+                  style={{ borderBottom: !expandedRows.has(item.id) && idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
                   className='hover:bg-gray-50 transition-colors'
                 >
                   {/* Object Name */}
@@ -298,11 +307,42 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                   </td>
                   {/* Chevron */}
                   <td className='pr-4 py-3.5 text-center'>
-                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='6 9 12 15 18 9' />
-                    </svg>
+                    <button
+                      onClick={() => toggleRow(item.id)}
+                      className='p-0.5 rounded hover:bg-gray-100 transition'
+                    >
+                      <svg
+                        width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
+                        className={`transition-transform ${expandedRows.has(item.id) ? 'rotate-180' : ''}`}
+                      >
+                        <polyline points='6 9 12 15 18 9' />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
+                {/* Expanded detail row */}
+                {expandedRows.has(item.id) && (
+                  <tr style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                    <td colSpan={7} className='px-5 pb-3.5 pt-0'>
+                      {item.errorMessage ? (
+                        <div className='flex items-start gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.2)' }}>
+                          <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='mt-0.5 shrink-0'>
+                            <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                          </svg>
+                          <span className='text-xs font-medium' style={{ color: '#F24400' }}>{parseErrorMessage(item.errorMessage!)}</span>
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(0,128,32,0.06)', border: '1px solid rgba(0,128,32,0.2)' }}>
+                          <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0'>
+                            <path d='M20 6L9 17l-5-5' />
+                          </svg>
+                          <span className='text-xs font-medium' style={{ color: '#008020' }}>{item.name} is backed up successfully</span>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -332,6 +372,24 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
       </div>
     </div>
   );
+}
+
+/* ── Parse raw error string into a readable message ── */
+function parseErrorMessage(raw: string): string {
+  try {
+    // Strip leading prefix like "[create-bulk-job] HTTP Error 400: "
+    const jsonStart = raw.indexOf('[{');
+    if (jsonStart !== -1) {
+      const parsed = JSON.parse(raw.slice(jsonStart));
+      if (Array.isArray(parsed) && parsed[0]?.message) {
+        // Extract just the core message, strip leading whitespace/newlines
+        return parsed[0].message.trim().split('\n').pop()?.trim() || parsed[0].message.trim();
+      }
+    }
+  } catch {
+    // fall through to raw
+  }
+  return raw;
 }
 
 /* ── Status Badge ── */
