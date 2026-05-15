@@ -203,17 +203,17 @@ export default function Overview({ backup }: OverviewProps) {
                   return (
                     <svg className='w-full h-full' viewBox='0 0 100 100'>
                       <circle cx='50' cy='50' r='40' fill='none' stroke='#e5e7eb' strokeWidth='8' />
-                      {/* standard — blue, starts at top (-90°) */}
-                      <circle cx='50' cy='50' r='40' fill='none' stroke='#3b82f6' strokeWidth='8'
-                        strokeDasharray={`${stdLen} ${C - stdLen}`}
-                        strokeDashoffset={C / 4}
-                        strokeLinecap='round' />
-                      {/* custom — purple, starts after standard */}
+                      {/* custom — purple, drawn first (larger segment) */}
                       {cusLen > 0 && (
                         <circle cx='50' cy='50' r='40' fill='none' stroke='#a855f7' strokeWidth='8'
                           strokeDasharray={`${cusLen} ${C - cusLen}`}
-                          strokeDashoffset={C / 4 - stdLen}
-                          strokeLinecap='round' />
+                          strokeDashoffset={C / 4 - stdLen} />
+                      )}
+                      {/* standard — blue, drawn on top so it's always visible */}
+                      {stdLen > 0 && (
+                        <circle cx='50' cy='50' r='40' fill='none' stroke='#3b82f6' strokeWidth='8'
+                          strokeDasharray={`${stdLen} ${C - stdLen}`}
+                          strokeDashoffset={C / 4} />
                       )}
                     </svg>
                   );
