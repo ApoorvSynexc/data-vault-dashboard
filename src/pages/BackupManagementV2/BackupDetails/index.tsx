@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
+import TriggerRecords from './TriggerRecords';
 // import ObjectsNData from './ObjectsNData'; // commented out
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import { capitalize } from '../../../utils';
 import salesforceLogo from '../../../assets/icons/salesforce_logo.svg';
 
-type TabType = 'overview' | 'history' | 'objects';
+type TabType = 'overview' | 'history' | 'triggers' | 'objects';
 
 // Mock data
 const mockBackupData = {
@@ -45,6 +46,10 @@ export default function BackupDetails() {
   });
 
   const backupData = (backupDetail as any) || mockBackupData;
+
+  // Derive schedule from triggerResults when schedule field is absent
+  const derivedSchedule = backupData?.schedule
+    ?? (backupData?.triggerResults ? 'REALTIME' : undefined);
 
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden';
@@ -84,7 +89,9 @@ export default function BackupDetails() {
                 </span>
               </div>
               <p className='text-sm text-gray-600 mt-1'>
-                {backupData?.crmDetail?.crmName || backupData?.crmName} • {backupData?.environment ? capitalize(backupData.environment) : 'N/A'} • Backup ID: {slug}
+                {backupData?.crmDetail?.crmName || backupData?.crmName}
+                {(backupData?.crmDetail?.environment || backupData?.environment) ? ` • ${capitalize(backupData.crmDetail?.environment || backupData.environment)}` : ''}
+                {' '}• Backup ID: {slug}
               </p>
             </div>
           </div>
@@ -112,6 +119,21 @@ export default function BackupDetails() {
           >
             Backup History
           </button>
+          {backupData?.triggerResults?.length > 0 && (
+            <button
+              onClick={() => setActiveTab('triggers')}
+              className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+                activeTab === 'triggers'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Trigger Records
+              <span className='ml-1.5 text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full'>
+                {backupData.triggerResults.length}
+              </span>
+            </button>
+          )}
           {/* Objects & Data tab - commented out */}
           {/* <button
             onClick={() => setActiveTab('objects')}
@@ -130,6 +152,7 @@ export default function BackupDetails() {
       <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-4'>
         {activeTab === 'overview' && <Overview backup={backupData} />}
         {activeTab === 'history' && <BackupHistory backup={backupData} />}
+        {activeTab === 'triggers' && <TriggerRecords backup={backupData} />}
         {/* Objects & Data tab - commented out */}
         {/* {activeTab === 'objects' && <ObjectsNData backup={backupData} />} */}
       </div>

@@ -24,6 +24,10 @@ export default function Overview({ backup }: OverviewProps) {
   // Merge API data with backup prop for fallback
   const displayData = backupDetail || backup;
 
+  // Derive schedule from triggerResults when not explicitly set
+  const derivedSchedule = displayData?.schedule
+    ?? (displayData?.triggerResults ? 'REALTIME' : undefined);
+
   // objects array from detail API already has type: 'STANDARD' | 'CUSTOM'
   const objects: any[] = displayData?.objects ?? [];
 
@@ -125,11 +129,17 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Environment</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.environment ? capitalize(displayData.environment) : 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>{displayData?.crmDetail?.environment ? capitalize(displayData.crmDetail.environment) : displayData?.environment ? capitalize(displayData.environment) : 'N/A'}</span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Backup Type</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.type ? capitalize(displayData.scheduleConfig.type) : 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>
+                  {displayData?.scheduleConfig?.type
+                    ? capitalize(displayData.scheduleConfig.type)
+                    : derivedSchedule === 'REALTIME'
+                    ? 'Realtime'
+                    : 'N/A'}
+                </span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Total Objects</span>
@@ -137,7 +147,9 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Triggered By</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.schedule === 'REALTIME' ? 'Realtime' : displayData?.schedule === 'SCHEDULE' ? 'Schedule' : 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>
+                  {derivedSchedule === 'REALTIME' ? 'Realtime' : derivedSchedule === 'SCHEDULE' ? 'Schedule' : 'N/A'}
+                </span>
               </div>
             </div>
           </div>
