@@ -235,8 +235,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
         {/* Error State */}
         {error && (
-          <div className='text-center py-12 text-red-600 flex-shrink-0'>
-            <p>Failed to load objects. Please try again.</p>
+          <div className='mx-6 my-4 rounded-lg bg-red-50 border border-red-200 px-5 py-4 flex-shrink-0'>
+            <p className='text-sm font-semibold text-red-700 mb-0.5'>Failed to load objects</p>
+            <p className='text-sm text-red-600'>
+              {(error as any)?.message || 'Something went wrong. Please try again.'}
+            </p>
           </div>
         )}
 
