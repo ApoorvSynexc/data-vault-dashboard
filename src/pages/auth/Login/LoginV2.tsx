@@ -4,10 +4,12 @@ import LockIcon from '../../../assets/icons/lock.svg?react';
 import ShieldIcon from '../../../assets/icons/shield.svg?react';
 import CheckCircleIcon from '../../../assets/icons/check-circle.svg?react';
 import RecoverPasswordModal from '../RecoverPasswordModal';
+import CustomURLModal from '../CustomURLModal';
 import { useAuthService } from '../../../services/auth/auth.service';
 
 export default function LoginV2() {
   const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
+  const [isCustomURLModalOpen, setIsCustomURLModalOpen] = useState(false);
   const authService = useAuthService();
 
   const socialLoginMutation = useMutation({
@@ -75,9 +77,19 @@ export default function LoginV2() {
               </button>
             </div>
 
+            {/* Login with custom URL */}
+            <button
+              type='button'
+              onClick={() => setIsCustomURLModalOpen(true)}
+              disabled={socialLoginMutation.isPending}
+              className='mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50'
+            >
+              Login with custom URL
+            </button>
+
             {/* Links */}
-            <div className='space-y-3 text-center'>
-              <p>
+            <div className='space-y-3 text-center mt-4'>
+              {/* <p>
                 <button
                   type='button'
                   onClick={() => setIsRecoverModalOpen(true)}
@@ -85,7 +97,7 @@ export default function LoginV2() {
                 >
                   Forgot your credentials ?
                 </button>
-              </p>
+              </p> */}
               <p className='text-xs text-gray-600'>
                 Learn more about the product -{' '}
                 <a href='#' className='cursor-pointer text-blue-600 hover:underline'>
@@ -118,6 +130,10 @@ export default function LoginV2() {
       <RecoverPasswordModal
         isOpen={isRecoverModalOpen}
         onClose={() => setIsRecoverModalOpen(false)}
+      />
+      <CustomURLModal
+        isOpen={isCustomURLModalOpen}
+        onClose={() => setIsCustomURLModalOpen(false)}
       />
 
       {/* ── Right Panel ── */}
