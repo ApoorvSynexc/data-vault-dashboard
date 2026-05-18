@@ -172,6 +172,7 @@ export default function SalesforceConnections() {
           <div className='flex gap-3'>
             <button
               type='button'
+              onClick={() => navigate('/backup-management')}
               className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50'
             >
               View Backup Jobs
