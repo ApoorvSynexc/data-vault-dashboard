@@ -31,8 +31,11 @@ export function useAuthService() {
     verifyOtp: async <TResponse>(payload: VerifyOtpPayload) => (await api.post<TResponse>('/v1/auth/verify-otp', payload)).data,
     forgotPassword: async <TResponse>(payload: ForgotPasswordForm) => (await api.post<TResponse>('/auth/forgot-password', payload)).data,
     logout: async () => (await api.post('/v1/auth/logout')).data,
-    initiateSocialLogin: async (authProvider: string) =>
-      (await api.get<SocialLoginInitResponse>('/v1/auth/social-login', { query: { authProvider } })).data,
+    initiateSocialLogin: async (authProvider: string, customUrl?: string) => {
+      const query: Record<string, string> = { authProvider };
+      if (customUrl) query.customUrl = customUrl;
+      return (await api.get<SocialLoginInitResponse>('/v1/auth/social-login', { query })).data;
+    },
     handleSocialLoginCallback: async (authProvider: string, code: string, state: string) =>
       (await api.get<SocialLoginCallbackResponse>('/v1/auth/social-login/callback', {
         query: { authProvider, code, state },
