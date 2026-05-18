@@ -184,9 +184,9 @@ export function useBackupConfigService() {
 
       return response;
     },
-    getObjectList: async (crmId: string) => {
+    getObjectList: async (crmId: string, mode?: 'SCHEDULE' | 'REALTIME') => {
       const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {
-        query: { crmId },
+        query: { crmId, ...(mode ? { mode } : {}) },
       });
 
       if (!response.data) {
