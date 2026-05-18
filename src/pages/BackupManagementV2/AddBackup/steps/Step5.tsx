@@ -47,10 +47,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const maxSteps = getMaxSteps();
 
   // Fetch all objects ONCE and cache them
+  const mode = strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE';
+
   const { data: allObjectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
-    queryKey: ['backup-objects-all', crmId],
+    queryKey: ['backup-objects-all', crmId, mode],
     queryFn: async () => {
-      const response = await backupConfigService.getObjectList(crmId ?? '');
+      const response = await backupConfigService.getObjectList(crmId ?? '', mode);
       return response;
     },
     enabled: !!crmId,
