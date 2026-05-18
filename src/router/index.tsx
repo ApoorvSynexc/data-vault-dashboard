@@ -25,6 +25,11 @@ import ArchiveVault from '../pages/ArchiveVault';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
+import RestoreCenter from '../pages/RestoreCenter';
+import ActivityLogs from '../pages/ActivityLogs';
+import Reports from '../pages/Reports';
+import Security from '../pages/Security';
+import Settings from '../pages/Settings';
 
 const router = createBrowserRouter([
   {
@@ -52,6 +57,11 @@ const router = createBrowserRouter([
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
+          { path: '/restore-center', element: <RestoreCenter /> },
+          { path: '/activity-logs', element: <ActivityLogs /> },
+          { path: '/reports', element: <Reports /> },
+          { path: '/security', element: <Security /> },
+          { path: '/settings', element: <Settings /> },
         ],
       },
     ],
