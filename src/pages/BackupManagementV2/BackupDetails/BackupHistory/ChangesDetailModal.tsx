@@ -43,11 +43,9 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
   if (!isOpen || !job) return null;
 
   const transformedData: ObjectDetail[] = (job.object || []).map((obj: any, idx: number) => {
-    const hasSpecific = obj.insertCount != null || obj.updateCount != null || obj.deleteCount != null;
-    const fallback = hasSpecific ? 0 : (obj.completedRecordCount || 0);
-    const nr = obj.insertCount != null ? obj.insertCount : fallback;
-    const ur = obj.updateCount != null ? obj.updateCount : fallback;
-    const dr = obj.deleteCount != null ? obj.deleteCount : fallback;
+    const nr = obj.insertCount || 0;
+    const ur = obj.updateCount || 0;
+    const dr = obj.deleteCount || 0;
     return {
       id: obj.bulkJobId ? obj.bulkJobId : `obj-${idx}`,
       name: obj.name || 'Unknown',
