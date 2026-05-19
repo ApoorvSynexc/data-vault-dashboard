@@ -71,9 +71,15 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
   const objectsList: any[] = job.object || [];
   const totalDataSize = objectsList.reduce((sum: number, obj: any) => sum + (obj.sizeInBytes || 0), 0);
 
-  const newRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.insertCount || 0), 0);
-  const updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.updateCount || 0), 0);
-  const deletedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.deleteCount || 0), 0);
+  const getCount = (o: any, key: 'insertCount' | 'updateCount' | 'deleteCount') => {
+    if (o[key] != null) return o[key];
+    if (o.insertCount == null && o.updateCount == null && o.deleteCount == null) return o.completedRecordCount || 0;
+    return 0;
+  };
+
+  const newRecordsCount     = objectsList.reduce((s: number, o: any) => s + getCount(o, 'insertCount'), 0);
+  const updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + getCount(o, 'updateCount'), 0);
+  const deletedRecordsCount = objectsList.reduce((s: number, o: any) => s + getCount(o, 'deleteCount'), 0);
   const totalRecords = newRecordsCount + updatedRecordsCount + deletedRecordsCount;
 
   const statusStyle = getStatusStyle(job.status);
