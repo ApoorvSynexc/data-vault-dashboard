@@ -270,10 +270,7 @@ export default function SalesforceConnections() {
                             {org.isConnected ? (
                               <button
                                 type='button'
-                                onMouseUp={e=> console.log("uioioio")}
-                                onClick={(e) => { 
-                                  console.log("hfjgghjgh");
-                                  
+                                onClick={() => { 
                                   setOpenMenuId(null); 
                                   handleDisconnect(org.crmId); }}
                                 className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50'
