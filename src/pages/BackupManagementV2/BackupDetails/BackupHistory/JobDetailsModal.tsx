@@ -69,11 +69,26 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
   }
 
   const objectsList: any[] = job.object || [];
-  const totalDataSize = objectsList.reduce((sum: number, obj: any) => sum + (obj.sizeInBytes || 0), 0);
+  const totalDataSize = objectsList.reduce((sum: number, obj: any) => sum + (obj.sizeInBytes || 0), 0) || (job.sizeInBytes || 0);
 
-  const newRecordsCount     = objectsList.reduce((s: number, o: any) => s + (o.insertCount || 0), 0);
-  const updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.updateCount || 0), 0);
-  const deletedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.deleteCount || 0), 0);
+  const isRealtime = job.jobType === 'REALTIME';
+  const operation = job.operation?.toUpperCase();
+
+  let newRecordsCount: number;
+  let updatedRecordsCount: number;
+  let deletedRecordsCount: number;
+
+  if (isRealtime) {
+    const rc = job.recordCount || 0;
+    newRecordsCount     = operation === 'INSERT' ? rc : 0;
+    updatedRecordsCount = operation === 'UPDATE' ? rc : 0;
+    deletedRecordsCount = operation === 'DELETE' ? rc : 0;
+  } else {
+    newRecordsCount     = objectsList.reduce((s: number, o: any) => s + (o.insertCount || 0), 0);
+    updatedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.updateCount || 0), 0);
+    deletedRecordsCount = objectsList.reduce((s: number, o: any) => s + (o.deleteCount || 0), 0);
+  }
+
   const totalRecords = newRecordsCount + updatedRecordsCount + deletedRecordsCount;
 
   const statusStyle = getStatusStyle(job.status);
@@ -186,7 +201,7 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
                 { label: 'Data Size', value: formatBytes(totalDataSize) },
                 { label: 'Backup Data Type', value: job.jobType === 'BULK' ? 'Full Backup' : 'Incremental' },
                 { label: 'Backup Type', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
-                { label: 'Object Backed up', value: String(objectsList.length) },
+                { label: 'Object Backed up', value: isRealtime ? (job.objectApiName || '1') : String(objectsList.length) },
               ].map(({ label, value }, i, arr) => (
                 <div
                   key={label}
