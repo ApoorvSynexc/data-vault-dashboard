@@ -477,7 +477,10 @@ export default function BackupManagementV2() {
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
     onError: (error: any) => {
-      const msg = error?.message || 'Failed to delete backup. Please try again.';
+      const raw = error?.message || '';
+      const msg = raw.includes('bad_oauth_token') || raw.includes('403')
+        ? 'Your Salesforce session has expired. Please go to Connections and reconnect your Salesforce org to continue.'
+        : raw || 'Failed to delete backup. Please try again.';
       setDeleteError(msg);
     },
   });
