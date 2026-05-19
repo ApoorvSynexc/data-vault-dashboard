@@ -28,17 +28,19 @@ export default function SalesforceConnections() {
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (!openMenuId) return;
+      const openMenuEl = menuRefs.current.get(openMenuId);
+      if (openMenuEl && !openMenuEl.contains(e.target as Node)) {
         setOpenMenuId(null);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [openMenuId]);
 
   const disconnectMutation = useMutation({
     mutationFn: (crmId: string) => platformService.disconnectPlatform(crmId),
@@ -241,7 +243,7 @@ export default function SalesforceConnections() {
                       </div>
 
                       {/* Three-dot menu */}
-                      <div className='relative' ref={menuRef}>
+                      <div className='relative' ref={(el) => { if (el) menuRefs.current.set(org.crmId, el); else menuRefs.current.delete(org.crmId); }}>
                         <button
                           type='button'
                           onClick={() => setOpenMenuId(openMenuId === org.crmId ? null : org.crmId)}
@@ -268,7 +270,12 @@ export default function SalesforceConnections() {
                             {org.isConnected ? (
                               <button
                                 type='button'
-                                onClick={() => { setOpenMenuId(null); handleDisconnect(org.crmId); }}
+                                onMouseUp={e=> console.log("uioioio")}
+                                onClick={(e) => { 
+                                  console.log("hfjgghjgh");
+                                  
+                                  setOpenMenuId(null); 
+                                  handleDisconnect(org.crmId); }}
                                 className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50'
                               >
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
