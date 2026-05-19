@@ -150,7 +150,7 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
 
         {/* ── Stats Bar ── */}
         <div className='mx-6 my-5 rounded-xl overflow-hidden' style={{ border: '1.5px solid #E8EDF5', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <div className='grid grid-cols-6'>
+          <div className='grid grid-cols-5'>
             {/* Status — no icon */}
             <div className='flex flex-col gap-1.5 py-4 px-5' style={{ borderRight: '1.5px solid #E8EDF5' }}>
               <p className='text-xs font-medium' style={{ color: '#64748B' }}>Status</p>
@@ -162,15 +162,14 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
               </span>
             </div>
 
-            {/* Started At, Duration, Data Size, Backup Type, Backup Mode — each with clock icon */}
+            {/* Started At, Duration, Data Size, Backup Mode — each with clock icon */}
             {[
               { label: 'Started At', value: startedAt ? formatDateTime(startedAt) : 'N/A' },
               { label: 'Duration', value: durationText },
               { label: 'Data Size', value: formatBytes(totalDataSize) },
-              { label: 'Backup Type', value: job.jobType === 'BULK' ? 'Full Backup' : 'Real-time' },
               { label: 'Backup Mode', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
             ].map(({ label, value }, i) => (
-              <div key={i} className='flex items-center gap-3 py-4 px-5' style={{ borderRight: i < 4 ? '1.5px solid #E8EDF5' : 'none' }}>
+              <div key={i} className='flex items-center gap-3 py-4 px-5' style={{ borderRight: i < 3 ? '1.5px solid #E8EDF5' : 'none' }}>
                 <IconClock />
                 <div className='flex flex-col gap-0.5'>
                   <p className='text-xs font-medium' style={{ color: '#64748B' }}>{label}</p>
@@ -199,7 +198,6 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
                 { label: 'Job Status', value: getStatusLabel(job.status) },
                 { label: 'Job Duration', value: durationText },
                 { label: 'Data Size', value: formatBytes(totalDataSize) },
-                { label: 'Backup Data Type', value: job.jobType === 'BULK' ? 'Full Backup' : 'Incremental' },
                 { label: 'Backup Type', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
                 { label: 'Object Backed up', value: isRealtime ? (job.objectApiName || '1') : String(objectsList.length) },
               ].map(({ label, value }, i, arr) => (
@@ -225,13 +223,15 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
                 </svg>
                 <h3 className='text-lg font-bold' style={{ color: '#111827' }}>Changes Overview</h3>
               </div>
-              <button
-                onClick={() => setView('changes')}
-                className='text-sm font-semibold transition hover:opacity-70'
-                style={{ color: '#155DFC' }}
-              >
-                View Detail
-              </button>
+              {!isRealtime && (
+                <button
+                  onClick={() => setView('changes')}
+                  className='text-sm font-semibold transition hover:opacity-70'
+                  style={{ color: '#155DFC' }}
+                >
+                  View Detail
+                </button>
+              )}
             </div>
 
             {/* Donut + legend */}
