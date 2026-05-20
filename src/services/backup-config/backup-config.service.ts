@@ -18,6 +18,8 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   jobs: '/v1/backup-job/list',
   resume: '/v1/backup-job/resume',
   stats: '/v1/backup-config/stats',
+  processBackup: '/v1/backup-config/initalize-payload-transform',
+  syncSchema: '/v1/backup-config/sync-metadata',
 } as const;
 
 type BackupConfigItem = {
@@ -290,5 +292,9 @@ export function useBackupConfigService() {
     },
     getDashboardOverview: () =>
       api.get<any>('/v1/dashboard/overview'),
+    processBackup: (slug: string) =>
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
+    syncSchema: (slug: string) =>
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: { slug } }),
   };
 }
