@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useHttpRequest } from '../../../hooks/useHttpRequest';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
 import TriggerRecords from './TriggerRecords';
@@ -34,6 +35,13 @@ export default function BackupDetails() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const backupConfigService = useBackupConfigService();
+  const api = useHttpRequest();
+
+  const processBackupMutation = useMutation({
+    mutationFn: () => api.get<void>('/v1/backup-config/initalize-payload-transform', { query: { slug } }),
+    onSuccess: () => {},
+    onError: () => {},
+  });
 
   const { data: backupDetail } = useQuery({
     queryKey: ['backup-detail', slug],
@@ -106,12 +114,20 @@ export default function BackupDetails() {
             </button>
             <button
               type='button'
-              className='inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-colors'
+              onClick={() => processBackupMutation.mutate()}
+              disabled={processBackupMutation.isPending}
+              className='inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
             >
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <circle cx='12' cy='12' r='3' /><path d='M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83' />
-              </svg>
-              Process Backup
+              {processBackupMutation.isPending ? (
+                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='animate-spin'>
+                  <path d='M21 12a9 9 0 11-6.219-8.56' />
+                </svg>
+              ) : (
+                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='12' cy='12' r='3' /><path d='M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83' />
+                </svg>
+              )}
+              {processBackupMutation.isPending ? 'Processing...' : 'Process Backup'}
             </button>
           </div>
         </div>
