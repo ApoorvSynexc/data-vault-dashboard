@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { formatDateTime, formatBytes } from '../../../../utils';
 import ChangesDetailModal from './ChangesDetailModal';
 
@@ -44,13 +44,38 @@ const IconTrash = () => (
     <path d='M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2' />
   </svg>
 );
-const IconClock = () => (
-  <div className='w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(21,93,252,0.08)' }}>
-    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-      <circle cx='12' cy='12' r='10' /><polyline points='12 6 12 12 16 14' />
-    </svg>
+const IconStatWrapper = ({ children, bg }: { children: React.ReactNode; bg: string }) => (
+  <div className='w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0' style={{ background: bg }}>
+    {children}
   </div>
 );
+
+const statIcons = [
+  /* Started At — calendar */
+  <IconStatWrapper bg='rgba(21,93,252,0.08)'>
+    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+      <rect x='3' y='4' width='18' height='18' rx='2' /><line x1='16' y1='2' x2='16' y2='6' /><line x1='8' y1='2' x2='8' y2='6' /><line x1='3' y1='10' x2='21' y2='10' />
+    </svg>
+  </IconStatWrapper>,
+  /* Duration — clock */
+  <IconStatWrapper bg='rgba(234,179,8,0.1)'>
+    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#A16207' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+      <circle cx='12' cy='12' r='10' /><polyline points='12 6 12 12 16 14' />
+    </svg>
+  </IconStatWrapper>,
+  /* Data Size — database */
+  <IconStatWrapper bg='rgba(55,197,91,0.12)'>
+    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+      <ellipse cx='12' cy='5' rx='9' ry='3' /><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' /><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' />
+    </svg>
+  </IconStatWrapper>,
+  /* Backup Mode — repeat/loop */
+  <IconStatWrapper bg='rgba(139,92,246,0.1)'>
+    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#7C3AED' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='17 1 21 5 17 9' /><path d='M3 11V9a4 4 0 014-4h14' /><polyline points='7 23 3 19 7 15' /><path d='M21 13v2a4 4 0 01-4 4H3' />
+    </svg>
+  </IconStatWrapper>,
+];
 
 export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsModalProps) {
   const [view, setView] = useState<'job' | 'changes'>('job');
@@ -170,7 +195,7 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
               { label: 'Backup Mode', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
             ].map(({ label, value }, i) => (
               <div key={i} className='flex items-center gap-3 py-4 px-5' style={{ borderRight: i < 3 ? '1.5px solid #E8EDF5' : 'none' }}>
-                <IconClock />
+                {statIcons[i]}
                 <div className='flex flex-col gap-0.5'>
                   <p className='text-xs font-medium' style={{ color: '#64748B' }}>{label}</p>
                   <p className='text-sm font-semibold' style={{ color: '#111827' }}>{value}</p>
