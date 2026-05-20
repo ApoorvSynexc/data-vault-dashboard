@@ -91,6 +91,29 @@ export default function BackupDetails() {
               </p>
             </div>
           </div>
+
+          {/* Action Buttons */}
+          <div className='flex items-center gap-3'>
+            <button
+              type='button'
+              className='inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors'
+            >
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='23 4 23 10 17 10' /><polyline points='1 20 1 14 7 14' />
+                <path d='M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15' />
+              </svg>
+              Sync Schema
+            </button>
+            <button
+              type='button'
+              className='inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-colors'
+            >
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='12' cy='12' r='3' /><path d='M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83' />
+              </svg>
+              Process Backup
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
