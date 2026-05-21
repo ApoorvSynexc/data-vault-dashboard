@@ -114,7 +114,7 @@ export default function Overview({ backup }: OverviewProps) {
       {/* Main Content Grid */}
       <div className='grid grid-cols-3 gap-4'>
         {/* Left Column - Backup Details & Scheduling */}
-        <div className='col-span-2 space-y-4'>
+        <div className='col-span-2 space-y-4 self-start'>
           {/* Backup Details */}
           <div className='bg-white rounded border border-gray-200 p-4'>
             <h3 className='text-sm font-semibold text-gray-900 mb-4'>Backup Details</h3>
