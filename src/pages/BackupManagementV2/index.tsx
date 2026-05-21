@@ -643,7 +643,6 @@ export default function BackupManagementV2() {
                   updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: newStatus });
                 },
               }] : []),
-              { label: 'Manage' },
               { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
             ]}
           />
