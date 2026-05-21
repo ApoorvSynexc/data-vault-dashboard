@@ -19,7 +19,7 @@ type ScheduleConfig = {
   };
 };
 
-type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
+type FrequencyType = 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
 
 type Props = {
   backup: any;
@@ -27,7 +27,7 @@ type Props = {
 };
 
 const mapBackendFrequency = (f: string): FrequencyType => {
-  const m: Record<string, FrequencyType> = { ONCE: 'One Time', HOURLY: 'Hourly', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', CUSTOM: 'Custom' };
+  const m: Record<string, FrequencyType> = { HOURLY: 'Hourly', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', CUSTOM: 'Custom' };
   return m[f] || 'Daily';
 };
 const mapBackendDays = (days?: string[]) => {
@@ -51,8 +51,7 @@ export default function EditScheduleModal({ backup, onClose }: Props) {
   const existingTz = backup?.scheduleConfig?.timeZone;
 
   const [frequency, setFrequency] = useState<FrequencyType>(existing ? mapBackendFrequency(existing.frequency) : 'Daily');
-  const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>((!existing?.startDate && !existing?.startTime) ? 'runNow' : 'scheduleRun');
-  const [selectedDays, setSelectedDays] = useState<string[]>(mapBackendDays(existing?.weekDays));
+const [selectedDays, setSelectedDays] = useState<string[]>(mapBackendDays(existing?.weekDays));
   const [selectedMonths, setSelectedMonths] = useState<string[]>(mapBackendMonths(existing?.selectedMonths));
   const [dayOfMonth, setDayOfMonth] = useState(String(existing?.monthDate || '01').padStart(2, '0'));
   const [startTime, setStartTime] = useState(existing?.startTime || '12:00');
@@ -75,11 +74,9 @@ export default function EditScheduleModal({ backup, onClose }: Props) {
   });
 
   const handleSave = () => {
-    const scheduling: any = { frequency: frequency === 'One Time' ? 'ONCE' : frequency.toUpperCase(), interval: 1 };
+    const scheduling: any = { frequency: frequency.toUpperCase(), interval: 1 };
 
-    if (frequency === 'One Time') {
-      if (runMode === 'scheduleRun') { scheduling.startDate = startDate; scheduling.startTime = startTime; }
-    } else if (frequency === 'Hourly') {
+    if (frequency === 'Hourly') {
       scheduling.interval = parseInt(backupIn.split(' ')[0]) || 1;
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Daily') {
@@ -95,7 +92,7 @@ export default function EditScheduleModal({ backup, onClose }: Props) {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
     }
 
-    saveMutation.mutate({ timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling });
+    saveMutation.mutate({ timeZone, type: 'INCREMENTAL', scheduling });
   };
 
   return (
@@ -119,7 +116,7 @@ export default function EditScheduleModal({ backup, onClose }: Props) {
         <div className='flex-1 overflow-y-auto px-8 py-6'>
           {/* Frequency Buttons */}
           <div className='flex gap-2 flex-wrap mb-6'>
-            {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
+            {(['Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
               <button
                 key={freq}
                 onClick={() => setFrequency(freq)}
@@ -130,27 +127,6 @@ export default function EditScheduleModal({ backup, onClose }: Props) {
             ))}
           </div>
 
-          {/* One Time */}
-          {frequency === 'One Time' && (
-            <div className='space-y-4'>
-              {(['runNow', 'scheduleRun'] as const).map((mode) => (
-                <label key={mode} className='flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50' style={{ borderColor: runMode === mode ? '#3b82f6' : '#d1d5db', backgroundColor: runMode === mode ? '#eff6ff' : 'transparent' }}>
-                  <input type='radio' name='runMode' value={mode} checked={runMode === mode} onChange={() => setRunMode(mode)} className='mt-1' />
-                  <div>
-                    <p className='font-medium text-gray-900'>{mode === 'runNow' ? 'Run Now' : 'Schedule Backup Run'}</p>
-                    <p className='text-sm text-gray-600'>{mode === 'runNow' ? 'Backup will run once immediately' : 'Backup will run at scheduled time'}</p>
-                  </div>
-                </label>
-              ))}
-              {runMode === 'scheduleRun' && (
-                <div className='grid grid-cols-2 gap-4 pt-4 border-t border-gray-200'>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label><input type='date' value={startDate} onChange={e => setStartDate(e.target.value)} className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500' /></div>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label><input type='time' value={startTime} onChange={e => setStartTime(e.target.value)} className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500' /></div>
-                  <div className='col-span-2'><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label><select value={timeZone} onChange={e => setTimeZone(e.target.value)} className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'>{TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Hourly */}
           {frequency === 'Hourly' && (
