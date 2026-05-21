@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes, formatDate, formatTime, formatDateTime, capitalize, calculateNextRun } from '../../../../utils';
+import EditScheduleModal from './EditScheduleModal';
 
 type OverviewProps = {
   backup: any;
@@ -10,6 +12,7 @@ type OverviewProps = {
 export default function Overview({ backup }: OverviewProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
+  const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false);
 
   const { data: backupDetail, isLoading, error } = useQuery({
     queryKey: ['backup-detail', slug],
@@ -57,6 +60,7 @@ export default function Overview({ backup }: OverviewProps) {
   }
 
   return (
+    <>
     <div className='space-y-4'>
       {/* Status Overview Cards */}
       <div className='bg-white rounded border border-gray-200 p-4'>
@@ -121,7 +125,14 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Source Platform</span>
-                <span className='text-xs font-medium text-gray-900'>{displayData?.crmDetail?.crmName || displayData?.crmName || displayData?.platform || 'N/A'}</span>
+                <span className='text-xs font-medium text-gray-900'>
+                  {(() => {
+                    const crmName = displayData?.crmDetail?.crmName || displayData?.crmName || displayData?.platform;
+                    const connName = displayData?.crmDetail?.name;
+                    if (crmName && connName) return `${crmName.charAt(0).toUpperCase() + crmName.slice(1)} (${connName})`;
+                    return crmName || 'N/A';
+                  })()}
+                </span>
               </div>
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Destination Platform</span>
@@ -158,7 +169,7 @@ export default function Overview({ backup }: OverviewProps) {
           <div className='bg-white rounded border border-gray-200 p-4'>
             <div className='flex items-center justify-between mb-4'>
               <h3 className='text-sm font-semibold text-gray-900'>Backup Scheduling</h3>
-              <a href='#' className='text-xs font-medium text-blue-600 hover:underline'>Edit Schedule →</a>
+              <button onClick={() => setIsEditScheduleOpen(true)} className='text-xs font-medium text-blue-600 hover:underline'>Edit Schedule →</button>
             </div>
             <div className='grid grid-cols-2 gap-4'>
               <div>
@@ -260,5 +271,9 @@ export default function Overview({ backup }: OverviewProps) {
         </div>
       </div>
     </div>
+    {isEditScheduleOpen && (
+      <EditScheduleModal backup={displayData} onClose={() => setIsEditScheduleOpen(false)} />
+    )}
+    </>
   );
 }
