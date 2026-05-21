@@ -74,18 +74,6 @@ export default function Dashboard() {
   const backupConfigService = useBackupConfigService();
 
   /* ── data fetching ── */
-  const { data: backupListData } = useQuery({
-    queryKey: ['backup-config-list'],
-    queryFn: () => backupConfigService.listBackupConfigs(true, undefined),
-    staleTime: 60_000,
-  });
-
-  const { data: statsData } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => backupConfigService.getStats(),
-    staleTime: 60_000,
-  });
-
   const { data: jobsData } = useQuery({
     queryKey: ['dashboard-last-jobs'],
     queryFn: () => backupConfigService.getLastJobs(),
@@ -99,17 +87,18 @@ export default function Dashboard() {
   });
 
   /* ── derived values ── */
-  const backupList = Array.isArray((backupListData as any)?.data)
-    ? (backupListData as any).data
-    : [];
+  const recentJobs: any[] = Array.isArray((jobsData as any)?.data)
+    ? (jobsData as any).data
+    : Array.isArray(jobsData)
+      ? jobsData
+      : [];
 
-  const hasBackups = backupList && backupList.length > 0;
+  const hasBackups = recentJobs.length > 0;
 
-  // stats: for system health / jobs summary sidebar
-  const apiStats = (statsData as any)?.data ?? {};
-  const completedJobs = apiStats?.completedJobs?.count ?? 0;
-  const runningJobs   = apiStats?.runningJobs?.count ?? 0;
-  const failedJobs    = apiStats?.failedJobs?.count ?? 0;
+  // derive stats from last-jobs response
+  const completedJobs = recentJobs.filter((j: any) => j.status === 'SUCCESS' || j.status === 'COMPLETED').length;
+  const runningJobs   = recentJobs.filter((j: any) => j.status === 'RUNNING').length;
+  const failedJobs    = recentJobs.filter((j: any) => j.status === 'FAILED').length;
   const totalRuns     = completedJobs + runningJobs + failedJobs;
   const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
 
@@ -125,12 +114,6 @@ export default function Dashboard() {
   const kpiSuccessPeriod    = overview?.backupSuccessRate?.period;
   const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
   const kpiRunning          = overview?.activeJobs?.running ?? 0;
-
-  const recentJobs: any[] = Array.isArray((jobsData as any)?.data)
-    ? (jobsData as any).data
-    : Array.isArray(jobsData)
-      ? jobsData
-      : [];
 
   /* ── no-backup state: lock scroll ── */
   useEffect(() => {
@@ -263,13 +246,15 @@ export default function Dashboard() {
                   : '--';
                 const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
                 const bulkObjects: any[] = job.object || [];
-                const jobName = job.objectApiName
-                  ? job.objectApiName
-                  : bulkObjects.length > 0
-                    ? bulkObjects.length === 1
-                      ? bulkObjects[0].name
-                      : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
-                    : 'Backup Job';
+                const jobName = job.backupConfig?.name
+                  ? job.backupConfig.name
+                  : job.objectApiName
+                    ? job.objectApiName
+                    : bulkObjects.length > 0
+                      ? bulkObjects.length === 1
+                        ? bulkObjects[0].name
+                        : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
+                      : 'Backup Job';
                 const initials = jobName[0]?.toUpperCase() ?? 'B';
                 return (
                   <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
@@ -320,7 +305,7 @@ export default function Dashboard() {
             </div>
             <ul className='mt-4 flex flex-col gap-1.5'>
               {[
-                `${backupList.length} active backup${backupList.length !== 1 ? 's' : ''}`,
+                `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
                 `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
                 failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
               ].map((item, i) => (
