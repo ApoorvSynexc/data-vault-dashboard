@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { usePlatformService } from '../../../../services/platform/platform.service';
+import { useDestinationService } from '../../../../services/destination/destination.service';
 import WarningDialog from '../../../../components/WarningDialog';
 
 type ScheduleConfig = {
@@ -53,8 +55,22 @@ export default function FinalStep({
 }: FinalStepProps) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
+  const platformService = usePlatformService();
+  const destinationService = useDestinationService();
   const queryClient = useQueryClient();
   const isRealTime = strategy === 'realtime';
+
+  const { data: platforms } = useQuery({
+    queryKey: ['connected-platforms'],
+    queryFn: () => platformService.getConnectedPlatforms(),
+  });
+  const selectedCrm = platforms?.find((p) => p.crmId === crmId);
+
+  const { data: destinationDetail } = useQuery({
+    queryKey: ['destination', destinationId],
+    queryFn: () => destinationService.getDestination(destinationId!),
+    enabled: !!destinationId,
+  });
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy', 'schedule']));
   const [isSuccess, setIsSuccess] = useState(false);
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
@@ -246,19 +262,19 @@ export default function FinalStep({
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'>
               <p className='text-xs text-gray-600 mb-1'>Source Platform</p>
-              <p className='text-sm font-medium text-gray-900'>Salesforce</p>
+              <p className='text-sm font-medium text-gray-900'>{selectedCrm ? selectedCrm.crmName.charAt(0).toUpperCase() + selectedCrm.crmName.slice(1) : 'Salesforce'}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
               <p className='text-xs text-gray-600 mb-1'>Destination Platform</p>
-              <p className='text-sm font-medium text-gray-900'>AWS</p>
+              <p className='text-sm font-medium text-gray-900'>{destinationDetail?.provider ?? '--'}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-xs text-gray-600 mb-1'>Salesforce Connection</p>
-              <p className='text-sm font-medium text-gray-900'>Salesforce Production</p>
+              <p className='text-xs text-gray-600 mb-1'>{selectedCrm ? (selectedCrm.crmName.charAt(0).toUpperCase() + selectedCrm.crmName.slice(1)) + ' Connection' : 'Source Connection'}</p>
+              <p className='text-sm font-medium text-gray-900'>{selectedCrm?.name ?? '--'}</p>
             </div>
             <div className='bg-gray-100 rounded-lg p-4'>
-              <p className='text-xs text-gray-600 mb-1'>AWS Connection</p>
-              <p className='text-sm font-medium text-gray-900'>AWS S3 Bucket</p>
+              <p className='text-xs text-gray-600 mb-1'>{destinationDetail?.provider ? destinationDetail.provider + ' Connection' : 'Destination Connection'}</p>
+              <p className='text-sm font-medium text-gray-900'>{destinationDetail?.name ?? '--'}</p>
             </div>
           </div>
         </SectionBox>
