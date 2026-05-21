@@ -74,17 +74,19 @@ export default function Dashboard() {
   const backupConfigService = useBackupConfigService();
 
   /* ── data fetching ── */
-  const { data: jobsData } = useQuery({
+  const { data: jobsData, isLoading: isJobsLoading } = useQuery({
     queryKey: ['dashboard-last-jobs'],
     queryFn: () => backupConfigService.getLastJobs(),
     staleTime: 60_000,
   });
 
-  const { data: overviewData } = useQuery({
+  const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => backupConfigService.getDashboardOverview(),
     staleTime: 60_000,
   });
+
+  const isLoading = isJobsLoading || isOverviewLoading;
 
   /* ── derived values ── */
   const recentJobs: any[] = Array.isArray((jobsData as any)?.data)
@@ -126,6 +128,15 @@ export default function Dashboard() {
       };
     }
   }, [hasBackups]);
+
+  /* ── loading state ── */
+  if (isLoading) {
+    return (
+      <div className='w-full h-full flex items-center justify-center'>
+        <div className='animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-blue-600' />
+      </div>
+    );
+  }
 
   /* ── empty state ── */
   if (!hasBackups) {
@@ -200,92 +211,72 @@ export default function Dashboard() {
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
           </div>
 
-          {/* fixed header */}
-          <table className='w-full' style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
-                  <th key={h} className='px-5 py-2.5 text-left text-sm font-medium' style={{ color: '#33363F' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-          </table>
-
-          {/* scrollable body */}
-          <div className='overflow-y-auto' style={{ maxHeight: '420px' }}>
-          <table className='w-full' style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-            </colgroup>
-            <tbody>
-              {recentJobs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
+          {/* scrollable table */}
+          <div className='overflow-auto' style={{ maxHeight: '420px' }}>
+            <table className='w-full' style={{ borderCollapse: 'collapse', minWidth: '600px' }}>
+              <thead style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+                <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
+                  {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
+                    <th key={h} className='px-5 py-2.5 text-left text-sm font-medium whitespace-nowrap' style={{ color: '#33363F' }}>{h}</th>
+                  ))}
                 </tr>
-              ) : recentJobs.slice(0, 10).map((job: any) => {
-                const st = getJobStatus(job.status);
-                const startMs = job.startedAt ? dayjs(job.startedAt) : null;
-                const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
-                const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
-                const duration = diffMs !== null
-                  ? diffMs < 60000 ? `${Math.floor(diffMs / 1000)}s`
-                  : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
-                  : '--';
-                const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0);
-                const bulkObjects: any[] = job.object || [];
-                const jobName = job.backupConfig?.name
-                  ? job.backupConfig.name
-                  : job.objectApiName
-                    ? job.objectApiName
-                    : bulkObjects.length > 0
-                      ? bulkObjects.length === 1
-                        ? bulkObjects[0].name
-                        : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
-                      : 'Backup Job';
-                const initials = jobName[0]?.toUpperCase() ?? 'B';
-                return (
-                  <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
-                    <td className='px-5 py-3'>
-                      <div className='flex items-center gap-2 overflow-hidden'>
-                        <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
-                          {initials}
-                        </div>
-                        <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>
-                          {jobName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
-                      {job.jobType === 'BULK' ? 'Backup' : 'Realtime'}
-                    </td>
-                    <td className='px-5 py-3'>
-                      <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium' style={{ background: st.bg, color: st.color }}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>
-                      {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
-                    </td>
-                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{duration}</td>
-                    <td className='px-5 py-3 text-sm font-light' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
+              </thead>
+              <tbody>
+                {recentJobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : recentJobs.slice(0, 10).map((job: any) => {
+                  const st = getJobStatus(job.status);
+                  const startMs = job.startedAt ? dayjs(job.startedAt) : null;
+                  const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
+                  const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
+                  const duration = diffMs !== null
+                    ? diffMs < 60000 ? `${Math.floor(diffMs / 1000)}s`
+                    : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
+                    : '--';
+                  const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0) || (job.sizeInBytes || 0);
+                  const bulkObjects: any[] = job.object || [];
+                  const jobName = job.backupConfig?.name
+                    ? job.backupConfig.name
+                    : job.objectApiName
+                      ? job.objectApiName
+                      : bulkObjects.length > 0
+                        ? bulkObjects.length === 1
+                          ? bulkObjects[0].name
+                          : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
+                        : 'Backup Job';
+                  const initials = jobName[0]?.toUpperCase() ?? 'B';
+                  return (
+                    <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
+                      <td className='px-5 py-3' style={{ maxWidth: '180px' }}>
+                        <div className='flex items-center gap-2 overflow-hidden'>
+                          <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
+                            {initials}
+                          </div>
+                          <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>
+                            {jobName}
+                          </span>
+                        </div>
+                      </td>
+                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
+                        {job.backupConfig?.schedule === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
+                      </td>
+                      <td className='px-5 py-3'>
+                        <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap' style={{ background: st.bg, color: st.color }}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
+                        {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
+                      </td>
+                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{duration}</td>
+                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
         </div>
