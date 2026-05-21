@@ -461,6 +461,7 @@ export default function BackupManagementV2() {
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
@@ -639,8 +640,11 @@ export default function BackupManagementV2() {
               ...(row.backupStatus !== 'DRAFT' ? [{
                 label: row.backupStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
-                  const newStatus = row.backupStatus === 'PAUSED' ? 'RESUMED' : 'PAUSED';
-                  updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: newStatus });
+                  if (row.backupStatus === 'PAUSED') {
+                    updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'RESUMED' });
+                  } else {
+                    setPauseTarget({ id: row.id, name: row.name });
+                  }
                 },
               }] : []),
               { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
@@ -726,6 +730,16 @@ export default function BackupManagementV2() {
         error={deleteError}
         onConfirm={() => { setDeleteError(null); deleteMutation.mutate(deleteTarget!.id); }}
         onCancel={() => { setDeleteTarget(null); setDeleteError(null); deleteMutation.reset(); }}
+      />
+
+      <WarningDialog
+        isOpen={!!pauseTarget}
+        title='Pause Backup'
+        message={`Are you sure you want to pause "${pauseTarget?.name}"? The backup will stop running until you resume it.`}
+        confirmLabel='Pause'
+        isLoading={updateStatusMutation.isPending}
+        onConfirm={() => { updateStatusMutation.mutate({ backupConfigId: pauseTarget!.id, backupStatus: 'PAUSED' }); setPauseTarget(null); }}
+        onCancel={() => setPauseTarget(null)}
       />
     </div>
   );
