@@ -170,14 +170,14 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
           {derivedSchedule === 'REALTIME' && (
           <div className='bg-white rounded border border-gray-200 p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-sm font-semibold text-gray-900'>Last 5 Triggers Created</h3>
+              <h3 className='text-sm font-semibold text-gray-900'>Last 3 Triggers Created</h3>
               <button onClick={onViewTriggers} className='text-xs font-medium text-blue-600 hover:underline'>View All →</button>
             </div>
             <div className='space-y-2'>
               {(displayData?.triggerResults ?? []).length === 0 ? (
                 <p className='text-xs text-gray-500 text-center py-2'>No triggers available</p>
               ) : (
-                [...(displayData?.triggerResults ?? [])].slice(0, 5).map((t: any) => (
+                [...(displayData?.triggerResults ?? [])].slice(0, 3).map((t: any) => (
                   <div key={t.triggerName} className='flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0'>
                     <span className='text-xs text-gray-800 font-medium truncate mr-2'>{t.triggerName}</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${t.status === 'EXIST' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
