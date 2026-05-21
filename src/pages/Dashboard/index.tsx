@@ -24,9 +24,13 @@ import Frame16 from '../../assets/icons/Frame-16.svg';
 import Frame17 from '../../assets/icons/Frame-17.svg';
 
 /* ── helpers ── */
-function getJobStatus(status?: string): { label: string; bg: string; color: string } {
+function getJobStatus(status?: string, objects?: any[]): { label: string; bg: string; color: string } {
   const s = status?.toUpperCase();
-  if (s === 'SUCCESS' || s === 'COMPLETED') return { label: 'Completed', bg: '#DCFCE7', color: '#16A34A' };
+  if (s === 'SUCCESS' || s === 'COMPLETED') {
+    const hasFailedObject = Array.isArray(objects) && objects.some((o: any) => o.status?.toUpperCase() === 'FAILED');
+    if (hasFailedObject) return { label: 'Partially Failed', bg: 'rgba(234,179,8,0.12)', color: '#A16207' };
+    return { label: 'Completed', bg: '#DCFCE7', color: '#16A34A' };
+  }
   if (s === 'FAILED') return { label: 'Failed', bg: '#FEE2E2', color: '#DC2626' };
   if (s === 'RUNNING') return { label: 'Running', bg: '#DBEAFE', color: '#155DFC' };
   if (s === 'PENDING') return { label: 'Pending', bg: '#FEF9C3', color: '#A16207' };
@@ -171,7 +175,7 @@ export default function Dashboard() {
 
   /* ── main dashboard ── */
   return (
-    <div className='flex flex-col gap-3'>
+    <div className='flex flex-col gap-3 min-w-0 w-full'>
       <h2 className='text-lg font-semibold flex-shrink-0' style={{ color: '#33363F' }}>Dashboard Overview</h2>
 
       {/* ── KPI Row ── */}
@@ -206,7 +210,7 @@ export default function Dashboard() {
       <div className='grid gap-3' style={{ gridTemplateColumns: '1fr 265px' }}>
 
         {/* Left: Recent Jobs table */}
-        <div className='rounded-xl bg-white flex flex-col' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+        <div className='rounded-xl bg-white flex flex-col min-w-0 overflow-hidden' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
           <div className='flex items-center px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
           </div>
@@ -227,7 +231,7 @@ export default function Dashboard() {
                     <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
                   </tr>
                 ) : recentJobs.slice(0, 10).map((job: any) => {
-                  const st = getJobStatus(job.status);
+                  const st = getJobStatus(job.status, job.object);
                   const startMs = job.startedAt ? dayjs(job.startedAt) : null;
                   const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
                   const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
