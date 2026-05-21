@@ -87,8 +87,8 @@ export default function Dashboard() {
   });
 
   const { data: jobsData } = useQuery({
-    queryKey: ['dashboard-recent-jobs'],
-    queryFn: () => backupConfigService.listBackupJobs('', true, undefined, 10),
+    queryKey: ['dashboard-last-jobs'],
+    queryFn: () => backupConfigService.getLastJobs(),
     staleTime: 60_000,
   });
 
@@ -126,8 +126,11 @@ export default function Dashboard() {
   const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
   const kpiRunning          = overview?.activeJobs?.running ?? 0;
 
-  // jobs: response.data = [] (direct array), meta.totalRecords
-  const recentJobs: any[] = Array.isArray((jobsData as any)?.data) ? (jobsData as any).data : [];
+  const recentJobs: any[] = Array.isArray((jobsData as any)?.data)
+    ? (jobsData as any).data
+    : Array.isArray(jobsData)
+      ? jobsData
+      : [];
 
   /* ── no-backup state: lock scroll ── */
   useEffect(() => {
@@ -210,15 +213,8 @@ export default function Dashboard() {
 
         {/* Left: Recent Jobs table */}
         <div className='rounded-xl bg-white flex flex-col' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-          <div className='flex items-center justify-between px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
+          <div className='flex items-center px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
-            <button
-              onClick={() => navigate('/backup-management')}
-              className='text-xs font-medium hover:underline'
-              style={{ color: '#155DFC' }}
-            >
-              View All
-            </button>
           </div>
 
           {/* fixed header */}

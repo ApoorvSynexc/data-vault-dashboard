@@ -223,9 +223,15 @@ export default function SalesforceConnections() {
                     className='flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4 hover:bg-gray-50'
                   >
                     <div className='flex items-center gap-4'>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5 text-gray-400'>
-                        <rect x='4' y='4' width='16' height='16' rx='2' />
-                      </svg>
+                      <div className='flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center' style={{ background: 'rgba(0,161,224,0.1)' }}>
+                        <svg viewBox='0 0 64 64' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-6 w-auto'>
+                          <ellipse cx='24' cy='22' rx='13' ry='13' fill='#00A1E0' />
+                          <ellipse cx='38' cy='18' rx='11' ry='11' fill='#00A1E0' />
+                          <ellipse cx='48' cy='24' rx='9' ry='9' fill='#00A1E0' />
+                          <ellipse cx='14' cy='28' rx='8' ry='8' fill='#00A1E0' />
+                          <ellipse cx='32' cy='30' rx='16' ry='10' fill='#00A1E0' />
+                        </svg>
+                      </div>
                       <div>
                         <p className='font-medium text-gray-900'>{org.name}</p>
                         <p className='text-xs text-gray-500'>{org.crmProfile.name}</p>

@@ -292,6 +292,8 @@ export function useBackupConfigService() {
     },
     getDashboardOverview: () =>
       api.get<any>('/v1/dashboard/overview'),
+    getLastJobs: () =>
+      api.get<any>('/v1/dashboard/last-jobs'),
     processBackup: (slug: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
     syncSchema: (slug: string) =>
