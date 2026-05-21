@@ -165,7 +165,8 @@ export default function Overview({ backup }: OverviewProps) {
             </div>
           </div>
 
-          {/* Backup Scheduling */}
+          {/* Backup Scheduling — only shown for scheduled backups */}
+          {derivedSchedule === 'SCHEDULE' && (
           <div className='bg-white rounded border border-gray-200 p-4'>
             <div className='flex items-center justify-between mb-4'>
               <h3 className='text-sm font-semibold text-gray-900'>Backup Scheduling</h3>
@@ -198,6 +199,7 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Column - Data Snapshot & Top Objects */}
