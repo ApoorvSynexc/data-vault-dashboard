@@ -1,8 +1,9 @@
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../utils';
+import JobDetailsModal from '../BackupManagementV2/BackupDetails/BackupHistory/JobDetailsModal';
 import dayjs from 'dayjs';
 import Frame from '../../assets/icons/Frame.svg';
 import Frame1 from '../../assets/icons/Frame-1.svg';
@@ -76,6 +77,7 @@ function HealthGauge({ score }: { score: number }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
 
   /* ── data fetching ── */
   const { data: jobsData, isLoading: isJobsLoading } = useQuery({
@@ -175,6 +177,7 @@ export default function Dashboard() {
 
   /* ── main dashboard ── */
   return (
+    <>
     <div className='flex flex-col gap-3 min-w-0 w-full'>
       <h2 className='text-lg font-semibold flex-shrink-0' style={{ color: '#33363F' }}>Dashboard Overview</h2>
 
@@ -252,7 +255,7 @@ export default function Dashboard() {
                         : 'Backup Job';
                   const initials = jobName[0]?.toUpperCase() ?? 'B';
                   return (
-                    <tr key={job.backupJobId} style={{ borderBottom: '1px solid #EBEBEB' }}>
+                    <tr key={job.backupJobId} onClick={() => setSelectedJob(job)} className='cursor-pointer hover:bg-blue-50 transition-colors' style={{ borderBottom: '1px solid #EBEBEB' }}>
                       <td className='px-5 py-3' style={{ maxWidth: '180px' }}>
                         <div className='flex items-center gap-2 overflow-hidden'>
                           <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
@@ -348,5 +351,13 @@ export default function Dashboard() {
       </div>
 
     </div>
+
+    {selectedJob && (
+      <JobDetailsModal
+        job={selectedJob}
+        onClose={() => setSelectedJob(null)}
+      />
+    )}
+    </>
   );
 }
