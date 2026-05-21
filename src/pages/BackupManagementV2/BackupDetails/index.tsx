@@ -196,7 +196,7 @@ export default function BackupDetails() {
 
       {/* Tab Content - Scrollable */}
       <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-4'>
-        {activeTab === 'overview' && <Overview backup={backupData} />}
+        {activeTab === 'overview' && <Overview backup={backupData} onViewTriggers={() => setActiveTab('triggers')} />}
         {activeTab === 'history' && <BackupHistory backup={backupData} />}
         {activeTab === 'triggers' && <TriggerRecords backup={backupData} />}
         {/* Objects & Data tab - commented out */}
