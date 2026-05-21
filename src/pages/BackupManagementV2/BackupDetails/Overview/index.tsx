@@ -7,9 +7,10 @@ import EditScheduleModal from './EditScheduleModal';
 
 type OverviewProps = {
   backup: any;
+  onViewTriggers?: () => void;
 };
 
-export default function Overview({ backup }: OverviewProps) {
+export default function Overview({ backup, onViewTriggers }: OverviewProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
   const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false);
@@ -164,6 +165,30 @@ export default function Overview({ backup }: OverviewProps) {
               </div>
             </div>
           </div>
+
+          {/* Last 5 Triggers — only shown for realtime backups */}
+          {derivedSchedule === 'REALTIME' && (
+          <div className='bg-white rounded border border-gray-200 p-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-sm font-semibold text-gray-900'>Last 5 Triggers Created</h3>
+              <button onClick={onViewTriggers} className='text-xs font-medium text-blue-600 hover:underline'>View All →</button>
+            </div>
+            <div className='space-y-2'>
+              {(displayData?.triggerResults ?? []).length === 0 ? (
+                <p className='text-xs text-gray-500 text-center py-2'>No triggers available</p>
+              ) : (
+                [...(displayData?.triggerResults ?? [])].slice(0, 5).map((t: any) => (
+                  <div key={t.triggerName} className='flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0'>
+                    <span className='text-xs text-gray-800 font-medium truncate mr-2'>{t.triggerName}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${t.status === 'EXIST' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          )}
 
           {/* Backup Scheduling — only shown for scheduled backups */}
           {derivedSchedule === 'SCHEDULE' && (
