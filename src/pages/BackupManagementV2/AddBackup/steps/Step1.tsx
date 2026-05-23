@@ -78,9 +78,11 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   }, [selectedPlatform?.crmId]);
 
   return (
-    <div className='h-full bg-gray-50 p-8 overflow-y-auto'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      {/* Scrollable area — fills remaining height, passes it down */}
+      <div className='flex-1 overflow-y-auto flex flex-col p-8 min-h-0'>
       {/* Header with Step Indicator */}
-      <div className='flex items-start justify-between mb-8'>
+      <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Choose Source and Destination</h1>
           <p className='text-gray-600 mt-2'>Select source and destination for your backup process</p>
@@ -90,10 +92,10 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
         </span>
       </div>
 
-      {/* Main Content */}
-      <div className='grid grid-cols-2 gap-8'>
+      {/* Main Content — grows to fill remaining space */}
+      <div className='grid grid-cols-2 gap-8 flex-1 min-h-0'>
         {/* Left Column - Available Source Platforms */}
-        <div className='bg-white rounded-lg shadow-sm p-6'>
+        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
           <h2 className='text-lg font-semibold text-gray-900 mb-6'>Available Source Platform</h2>
 
           <div className='space-y-3'>
@@ -131,7 +133,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
         </div>
 
         {/* Right Column - Select Connections */}
-        <div className='bg-white rounded-lg shadow-sm p-6'>
+        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
           <h2 className='text-lg font-semibold text-gray-900 mb-6'>
             Select {selectedPlatform?.crmName || 'Platform'} Connections
           </h2>
@@ -139,7 +141,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           {selectedPlatform ? (
             <>
               {isLoadingConnections ? (
-                <div className='flex items-center justify-center h-64'>
+                <div className='flex items-center justify-center flex-1'>
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
                 </div>
               ) : (
@@ -192,8 +194,10 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className='mt-8 flex justify-end gap-4'>
+      </div>{/* end scrollable area */}
+
+      {/* Sticky Action Buttons */}
+      <div className='flex-shrink-0 flex justify-end gap-4 px-8 py-4 bg-gray-50 border-t border-gray-200'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
