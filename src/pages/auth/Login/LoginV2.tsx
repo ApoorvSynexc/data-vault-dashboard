@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import LockIcon from '../../../assets/icons/lock.svg?react';
 import ShieldIcon from '../../../assets/icons/shield.svg?react';
@@ -12,6 +12,17 @@ export default function LoginV2() {
   const [isCustomURLModalOpen, setIsCustomURLModalOpen] = useState(false);
   const authService = useAuthService();
 
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'SALESFORCE_LOGIN_SUCCESS') {
+        window.location.replace('/');
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
   const socialLoginMutation = useMutation({
     mutationFn: (authProvider: string) => authService.initiateSocialLogin(authProvider),
   });
@@ -21,7 +32,17 @@ export default function LoginV2() {
     socialLoginMutation.mutate(authProvider, {
       onSuccess: (data) => {
         if (data?.authorizationUrl) {
-          window.location.href = data.authorizationUrl;
+          const url = new URL(data.authorizationUrl);
+          url.searchParams.set('prompt', 'login');
+          const width = 500;
+          const height = 650;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+          window.open(
+            url.toString(),
+            'SalesforceLogin',
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+          );
         }
       },
       onError: (error) => {
@@ -56,7 +77,7 @@ export default function LoginV2() {
 
             {/* Sign In With */}
             <div className='mb-6'>
-              <p className='mb-4 text-sm font-semibold text-gray-900'>Sign In With</p>
+              <p className='mb-4 text-sm font-semibold text-gray-900'>Log In With</p>
 
               {/* Salesforce Production Button */}
               <button
