@@ -23,11 +23,20 @@ export default function SocialLoginCallback() {
 
   useEffect(() => {
     if (isSuccess) {
-      refreshProfile();
+      if (window.opener && !window.opener.closed) {
+        // Running inside the login popup — notify parent and close
+        window.opener.postMessage({ type: 'SALESFORCE_LOGIN_SUCCESS' }, window.location.origin);
+        window.close();
+      } else {
+        // Full-page redirect flow (fallback)
+        refreshProfile().then(() => {
+          window.location.replace('/');
+        });
+      }
     }
   }, [isSuccess, refreshProfile]);
 
-  if (isSuccess) {
+  if (isSuccess && !(window.opener && !window.opener.closed)) {
     return <Navigate to='/' replace />;
   }
   
