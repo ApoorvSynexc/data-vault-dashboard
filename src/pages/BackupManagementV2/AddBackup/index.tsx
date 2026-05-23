@@ -67,7 +67,7 @@ export default function AddBackup() {
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
 
   return (
-    <div>
+    <div className='flex-1 min-h-0 flex flex-col'>
       {currentStep === 1 && (
         <Step1
           strategy={selectedStrategy}

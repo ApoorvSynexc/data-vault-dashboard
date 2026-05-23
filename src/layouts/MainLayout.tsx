@@ -232,8 +232,10 @@ export default function MainLayout() {
         </header>
 
         {/* Page content */}
-        <main className='flex-1 w-full overflow-auto bg-gray-50 p-6'>
-          <Outlet />
+        <main className='flex-1 w-full overflow-hidden bg-gray-50 flex flex-col min-h-0'>
+          <div className='flex-1 overflow-auto p-6 min-h-0 flex flex-col'>
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
