@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Step1 from './steps/Step1';
 import Step2 from './steps/Step2';
 import Step3 from './steps/Step3';
@@ -16,7 +17,9 @@ type SelectedObject = {
 };
 
 export default function AddBackup() {
-  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [searchParams] = useSearchParams();
+  const initialStep = Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step;
+  const [currentStep, setCurrentStep] = useState<Step>(initialStep);
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
   const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
