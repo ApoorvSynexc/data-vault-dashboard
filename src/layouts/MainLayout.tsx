@@ -150,7 +150,7 @@ export default function MainLayout() {
       <div className='flex min-w-0 flex-1 flex-col w-full'>
 
         {/* Header */}
-        <header className='h-14 bg-white border-b border-gray-200 flex items-center gap-4 px-6 shrink-0'>
+        <header className='h-14 flex items-center gap-4 px-6 shrink-0' style={{ background: '#1B3A8A' }}>
 
           {/* Search */}
           <div className='flex-1 max-w-md relative'>
@@ -160,7 +160,7 @@ export default function MainLayout() {
             <input
               type='text'
               placeholder='Search backups, platforms...'
-              className='w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 placeholder:text-gray-400'
+              className='w-full pl-9 pr-4 py-2 text-sm bg-white border border-white rounded-lg outline-none focus:ring-2 focus:ring-white/40 placeholder:text-gray-400 text-gray-800'
             />
           </div>
 
@@ -169,12 +169,12 @@ export default function MainLayout() {
           {/* Icon buttons */}
           <button
             onClick={() => navigate('/notifications')}
-            className='relative cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 rounded-lg'
+            className='relative cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'
           >
             <Icons.bell />
-            <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full' />
+            <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full' />
           </button>
-          <button className='cursor-pointer p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 rounded-lg'>
+          <button className='cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'>
             <Icons.settings />
           </button>
           <div className='relative' ref={userMenuRef}>
