@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import type { TableColumn } from '../../../../components/Table';
-import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
