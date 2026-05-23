@@ -331,39 +331,46 @@ export default function BackupHistory(_: BackupHistoryProps) {
         </div>
       </div>
 
-      {/* Backup History Table - Grows to fill available space */}
-      <div className='flex flex-col flex-1 min-h-0 gap-0'>
-        <style>{`
-          table {
-            border-collapse: separate;
-            border-spacing: 0;
-          }
-          table thead {
-            position: sticky !important;
-            top: 0 !important;
-            background-color: white !important;
-            z-index: 30 !important;
-          }
-          table thead th {
-            position: relative;
-            background-color: white !important;
-          }
-        `}</style>
-        <div className='flex-1 min-h-0 flex flex-col'>
-          <Table<BackupJob>
-            columns={columns}
-            rows={currentJobs}
-            getRowKey={(job) => job.backupJobId}
-            showPagination={false}
-            minHeightClassName='min-h-0'
-            showSerialNumber={true}
-            serialNumberStart={pageIndex * itemsPerPage + 1}
-            emptyState='No backup history found.'
-          />
+      {/* Backup History Table */}
+      <div className='flex flex-col flex-1 min-h-0 bg-white rounded border border-gray-200'>
+        {/* Scrollable table area */}
+        <div className='flex-1 overflow-y-auto min-h-0'>
+          <table className='w-full'>
+            <thead className='sticky top-0 z-20 bg-white border-b border-gray-200'>
+              <tr>
+                <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>#</th>
+                {columns.map((col) => (
+                  <th key={col.key} className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>
+                    {col.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {currentJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length + 1} className='px-4 py-10 text-center text-sm text-gray-500'>
+                    No backup history found.
+                  </td>
+                </tr>
+              ) : (
+                currentJobs.map((job: BackupJob, index: number) => (
+                  <tr key={job.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
+                    <td className='px-4 py-3 text-sm text-gray-600'>{pageIndex * itemsPerPage + index + 1}</td>
+                    {columns.map((col) => (
+                      <td key={col.key} className='px-4 py-3'>
+                        {col.render(job, index)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Custom Pagination */}
-        <div className='p-4 border border-gray-200 flex items-center justify-between flex-shrink-0 bg-white rounded-b'>
+        <div className='px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-shrink-0'>
           <div className='text-sm text-gray-600'>
             Showing {currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to {pageIndex * itemsPerPage + currentJobs.length} of {totalItems}
           </div>
