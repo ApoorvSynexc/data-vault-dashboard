@@ -462,6 +462,9 @@ export default function BackupManagementV2() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
+  const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean } | null>(null);
+  const [activateAcceptText, setActivateAcceptText] = useState('');
+  const [activateAcceptError, setActivateAcceptError] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
@@ -634,7 +637,11 @@ export default function BackupManagementV2() {
             items={[
               ...(row.backupStatus === 'DRAFT' ? [{
                 label: 'Activate',
-                onClick: () => updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'ACTIVE' }),
+                onClick: () => {
+                  setActivateAcceptText('');
+                  setActivateAcceptError(false);
+                  setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
+                },
               }] : []),
               ...(row.backupStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
               ...(row.backupStatus !== 'DRAFT' ? [{
@@ -741,6 +748,119 @@ export default function BackupManagementV2() {
         onConfirm={() => { updateStatusMutation.mutate({ backupConfigId: pauseTarget!.id, backupStatus: 'PAUSED' }); setPauseTarget(null); }}
         onCancel={() => setPauseTarget(null)}
       />
+
+      {/* Activate DRAFT backup acknowledgement dialog */}
+      {activateTarget && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden'>
+            {/* Header */}
+            <div className='flex items-center justify-between px-6 py-4 border-b border-gray-200'>
+              <h2 className='text-lg font-bold text-gray-900'>Activate Backup</h2>
+              <button
+                onClick={() => { setActivateTarget(null); setActivateAcceptText(''); setActivateAcceptError(false); }}
+                className='text-gray-400 hover:text-gray-600 transition-colors'
+              >
+                <svg className='w-5 h-5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className='px-6 py-5 space-y-4'>
+              {activateTarget.isRealtime && (
+                <>
+                  {/* Warning notice */}
+                  <div className='bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex gap-3'>
+                    <svg className='w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+                    </svg>
+                    <p className='text-sm text-yellow-700'>
+                      Activating this real-time backup will continuously sync your Salesforce data. This may affect your API usage limits.
+                    </p>
+                  </div>
+
+                  {/* Before You Proceed */}
+                  <div className='bg-gray-50 rounded-lg px-4 py-4'>
+                    <h3 className='text-sm font-semibold text-gray-900 mb-2'>Before You Proceed</h3>
+                    <ul className='space-y-1.5 text-sm text-gray-600'>
+                      <li className='flex items-start gap-2'>
+                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+                        </svg>
+                        Ensure your Salesforce connection is active and has sufficient API limits.
+                      </li>
+                      <li className='flex items-start gap-2'>
+                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+                        </svg>
+                        Verify your AWS S3 destination has adequate storage and permissions.
+                      </li>
+                      <li className='flex items-start gap-2'>
+                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+                        </svg>
+                        Real-time backups run continuously and will count toward your usage quota.
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Type Accept */}
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>
+                      Type <span className='font-bold text-gray-900'>Accept</span> to confirm activation
+                    </label>
+                    <input
+                      type='text'
+                      value={activateAcceptText}
+                      onChange={(e) => { setActivateAcceptText(e.target.value); if (activateAcceptError) setActivateAcceptError(false); }}
+                      placeholder='Type Accept here'
+                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                        activateAcceptError ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {activateAcceptError && (
+                      <p className='text-xs text-red-500 mt-1'>Please type "Accept" to confirm</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {!activateTarget.isRealtime && (
+                <p className='text-sm text-gray-600'>
+                  Are you sure you want to activate <span className='font-semibold text-gray-900'>"{activateTarget.name}"</span>? The scheduled backup will start running according to its configured schedule.
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50'>
+              <button
+                onClick={() => { setActivateTarget(null); setActivateAcceptText(''); setActivateAcceptError(false); }}
+                className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (activateTarget.isRealtime && activateAcceptText.trim().toLowerCase() !== 'accept') {
+                    setActivateAcceptError(true);
+                    return;
+                  }
+                  updateStatusMutation.mutate({ backupConfigId: activateTarget.id, backupStatus: 'ACTIVE' });
+                  setActivateTarget(null);
+                  setActivateAcceptText('');
+                  setActivateAcceptError(false);
+                }}
+                disabled={updateStatusMutation.isPending}
+                className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                {updateStatusMutation.isPending ? 'Activating...' : 'Activate Backup'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
