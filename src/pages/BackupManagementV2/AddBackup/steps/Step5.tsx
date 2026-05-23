@@ -247,7 +247,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
         {/* Table Container - Scrollable */}
         {!isLoading && !error && (
-          <>
+          <div className='flex-1 min-h-0 flex flex-col'>
             <style>{`
               table {
                 border-collapse: separate;
@@ -264,7 +264,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 background-color: white !important;
               }
             `}</style>
-            <div className='flex-1 min-h-0 px-6 py-2 overflow-hidden'>
+            <div className='flex-1 min-h-0 px-6 py-2 overflow-y-auto'>
               <Table<BackupObject>
                 columns={columns}
                 rows={filteredObjects}
@@ -366,7 +366,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
