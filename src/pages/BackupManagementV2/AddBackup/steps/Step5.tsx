@@ -181,7 +181,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   ];
 
   return (
-    <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
@@ -194,7 +194,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 mx-6 my-4 flex flex-col flex-grow min-h-0'>
+      <div className='bg-white rounded-lg border border-gray-200 mx-6 mb-4 flex flex-col flex-1 min-h-0'>
         {/* Search and Filter */}
         <div className='px-6 py-3 flex items-center gap-4 justify-between flex-shrink-0'>
           <div className='flex-1'>
@@ -264,7 +264,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 background-color: white !important;
               }
             `}</style>
-            <div className='flex-1 min-h-0 max-h-96 px-6 py-2 overflow-hidden'>
+            <div className='flex-1 min-h-0 px-6 py-2 overflow-hidden'>
               <Table<BackupObject>
                 columns={columns}
                 rows={filteredObjects}
@@ -371,7 +371,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Action Buttons */}
-      <div className='flex justify-between flex-shrink-0 px-8 py-4'>
+      <div className='flex-shrink-0 flex justify-between px-8 py-4 bg-gray-50 border-t border-gray-200'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
