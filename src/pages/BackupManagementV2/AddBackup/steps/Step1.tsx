@@ -37,8 +37,11 @@ const AVAILABLE_PLATFORMS = [
 export default function Step1({ onNext, strategy = 'realtime', initialSelectedPlatformId }: Step1Props) {
   const navigate = useNavigate();
   const platformService = usePlatformService();
+  // Salesforce is always pre-selected
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(
-    initialSelectedPlatformId ? AVAILABLE_PLATFORMS.find((p) => p.crmId === initialSelectedPlatformId) ?? null : null
+    initialSelectedPlatformId
+      ? AVAILABLE_PLATFORMS.find((p) => p.crmId === initialSelectedPlatformId) ?? AVAILABLE_PLATFORMS[0]
+      : AVAILABLE_PLATFORMS[0]
   );
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
 
@@ -69,14 +72,10 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
     : [];
   const platformMeta = selectedPlatform ? CRM_PLATFORM_META[selectedPlatform.crmName as keyof typeof CRM_PLATFORM_META] : null;
 
-  // Auto-select first connection when connections are fetched (only if not already selected)
+  // Clear connection when platform changes
   useEffect(() => {
-    if (connections.length > 0 && !selectedConnection) {
-      setSelectedConnection(connections[0]);
-    } else if (connections.length === 0 && selectedConnection) {
-      setSelectedConnection(null);
-    }
-  }, [connections, selectedConnection]);
+    setSelectedConnection(null);
+  }, [selectedPlatform?.crmId]);
 
   return (
     <div className='h-full bg-gray-50 p-8 overflow-y-auto'>
@@ -98,28 +97,36 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           <h2 className='text-lg font-semibold text-gray-900 mb-6'>Available Source Platform</h2>
 
           <div className='space-y-3'>
-            {AVAILABLE_PLATFORMS.map((platform) => (
-              <button
-                key={platform.crmId}
-                onClick={() => setSelectedPlatform(platform)}
-                className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                  selectedPlatform?.crmId === platform.crmId
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className='flex items-center gap-3'>
-                  <img
-                    src={salesforceLogo}
-                    alt={platform.crmName}
-                    className='w-12 h-12 rounded-lg object-contain'
-                  />
-                  <div className='flex-1'>
-                    <p className='font-semibold text-gray-900'>{platform.crmName}</p>
+            {AVAILABLE_PLATFORMS.map((platform) => {
+              const isSelected = selectedPlatform?.crmId === platform.crmId;
+              return (
+                <button
+                  key={platform.crmId}
+                  onClick={() => setSelectedPlatform(platform)}
+                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                    isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <div className='flex items-center gap-3'>
+                    {/* Checkbox */}
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                      isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'
+                    }`}>
+                      {isSelected && (
+                        <svg className='w-3.5 h-3.5 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+                        </svg>
+                      )}
+                    </div>
+                    <img src={salesforceLogo} alt={platform.crmName} className='w-10 h-10 rounded-lg object-contain' />
+                    <div className='flex-1'>
+                      <p className='font-semibold text-blue-600'>{platform.crmName}</p>
+                      <p className='text-xs text-gray-500'>Connected on {new Date(platform.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -137,67 +144,43 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                 </div>
               ) : (
                 <div className='space-y-4'>
-                  {connections.map((connection: any) => (
-                    <div
-                      key={connection.crmId}
-                      onClick={() => setSelectedConnection(connection)}
-                      className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
-                        selectedConnection?.crmId === connection.crmId
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className='flex items-start gap-3'>
-                        <div
-                          className='w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0'
-                          style={{
-                            backgroundColor: platformMeta?.brandColor || '#6B7280',
-                          }}
-                        >
-                          {connection.crmName.charAt(0).toUpperCase()}
+                  {connections.map((connection: any) => {
+                    const isSelected = selectedConnection?.crmId === connection.crmId;
+                    return (
+                      <div
+                        key={connection.crmId}
+                        onClick={() => setSelectedConnection(connection)}
+                        className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className='flex items-center gap-3'>
+                          {/* Checkbox */}
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'
+                          }`}>
+                            {isSelected && (
+                              <svg className='w-3.5 h-3.5 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'>
+                                <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+                              </svg>
+                            )}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
+                              {connection.name}
+                            </p>
+                            <p className='text-xs text-gray-500 truncate'>Org ID : {connection.crmProfile?.organizationId}</p>
+                            <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
+                          </div>
                         </div>
-                        <div className='flex-1 min-w-0'>
-                          <p className='font-semibold text-gray-900 truncate'>
-                            {connection.name}
-                          </p>
-                          <p className='text-xs text-gray-600 truncate'>
-                            {connection.crmProfile?.name}
-                          </p>
-                          <p className='text-xs text-gray-600 truncate'>
-                            Org ID: {connection.crmProfile?.organizationId}
-                          </p>
-                          <p className='text-xs text-gray-600 truncate'>
-                            Email: {connection.crmProfile?.email}
-                          </p>
-                        </div>
-                        <span
-                          className='px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0'
-                          style={{
-                            backgroundColor: connection.status === 'ACTIVE' ? '#E8F5E9' : '#FFF3E0',
-                            color: connection.status === 'ACTIVE' ? '#2E7D32' : '#F57C00',
-                          }}
-                        >
-                          {connection.status}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {connections.length === 0 && !isLoadingConnections && (
                     <p className='text-center text-gray-500 py-8'>No connections available for this platform</p>
                   )}
 
-                  {/* Add New Connection Button */}
-                  <button
-                    onClick={() => {
-                      if (selectedPlatform?.crmName.toLowerCase() === 'salesforce') {
-                        navigate('/connections/salesforce/connect');
-                      }
-                    }}
-                    className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'
-                  >
-                    + Add New Connection
-                  </button>
                 </div>
               )}
             </>
