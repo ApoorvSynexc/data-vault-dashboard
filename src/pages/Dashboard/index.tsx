@@ -1,28 +1,30 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../utils';
 import JobDetailsModal from '../BackupManagementV2/BackupDetails/BackupHistory/JobDetailsModal';
 import dayjs from 'dayjs';
-import Frame from '../../assets/icons/Frame.svg';
-import Frame1 from '../../assets/icons/Frame-1.svg';
-import Frame2 from '../../assets/icons/Frame-2.svg';
-import Frame3 from '../../assets/icons/Frame-3.svg';
-import Frame4 from '../../assets/icons/Frame-4.svg';
-import Frame5 from '../../assets/icons/Frame-5.svg';
-import Frame6 from '../../assets/icons/Frame-6.svg';
-import Frame7 from '../../assets/icons/Frame-7.svg';
-import Frame8 from '../../assets/icons/Frame-8.svg';
-import Frame9 from '../../assets/icons/Frame-9.svg';
-import Frame10 from '../../assets/icons/Frame-10.svg';
-import Frame11 from '../../assets/icons/Frame-11.svg';
-import Frame12 from '../../assets/icons/Frame-12.svg';
-import Frame13 from '../../assets/icons/Frame-13.svg';
-import Frame14 from '../../assets/icons/Frame-14.svg';
-import Frame15 from '../../assets/icons/Frame-15.svg';
-import Frame16 from '../../assets/icons/Frame-16.svg';
-import Frame17 from '../../assets/icons/Frame-17.svg';
+
+// Dashboard floating frame icons
+import DashFrame   from '../../assets/icons/DataVault Dashboard/Frame.svg';
+import DashFrame1  from '../../assets/icons/DataVault Dashboard/Frame-1.svg';
+import DashFrame2  from '../../assets/icons/DataVault Dashboard/Frame-2.svg';
+import DashFrame3  from '../../assets/icons/DataVault Dashboard/Frame-3.svg';
+import DashFrame4  from '../../assets/icons/DataVault Dashboard/Frame-4.svg';
+import DashFrame5  from '../../assets/icons/DataVault Dashboard/Frame-5.svg';
+import DashFrame6  from '../../assets/icons/DataVault Dashboard/Frame-6.svg';
+import DashFrame7  from '../../assets/icons/DataVault Dashboard/Frame-7.svg';
+import DashFrame8  from '../../assets/icons/DataVault Dashboard/Frame-8.svg';
+import DashFrame9  from '../../assets/icons/DataVault Dashboard/Frame-9.svg';
+import DashFrame10 from '../../assets/icons/DataVault Dashboard/Frame-10.svg';
+import DashFrame11 from '../../assets/icons/DataVault Dashboard/Frame-11.svg';
+import DashFrame12 from '../../assets/icons/DataVault Dashboard/Frame-12.svg';
+import DashFrame13 from '../../assets/icons/DataVault Dashboard/Frame-13.svg';
+import DashFrame14 from '../../assets/icons/DataVault Dashboard/Frame-14.svg';
+import DashFrame15 from '../../assets/icons/DataVault Dashboard/Frame-15.svg';
+import DashFrame16 from '../../assets/icons/DataVault Dashboard/Frame-16.svg';
+import DashFrame17 from '../../assets/icons/DataVault Dashboard/Frame-17.svg';
 
 /* ── helpers ── */
 function getJobStatus(status?: string, objects?: any[]): { label: string; bg: string; color: string } {
@@ -74,6 +76,28 @@ function HealthGauge({ score }: { score: number }) {
   );
 }
 
+/* ── floating frame positions matching Figma layout ── */
+const floatingFrames = [
+  { src: DashFrame4,  size: 128, x: '49%',  y: '21%'  }, // center top (Frame 128x128 @ 722,219)
+  { src: DashFrame5,  size: 128, x: '79%',  y: '30%'  }, // right center (1142,312)
+  { src: DashFrame2,  size: 128, x: '22%',  y: '31%'  }, // left center (328,323)
+  { src: DashFrame3,  size: 70,  x: '36%',  y: '29%'  }, // (527,300)
+  { src: DashFrame6,  size: 98,  x: '24%',  y: '15%'  }, // (353,154)
+  { src: DashFrame7,  size: 89,  x: '47%',  y: '13%'  }, // (687,139)
+  { src: DashFrame8,  size: 84,  x: '73%',  y: '20%'  }, // (1063,205)
+  { src: DashFrame9,  size: 98,  x: '29%',  y: '26%'  }, // (425,266)
+  { src: DashFrame10, size: 98,  x: '61%',  y: '26%'  }, // (888,334) -- adjusted
+  { src: DashFrame11, size: 74,  x: '62%',  y: '20%'  }, // (904,209)
+  { src: DashFrame12, size: 108, x: '81%',  y: '17%'  }, // (1177,178)
+  { src: DashFrame13, size: 70,  x: '68%',  y: '14%'  }, // (992,147)
+  { src: DashFrame14, size: 94,  x: '42%',  y: '31%'  }, // (613,320)
+  { src: DashFrame15, size: 67,  x: '43%',  y: '21%'  }, // (622,213)
+  { src: DashFrame16, size: 67,  x: '56%',  y: '15%'  }, // (818,156)
+  { src: DashFrame17, size: 67,  x: '71%',  y: '31%'  }, // (1027,317)
+  { src: DashFrame,   size: 102, x: '34%',  y: '14%'  }, // (495,145)
+  { src: DashFrame1,  size: 98,  x: '17%',  y: '18%'  }, // (247,191)
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
@@ -103,14 +127,12 @@ export default function Dashboard() {
 
   const hasBackups = recentJobs.length > 0;
 
-  // derive stats from last-jobs response
   const completedJobs = recentJobs.filter((j: any) => j.status === 'SUCCESS' || j.status === 'COMPLETED').length;
   const runningJobs   = recentJobs.filter((j: any) => j.status === 'RUNNING').length;
   const failedJobs    = recentJobs.filter((j: any) => j.status === 'FAILED').length;
   const totalRuns     = completedJobs + runningJobs + failedJobs;
   const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
 
-  // overview API: KPI cards
   const overview = (overviewData as any)?.data ?? {};
   const kpiProtectedRecords = overview?.protectedRecords?.value ?? '--';
   const kpiProtectedChange  = overview?.protectedRecords?.change;
@@ -123,17 +145,6 @@ export default function Dashboard() {
   const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
   const kpiRunning          = overview?.activeJobs?.running ?? 0;
 
-  /* ── no-backup state: lock scroll ── */
-  useEffect(() => {
-    if (!hasBackups) {
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.documentElement.style.overflow = '';
-        document.body.style.overflow = '';
-      };
-    }
-  }, [hasBackups]);
 
   /* ── loading state ── */
   if (isLoading) {
@@ -144,31 +155,72 @@ export default function Dashboard() {
     );
   }
 
-  /* ── empty state ── */
+  /* ── empty state — matches Figma exactly ── */
   if (!hasBackups) {
-    const frameImages = [Frame, Frame1, Frame2, Frame3, Frame4, Frame5, Frame6, Frame7, Frame8, Frame9, Frame10, Frame11, Frame12, Frame13, Frame14, Frame15, Frame16, Frame17];
     return (
-      <div className='w-full h-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-white'>
+      <div
+        className='relative flex flex-1 flex-col overflow-hidden rounded-xl'
+        style={{
+          background: 'radial-gradient(circle at 60% 75%, #155DFC 0%, #ffffff 100%), linear-gradient(130deg, #155DFC 0%, #0D3796 100%)',
+          backgroundBlendMode: 'screen',
+          backgroundColor: '#F8FAFC',
+          minHeight: '100%',
+        }}
+      >
+        {/* Floating frame icons scattered across the background */}
         <div className='absolute inset-0 pointer-events-none overflow-hidden'>
-          <div className='grid grid-cols-6 gap-8 p-8 opacity-20'>
-            {frameImages.map((src, i) => (
-              <div key={i} className='aspect-square flex items-center justify-center'>
-                <img src={src} alt='' className='w-20 h-20 object-contain' />
-              </div>
-            ))}
-          </div>
+          {floatingFrames.map((f, i) => (
+            <img
+              key={i}
+              src={f.src}
+              alt=''
+              className='absolute object-contain'
+              style={{
+                width: f.size,
+                height: f.size,
+                left: f.x,
+                top: f.y,
+                transform: 'translate(-50%, -50%)',
+                opacity: 0.55,
+              }}
+            />
+          ))}
         </div>
-        <div className='relative z-10 text-center max-w-md'>
-          <h1 className='text-4xl font-bold text-gray-900 mb-4'>Welcome User !</h1>
-          <p className='text-lg text-gray-600 mb-8'>Currently you dont have any backup to get started with your dashboard !</p>
+
+        {/* Centered content */}
+        <div className='relative z-10 flex flex-1 flex-col items-center justify-center text-center px-6'>
+          <h1
+            className='font-bold leading-snug mb-2'
+            style={{ color: '#33363F', fontSize: 32, lineHeight: '34px' }}
+          >
+            Welcome User !
+          </h1>
+          <p
+            className='mb-10'
+            style={{ color: '#64748B', fontSize: 22, fontWeight: 400, lineHeight: '34px', maxWidth: 700 }}
+          >
+            Currently you dont have any backup to get started with your dashboard!
+          </p>
           <button
             onClick={() => navigate('/backup-management/add')}
-            className='inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors'
+            style={{
+              width: 362,
+              height: 58,
+              background: '#155DFC',
+              borderRadius: 6,
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: 400,
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.10)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
           >
-            Lets Start Backup
-            <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
-            </svg>
+            Lets Start Backup →
           </button>
         </div>
       </div>
@@ -218,7 +270,6 @@ export default function Dashboard() {
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
           </div>
 
-          {/* scrollable table */}
           <div className='overflow-auto' style={{ maxHeight: '420px' }}>
             <table className='w-full' style={{ borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
@@ -261,9 +312,7 @@ export default function Dashboard() {
                           <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
                             {initials}
                           </div>
-                          <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>
-                            {jobName}
-                          </span>
+                          <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>{jobName}</span>
                         </div>
                       </td>
                       <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
@@ -285,13 +334,10 @@ export default function Dashboard() {
               </tbody>
             </table>
           </div>
-
         </div>
 
         {/* Right column */}
         <div className='flex flex-col gap-4'>
-
-          {/* System Health */}
           <div className='rounded-xl bg-white p-5' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
             <h3 className='font-semibold mb-3' style={{ fontSize: '16px', color: '#33363F' }}>System Health</h3>
             <div className='flex flex-col items-center gap-2'>
@@ -324,7 +370,6 @@ export default function Dashboard() {
             </ul>
           </div>
 
-          {/* Jobs Stats */}
           <div className='rounded-xl bg-white p-5' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
             <h3 className='font-semibold mb-3' style={{ fontSize: '16px', color: '#33363F' }}>Jobs Summary</h3>
             <div className='flex flex-col gap-3'>
@@ -346,10 +391,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
-
     </div>
 
     {selectedJob && (
