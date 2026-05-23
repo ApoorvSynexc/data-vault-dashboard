@@ -770,58 +770,30 @@ export default function BackupManagementV2() {
             <div className='px-6 py-5 space-y-4'>
               {activateTarget.isRealtime && (
                 <>
-                  {/* Warning notice */}
-                  <div className='bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 flex gap-3'>
-                    <svg className='w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
-                    </svg>
-                    <p className='text-sm text-yellow-700'>
-                      Activating this real-time backup will continuously sync your Salesforce data. This may affect your API usage limits.
-                    </p>
+                  <p className='text-sm text-gray-500 mb-4'>DataVault uses Salesforce Apex Triggers to capture record changes instantly and sync them to your backup destination in real time.</p>
+                  <p className='text-sm font-semibold text-gray-800 mb-3'>What will happen after you activate this backup configuration:</p>
+                  <ul className='text-sm text-gray-700 space-y-3 mb-4'>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span>An <span className='font-semibold'>Apex Trigger</span> will be created on each object you selected to listen for <span className='font-semibold'>insert, update, delete,</span> and <span className='font-semibold'>undelete</span> events.</span></li>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span>A Permission Set named <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> will be created in your Salesforce org and granted access to the DataVault handler class and the triggers above.</span></li>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span><span className='font-semibold'>Action required:</span> Assign the <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> Permission Set to all users who create, update, or delete records on the selected objects.</span></li>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span><span className='font-semibold'>Already using Real-Time Backup?</span> No duplicate triggers or permission sets will be created. DataVault will only create triggers for newly added objects.</span></li>
+                  </ul>
+                  <div className='bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded-r-lg'>
+                    <p className='text-sm text-yellow-800'>By activating this configuration, you acknowledge that DataVault will deploy <span className='font-semibold'>Apex Triggers</span> and a <span className='font-semibold'>Permission Set</span> to your connected Salesforce org as described above.</p>
                   </div>
-
-                  {/* Before You Proceed */}
-                  <div className='bg-gray-50 rounded-lg px-4 py-4'>
-                    <h3 className='text-sm font-semibold text-gray-900 mb-2'>Before You Proceed</h3>
-                    <ul className='space-y-1.5 text-sm text-gray-600'>
-                      <li className='flex items-start gap-2'>
-                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
-                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
-                        </svg>
-                        Ensure your Salesforce connection is active and has sufficient API limits.
-                      </li>
-                      <li className='flex items-start gap-2'>
-                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
-                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
-                        </svg>
-                        Verify your AWS S3 destination has adequate storage and permissions.
-                      </li>
-                      <li className='flex items-start gap-2'>
-                        <svg className='w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
-                          <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
-                        </svg>
-                        Real-time backups run continuously and will count toward your usage quota.
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Type Accept */}
                   <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-1'>
-                      Type <span className='font-bold text-gray-900'>Accept</span> to confirm activation
-                    </label>
+                    <label className='block text-sm font-semibold text-gray-900 mb-1'>Confirm to proceed</label>
+                    <p className='text-sm text-gray-600 mb-2'>Type <span className='font-semibold'>Accept</span> to acknowledge and activate your Real-Time Backup.</p>
                     <input
                       type='text'
                       value={activateAcceptText}
-                      onChange={(e) => { setActivateAcceptText(e.target.value); if (activateAcceptError) setActivateAcceptError(false); }}
+                      onChange={(e) => { setActivateAcceptText(e.target.value); if (activateAcceptError && e.target.value.toLowerCase() === 'accept') setActivateAcceptError(false); }}
                       placeholder='Type Accept here'
-                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                        activateAcceptError ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500'
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+                        activateAcceptError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
                       }`}
                     />
-                    {activateAcceptError && (
-                      <p className='text-xs text-red-500 mt-1'>Please type "Accept" to confirm</p>
-                    )}
+                    {activateAcceptError && <p className='text-sm text-red-600 mt-1'>Please type "Accept" to proceed</p>}
                   </div>
                 </>
               )}
