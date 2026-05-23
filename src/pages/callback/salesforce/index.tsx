@@ -27,6 +27,11 @@ export default function SalesforceCallback() {
   });
 
   if (isSuccess) {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: 'SALESFORCE_CONNECT_SUCCESS' }, window.location.origin);
+      window.close();
+      return null;
+    }
     return <Navigate to='/connections/salesforce' replace />;
   }
 

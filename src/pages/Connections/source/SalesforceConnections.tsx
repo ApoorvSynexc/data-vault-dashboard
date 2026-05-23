@@ -68,17 +68,37 @@ export default function SalesforceConnections() {
     },
   });
 
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'SALESFORCE_CONNECT_SUCCESS') {
+        queryClient.invalidateQueries({ queryKey: ['platforms'] });
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [queryClient]);
+
   const reconnectMutation = useMutation({
     mutationFn: ({ crmId, environment }: { crmId: string; environment?: string }) =>
       platformService.reconnectPlatform(crmId, {
         environment: environment as 'production' | 'sandbox' | 'custom' | undefined,
       }),
     onSuccess: (data: string | any) => {
-      if (typeof data === 'string') {
-        window.location.href = data;
-      } else if (data && data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      }
+      const rawUrl = typeof data === 'string' ? data : data?.redirectUrl;
+      if (!rawUrl) return;
+
+      const url = new URL(rawUrl);
+      url.searchParams.set('prompt', 'login');
+
+      const width = 500, height = 650;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      window.open(
+        url.toString(),
+        'SalesforceReconnect',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
     },
   });
 
