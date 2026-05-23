@@ -31,10 +31,11 @@ export default function ConnectAWSBucket() {
   const createDestinationMutation = useMutation({
     mutationFn: async (payload: CreateDestinationPayload) =>
       destinationService.createDestination(payload),
-    onSuccess: () => {
+    onSuccess: (newDestination) => {
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
       const separator = returnTo.includes('?') ? '&' : '?';
-      navigate(`${returnTo}${separator}connected=true`);
+      const idParam = newDestination?.destinationId ? `&newDestinationId=${newDestination.destinationId}` : '';
+      navigate(`${returnTo}${separator}connected=true${idParam}`);
     },
     onError: (error: any) => {
       console.error('Failed to create destination:', error);
