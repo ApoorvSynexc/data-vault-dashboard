@@ -3,6 +3,34 @@ import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { usePlatformService } from '../../../services';
 
+function BackToConnectionsButton() {
+  const isPopup = window.opener && !window.opener.closed;
+
+  if (isPopup) {
+    return (
+      <button
+        type='button'
+        onClick={() => {
+          window.opener.postMessage({ type: 'SALESFORCE_CONNECT_SUCCESS' }, window.location.origin);
+          window.close();
+        }}
+        className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+      >
+        Back To Connections
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      to='/connections/salesforce'
+      className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
+    >
+      Back To Connections
+    </Link>
+  );
+}
+
 export default function SalesforceCallback() {
   const { callbackPlatform } = usePlatformService();
   const [searchParams] = useSearchParams();
@@ -59,24 +87,14 @@ export default function SalesforceCallback() {
             <Typography className='mt-2' variant='body' color='danger'>
               {errorDescription ? decodeURIComponent(errorDescription).replace(/\+/g, ' ') : `Authentication failed: ${errorParam}`}
             </Typography>
-            <Link
-              to='/connections/salesforce'
-              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
-            >
-              Back To Connections
-            </Link>
+            <BackToConnectionsButton />
           </>
         ) : !hasRequiredParams ? (
           <>
             <Typography className='mt-2' variant='body' color='muted'>
               Missing required `code` or `state` query parameters.
             </Typography>
-            <Link
-              to='/connections/salesforce'
-              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
-            >
-              Back To Connections
-            </Link>
+            <BackToConnectionsButton />
           </>
         ) : isLoading ? (
           <Typography className='mt-2' variant='body' color='muted'>
@@ -87,13 +105,8 @@ export default function SalesforceCallback() {
             <Typography className='mt-2' variant='body' color='danger'>
               {error instanceof Error ? error.message : 'Failed to complete Salesforce connection.'}
             </Typography>
-            <Link
-              to='/connections/salesforce'
-              className='mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700'
-            >
-              Back To Connections
-            </Link>
-          </>
+            <BackToConnectionsButton /></>
+
         )}
       </div>
     </div>
