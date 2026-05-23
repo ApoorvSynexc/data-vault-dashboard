@@ -1,8 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { TableColumn } from '../../../../components/Table';
-import Table from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 
@@ -129,56 +127,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   }, [debouncedSearchQuery, selectedFilter]);
 
 
-  const columns: TableColumn<BackupObject>[] = [
-    {
-      key: 'name',
-      header: 'Object',
-      render: (obj) => (
-        <div className='flex items-center gap-2'>
-          <span className='text-gray-900'>{obj.name}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'type',
-      header: 'Type',
-      render: (obj) => (
-        <span className='text-gray-700'>
-          {obj.isCustom ? 'Custom' : 'Standard'}
-        </span>
-      ),
-    },
-    {
-      key: 'recordCount',
-      header: 'Records',
-      render: (obj) => (
-        <span className='text-gray-700'>
-          {obj.recordCount?.toLocaleString() ?? '--'}
-        </span>
-      ),
-    },
-    {
-      key: 'dataSize',
-      header: 'Estimated data size',
-      render: (obj) => {
-        const calculateDataSize = (recordCount?: number) => {
-          if (!recordCount) return '--';
-          const sizeInKB = recordCount * 2;
-          if (sizeInKB >= 1024 * 1024) {
-            return `${(sizeInKB / (1024 * 1024)).toFixed(2)} GB`;
-          } else if (sizeInKB >= 1024) {
-            return `${(sizeInKB / 1024).toFixed(2)} MB`;
-          }
-          return `${sizeInKB} KB`;
-        };
-        return (
-          <span className='text-gray-700'>
-            {calculateDataSize(obj.recordCount)}
-          </span>
-        );
-      },
-    },
-  ];
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -247,39 +195,72 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
         {/* Table Container - Scrollable */}
         {!isLoading && !error && (
-          <div className='flex-1 min-h-0 flex flex-col'>
-            <style>{`
-              table {
-                border-collapse: separate;
-                border-spacing: 0;
-              }
-              table thead {
-                position: sticky !important;
-                top: 0 !important;
-                background-color: white !important;
-                z-index: 30 !important;
-              }
-              table thead th {
-                position: relative;
-                background-color: white !important;
-              }
-            `}</style>
-            <div className='flex-1 min-h-0 px-6 py-2 overflow-y-auto'>
-              <Table<BackupObject>
-                columns={columns}
-                rows={filteredObjects}
-                getRowKey={(obj) => obj.id}
-                getRowId={(obj) => obj.id}
-                showCheckbox={true}
-                selectedIds={selectedObjects}
-                onSelectionChange={setSelectedObjects}
-                getRowClassName={() => 'border-b border-gray-200 hover:bg-blue-50'}
-                emptyState='No objects found matching your search.'
-                showPagination={false}
-                minHeightClassName='min-h-0'
-                showSerialNumber={true}
-                serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
-              />
+          <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+            <div className='flex-1 min-h-0 overflow-y-auto px-6 py-2'>
+              <table className='w-full border-collapse'>
+                <thead className='sticky top-0 z-20 bg-white'>
+                  <tr className='border-b border-gray-200'>
+                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 w-12'>#</th>
+                    <th className='px-4 py-3 text-left'>
+                      <input
+                        type='checkbox'
+                        checked={filteredObjects.length > 0 && filteredObjects.every(o => selectedObjects.has(o.id))}
+                        ref={(input) => {
+                          if (input) {
+                            const sel = filteredObjects.filter(o => selectedObjects.has(o.id)).length;
+                            input.indeterminate = sel > 0 && sel < filteredObjects.length;
+                          }
+                        }}
+                        onChange={() => {
+                          const allSel = filteredObjects.every(o => selectedObjects.has(o.id));
+                          const next = new Set(selectedObjects);
+                          filteredObjects.forEach(o => allSel ? next.delete(o.id) : next.add(o.id));
+                          setSelectedObjects(next);
+                        }}
+                        className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
+                      />
+                    </th>
+                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Object</th>
+                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Type</th>
+                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Records</th>
+                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Estimated data size</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredObjects.length > 0 ? filteredObjects.map((obj, idx) => {
+                    const isSelected = selectedObjects.has(obj.id);
+                    const recordCount = obj.recordCount;
+                    const dataSize = (() => {
+                      if (!recordCount) return '--';
+                      const kb = recordCount * 2;
+                      if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
+                      if (kb >= 1024) return `${(kb / 1024).toFixed(2)} MB`;
+                      return `${kb} KB`;
+                    })();
+                    return (
+                      <tr key={obj.id} className={`border-b border-gray-200 ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
+                        <td className='px-4 py-3 text-sm text-gray-600'>{currentPage * ITEMS_PER_PAGE + idx + 1}</td>
+                        <td className='px-4 py-3'>
+                          <input type='checkbox' checked={isSelected}
+                            onChange={() => {
+                              const next = new Set(selectedObjects);
+                              isSelected ? next.delete(obj.id) : next.add(obj.id);
+                              setSelectedObjects(next);
+                            }}
+                            className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
+                          />
+                        </td>
+                        <td className='px-4 py-3 text-sm text-gray-900'>{obj.name}</td>
+                        <td className='px-4 py-3 text-sm text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</td>
+                        <td className='px-4 py-3 text-sm text-gray-700'>{recordCount?.toLocaleString() ?? '--'}</td>
+                        <td className='px-4 py-3 text-sm text-gray-700'>{dataSize}</td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr><td colSpan={6} className='px-4 py-10 text-center text-sm text-gray-500'>No objects found matching your search.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
             {/* Pagination Controls */}
