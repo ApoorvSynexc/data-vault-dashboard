@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePlatformService } from '../../../../services/platform/platform.service';
-import { CRM_PLATFORM_META } from '../../../../constants/platforms';
 import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
@@ -70,8 +69,6 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
         conn.status === 'ACTIVE'
       )
     : [];
-  const platformMeta = selectedPlatform ? CRM_PLATFORM_META[selectedPlatform.crmName as keyof typeof CRM_PLATFORM_META] : null;
-
   // Clear connection when platform changes
   useEffect(() => {
     setSelectedConnection(null);

@@ -18,7 +18,7 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId }: Step2Props) {
+export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Props) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const destinationService = useDestinationService();
