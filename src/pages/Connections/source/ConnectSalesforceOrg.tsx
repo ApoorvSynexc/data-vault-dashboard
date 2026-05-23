@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import { usePlatformService } from '../../../services/platform/platform.service';
@@ -25,6 +25,17 @@ export default function ConnectSalesforceOrg() {
   const [customUrl, setCustomUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'SALESFORCE_CONNECT_SUCCESS') {
+        navigate('/connections/salesforce');
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [navigate]);
 
   const isValidUrl = (url: string): boolean => {
     try {
@@ -56,13 +67,11 @@ export default function ConnectSalesforceOrg() {
     setError(null);
 
     try {
-      // Store connection details in session storage
-      const connectionDetails = {
+      sessionStorage.setItem('salesforceConnectionDetails', JSON.stringify({
         connectionName,
         environment,
         customUrl: environment === 'custom' ? customUrl : undefined,
-      };
-      sessionStorage.setItem('salesforceConnectionDetails', JSON.stringify(connectionDetails));
+      }));
 
       const response = await platformService.connectPlatform('Salesforce', {
         environment,
@@ -70,14 +79,45 @@ export default function ConnectSalesforceOrg() {
         name: connectionName,
       });
 
-      if (typeof response === 'string') {
-        window.location.href = response;
-      } else if (response && typeof response === 'object' && 'redirectUrl' in response) {
-        window.location.href = (response as any).redirectUrl;
-      } else {
+      const rawUrl = typeof response === 'string'
+        ? response
+        : response && typeof response === 'object' && 'redirectUrl' in response
+          ? (response as any).redirectUrl
+          : null;
+
+      if (!rawUrl) {
         setError('Failed to get Salesforce authorization URL');
         setIsLoading(false);
+        return;
       }
+
+      // Force Salesforce to always show the login prompt
+      const url = new URL(rawUrl);
+      url.searchParams.set('prompt', 'login');
+
+      const width = 500, height = 650;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      const popup = window.open(
+        url.toString(),
+        'SalesforceConnect',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+
+      if (!popup) {
+        setError('Popup was blocked. Please allow popups for this site and try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Reset loading if user closes popup without completing
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          setIsLoading(false);
+        }
+      }, 500);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate Salesforce connection');
       setIsLoading(false);
