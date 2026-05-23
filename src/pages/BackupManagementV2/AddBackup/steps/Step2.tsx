@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
@@ -20,9 +20,11 @@ const DEFAULT_DESTINATION = {
 
 export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId }: Step2Props) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const destinationService = useDestinationService();
   const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(DEFAULT_DESTINATION);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(searchParams.get('connected') === 'true');
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
@@ -62,7 +64,36 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
 
   const isSelected = selectedDestination?.provider === DEFAULT_DESTINATION.provider;
 
+  const dismissSuccess = () => {
+    setShowSuccessDialog(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('connected');
+    setSearchParams(next, { replace: true });
+  };
+
   return (
+    <>
+    {showSuccessDialog && (
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
+        <div className='bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm flex flex-col items-center gap-4'>
+          <div className='w-16 h-16 rounded-full bg-green-100 flex items-center justify-center'>
+            <svg className='w-8 h-8 text-green-600' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7' />
+            </svg>
+          </div>
+          <h2 className='text-xl font-bold text-gray-900'>Connection Successful!</h2>
+          <p className='text-sm text-gray-500 text-center'>
+            Your AWS destination has been connected successfully. You can now select it below to continue.
+          </p>
+          <button
+            onClick={dismissSuccess}
+            className='mt-2 w-full py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors'
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       {/* Scrollable area */}
       <div className='flex-1 overflow-y-auto flex flex-col p-8 min-h-0'>
@@ -157,12 +188,14 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
                     {connections.length === 0 && (
                       <p className='text-center text-gray-500 py-8'>No connections available</p>
                     )}
-                    <button
-                      onClick={() => navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
-                      className='w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:border-blue-500 hover:text-blue-600 transition-colors'
-                    >
-                      + Add New Destination
-                    </button>
+                    <div className='flex justify-center pt-2'>
+                      <button
+                        onClick={() => navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
+                        className='px-5 py-2 text-sm border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium hover:border-blue-500 hover:text-white hover:bg-blue-600 hover:border-solid transition-all'
+                      >
+                        + Add New Destination
+                      </button>
+                    </div>
                   </div>
                 )}
               </>
@@ -204,5 +237,6 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
         </div>
       </div>
     </div>
+    </>
   );
 }

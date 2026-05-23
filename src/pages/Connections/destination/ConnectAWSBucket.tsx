@@ -33,7 +33,8 @@ export default function ConnectAWSBucket() {
       destinationService.createDestination(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
-      navigate(returnTo);
+      const separator = returnTo.includes('?') ? '&' : '?';
+      navigate(`${returnTo}${separator}connected=true`);
     },
     onError: (error: any) => {
       console.error('Failed to create destination:', error);
