@@ -25,6 +25,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
   const [selectedDestination, setSelectedDestination] = useState<typeof DEFAULT_DESTINATION | null>(DEFAULT_DESTINATION);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(searchParams.get('connected') === 'true');
+  const newDestinationId = searchParams.get('newDestinationId');
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
@@ -41,12 +42,11 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
 
   const connections = (connectionsData as any)?.data ?? connectionsData ?? [];
 
-  // Restore previously selected connection if returning to this step
+  // Auto-select only when returning from new destination creation
   useEffect(() => {
-    if (connections.length > 0 && !isLoadingConnections && initialDestinationId && !selectedConnection) {
-      const found = connections.find((conn: Destination) => conn.destinationId === initialDestinationId);
-      if (found) fetchAndSetConfig(found);
-    }
+    if (connections.length === 0 || isLoadingConnections || !newDestinationId) return;
+    const found = connections.find((conn: Destination) => conn.destinationId === newDestinationId);
+    if (found) fetchAndSetConfig(found);
   }, [connections, isLoadingConnections]);
 
   const fetchAndSetConfig = async (connection: Destination) => {
@@ -68,6 +68,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
     setShowSuccessDialog(false);
     const next = new URLSearchParams(searchParams);
     next.delete('connected');
+    next.delete('newDestinationId');
     setSearchParams(next, { replace: true });
   };
 
@@ -191,7 +192,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
                     <div className='flex justify-center pt-2'>
                       <button
                         onClick={() => navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
-                        className='px-5 py-2 text-sm border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium hover:border-blue-500 hover:text-white hover:bg-blue-600 hover:border-solid transition-all'
+                        className='px-5 py-2 text-sm border-2 border-dashed border-blue-400 rounded-lg text-blue-600 font-medium hover:text-white hover:bg-blue-600 hover:border-solid hover:border-blue-600 transition-all'
                       >
                         + Add New Destination
                       </button>

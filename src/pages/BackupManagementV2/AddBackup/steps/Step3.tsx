@@ -19,10 +19,13 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
   const maxSteps = selectedStrategy === 'realtime' ? 6 : 7;
 
   return (
-    <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+
+      {/* Scrollable area */}
+      <div className='flex-1 overflow-y-auto flex flex-col min-h-0 px-8 pt-8 pb-4'>
 
       {/* Header */}
-      <div className='flex items-start justify-between px-8 py-5 flex-shrink-0'>
+      <div className='flex items-start justify-between flex-shrink-0 mb-6'>
         <div>
           <h1 className='text-2xl font-bold text-gray-900'>Choose Backup Strategy</h1>
           <p className='text-sm text-gray-500 mt-1'>Select how you want your data to be protected</p>
@@ -32,11 +35,8 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
         </span>
       </div>
 
-      {/* Scrollable body */}
-      <div className='flex-1 overflow-y-auto px-8 pb-4 flex flex-col gap-6 min-h-0'>
-
         {/* ── Backup Data Selection Mode ── */}
-        <div>
+        <div className='flex-shrink-0 mb-6'>
           <h2 className='text-sm font-semibold text-gray-800 mb-3'>Backup Data Selection Mode</h2>
           <div className='grid grid-cols-2 gap-4'>
 
@@ -108,15 +108,15 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
         </div>
 
         {/* ── Backup Type ── */}
-        <div>
+        <div className='flex-1 min-h-0 flex flex-col'>
           <h2 className='text-sm font-semibold text-gray-800 mb-3'>Backup Type</h2>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-2 gap-4 flex-1 min-h-0'>
 
             {/* Real-Time Sync Backup */}
             <button
               type='button'
               onClick={() => setSelectedStrategy('realtime')}
-              className='relative p-6 rounded-xl border-2 text-left transition-all'
+              className='relative p-6 rounded-xl border-2 text-left transition-all flex flex-col'
               style={selectedStrategy === 'realtime'
                 ? { borderColor: '#155DFC', background: '#EFF6FF' }
                 : { borderColor: '#E5E7EB', background: '#fff' }}
@@ -156,7 +156,7 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
             <button
               type='button'
               onClick={() => setSelectedStrategy('scheduled')}
-              className='relative p-6 rounded-xl border-2 text-left transition-all'
+              className='relative p-6 rounded-xl border-2 text-left transition-all flex flex-col'
               style={selectedStrategy === 'scheduled'
                 ? { borderColor: '#155DFC', background: '#EFF6FF' }
                 : { borderColor: '#E5E7EB', background: '#fff' }}
@@ -204,10 +204,10 @@ export default function Step3({ onNext, onBack, initialStrategy = 'realtime', in
           </div>
         </div>
 
-      </div>
+      </div>{/* end scrollable area */}
 
       {/* Action Buttons */}
-      <div className='flex justify-between flex-shrink-0 px-8 py-4 border-t border-gray-100 bg-gray-50'>
+      <div className='flex-shrink-0 flex justify-between px-8 py-4 border-t border-gray-200 bg-gray-50'>
         <button
           onClick={() => navigate('/backup-management')}
           className='px-6 py-2 text-blue-600 font-medium border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors'
