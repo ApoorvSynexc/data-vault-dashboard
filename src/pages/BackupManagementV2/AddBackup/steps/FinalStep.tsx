@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import { useDestinationService } from '../../../../services/destination/destination.service';
-import WarningDialog from '../../../../components/WarningDialog';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -76,6 +75,8 @@ export default function FinalStep({
   const [successType, setSuccessType] = useState<'save' | 'run'>('run');
   const [isLoading, setIsLoading] = useState(false);
   const [showRunConfirmation, setShowRunConfirmation] = useState(false);
+  const [acceptanceText, setAcceptanceText] = useState('');
+  const [acceptanceError, setAcceptanceError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
@@ -153,8 +154,20 @@ export default function FinalStep({
     createBackupWithStatus('DRAFT');
   };
 
-  const handleRunBackup = async () => {
+  const handleRunBackup = () => {
+    setAcceptanceText('');
+    setAcceptanceError(false);
     setShowRunConfirmation(true);
+  };
+
+  const handleConfirmRun = () => {
+    if (isRealTime && acceptanceText.toLowerCase() !== 'accept') {
+      setAcceptanceError(true);
+      return;
+    }
+    setShowRunConfirmation(false);
+    setSuccessType('run');
+    createBackupWithStatus('ACTIVE');
   };
 
   useEffect(() => {
@@ -411,19 +424,84 @@ export default function FinalStep({
       </div>
 
       {/* Run Backup Confirmation Dialog */}
-      <WarningDialog
-        isOpen={showRunConfirmation}
-        title='Confirm Backup Creation'
-        message={`Are you sure you want to create and run this backup now? This will initiate the ${isRealTime ? 'real-time sync backup' : 'scheduled backup'} with the configured settings.`}
-        confirmLabel='Yes, Create Backup'
-        isLoading={isLoading || createBackupMutation.isPending}
-        onConfirm={() => {
-          setShowRunConfirmation(false);
-          setSuccessType('run');
-          createBackupWithStatus('ACTIVE');
-        }}
-        onCancel={() => setShowRunConfirmation(false)}
-      />
+      {showRunConfirmation && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
+          <div className='bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh] overflow-y-auto'>
+            <div className='p-6'>
+              <h2 className='text-lg font-bold text-gray-900 mb-1'>Confirm Backup Creation</h2>
+              {!isRealTime && (
+                <p className='text-sm text-gray-600'>Are you sure you want to create and run this scheduled backup with the configured settings?</p>
+              )}
+
+              {isRealTime && (
+                <>
+                  <p className='text-sm text-gray-500 mb-4'>
+                    DataVault uses Salesforce Apex Triggers to capture record changes instantly and sync them to your backup destination in real time.
+                  </p>
+                  <p className='text-sm font-semibold text-gray-800 mb-3'>What will happen after you save this backup configuration:</p>
+                  <ul className='text-sm text-gray-700 space-y-3 mb-4'>
+                    <li className='flex gap-2'>
+                      <span className='mt-0.5 shrink-0 text-blue-600'>•</span>
+                      <span>An <span className='font-semibold'>Apex Trigger</span> will be created on each object you selected to listen for <span className='font-semibold'>insert, update, delete,</span> and <span className='font-semibold'>undelete</span> events.</span>
+                    </li>
+                    <li className='flex gap-2'>
+                      <span className='mt-0.5 shrink-0 text-blue-600'>•</span>
+                      <span>A Permission Set named <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> will be created in your Salesforce org and granted access to the DataVault handler class and the triggers above.</span>
+                    </li>
+                    <li className='flex gap-2'>
+                      <span className='mt-0.5 shrink-0 text-blue-600'>•</span>
+                      <span><span className='font-semibold'>Action required:</span> Assign the <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> Permission Set to all users who create, update, or delete records on the selected objects.</span>
+                    </li>
+                    <li className='flex gap-2'>
+                      <span className='mt-0.5 shrink-0 text-blue-600'>•</span>
+                      <span><span className='font-semibold'>Already using Real-Time Backup?</span> No duplicate triggers or permission sets will be created. DataVault will only create triggers for newly added objects.</span>
+                    </li>
+                  </ul>
+                  <div className='bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded-r-lg'>
+                    <p className='text-sm text-yellow-800'>
+                      By saving this configuration, you acknowledge that DataVault will deploy <span className='font-semibold'>Apex Triggers</span> and a <span className='font-semibold'>Permission Set</span> to your connected Salesforce org as described above.
+                    </p>
+                  </div>
+                  <div>
+                    <label className='block text-sm font-semibold text-gray-900 mb-1'>Confirm to proceed</label>
+                    <p className='text-sm text-gray-600 mb-2'>
+                      Type <span className='font-semibold'>Accept</span> to acknowledge and run your Real-Time Backup.
+                    </p>
+                    <input
+                      type='text'
+                      value={acceptanceText}
+                      onChange={(e) => {
+                        setAcceptanceText(e.target.value);
+                        if (acceptanceError && e.target.value.toLowerCase() === 'accept') setAcceptanceError(false);
+                      }}
+                      placeholder='Type Accept here'
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+                        acceptanceError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    />
+                    {acceptanceError && <p className='text-sm text-red-600 mt-1'>Please type "Accept" to proceed</p>}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className='flex justify-end gap-3 px-6 pb-6'>
+              <button
+                onClick={() => setShowRunConfirmation(false)}
+                className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRun}
+                disabled={isLoading || createBackupMutation.isPending}
+                className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {isLoading || createBackupMutation.isPending ? 'Creating...' : 'Yes, Create Backup'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
