@@ -162,7 +162,7 @@ export default function Dashboard() {
           <h1 className='text-4xl font-bold text-gray-900 mb-4'>Welcome User !</h1>
           <p className='text-lg text-gray-600 mb-8'>Currently you dont have any backup to get started with your dashboard !</p>
           <button
-            onClick={() => navigate('/backup-management')}
+            onClick={() => navigate('/backup-management/add')}
             className='inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors'
           >
             Lets Start Backup
