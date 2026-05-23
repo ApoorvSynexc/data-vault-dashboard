@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import { useDestinationService, type CreateDestinationPayload } from '../../../services/destination/destination.service';
 import { getRegionsByGroup } from '../../../constants/aws-regions';
@@ -17,6 +17,8 @@ function AWSLogo() {
 
 export default function ConnectAWSBucket() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/connections/aws';
   const queryClient = useQueryClient();
   const destinationService = useDestinationService();
   const [connectName, setConnectName] = useState('');
@@ -31,9 +33,9 @@ export default function ConnectAWSBucket() {
       destinationService.createDestination(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
-      navigate('/connections/aws');
+      navigate(returnTo);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Failed to create destination:', error);
     },
   });
@@ -65,7 +67,7 @@ export default function ConnectAWSBucket() {
       <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
         <div className='flex items-start gap-4'>
           <button
-            onClick={() => navigate('/connections/aws')}
+            onClick={() => navigate(returnTo)}
             className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
           >
             <svg
@@ -206,6 +208,18 @@ export default function ConnectAWSBucket() {
             </div>
           </div>
         </div>
+
+        {/* Error Message */}
+        {createDestinationMutation.isError && (
+          <div className='mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
+            <svg className='mt-0.5 h-4 w-4 flex-shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+              <circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' />
+            </svg>
+            <p className='text-sm text-red-600'>
+              {(createDestinationMutation.error as any)?.message || 'Failed to connect. Please check your credentials and try again.'}
+            </p>
+          </div>
+        )}
 
         {/* Connect Button */}
         <div className='flex justify-center border-t border-gray-200 pt-8'>
