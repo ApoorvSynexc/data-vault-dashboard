@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
+import DataVaultLogo from '../assets/icons/DataVaultLOGO.svg';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const ico = (children: React.ReactNode) => (
@@ -82,16 +83,8 @@ export default function MainLayout() {
 
         {/* Logo */}
         {isSidebarOpen && (
-          <div className='flex items-center gap-2.5 px-4 py-4 border-b border-white/10 justify-between'>
-            <div className='flex items-center gap-2.5 min-w-0'>
-              <div className='w-8 h-8 bg-blue-500 rounded-lg rotate-45 flex items-center justify-center shrink-0'>
-                <span className='-rotate-45 text-white text-[10px] font-bold'>DV</span>
-              </div>
-              <div className='leading-tight min-w-0'>
-                <p className='text-white text-sm font-bold truncate'>360 DataVault</p>
-                <p className='text-white/50 text-[10px] truncate'>Backup Platform</p>
-              </div>
-            </div>
+          <div className='flex items-center gap-2.5 px-4 py-3 border-b border-white/10 justify-between'>
+            <img src={DataVaultLogo} alt='DataVault' className='h-8 w-auto object-contain' />
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
@@ -106,15 +99,13 @@ export default function MainLayout() {
 
         {/* Collapsed Logo - Expand Button */}
         {!isSidebarOpen && (
-          <div className='flex items-center justify-center px-4 py-4 border-b border-white/10'>
+          <div className='flex items-center justify-center px-2 py-3 border-b border-white/10'>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className='p-2 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors'
+              className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors'
               title='Expand sidebar'
             >
-              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
-              </svg>
+              <img src={DataVaultLogo} alt='DataVault' className='h-7 w-7 object-contain' />
             </button>
           </div>
         )}
