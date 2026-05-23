@@ -80,13 +80,6 @@ export default function FinalStep({
     queryKey: ['connected-platforms'],
     queryFn: () => platformService.getConnectedPlatforms(),
   });
-  const selectedCrm = platforms?.find((p) => p.crmId === crmId);
-
-  const { data: destinationDetail } = useQuery({
-    queryKey: ['destination', destinationId],
-    queryFn: () => destinationService.getDestination(destinationId!),
-    enabled: !!destinationId,
-  });
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['source', 'strategy', 'policy', 'schedule']));
   const [isSuccess, setIsSuccess] = useState(false);
@@ -97,13 +90,38 @@ export default function FinalStep({
   const [acceptanceError, setAcceptanceError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Local editable source/destination/strategy
+  const [activeCrmId, setActiveCrmId] = useState(crmId);
+  const [activeDestinationId, setActiveDestinationId] = useState(destinationId);
+  const [activeStrategy, setActiveStrategy] = useState<'realtime' | 'scheduled'>(strategy);
+
+  const activeCrm = platforms?.find((p) => p.crmId === activeCrmId);
+  const { data: activeDestinationDetail } = useQuery({
+    queryKey: ['destination', activeDestinationId],
+    queryFn: () => destinationService.getDestination(activeDestinationId!),
+    enabled: !!activeDestinationId,
+  });
+
+  const { data: allDestinationsData } = useQuery({
+    queryKey: ['all-destinations'],
+    queryFn: () => destinationService.listDestinations(),
+  });
+  const allDestinations = (allDestinationsData as any)?.data ?? allDestinationsData ?? [];
+
   // Edit modal states
-  const [editModal, setEditModal] = useState<'policy' | 'schedule' | null>(null);
+  const [editModal, setEditModal] = useState<'policy' | 'schedule' | 'source' | 'strategy' | null>(null);
 
   // Policy edit state
   const [editPolicyName, setEditPolicyName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPolicyNameError, setEditPolicyNameError] = useState(false);
+
+  // Source & Destination edit state
+  const [editCrmId, setEditCrmId] = useState<string | null | undefined>(null);
+  const [editDestinationId, setEditDestinationId] = useState<string | null | undefined>(null);
+
+  // Strategy edit state
+  const [editStrategy, setEditStrategy] = useState<'realtime' | 'scheduled'>('realtime');
 
   // Schedule edit state
   const [editFrequency, setEditFrequency] = useState<FrequencyType>('Daily');
@@ -116,6 +134,28 @@ export default function FinalStep({
   const [editDayOfMonth, setEditDayOfMonth] = useState('01');
   const [editBackupIn, setEditBackupIn] = useState('1 Hour');
   const [editRunMode, setEditRunMode] = useState<'runNow' | 'scheduleRun'>('runNow');
+
+  const openSourceModal = () => {
+    setEditCrmId(activeCrmId);
+    setEditDestinationId(activeDestinationId);
+    setEditModal('source');
+  };
+
+  const saveSourceEdit = () => {
+    if (editCrmId) setActiveCrmId(editCrmId);
+    if (editDestinationId) setActiveDestinationId(editDestinationId);
+    setEditModal(null);
+  };
+
+  const openStrategyModal = () => {
+    setEditStrategy(activeStrategy);
+    setEditModal('strategy');
+  };
+
+  const saveStrategyEdit = () => {
+    setActiveStrategy(editStrategy);
+    setEditModal(null);
+  };
 
   const openPolicyModal = () => {
     setEditPolicyName(policyName);
@@ -206,16 +246,16 @@ export default function FinalStep({
   });
 
   const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    if (!crmId) { alert('Please select a platform'); return; }
-    if (!destinationId) { alert('Please select a destination'); return; }
+    if (!activeCrmId) { alert('Please select a platform'); return; }
+    if (!activeDestinationId) { alert('Please select a destination'); return; }
     setIsLoading(true);
     setApiError(null);
     const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
-      crmId, name: policyName, description, destinationId,
+      crmId: activeCrmId, name: policyName, description, destinationId: activeDestinationId,
       objectNames: objectIds,
-      schedule: isRealTime ? 'REALTIME' : 'SCHEDULE',
+      schedule: activeStrategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects: objectsToUse.map((obj) => {
         const objId = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
@@ -301,18 +341,18 @@ export default function FinalStep({
 
       {/* Sections */}
       <div className='flex-grow overflow-y-auto min-h-0 space-y-3'>
-        <SectionBox title='Source & Destination' sectionKey='source'>
+        <SectionBox title='Source & Destination' sectionKey='source' onEdit={openSourceModal}>
           <div className='grid grid-cols-2 gap-3'>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{selectedCrm ? selectedCrm.crmName.charAt(0).toUpperCase() + selectedCrm.crmName.slice(1) : 'Salesforce'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{destinationDetail?.provider ?? '--'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{selectedCrm ? selectedCrm.crmName.charAt(0).toUpperCase() + selectedCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{selectedCrm?.name ?? '--'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{destinationDetail?.provider ? destinationDetail.provider + ' Connection' : 'Destination Connection'}</p><p className='text-sm font-medium text-gray-900'>{destinationDetail?.name ?? '--'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) : 'Salesforce'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.provider ?? '--'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeCrm?.name ?? '--'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeDestinationDetail?.provider ? activeDestinationDetail.provider + ' Connection' : 'Destination Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.name ?? '--'}</p></div>
           </div>
         </SectionBox>
 
-        <SectionBox title='Backup Strategy' sectionKey='strategy'>
+        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={openStrategyModal}>
           <div className='grid grid-cols-2 gap-3'>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{isRealTime ? 'Real-Time Sync' : 'Scheduled'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{activeStrategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>Custom Selection</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Objects Selected</p><p className='text-sm font-medium text-gray-900'>{selectedObjects.length > 0 ? selectedObjects.length : selectedObjectIds.length}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Environment</p><p className='text-sm font-medium text-gray-900'>{environment}</p></div>
@@ -362,6 +402,107 @@ export default function FinalStep({
           </button>
         </div>
       </div>
+
+      {/* ── Edit Source & Destination Modal ── */}
+      {editModal === 'source' && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
+          <div className='bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4'>
+            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100'>
+              <h2 className='text-base font-bold text-gray-900'>Edit Source & Destination</h2>
+              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
+              </button>
+            </div>
+            <div className='p-6 space-y-5'>
+              <div>
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>Salesforce Connection</label>
+                <div className='space-y-2'>
+                  {(platforms ?? []).filter((p: any) => p.isConnected && p.status === 'ACTIVE').map((p: any) => {
+                    const sel = editCrmId === p.crmId;
+                    return (
+                      <div key={p.crmId} onClick={() => setEditCrmId(p.crmId)}
+                        className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <div className='flex items-center gap-3'>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                            {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{p.name}</p>
+                            <p className='text-xs text-gray-500'>{p.crmName} · {p.crmProfile?.instanceUrl?.replace('https://', '')}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className='block text-sm font-semibold text-gray-900 mb-2'>AWS Destination</label>
+                <div className='space-y-2'>
+                  {allDestinations.map((d: any) => {
+                    const sel = editDestinationId === d.destinationId;
+                    return (
+                      <div key={d.destinationId} onClick={() => setEditDestinationId(d.destinationId)}
+                        className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <div className='flex items-center gap-3'>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                            {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{d.name}</p>
+                            <p className='text-xs text-gray-500'>{d.provider} · {d.status}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className='flex justify-end gap-3 px-6 pb-6'>
+              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
+              <button onClick={saveSourceEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Strategy Modal ── */}
+      {editModal === 'strategy' && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
+          <div className='bg-white rounded-2xl shadow-xl w-full max-w-md mx-4'>
+            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100'>
+              <h2 className='text-base font-bold text-gray-900'>Edit Backup Strategy</h2>
+              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
+              </button>
+            </div>
+            <div className='p-6 space-y-3'>
+              {(['realtime', 'scheduled'] as const).map((s) => {
+                const sel = editStrategy === s;
+                return (
+                  <div key={s} onClick={() => setEditStrategy(s)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <div className='flex items-center gap-3'>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
+                        {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{s === 'realtime' ? 'Real-Time Sync Backup' : 'Scheduled Backup'}</p>
+                        <p className='text-xs text-gray-500'>{s === 'realtime' ? 'Continuously captures every change instantly' : 'Runs automatically at scheduled intervals'}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className='flex justify-end gap-3 px-6 pb-6'>
+              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
+              <button onClick={saveStrategyEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Edit Policy Modal ── */}
       {editModal === 'policy' && (
