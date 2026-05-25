@@ -416,7 +416,7 @@ function FilterBar({
     'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-200';
 
   return (
-    <div className='flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3'>
+    <div className='flex items-center justify-between border-b border-gray-100 px-5 py-3'>
       <input
         type='text'
         value={filters.search}
@@ -426,6 +426,7 @@ function FilterBar({
         aria-label='Search backups by name'
       />
 
+      <div className='flex items-center gap-2'>
       <Typography variant='bodySm' color='muted' className='mr-1'>
         Filter:
       </Typography>
@@ -466,6 +467,7 @@ function FilterBar({
           Clear
         </button>
       )}
+      </div>
     </div>
   );
 }
