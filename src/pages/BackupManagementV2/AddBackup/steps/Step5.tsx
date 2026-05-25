@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
@@ -113,13 +113,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const error = objectsError;
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
+  const autoSelectedRef = useRef(false);
 
-  // Auto-select all objects if entire dataset is selected
+  // Auto-select all objects if entire dataset is selected — only once on first load
   useEffect(() => {
-    if (_entireDatasetSelected && allObjects.length > 0 && selectedObjects.size === 0) {
+    if (_entireDatasetSelected && allObjects.length > 0 && !autoSelectedRef.current) {
+      autoSelectedRef.current = true;
       setSelectedObjects(new Set(allObjects.map((obj) => obj.id)));
     }
-  }, [_entireDatasetSelected, allObjects, selectedObjects.size]);
+  }, [_entireDatasetSelected, allObjects]);
 
   // When search/filter changes, reset to first page
   useEffect(() => {
