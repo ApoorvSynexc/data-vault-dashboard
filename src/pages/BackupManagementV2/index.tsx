@@ -35,6 +35,8 @@ type BackupRow = {
   slug: string;
   name: string;
   platform: PlatformType;
+  source: string;
+  destination: string;
   status: BackupStatus;
   backupType: BackupType;
   scheduleFrequency: string;
@@ -553,11 +555,18 @@ export default function BackupManagementV2() {
         ? (item.platform as PlatformType)
         : 'Salesforce';
 
+    const crm = item.crm as any;
+    const dest = item.destination as any;
+    const source = crm?.name ?? crm?.crmName ?? platform;
+    const destination = dest?.name ?? dest?.type ?? '--';
+
     return {
       id: item.backupConfigId,
       slug: item.slug,
       name: item.name,
       platform,
+      source,
+      destination,
       status: (item.backupStatus as BackupStatus) || 'PENDING',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
@@ -589,10 +598,16 @@ export default function BackupManagementV2() {
       ),
     },
     {
-      key: 'platform',
-      header: 'Platform',
+      key: 'source',
+      header: 'Source',
       className: 'text-xs text-gray-500',
-      render: (row) => row.platform,
+      render: (row) => row.source,
+    },
+    {
+      key: 'destination',
+      header: 'Destination',
+      className: 'text-xs text-gray-500',
+      render: (row) => row.destination,
     },
     {
       key: 'backupType',
