@@ -4,8 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import { useDestinationService } from '../../../../services/destination/destination.service';
-import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
-import dayjs from 'dayjs';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -29,7 +27,7 @@ type SelectedObject = {
 
 type FinalStepProps = {
   onBack: () => void;
-  onEditStep?: (step: number) => void;
+  onEditStep: (step: number) => void;
   strategy?: 'realtime' | 'scheduled';
   crmId?: string | null;
   selectedObjects?: SelectedObject[];
@@ -41,27 +39,18 @@ type FinalStepProps = {
   destinationId?: string | null;
 };
 
-type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
-
-const mapBackendFrequency = (f: string): FrequencyType => {
-  const m: Record<string, FrequencyType> = { ONCE: 'One Time', HOURLY: 'Hourly', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', CUSTOM: 'Custom' };
-  return m[f] || 'Daily';
-};
-const mapFrontendDays = (d: string[]) => d.map(x => ({ Mon:'MON',Tue:'TUE',Wed:'WED',Thu:'THU',Fri:'FRI',Sat:'SAT',Sun:'SUN' }[x] || x));
-const mapFrontendMonths = (m: string[]) => m.map(x => ({ Jan:'JAN',Feb:'FEB',Mar:'MAR',Apr:'APR',May:'MAY',Jun:'JUN',Jul:'JUL',Aug:'AUG',Sep:'SEP',Oct:'OCT',Nov:'NOV',Dec:'DEC' }[x] || x));
-const mapBackendDays = (d?: string[]) => (d || []).map(x => ({ MON:'Mon',TUE:'Tue',WED:'Wed',THU:'Thu',FRI:'Fri',SAT:'Sat',SUN:'Sun' }[x] || x));
-const mapBackendMonths = (m?: string[]) => (m || []).map(x => ({ JAN:'Jan',FEB:'Feb',MAR:'Mar',APR:'Apr',MAY:'May',JUN:'Jun',JUL:'Jul',AUG:'Aug',SEP:'Sep',OCT:'Oct',NOV:'Nov',DEC:'Dec' }[x] || x));
 
 export default function FinalStep({
   onBack,
+  onEditStep,
   strategy = 'realtime',
   crmId,
   selectedObjects = [],
   selectedObjectIds = [],
-  policyName: initialPolicyName = 'Salesforce Production Backup',
-  description: initialDescription = '',
+  policyName = 'Salesforce Production Backup',
+  description = '',
   environment = 'Production',
-  scheduleConfig: initialScheduleConfig = null,
+  scheduleConfig = null,
   destinationId = null,
 }: FinalStepProps) {
   const navigate = useNavigate();
@@ -70,11 +59,6 @@ export default function FinalStep({
   const destinationService = useDestinationService();
   const queryClient = useQueryClient();
   const isRealTime = strategy === 'realtime';
-
-  // Local editable copies
-  const [policyName, setPolicyName] = useState(initialPolicyName);
-  const [description, setDescription] = useState(initialDescription);
-  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(initialScheduleConfig);
 
   const { data: platforms } = useQuery({
     queryKey: ['connected-platforms'],
@@ -90,139 +74,12 @@ export default function FinalStep({
   const [acceptanceError, setAcceptanceError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Local editable source/destination/strategy
-  const [activeCrmId, setActiveCrmId] = useState(crmId);
-  const [activeDestinationId, setActiveDestinationId] = useState(destinationId);
-  const [activeStrategy, setActiveStrategy] = useState<'realtime' | 'scheduled'>(strategy);
-
-  const activeCrm = platforms?.find((p) => p.crmId === activeCrmId);
+  const activeCrm = platforms?.find((p) => p.crmId === crmId);
   const { data: activeDestinationDetail } = useQuery({
-    queryKey: ['destination', activeDestinationId],
-    queryFn: () => destinationService.getDestination(activeDestinationId!),
-    enabled: !!activeDestinationId,
+    queryKey: ['destination', destinationId],
+    queryFn: () => destinationService.getDestination(destinationId!),
+    enabled: !!destinationId,
   });
-
-  const { data: allDestinationsData } = useQuery({
-    queryKey: ['all-destinations'],
-    queryFn: () => destinationService.listDestinations(),
-  });
-  const allDestinations = (allDestinationsData as any)?.data ?? allDestinationsData ?? [];
-
-  // Edit modal states
-  const [editModal, setEditModal] = useState<'policy' | 'schedule' | 'source' | 'strategy' | null>(null);
-
-  // Policy edit state
-  const [editPolicyName, setEditPolicyName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editPolicyNameError, setEditPolicyNameError] = useState(false);
-
-  // Source & Destination edit state
-  const [editCrmId, setEditCrmId] = useState<string | null | undefined>(null);
-  const [editDestinationId, setEditDestinationId] = useState<string | null | undefined>(null);
-
-  // Strategy edit state
-  const [editStrategy, setEditStrategy] = useState<'realtime' | 'scheduled'>('realtime');
-
-  // Schedule edit state
-  const [editFrequency, setEditFrequency] = useState<FrequencyType>('Daily');
-  const [editTimeZone, setEditTimeZone] = useState(getDefaultTimezone().value);
-  const [editStartDate, setEditStartDate] = useState(dayjs().format('YYYY-MM-DD'));
-  const [editEndDate, setEditEndDate] = useState(dayjs().add(7, 'days').format('YYYY-MM-DD'));
-  const [editStartTime, setEditStartTime] = useState('12:00');
-  const [editSelectedDays, setEditSelectedDays] = useState<string[]>(['Mon']);
-  const [editSelectedMonths, setEditSelectedMonths] = useState<string[]>(['Jan']);
-  const [editDayOfMonth, setEditDayOfMonth] = useState('01');
-  const [editBackupIn, setEditBackupIn] = useState('1 Hour');
-  const [editRunMode, setEditRunMode] = useState<'runNow' | 'scheduleRun'>('runNow');
-
-  const openSourceModal = () => {
-    setEditCrmId(activeCrmId);
-    setEditDestinationId(activeDestinationId);
-    setEditModal('source');
-  };
-
-  const saveSourceEdit = () => {
-    if (editCrmId) setActiveCrmId(editCrmId);
-    if (editDestinationId) setActiveDestinationId(editDestinationId);
-    setEditModal(null);
-  };
-
-  const openStrategyModal = () => {
-    setEditStrategy(activeStrategy);
-    setEditModal('strategy');
-  };
-
-  const saveStrategyEdit = () => {
-    setActiveStrategy(editStrategy);
-    setEditModal(null);
-  };
-
-  const openPolicyModal = () => {
-    setEditPolicyName(policyName);
-    setEditDescription(description);
-    setEditPolicyNameError(false);
-    setEditModal('policy');
-  };
-
-  const openScheduleModal = () => {
-    if (scheduleConfig?.scheduling) {
-      const s = scheduleConfig.scheduling;
-      setEditFrequency(mapBackendFrequency(s.frequency));
-      setEditTimeZone(scheduleConfig.timeZone);
-      setEditStartDate(s.startDate || dayjs().format('YYYY-MM-DD'));
-      setEditEndDate(s.endDate || dayjs().add(7, 'days').format('YYYY-MM-DD'));
-      setEditStartTime(s.startTime || '12:00');
-      setEditSelectedDays(mapBackendDays(s.weekDays));
-      setEditSelectedMonths(mapBackendMonths(s.selectedMonths));
-      setEditDayOfMonth(String(s.monthDate || '01').padStart(2, '0'));
-      setEditRunMode((!s.startDate && !s.startTime) ? 'runNow' : 'scheduleRun');
-    } else {
-      setEditFrequency('Daily');
-      setEditTimeZone(getDefaultTimezone().value);
-      setEditStartDate(dayjs().format('YYYY-MM-DD'));
-      setEditEndDate(dayjs().add(7, 'days').format('YYYY-MM-DD'));
-      setEditStartTime('12:00');
-      setEditSelectedDays(['Mon']);
-      setEditSelectedMonths(['Jan']);
-      setEditDayOfMonth('01');
-      setEditRunMode('runNow');
-      setEditBackupIn('1 Hour');
-    }
-    setEditModal('schedule');
-  };
-
-  const savePolicyEdit = () => {
-    if (!editPolicyName.trim()) { setEditPolicyNameError(true); return; }
-    setPolicyName(editPolicyName);
-    setDescription(editDescription);
-    setEditModal(null);
-  };
-
-  const saveScheduleEdit = () => {
-    const scheduling: any = {
-      frequency: editFrequency === 'One Time' ? 'ONCE' : editFrequency.toUpperCase(),
-      interval: 1,
-    };
-    if (editFrequency === 'One Time') {
-      if (editRunMode === 'scheduleRun') { scheduling.startDate = editStartDate; scheduling.startTime = editStartTime; }
-    } else if (editFrequency === 'Hourly') {
-      scheduling.interval = parseInt(editBackupIn.split(' ')[0]) || 1;
-      scheduling.startDate = editStartDate; scheduling.startTime = editStartTime;
-    } else if (editFrequency === 'Daily') {
-      scheduling.startDate = editStartDate; scheduling.startTime = editStartTime;
-    } else if (editFrequency === 'Weekly') {
-      scheduling.weekDays = mapFrontendDays(editSelectedDays);
-      scheduling.startDate = editStartDate; scheduling.startTime = editStartTime;
-    } else if (editFrequency === 'Monthly') {
-      scheduling.monthDate = parseInt(editDayOfMonth);
-      scheduling.selectedMonths = mapFrontendMonths(editSelectedMonths);
-      scheduling.startDate = editStartDate; scheduling.startTime = editStartTime;
-    } else if (editFrequency === 'Custom') {
-      scheduling.startDate = editStartDate; scheduling.endDate = editEndDate; scheduling.startTime = editStartTime;
-    }
-    setScheduleConfig({ timeZone: editTimeZone, type: editFrequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling });
-    setEditModal(null);
-  };
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -246,16 +103,16 @@ export default function FinalStep({
   });
 
   const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    if (!activeCrmId) { alert('Please select a platform'); return; }
-    if (!activeDestinationId) { alert('Please select a destination'); return; }
+    if (!crmId) { alert('Please select a platform'); return; }
+    if (!destinationId) { alert('Please select a destination'); return; }
     setIsLoading(true);
     setApiError(null);
     const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
-      crmId: activeCrmId, name: policyName, description, destinationId: activeDestinationId,
+      crmId, name: policyName, description, destinationId,
       objectNames: objectIds,
-      schedule: activeStrategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
+      schedule: strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects: objectsToUse.map((obj) => {
         const objId = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
@@ -283,10 +140,7 @@ export default function FinalStep({
     }
   }, [isSuccess, navigate]);
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; sectionKey: string; onEdit?: () => void; children: React.ReactNode }) => (
+const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; sectionKey: string; onEdit?: () => void; children: React.ReactNode }) => (
     <div className='bg-white rounded-lg border border-gray-200'>
       <button onClick={() => toggleSection(sectionKey)} className='w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors'>
         <div className='flex items-center gap-3'>
@@ -341,7 +195,7 @@ export default function FinalStep({
 
       {/* Sections */}
       <div className='flex-grow overflow-y-auto min-h-0 space-y-3'>
-        <SectionBox title='Source & Destination' sectionKey='source' onEdit={openSourceModal}>
+        <SectionBox title='Source & Destination' sectionKey='source' onEdit={() => onEditStep(1)}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) : 'Salesforce'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.provider ?? '--'}</p></div>
@@ -350,16 +204,16 @@ export default function FinalStep({
           </div>
         </SectionBox>
 
-        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={openStrategyModal}>
+        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={() => onEditStep(3)}>
           <div className='grid grid-cols-2 gap-3'>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{activeStrategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{strategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>Custom Selection</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Objects Selected</p><p className='text-sm font-medium text-gray-900'>{selectedObjects.length > 0 ? selectedObjects.length : selectedObjectIds.length}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Environment</p><p className='text-sm font-medium text-gray-900'>{environment}</p></div>
           </div>
         </SectionBox>
 
-        <SectionBox title='Define Backup Policy' sectionKey='policy' onEdit={openPolicyModal}>
+        <SectionBox title='Define Backup Policy' sectionKey='policy' onEdit={() => onEditStep(4)}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Policy Name</p><p className='text-sm font-medium text-gray-900'>{policyName}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Description</p><p className='text-sm font-medium text-gray-900'>{description || 'No description provided'}</p></div>
@@ -367,7 +221,7 @@ export default function FinalStep({
         </SectionBox>
 
         {!isRealTime && scheduleConfig && (
-          <SectionBox title='Backup Schedule' sectionKey='schedule' onEdit={openScheduleModal}>
+          <SectionBox title='Backup Schedule' sectionKey='schedule' onEdit={() => onEditStep(6)}>
             <div className='grid grid-cols-2 gap-3'>
               <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Frequency</p><p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.frequency}</p></div>
               <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Time Zone</p><p className='text-sm font-medium text-gray-900'>{scheduleConfig.timeZone}</p></div>
@@ -402,253 +256,6 @@ export default function FinalStep({
           </button>
         </div>
       </div>
-
-      {/* ── Edit Source & Destination Modal ── */}
-      {editModal === 'source' && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4'>
-            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100'>
-              <h2 className='text-base font-bold text-gray-900'>Edit Source & Destination</h2>
-              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
-              </button>
-            </div>
-            <div className='p-6 space-y-5'>
-              <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-2'>Salesforce Connection</label>
-                <div className='space-y-2'>
-                  {(platforms ?? []).filter((p: any) => p.isConnected && p.status === 'ACTIVE').map((p: any) => {
-                    const sel = editCrmId === p.crmId;
-                    return (
-                      <div key={p.crmId} onClick={() => setEditCrmId(p.crmId)}
-                        className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <div className='flex items-center gap-3'>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
-                            {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
-                          </div>
-                          <div>
-                            <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{p.name}</p>
-                            <p className='text-xs text-gray-500'>{p.crmName} · {p.crmProfile?.instanceUrl?.replace('https://', '')}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-2'>AWS Destination</label>
-                <div className='space-y-2'>
-                  {allDestinations.map((d: any) => {
-                    const sel = editDestinationId === d.destinationId;
-                    return (
-                      <div key={d.destinationId} onClick={() => setEditDestinationId(d.destinationId)}
-                        className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <div className='flex items-center gap-3'>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
-                            {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
-                          </div>
-                          <div>
-                            <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{d.name}</p>
-                            <p className='text-xs text-gray-500'>{d.provider} · {d.status}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className='flex justify-end gap-3 px-6 pb-6'>
-              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={saveSourceEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit Strategy Modal ── */}
-      {editModal === 'strategy' && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-md mx-4'>
-            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100'>
-              <h2 className='text-base font-bold text-gray-900'>Edit Backup Strategy</h2>
-              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
-              </button>
-            </div>
-            <div className='p-6 space-y-3'>
-              {(['realtime', 'scheduled'] as const).map((s) => {
-                const sel = editStrategy === s;
-                return (
-                  <div key={s} onClick={() => setEditStrategy(s)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${sel ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                    <div className='flex items-center gap-3'>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sel ? 'border-blue-600 bg-blue-600' : 'border-gray-300'}`}>
-                        {sel && <svg className='w-3 h-3 text-white' fill='none' stroke='currentColor' strokeWidth='3' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-semibold ${sel ? 'text-blue-600' : 'text-gray-900'}`}>{s === 'realtime' ? 'Real-Time Sync Backup' : 'Scheduled Backup'}</p>
-                        <p className='text-xs text-gray-500'>{s === 'realtime' ? 'Continuously captures every change instantly' : 'Runs automatically at scheduled intervals'}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className='flex justify-end gap-3 px-6 pb-6'>
-              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={saveStrategyEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit Policy Modal ── */}
-      {editModal === 'policy' && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4'>
-            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100'>
-              <h2 className='text-base font-bold text-gray-900'>Edit Backup Policy</h2>
-              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
-              </button>
-            </div>
-            <div className='p-6 space-y-4'>
-              <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-1'><span className='text-red-500'>* </span>Backup Policy Name</label>
-                <input
-                  type='text'
-                  value={editPolicyName}
-                  onChange={(e) => { setEditPolicyName(e.target.value); if (editPolicyNameError && e.target.value.trim()) setEditPolicyNameError(false); }}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${editPolicyNameError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
-                  placeholder='Enter backup policy name'
-                />
-                {editPolicyNameError && <p className='text-sm text-red-600 mt-1'>Policy name is required</p>}
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-900 mb-1'>Description (Optional)</label>
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  rows={3}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none'
-                />
-              </div>
-            </div>
-            <div className='flex justify-end gap-3 px-6 pb-6'>
-              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={savePolicyEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit Schedule Modal ── */}
-      {editModal === 'schedule' && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]'>
-            <div className='flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0'>
-              <h2 className='text-base font-bold text-gray-900'>Edit Backup Schedule</h2>
-              <button onClick={() => setEditModal(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
-                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
-              </button>
-            </div>
-
-            <div className='flex-1 overflow-y-auto p-6 space-y-6'>
-              {/* Frequency Tabs */}
-              <div className='flex gap-2 flex-wrap'>
-                {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
-                  <button key={freq} onClick={() => setEditFrequency(freq)}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${editFrequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
-                    {freq}
-                  </button>
-                ))}
-              </div>
-
-              {editFrequency === 'One Time' && (
-                <div className='space-y-4'>
-                  <div className='bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700'>
-                    If you choose this option, you may not be able to automate this backup in future.
-                  </div>
-                  <div className='space-y-3'>
-                    {(['runNow', 'scheduleRun'] as const).map((mode) => (
-                      <label key={mode} className='flex items-start gap-3 p-3 border rounded-lg cursor-pointer'
-                        style={{ borderColor: editRunMode === mode ? '#3b82f6' : '#d1d5db', backgroundColor: editRunMode === mode ? '#eff6ff' : 'transparent' }}>
-                        <input type='radio' name='editRunMode' value={mode} checked={editRunMode === mode} onChange={() => setEditRunMode(mode)} className='mt-1' />
-                        <div><p className='font-medium text-sm text-gray-900'>{mode === 'runNow' ? 'Run Now' : 'Schedule Backup Run'}</p></div>
-                      </label>
-                    ))}
-                  </div>
-                  {editRunMode === 'scheduleRun' && (
-                    <div className='grid grid-cols-2 gap-4'>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Date</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                      <div className='col-span-2'><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {editFrequency === 'Hourly' && (
-                <div className='grid grid-cols-2 gap-4'>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Backup Every</label><select value={editBackupIn} onChange={(e) => setEditBackupIn(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'><option>1 Hour</option><option>2 Hours</option><option>6 Hours</option><option>12 Hours</option></select></div>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Starts From</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Starting Time</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                </div>
-              )}
-
-              {editFrequency === 'Daily' && (
-                <div className='grid grid-cols-2 gap-4'>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Run At</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                  <div className='col-span-2'><label className='block text-sm font-semibold text-gray-900 mb-1'>Starts From</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                </div>
-              )}
-
-              {editFrequency === 'Weekly' && (
-                <div className='space-y-4'>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Select Days</label><div className='flex gap-2 flex-wrap'>{days.map((d) => <button key={d} type='button' onClick={() => setEditSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editSelectedDays.includes(d) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>{d}</button>)}</div></div>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                    <div className='col-span-2'><label className='block text-sm font-semibold text-gray-900 mb-1'>Starts From</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                  </div>
-                </div>
-              )}
-
-              {editFrequency === 'Monthly' && (
-                <div className='space-y-4'>
-                  <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Select Months</label><div className='flex gap-2 flex-wrap'>{months.map((m) => <button key={m} type='button' onClick={() => setEditSelectedMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editSelectedMonths.includes(m) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>{m}</button>)}</div></div>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Day of Month</label><select value={editDayOfMonth} onChange={(e) => setEditDayOfMonth(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>)}</select></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Starts From</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                  </div>
-                </div>
-              )}
-
-              {editFrequency === 'Custom' && (
-                <div className='space-y-4'>
-                  <div className='grid grid-cols-2 gap-4'>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Starts On</label><input type='date' value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Ends On</label><input type='date' value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Starting Time</label><input type='time' value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm' /></div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-1'>Time Zone</label><select value={editTimeZone} onChange={(e) => setEditTimeZone(e.target.value)} className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm'>{TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}</select></div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className='flex justify-end gap-3 px-6 pb-6 flex-shrink-0 border-t border-gray-100 pt-4'>
-              <button onClick={() => setEditModal(null)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={saveScheduleEdit} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Save Changes</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Run Backup Confirmation Dialog ── */}
       {showRunConfirmation && (
