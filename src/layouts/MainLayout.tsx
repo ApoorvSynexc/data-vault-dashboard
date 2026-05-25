@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
 import DataVaultLogo from '../assets/icons/DataVaultLOGO.svg';
+import DataVaultLogoIcon from '../assets/icons/Datavault Logo Container.svg';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const ico = (children: React.ReactNode) => (
@@ -97,15 +98,18 @@ export default function MainLayout() {
           </div>
         )}
 
-        {/* Collapsed Logo - Expand Button */}
+        {/* Collapsed Logo + Expand Button */}
         {!isSidebarOpen && (
-          <div className='flex items-center justify-center px-2 py-3 border-b border-white/10'>
+          <div className='flex items-center justify-between px-2 py-3 border-b border-white/10'>
+            <img src={DataVaultLogoIcon} alt='DataVault' className='h-6 w-6 object-contain flex-shrink-0' />
             <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors'
+              onClick={() => setIsSidebarOpen(true)}
+              className='p-0.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
               title='Expand sidebar'
             >
-              <img src={DataVaultLogo} alt='DataVault' className='h-7 w-7 object-contain' />
+              <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 5l7 7-7 7' />
+              </svg>
             </button>
           </div>
         )}
