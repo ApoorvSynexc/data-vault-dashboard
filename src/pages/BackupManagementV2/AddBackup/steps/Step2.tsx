@@ -192,7 +192,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Pr
                     <div className='flex justify-center pt-2'>
                       <button
                         onClick={() => navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
-                        className='px-5 py-2 text-sm border-2 border-dashed border-blue-400 rounded-lg text-blue-600 font-medium hover:text-white hover:bg-blue-600 hover:border-solid hover:border-blue-600 transition-all'
+                        className='px-5 py-2 text-sm rounded-full text-white font-medium bg-blue-600 hover:bg-blue-700 transition-all'
                       >
                         + Add New Destination
                       </button>
