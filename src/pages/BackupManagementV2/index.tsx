@@ -28,6 +28,8 @@ type BackupConfigItem = {
       frequency?: string;
     };
   };
+  crm?: { name: string; crmName: string };
+  destination?: { name: string; type: string };
 };
 
 type BackupRow = {
@@ -555,10 +557,8 @@ export default function BackupManagementV2() {
         ? (item.platform as PlatformType)
         : 'Salesforce';
 
-    const crm = item.crm as any;
-    const dest = item.destination as any;
-    const source = crm?.name ?? crm?.crmName ?? platform;
-    const destination = dest?.name ?? dest?.type ?? '--';
+    const source = item.crm?.name ?? item.crm?.crmName ?? platform;
+    const destination = item.destination?.name ?? item.destination?.type ?? '--';
 
     return {
       id: item.backupConfigId,
