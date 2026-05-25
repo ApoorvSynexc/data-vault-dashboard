@@ -18,7 +18,7 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Props) {
+export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId }: Step2Props) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const destinationService = useDestinationService();
@@ -48,6 +48,17 @@ export default function Step2({ onNext, onBack, strategy = 'realtime' }: Step2Pr
     const found = connections.find((conn: Destination) => conn.destinationId === newDestinationId);
     if (found) fetchAndSetConfig(found);
   }, [connections, isLoadingConnections]);
+
+  // Pre-select previously chosen destination when returning via Edit
+  const [destinationAutoSelected, setDestinationAutoSelected] = useState(false);
+  useEffect(() => {
+    if (destinationAutoSelected || !initialDestinationId || connections.length === 0 || isLoadingConnections) return;
+    const found = connections.find((conn: Destination) => conn.destinationId === initialDestinationId);
+    if (found) {
+      fetchAndSetConfig(found);
+      setDestinationAutoSelected(true);
+    }
+  }, [connections, isLoadingConnections, initialDestinationId, destinationAutoSelected]);
 
   const fetchAndSetConfig = async (connection: Destination) => {
     try {
