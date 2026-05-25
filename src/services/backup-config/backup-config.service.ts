@@ -33,6 +33,9 @@ type BackupConfigItem = {
   lastBackupAt?: string;
   sizeInBytes?: number;
   platform?: string;
+  destinationId?: string;
+  crm?: { name: string; crmName: string };
+  destination?: { name: string; type: string };
   [key: string]: unknown;
 };
 
