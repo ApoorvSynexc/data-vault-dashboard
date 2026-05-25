@@ -142,7 +142,11 @@ export default function AddBackup() {
         <FinalStep
           strategy={selectedStrategy}
           onBack={handlePrevStep}
-          onEditStep={(step) => setCurrentStep(step as Step)}
+          onEditStep={(step) => {
+            // If editing source (step 1), clear selected objects so Step5 starts fresh
+            if (step === 1) setSelectedObjects([]);
+            setCurrentStep(step as Step);
+          }}
           crmId={selectedPlatformId}
           policyName={policyName}
           description={description}
@@ -156,7 +160,11 @@ export default function AddBackup() {
         <FinalStep
           strategy={selectedStrategy}
           onBack={handlePrevStep}
-          onEditStep={(step) => setCurrentStep(step as Step)}
+          onEditStep={(step) => {
+            // If editing source (step 1), clear selected objects so Step5 starts fresh
+            if (step === 1) setSelectedObjects([]);
+            setCurrentStep(step as Step);
+          }}
           crmId={selectedPlatformId}
           policyName={policyName}
           description={description}
