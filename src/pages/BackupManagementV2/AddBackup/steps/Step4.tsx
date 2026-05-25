@@ -14,7 +14,7 @@ export default function Step4({ onNext, onBack, strategy = 'realtime', policyNam
   const [policyName, setPolicyName] = useState(initialPolicyName);
   const [description, setDescription] = useState(initialDescription);
   const [policyNameError, setPolicyNameError] = useState(false);
-  const isRealTime = strategy === 'realtime';
+
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
