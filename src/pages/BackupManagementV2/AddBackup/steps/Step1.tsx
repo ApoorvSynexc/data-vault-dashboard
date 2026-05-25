@@ -43,6 +43,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
       : AVAILABLE_PLATFORMS[0]
   );
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
+  const [connectionAutoSelected, setConnectionAutoSelected] = useState(false);
 
   const getMaxSteps = () => {
     return strategy === 'realtime' ? 6 : 7;
@@ -72,7 +73,18 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   // Clear connection when platform changes
   useEffect(() => {
     setSelectedConnection(null);
+    setConnectionAutoSelected(false);
   }, [selectedPlatform?.crmId]);
+
+  // Pre-select the previously chosen connection when returning via Edit
+  useEffect(() => {
+    if (connectionAutoSelected || !initialSelectedPlatformId || connections.length === 0) return;
+    const found = connections.find((c: ConnectedPlatform) => c.crmId === initialSelectedPlatformId);
+    if (found) {
+      setSelectedConnection(found);
+      setConnectionAutoSelected(true);
+    }
+  }, [connections, initialSelectedPlatformId, connectionAutoSelected]);
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
