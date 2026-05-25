@@ -402,6 +402,7 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
 type FilterState = {
   backupType: BackupType | 'All';
   status: BackupStatus | 'All';
+  search: string;
 };
 
 function FilterBar({
@@ -416,6 +417,15 @@ function FilterBar({
 
   return (
     <div className='flex flex-wrap items-center gap-2 border-b border-gray-100 px-5 py-3'>
+      <input
+        type='text'
+        value={filters.search}
+        onChange={(e) => onChange({ ...filters, search: e.target.value })}
+        placeholder='Search by name...'
+        className='rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-200 w-48'
+        aria-label='Search backups by name'
+      />
+
       <Typography variant='bodySm' color='muted' className='mr-1'>
         Filter:
       </Typography>
@@ -447,10 +457,10 @@ function FilterBar({
         <option value='RESUMED'>Resumed</option>
       </select>
 
-      {(filters.backupType !== 'All' || filters.status !== 'All') && (
+      {(filters.backupType !== 'All' || filters.status !== 'All' || filters.search !== '') && (
         <button
           type='button'
-          onClick={() => onChange({ backupType: 'All', status: 'All' })}
+          onClick={() => onChange({ backupType: 'All', status: 'All', search: '' })}
           className='text-[10px] font-medium text-blue-600 hover:underline'
         >
           Clear
@@ -462,7 +472,7 @@ function FilterBar({
 
 export default function BackupManagementV2() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All' });
+  const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', search: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
@@ -579,6 +589,7 @@ export default function BackupManagementV2() {
   const filteredBackups = parsedRows.filter((row) => {
     if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
     if (filters.status !== 'All' && row.status !== filters.status) return false;
+    if (filters.search && !row.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
 
