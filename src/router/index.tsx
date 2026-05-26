@@ -22,6 +22,7 @@ import AWSConnections from '../pages/Connections/destination/AWSConnections';
 import ConnectAWSBucket from '../pages/Connections/destination/ConnectAWSBucket';
 import EditAWSBucket from '../pages/Connections/destination/EditAWSBucket';
 import ArchiveVault from '../pages/ArchiveVault';
+import AddArchiveStep1 from '../pages/ArchiveVault/AddArchive/Step1';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
@@ -55,6 +56,7 @@ const router = createBrowserRouter([
           { path: '/connections/aws/connect', element: <ConnectAWSBucket /> },
           { path: '/connections/aws/edit/:destinationId', element: <EditAWSBucket /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
+          { path: '/archive-vault/new', element: <AddArchiveStep1 /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
           { path: '/restore-center', element: <RestoreCenter /> },
