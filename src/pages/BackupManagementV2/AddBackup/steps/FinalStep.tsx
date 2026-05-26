@@ -204,7 +204,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           </div>
         </SectionBox>
 
-        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={() => onEditStep(3)}>
+        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={() => onEditStep(4)}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{strategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>Custom Selection</p></div>
@@ -213,7 +213,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           </div>
         </SectionBox>
 
-        <SectionBox title='Define Backup Policy' sectionKey='policy' onEdit={() => onEditStep(4)}>
+        <SectionBox title='Define Backup Policy' sectionKey='policy' onEdit={() => onEditStep(3)}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Policy Name</p><p className='text-sm font-medium text-gray-900'>{policyName}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Description</p><p className='text-sm font-medium text-gray-900'>{description || 'No description provided'}</p></div>
