@@ -33,7 +33,7 @@ const STEPS = [
   )},
 ];
 
-const currentStep = 1;
+const activeStep = 1;
 
 function ProgressBar() {
   return (
@@ -41,8 +41,8 @@ function ProgressBar() {
       style={{ border: '0.8px solid rgba(0,0,0,0.1)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
       <div className='flex items-center w-full'>
         {STEPS.map((step, idx) => {
-          const isActive = step.id === currentStep;
-          const isDone = step.id < currentStep;
+          const isActive = step.id === activeStep;
+          const isDone = step.id < activeStep;
           return (
             <div key={step.id} className='flex items-center flex-1 min-w-0'>
               <div className='flex items-center gap-2 min-w-0'>
@@ -65,24 +65,27 @@ function ProgressBar() {
         })}
       </div>
       <div className='w-full h-1.5 rounded-full' style={{ background: 'rgba(0,0,0,0.08)' }}>
-        <div className='h-full rounded-full' style={{ background: '#155DFC', width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
+        <div className='h-full rounded-full' style={{ background: '#155DFC', width: `${((activeStep - 1) / (STEPS.length - 1)) * 100}%` }} />
       </div>
     </div>
   );
 }
 
-export default function AddArchiveStep1() {
+interface Step1Props {
+  initialSelectedConnection?: ConnectedPlatform | null;
+  initialSelectedDestConnection?: Destination | null;
+  onNext?: (conn: ConnectedPlatform, dest: Destination) => void;
+}
+
+export default function AddArchiveStep1({ initialSelectedConnection, initialSelectedDestConnection, onNext }: Step1Props) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [view, setView] = useState<'source' | 'destination'>('source');
 
-  // Source state
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(AVAILABLE_PLATFORMS[0]);
-  const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
-
-  // Destination state
-  const [selectedDestConnection, setSelectedDestConnection] = useState<Destination | null>(null);
+  const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(initialSelectedConnection ?? null);
+  const [selectedDestConnection, setSelectedDestConnection] = useState<Destination | null>(initialSelectedDestConnection ?? null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(searchParams.get('connected') === 'true');
 
   const dismissSuccess = () => {
@@ -91,6 +94,12 @@ export default function AddArchiveStep1() {
     next.delete('connected');
     next.delete('newDestinationId');
     setSearchParams(next, { replace: true });
+  };
+
+  const handleNext = () => {
+    if (selectedConnection && selectedDestConnection) {
+      onNext?.(selectedConnection, selectedDestConnection);
+    }
   };
 
   return (
@@ -171,7 +180,7 @@ export default function AddArchiveStep1() {
           )}
           {view === 'destination' && (
             <button
-              onClick={() => navigate('/archive-vault/new/step2')}
+              onClick={handleNext}
               disabled={!selectedDestConnection}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedDestConnection ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
             >
