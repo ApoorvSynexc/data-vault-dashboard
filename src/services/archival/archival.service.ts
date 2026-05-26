@@ -2,6 +2,7 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 export const ARCHIVAL_ENDPOINTS = {
   fields: '/v1/archival-config/fields',
+  objectChilds: '/v1/archival-config/object-childs',
 } as const;
 
 export type ArchivalField = {
@@ -22,5 +23,7 @@ export function useArchivalService() {
   return {
     getFields: (crmId: string, objectName: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName } }),
+    getObjectChilds: (crmId: string, objectName: string): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName } }),
   };
 }
