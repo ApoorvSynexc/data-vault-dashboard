@@ -52,7 +52,11 @@ export default function FilterPopup({
 
   const [filterTab, setFilterTab] = useState<'Field Level' | 'SOQL'>('Field Level');
   const [matchMode, setMatchMode] = useState<'ALL conditions' | 'ANY condition' | 'Custom'>('ALL conditions');
-  const [conditions, setConditions] = useState<FilterCondition[]>(initialConditions);
+  const [conditions, setConditions] = useState<FilterCondition[]>(
+    initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', operator: 'equals', value: '' }]
+  );
+  const [soqlQuery, setSoqlQuery] = useState('');
+  const [customLogic, setCustomLogic] = useState('1 AND 2');
 
   // Preview state
   const [showPreview, setShowPreview] = useState(false);
@@ -95,7 +99,12 @@ export default function FilterPopup({
     if (idx === 0) return 'WHERE';
     if (matchMode === 'ALL conditions') return 'AND';
     if (matchMode === 'ANY condition') return 'OR';
-    return `${idx + 1}`;
+    // Custom: parse "1 AND 2 OR 3" to find the connector before this condition number
+    const num = idx + 1;
+    const before = new RegExp(`(?:^|\\s)(AND|OR)\\s+${num}(?:\\s|$)`, 'i');
+    const match = before.exec(customLogic);
+    if (match) return match[1].toUpperCase();
+    return 'AND';
   };
 
   return (
@@ -139,6 +148,30 @@ export default function FilterPopup({
           )}
         </div>
 
+        {filterTab === 'SOQL' ? (
+          <>
+            {/* SOQL editor */}
+            <div className='flex-1 min-h-0 px-6 py-4 flex flex-col gap-3 overflow-y-auto'>
+              <textarea
+                value={soqlQuery}
+                onChange={(e) => setSoqlQuery(e.target.value)}
+                placeholder='Insert SOQL here ......'
+                className='w-full flex-1 resize-none px-4 py-3 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700'
+                style={{ border: '1px solid #E2E8F0', minHeight: 140, background: '#FAFBFC' }}
+              />
+            </div>
+            {/* SOQL footer */}
+            <div className='flex items-center px-6 py-4 border-t border-gray-100 flex-shrink-0'>
+              <button
+                className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors'
+                onClick={() => {}}
+              >
+                Execute Query →
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
         {/* Match tabs */}
         <div className='flex items-center gap-3 px-6 py-3 border-b border-gray-100 flex-shrink-0'>
           <span className='text-sm text-gray-500'>Match</span>
@@ -150,6 +183,16 @@ export default function FilterPopup({
               </button>
             ))}
           </div>
+          {matchMode === 'Custom' && (
+            <input
+              type='text'
+              value={customLogic}
+              onChange={(e) => setCustomLogic(e.target.value)}
+              placeholder='e.g. 1 AND 2'
+              className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
+              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+            />
+          )}
         </div>
 
         {/* Conditions list */}
@@ -192,7 +235,7 @@ export default function FilterPopup({
                         style={{ border: '1px solid #E2E8F0', color: cond.field ? '#33363F' : '#94a3b8' }}
                       >
                         <option value=''>Field Name</option>
-                        {fields.map((f: any) => (
+                        {fields.filter((f: any) => f.dataType !== 'REFERENCE').map((f: any) => (
                           <option key={f.apiName} value={f.apiName}>{f.label || f.apiName}</option>
                         ))}
                       </select>
@@ -364,6 +407,9 @@ export default function FilterPopup({
               </div>
             </div>
           </div>
+        )}
+
+          </>
         )}
 
         {/* Footer */}

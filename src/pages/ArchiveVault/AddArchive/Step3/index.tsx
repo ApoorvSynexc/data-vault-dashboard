@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import FilterPopup from './FilterPopup';
 import type { FilterCondition } from './FilterPopup';
@@ -123,6 +124,7 @@ function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boole
 export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
+  const archivalService = useArchivalService();
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 700);
@@ -220,18 +222,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setExpandedObjectId(null);
   };
 
-  // Include child toggle state (keyed by object id)
-  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
-
-  const toggleIncludeChild = (objectId: string) => {
-    setIncludeChild((prev) => {
-      const next = { ...prev, [objectId]: !prev[objectId] };
-      // collapse preview when turning off
-      if (!next[objectId]) setExpandedObjectId((cur) => cur === objectId ? null : cur);
-      return next;
-    });
-  };
-
   // Filter popup state
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
   const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
@@ -241,17 +231,30 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const [previewPage, setPreviewPage] = useState(0);
   const [previewLimit, setPreviewLimit] = useState(5);
 
-  const PREVIEW_STATUSES = ['Active', 'Inactive', 'Pending', 'Closed', 'New'];
-  const PREVIEW_OWNERS = ['Alice Johnson', 'Bob Smith', 'Carol White', 'David Lee', 'Eva Brown'];
+  // Include child toggle state — auto-on when object is selected
+  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
 
-  const getDummyRows = (objectName: string) =>
-    Array.from({ length: 50 }, (_, i) => ({
-      id: `00${String(i + 1).padStart(15, '0')}`,
-      name: `${objectName} Record ${i + 1}`,
-      createdDate: new Date(Date.now() - (i + 1) * 86400000 * 7).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      owner: PREVIEW_OWNERS[i % PREVIEW_OWNERS.length],
-      status: PREVIEW_STATUSES[i % PREVIEW_STATUSES.length],
-    }));
+  const toggleIncludeChild = (objectId: string) => {
+    setIncludeChild((prev) => {
+      const next = { ...prev, [objectId]: !prev[objectId] };
+      if (!next[objectId]) setExpandedObjectId((cur) => cur === objectId ? null : cur);
+      return next;
+    });
+  };
+
+  // Child objects query — fires when a row is expanded
+  const { data: childObjectsData, isLoading: isLoadingChilds } = useQuery({
+    queryKey: ['archival-object-childs', crmId, expandedObjectId],
+    queryFn: async () => {
+      const result = await archivalService.getObjectChilds(crmId ?? '', expandedObjectId ?? '');
+      const payload = (result as any)?.data ?? result;
+      const arr = (payload as any)?.childs ?? (payload as any)?.children ?? (payload as any)?.childObjects ?? payload;
+      return Array.isArray(arr) ? arr : [];
+    },
+    enabled: !!crmId && !!expandedObjectId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const childRows: any[] = childObjectsData ?? [];
 
   const togglePreview = (objectId: string) => {
     if (expandedObjectId === objectId) {
@@ -439,9 +442,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     const isChild = !!obj.parentObject;
 
                     const isExpanded = expandedObjectId === obj.id;
-                    const dummyRows = isExpanded ? getDummyRows(obj.name) : [];
-                    const totalPreviewPages = Math.ceil(dummyRows.length / previewLimit);
-                    const previewRows = dummyRows.slice(previewPage * previewLimit, (previewPage + 1) * previewLimit);
+                    const totalPreviewPages = Math.ceil(childRows.length / previewLimit);
+                    const previewRows = childRows.slice(previewPage * previewLimit, (previewPage + 1) * previewLimit);
 
                     return (
                       <React.Fragment key={obj.id}>
@@ -456,6 +458,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                             setExpandedObjectId((cur) => cur === obj.id ? null : cur);
                           } else {
                             next.add(obj.id);
+                            setIncludeChild((p) => ({ ...p, [obj.id]: true }));
                           }
                           setSelectedObjects(next);
                         }}>
@@ -469,6 +472,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                 setExpandedObjectId((cur) => cur === obj.id ? null : cur);
                               } else {
                                 next.add(obj.id);
+                                setIncludeChild((p) => ({ ...p, [obj.id]: true }));
                               }
                               setSelectedObjects(next);
                             }}
@@ -561,7 +565,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                               {/* Preview header */}
                               <div className='flex items-center justify-between px-5 py-2 border-b border-gray-100'>
                                 <span className='text-xs font-semibold text-gray-500'>
-                                  Preview — <span style={{ color: '#155DFC' }}>50</span> records of {obj.name}
+                                  Preview — <span style={{ color: '#155DFC' }}>{childRows.length}</span> child records of {obj.name}
                                 </span>
                                 <div className='flex items-center gap-2'>
                                   <span className='text-xs text-gray-400'>Rows per page</span>
@@ -585,7 +589,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                               <table className='w-full border-collapse text-xs'>
                                 <thead>
                                   <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                                    {['#', 'ID', 'Name', 'Created Date', 'Owner', 'Status'].map((col) => (
+                                    {['#', 'ID', 'Name', 'Created Date', 'Owner', 'Type'].map((col) => (
                                       <th key={col} className='px-5 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap'>
                                         {col}
                                       </th>
@@ -593,22 +597,23 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {previewRows.map((row, idx) => (
-                                    <tr key={row.id} className='hover:bg-blue-50/40 transition-colors' style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                  {isLoadingChilds ? (
+                                    <tr><td colSpan={6} className='px-5 py-6 text-center'>
+                                      <div className='flex items-center justify-center gap-2 text-gray-400 text-xs'>
+                                        <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
+                                        Loading child records...
+                                      </div>
+                                    </td></tr>
+                                  ) : previewRows.length === 0 ? (
+                                    <tr><td colSpan={6} className='px-5 py-6 text-center text-xs text-gray-400'>No child records found.</td></tr>
+                                  ) : previewRows.map((row: any, idx: number) => (
+                                    <tr key={row.id ?? row.Id ?? idx} className='hover:bg-blue-50/40 transition-colors' style={{ borderBottom: '1px solid #F1F5F9' }}>
                                       <td className='px-5 py-2 text-gray-400 tabular-nums'>{previewPage * previewLimit + idx + 1}</td>
-                                      <td className='px-5 py-2 text-gray-500 font-mono truncate' style={{ maxWidth: 160 }}>{row.id}</td>
-                                      <td className='px-5 py-2 text-gray-800 font-medium whitespace-nowrap'>{row.name}</td>
-                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.createdDate}</td>
-                                      <td className='px-5 py-2 text-gray-600 whitespace-nowrap'>{row.owner}</td>
-                                      <td className='px-5 py-2'>
-                                        <span className='px-2 py-0.5 rounded-full text-xs font-medium'
-                                          style={{
-                                            background: row.status === 'Active' ? 'rgba(22,163,74,0.1)' : row.status === 'Closed' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)',
-                                            color: row.status === 'Active' ? '#16a34a' : row.status === 'Closed' ? '#ef4444' : '#ca8a04',
-                                          }}>
-                                          {row.status}
-                                        </span>
-                                      </td>
+                                      <td className='px-5 py-2 text-gray-500 font-mono truncate' style={{ maxWidth: 160 }}>{row.id ?? row.Id ?? '--'}</td>
+                                      <td className='px-5 py-2 text-gray-800 font-medium whitespace-nowrap'>{row.name ?? row.Name ?? '--'}</td>
+                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.createdDate ?? row.CreatedDate ?? '--'}</td>
+                                      <td className='px-5 py-2 text-gray-600 whitespace-nowrap'>{row.owner ?? row.Owner ?? row.OwnerId ?? '--'}</td>
+                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.type ?? row.Type ?? row.objectType ?? '--'}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -616,7 +621,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                               {/* Preview pagination */}
                               <div className='flex items-center justify-between px-5 py-2 border-t border-gray-100'>
                                 <span className='text-xs text-gray-400'>
-                                  Showing {previewPage * previewLimit + 1}–{Math.min((previewPage + 1) * previewLimit, dummyRows.length)} of {dummyRows.length}
+                                  Showing {previewPage * previewLimit + 1}–{Math.min((previewPage + 1) * previewLimit, childRows.length)} of {childRows.length}
                                 </span>
                                 <div className='flex items-center gap-1'>
                                   <button onClick={(e) => { e.stopPropagation(); setPreviewPage((p) => Math.max(0, p - 1)); }}
