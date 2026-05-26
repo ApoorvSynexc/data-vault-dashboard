@@ -96,14 +96,6 @@ export default function AddBackup() {
       )}
       {currentStep === 3 && (
         <Step3
-          initialStrategy={selectedStrategy}
-          initialEntireDatasetSelected={entireDatasetSelected}
-          onNext={handleStrategySelected}
-          onBack={handlePrevStep}
-        />
-      )}
-      {currentStep === 4 && (
-        <Step4
           strategy={selectedStrategy}
           policyName={policyName}
           description={description}
@@ -112,6 +104,14 @@ export default function AddBackup() {
             setDescription(desc);
             handleNextStep();
           }}
+          onBack={handlePrevStep}
+        />
+      )}
+      {currentStep === 4 && (
+        <Step4
+          initialStrategy={selectedStrategy}
+          initialEntireDatasetSelected={entireDatasetSelected}
+          onNext={handleStrategySelected}
           onBack={handlePrevStep}
         />
       )}
