@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import ArchiveVaultWelcome from './Welcome';
 
 // ── Platform Icons ────────────────────────────────────────────────────────────
 
@@ -142,7 +143,11 @@ const tiers = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const hasArchives = false; // flip to true when real data exists
+
 export default function ArchiveVault() {
+  if (!hasArchives) return <ArchiveVaultWelcome />;
+
   return (
     <div className='flex flex-col gap-5'>
 
