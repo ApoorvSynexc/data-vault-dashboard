@@ -1,8 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
+import FilterPopup from './FilterPopup';
+import type { FilterCondition } from './FilterPopup';
 
 const STEPS = [
   { id: 1, label: 'Source & Destination', icon: (a: boolean) => (
@@ -73,6 +75,11 @@ function ProgressBar() {
 export type SelectedArchiveObject = {
   id: string;
   type: 'STANDARD' | 'CUSTOM';
+  archivalPayload?: {
+    name: string;
+    condition: { type: 'AND' | 'OR' };
+    field: { name: string; filter: { value: string; operator: string } }[];
+  };
 };
 
 interface BackupObject {
@@ -96,6 +103,22 @@ interface Step3Props {
 }
 
 const ITEMS_PER_PAGE = 10;
+
+function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boolean; onChange: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onChange}
+      disabled={disabled}
+      className='relative inline-flex items-center flex-shrink-0 rounded-full transition-colors duration-200 focus:outline-none'
+      style={{ width: 36, height: 20, background: on ? '#155DFC' : '#CBD5E1', opacity: disabled ? 0.35 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+    >
+      <span
+        className='inline-block rounded-full bg-white shadow transition-transform duration-200'
+        style={{ width: 14, height: 14, transform: on ? 'translateX(18px)' : 'translateX(3px)' }}
+      />
+    </button>
+  );
+}
 
 export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
@@ -191,42 +214,75 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setSelectedObjects(next);
   };
 
-  const clearAll = () => setSelectedObjects(new Set());
+  const clearAll = () => {
+    setSelectedObjects(new Set());
+    setIncludeChild({});
+    setExpandedObjectId(null);
+  };
+
+  // Include child toggle state (keyed by object id)
+  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
+
+  const toggleIncludeChild = (objectId: string) => {
+    setIncludeChild((prev) => {
+      const next = { ...prev, [objectId]: !prev[objectId] };
+      // collapse preview when turning off
+      if (!next[objectId]) setExpandedObjectId((cur) => cur === objectId ? null : cur);
+      return next;
+    });
+  };
 
   // Filter popup state
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
+  const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
+
+  // Inline preview state
+  const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
+  const [previewPage, setPreviewPage] = useState(0);
+  const [previewLimit, setPreviewLimit] = useState(5);
+
+  const PREVIEW_STATUSES = ['Active', 'Inactive', 'Pending', 'Closed', 'New'];
+  const PREVIEW_OWNERS = ['Alice Johnson', 'Bob Smith', 'Carol White', 'David Lee', 'Eva Brown'];
+
+  const getDummyRows = (objectName: string) =>
+    Array.from({ length: 50 }, (_, i) => ({
+      id: `00${String(i + 1).padStart(15, '0')}`,
+      name: `${objectName} Record ${i + 1}`,
+      createdDate: new Date(Date.now() - (i + 1) * 86400000 * 7).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      owner: PREVIEW_OWNERS[i % PREVIEW_OWNERS.length],
+      status: PREVIEW_STATUSES[i % PREVIEW_STATUSES.length],
+    }));
+
+  const togglePreview = (objectId: string) => {
+    if (expandedObjectId === objectId) {
+      setExpandedObjectId(null);
+    } else {
+      setExpandedObjectId(objectId);
+      setPreviewPage(0);
+    }
+  };
 
   const handleNext = () => {
     const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((id) => {
       const obj = allObjects.find((o) => o.id === id);
-      return { id, type: obj?.isCustom ? 'CUSTOM' : 'STANDARD' };
+      const conditions = objectFilters[id] ?? [];
+      const matchType = conditions.length > 0 ? 'AND' : 'AND';
+      return {
+        id,
+        type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
+        archivalPayload: {
+          name: obj?.name ?? id,
+          condition: { type: matchType as 'AND' | 'OR' },
+          field: conditions
+            .filter((c) => c.field)
+            .map((c) => ({
+              name: c.field,
+              filter: { value: c.value, operator: c.operator },
+            })),
+        },
+      };
     });
     onNext?.(result);
-  };
-
-  // Per-object filter conditions (stored by objectId)
-  type FilterCondition = { id: string; field: string; operator: string; value: string };
-  const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
-
-  const addCondition = (objectId: string) => {
-    setObjectFilters((prev) => ({
-      ...prev,
-      [objectId]: [...(prev[objectId] ?? []), { id: crypto.randomUUID(), field: '', operator: 'equals', value: '' }],
-    }));
-  };
-
-  const removeCondition = (objectId: string, conditionId: string) => {
-    setObjectFilters((prev) => ({
-      ...prev,
-      [objectId]: (prev[objectId] ?? []).filter((c) => c.id !== conditionId),
-    }));
-  };
-
-  const updateCondition = (objectId: string, conditionId: string, patch: Partial<FilterCondition>) => {
-    setObjectFilters((prev) => ({
-      ...prev,
-      [objectId]: (prev[objectId] ?? []).map((c) => c.id === conditionId ? { ...c, ...patch } : c),
-    }));
   };
 
   const getDataSize = (recordCount?: number) => {
@@ -237,140 +293,21 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     return `${kb} KB`;
   };
 
-  const conditions = filterPopup ? (objectFilters[filterPopup.objectId] ?? []) : [];
-
   return (
     <>
-    {/* ── Filter Popup ── */}
     {filterPopup && (
-      <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30' onClick={() => setFilterPopup(null)}>
-        <div className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
-          style={{ width: 600, maxHeight: '80vh', border: '1px solid #E2E8F0' }}
-          onClick={(e) => e.stopPropagation()}>
-
-          {/* Popup header */}
-          <div className='flex items-center justify-between px-6 py-4 border-b border-gray-100'>
-            <div>
-              <h2 className='text-base font-bold text-gray-900'>{filterPopup.objectName}</h2>
-              <p className='text-xs text-gray-400 mt-0.5'>Define filter conditions for this object</p>
-            </div>
-            <button onClick={() => setFilterPopup(null)}
-              className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'>
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
-              </svg>
-            </button>
-          </div>
-
-          {/* Filter By tabs + est. records */}
-          <div className='flex items-center justify-between px-6 py-3 border-b border-gray-100 flex-shrink-0'>
-            <div className='flex items-center gap-2'>
-              <span className='text-sm text-gray-500 font-medium'>Filter By</span>
-              <div className='flex rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
-                {(['Field Level', 'SOQL'] as const).map((tab) => (
-                  <button key={tab}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${tab === 'Field Level' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {filterPopup.recordCount !== undefined && (
-              <span className='text-sm text-gray-500'>
-                Est. <span className='font-semibold text-blue-600'>{filterPopup.recordCount.toLocaleString()}</span> records of {filterPopup.recordCount.toLocaleString()}
-              </span>
-            )}
-          </div>
-
-          {/* Match tabs */}
-          <div className='flex items-center gap-2 px-6 py-3 border-b border-gray-100 flex-shrink-0'>
-            <span className='text-sm text-gray-500 font-medium'>Match</span>
-            <div className='flex rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
-              {(['ALL conditions', 'ANY condition', 'Custom'] as const).map((tab) => (
-                <button key={tab}
-                  className={`px-4 py-1.5 text-sm font-medium transition-colors ${tab === 'ALL conditions' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Conditions list */}
-          <div className='flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-3 min-h-0'>
-            {conditions.length === 0 ? (
-              <div className='flex items-center gap-2 py-3 text-sm text-gray-500'>
-                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                  <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-                </svg>
-                No filter conditions — all{' '}
-                <span className='font-semibold text-gray-800'>
-                  {filterPopup.recordCount !== undefined ? filterPopup.recordCount.toLocaleString() : '—'}
-                </span>{' '}
-                {filterPopup.objectName} records will be archived.
-              </div>
-            ) : (
-              conditions.map((cond, idx) => (
-                <div key={cond.id} className='flex items-center gap-2'>
-                  <span className='text-xs text-gray-400 w-6 text-right flex-shrink-0'>{idx + 1}</span>
-                  <input
-                    value={cond.field}
-                    onChange={(e) => updateCondition(filterPopup.objectId, cond.id, { field: e.target.value })}
-                    placeholder='Field'
-                    className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
-                    style={{ border: '1px solid #E2E8F0' }}
-                  />
-                  <select
-                    value={cond.operator}
-                    onChange={(e) => updateCondition(filterPopup.objectId, cond.id, { operator: e.target.value })}
-                    className='px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
-                    style={{ border: '1px solid #E2E8F0' }}
-                  >
-                    {['equals', 'not equals', 'contains', 'greater than', 'less than', 'is null', 'is not null'].map((op) => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
-                  </select>
-                  <input
-                    value={cond.value}
-                    onChange={(e) => updateCondition(filterPopup.objectId, cond.id, { value: e.target.value })}
-                    placeholder='Value'
-                    className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
-                    style={{ border: '1px solid #E2E8F0' }}
-                  />
-                  <button onClick={() => removeCondition(filterPopup.objectId, cond.id)}
-                    className='p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0'>
-                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
-                    </svg>
-                  </button>
-                </div>
-              ))
-            )}
-
-            {/* Add condition */}
-            <button
-              onClick={() => addCondition(filterPopup.objectId)}
-              className='flex items-center gap-1.5 mt-1 px-3 py-2 text-sm font-medium text-gray-600 rounded-lg border border-dashed border-gray-300 hover:border-blue-400 hover:text-blue-600 transition-colors w-fit'>
-              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                <line x1='12' y1='5' x2='12' y2='19' /><line x1='5' y1='12' x2='19' y2='12' />
-              </svg>
-              Add condition
-            </button>
-          </div>
-
-          {/* Popup footer */}
-          <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0'>
-            <button onClick={() => setFilterPopup(null)}
-              className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-              Cancel
-            </button>
-            <button onClick={() => setFilterPopup(null)}
-              className='px-5 py-2 text-sm font-medium text-white rounded-lg transition-colors'
-              style={{ background: '#155DFC' }}>
-              Apply Filter
-            </button>
-          </div>
-        </div>
-      </div>
+      <FilterPopup
+        objectId={filterPopup.objectId}
+        objectName={filterPopup.objectName}
+        recordCount={filterPopup.recordCount}
+        crmId={crmId}
+        initialConditions={objectFilters[filterPopup.objectId] ?? []}
+        onApply={(objectId, conditions) => {
+          setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
+          setFilterPopup(null);
+        }}
+        onClose={() => setFilterPopup(null)}
+      />
     )}
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       <div className='flex-1 overflow-y-auto flex flex-col p-6 min-h-0 gap-4'>
@@ -467,11 +404,10 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                   <col style={{ width: 44 }} />
                   <col style={{ width: 60 }} />
                   <col />
+                  <col style={{ width: 120 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 100 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: 120 }} />
                   <col style={{ width: 240 }} />
                 </colgroup>
                 <thead className='sticky top-0 z-10 bg-white'>
@@ -489,11 +425,10 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     </th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>S.No.</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object</th>
+                    <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Include Child</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Type</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Records</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Data Size</th>
-                    <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Filters</th>
-                    <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Related</th>
                     <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Actions</th>
                   </tr>
                 </thead>
@@ -503,20 +438,38 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     const isParent = !obj.parentObject && (obj.relatedObjects?.length ?? 0) > 0;
                     const isChild = !!obj.parentObject;
 
+                    const isExpanded = expandedObjectId === obj.id;
+                    const dummyRows = isExpanded ? getDummyRows(obj.name) : [];
+                    const totalPreviewPages = Math.ceil(dummyRows.length / previewLimit);
+                    const previewRows = dummyRows.slice(previewPage * previewLimit, (previewPage + 1) * previewLimit);
+
                     return (
+                      <React.Fragment key={obj.id}>
                       <tr key={obj.id}
                         className='transition-colors cursor-pointer'
-                        style={{ borderBottom: '1px solid #F1F5F9', background: isSelected ? 'rgba(21,93,252,0.03)' : 'white' }}
+                        style={{ borderBottom: isExpanded ? 'none' : '1px solid #F1F5F9', background: isSelected ? 'rgba(21,93,252,0.03)' : 'white' }}
                         onClick={() => {
                           const next = new Set(selectedObjects);
-                          isSelected ? next.delete(obj.id) : next.add(obj.id);
+                          if (isSelected) {
+                            next.delete(obj.id);
+                            setIncludeChild((p) => { const n = { ...p }; delete n[obj.id]; return n; });
+                            setExpandedObjectId((cur) => cur === obj.id ? null : cur);
+                          } else {
+                            next.add(obj.id);
+                          }
                           setSelectedObjects(next);
                         }}>
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <input type='checkbox' checked={isSelected}
                             onChange={() => {
                               const next = new Set(selectedObjects);
-                              isSelected ? next.delete(obj.id) : next.add(obj.id);
+                              if (isSelected) {
+                                next.delete(obj.id);
+                                setIncludeChild((p) => { const n = { ...p }; delete n[obj.id]; return n; });
+                                setExpandedObjectId((cur) => cur === obj.id ? null : cur);
+                              } else {
+                                next.add(obj.id);
+                              }
                               setSelectedObjects(next);
                             }}
                             className='w-4 h-4 accent-blue-600 cursor-pointer'
@@ -541,7 +494,30 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                 Child of {obj.parentObject}
                               </span>
                             )}
+                            {isSelected && includeChild[obj.id] && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); togglePreview(obj.id); }}
+                                className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-gray-100'
+                                style={{ color: '#94A3B8' }}
+                                title='Preview records'
+                              >
+                                <svg
+                                  width='13' height='13' viewBox='0 0 24 24' fill='none'
+                                  stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                                  style={{ transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                                >
+                                  <polyline points='6 9 12 15 18 9' />
+                                </svg>
+                              </button>
+                            )}
                           </div>
+                        </td>
+                        <td className='px-3 py-3 text-center' onClick={(e) => e.stopPropagation()}>
+                          <ToggleSwitch
+                            on={!!includeChild[obj.id]}
+                            disabled={!isSelected}
+                            onChange={(e) => { e.stopPropagation(); if (isSelected) toggleIncludeChild(obj.id); }}
+                          />
                         </td>
                         <td className='px-3 py-3 text-sm' style={{ color: '#155DFC' }}>
                           {obj.isCustom ? 'Custom' : 'Standard'}
@@ -551,10 +527,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                         </td>
                         <td className='px-3 py-3 text-sm text-gray-700'>
                           {getDataSize(obj.recordCount)}
-                        </td>
-                        <td className='px-3 py-3 text-sm text-gray-400'>--</td>
-                        <td className='px-3 py-3 text-sm text-gray-500 truncate'>
-                          {obj.relatedObjects?.join(', ') || '--'}
                         </td>
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center justify-center gap-2'>
@@ -581,10 +553,101 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           </div>
                         </td>
                       </tr>
+                      {/* ── Inline preview rows ── */}
+                      {isExpanded && (
+                        <tr key={`${obj.id}-preview`}>
+                          <td colSpan={8} className='p-0' style={{ borderBottom: '1px solid #F1F5F9' }}>
+                            <div style={{ background: '#F8FAFC' }}>
+                              {/* Preview header */}
+                              <div className='flex items-center justify-between px-5 py-2 border-b border-gray-100'>
+                                <span className='text-xs font-semibold text-gray-500'>
+                                  Preview — <span style={{ color: '#155DFC' }}>50</span> records of {obj.name}
+                                </span>
+                                <div className='flex items-center gap-2'>
+                                  <span className='text-xs text-gray-400'>Rows per page</span>
+                                  <div className='relative'>
+                                    <select
+                                      value={previewLimit}
+                                      onChange={(e) => { setPreviewLimit(Number(e.target.value)); setPreviewPage(0); }}
+                                      className='appearance-none pl-3 pr-6 py-1 text-xs rounded-lg bg-white outline-none'
+                                      style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {[5, 10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                                    </select>
+                                    <span className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400'>
+                                      <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Mini table */}
+                              <table className='w-full border-collapse text-xs'>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                                    {['#', 'ID', 'Name', 'Created Date', 'Owner', 'Status'].map((col) => (
+                                      <th key={col} className='px-5 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap'>
+                                        {col}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {previewRows.map((row, idx) => (
+                                    <tr key={row.id} className='hover:bg-blue-50/40 transition-colors' style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                      <td className='px-5 py-2 text-gray-400 tabular-nums'>{previewPage * previewLimit + idx + 1}</td>
+                                      <td className='px-5 py-2 text-gray-500 font-mono truncate' style={{ maxWidth: 160 }}>{row.id}</td>
+                                      <td className='px-5 py-2 text-gray-800 font-medium whitespace-nowrap'>{row.name}</td>
+                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.createdDate}</td>
+                                      <td className='px-5 py-2 text-gray-600 whitespace-nowrap'>{row.owner}</td>
+                                      <td className='px-5 py-2'>
+                                        <span className='px-2 py-0.5 rounded-full text-xs font-medium'
+                                          style={{
+                                            background: row.status === 'Active' ? 'rgba(22,163,74,0.1)' : row.status === 'Closed' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)',
+                                            color: row.status === 'Active' ? '#16a34a' : row.status === 'Closed' ? '#ef4444' : '#ca8a04',
+                                          }}>
+                                          {row.status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              {/* Preview pagination */}
+                              <div className='flex items-center justify-between px-5 py-2 border-t border-gray-100'>
+                                <span className='text-xs text-gray-400'>
+                                  Showing {previewPage * previewLimit + 1}–{Math.min((previewPage + 1) * previewLimit, dummyRows.length)} of {dummyRows.length}
+                                </span>
+                                <div className='flex items-center gap-1'>
+                                  <button onClick={(e) => { e.stopPropagation(); setPreviewPage((p) => Math.max(0, p - 1)); }}
+                                    disabled={previewPage === 0}
+                                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
+                                    ‹
+                                  </button>
+                                  {Array.from({ length: Math.min(totalPreviewPages, 5) }, (_, i) => i).map((i) => (
+                                    <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewPage(i); }}
+                                      className='w-6 h-6 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
+                                      style={{ background: previewPage === i ? '#155DFC' : 'transparent', color: previewPage === i ? 'white' : '#64748B' }}>
+                                      {i + 1}
+                                    </button>
+                                  ))}
+                                  {totalPreviewPages > 5 && <span className='text-gray-400 text-xs'>...</span>}
+                                  <button onClick={(e) => { e.stopPropagation(); setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1)); }}
+                                    disabled={previewPage >= totalPreviewPages - 1}
+                                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
+                                    ›
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     );
                   }) : (
                     <tr>
-                      <td colSpan={9} className='px-4 py-12 text-center text-sm text-gray-500'>
+                      <td colSpan={8} className='px-4 py-12 text-center text-sm text-gray-500'>
                         No objects found matching your search.
                       </td>
                     </tr>
