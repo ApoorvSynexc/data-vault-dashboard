@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
-import type { Destination } from '../../../../services/destination/destination.service';
-import Source, { AVAILABLE_PLATFORMS } from './Source';
-import DestinationView from './Destination';
+import { Link, useNavigate } from 'react-router-dom';
 
 const STEPS = [
   { id: 1, label: 'Source & Destination', icon: (a: boolean) => (
@@ -33,7 +29,7 @@ const STEPS = [
   )},
 ];
 
-const activeStep = 1;
+const activeStep = 2;
 
 function ProgressBar() {
   return (
@@ -71,36 +67,31 @@ function ProgressBar() {
   );
 }
 
-interface Step1Props {
-  initialSelectedConnection?: ConnectedPlatform | null;
-  initialSelectedDestConnection?: Destination | null;
-  onNext?: (conn: ConnectedPlatform, dest: Destination) => void;
+interface Step2Props {
+  archiveSource?: string;
+  destination?: string;
+  initialPolicyName?: string;
+  initialDescription?: string;
+  onNext?: (policyName: string, description: string) => void;
+  onBack?: () => void;
 }
 
-export default function AddArchiveStep1({ initialSelectedConnection, initialSelectedDestConnection, onNext }: Step1Props) {
+export default function AddArchiveStep2({
+  archiveSource = 'Salesforce Production',
+  destination = 'AWS S3',
+  initialPolicyName,
+  initialDescription = '',
+  onNext,
+  onBack,
+}: Step2Props) {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [view, setView] = useState<'source' | 'destination'>('source');
+  const defaultPolicyName = `Accounts-Contact-Opportunity Archive – ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
-  const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(AVAILABLE_PLATFORMS[0]);
-  const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(initialSelectedConnection ?? null);
-  const [selectedDestConnection, setSelectedDestConnection] = useState<Destination | null>(initialSelectedDestConnection ?? null);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(searchParams.get('connected') === 'true');
+  const [policyName, setPolicyName] = useState(initialPolicyName ?? defaultPolicyName);
+  const [description, setDescription] = useState(initialDescription);
 
-  const dismissSuccess = () => {
-    setShowSuccessDialog(false);
-    const next = new URLSearchParams(searchParams);
-    next.delete('connected');
-    next.delete('newDestinationId');
-    setSearchParams(next, { replace: true });
-  };
-
-  const handleNext = () => {
-    if (selectedConnection && selectedDestConnection) {
-      onNext?.(selectedConnection, selectedDestConnection);
-    }
-  };
+  const canProceed = policyName.trim().length > 0;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -123,32 +114,80 @@ export default function AddArchiveStep1({ initialSelectedConnection, initialSele
         {/* Header */}
         <div className='flex items-start justify-between flex-shrink-0'>
           <div>
-            <h1 className='text-3xl font-bold text-gray-900'>Choose Source and Destination</h1>
-            <p className='text-gray-600 mt-1'>Select source and destination to archive your data</p>
+            <h1 className='text-3xl font-bold text-gray-900'>Define Archive</h1>
+            <p className='text-gray-600 mt-1'>Define archive and storage tier</p>
           </div>
           <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-            Step <span className='text-blue-600'>1</span> of 5
+            Step <span className='text-blue-600'>2</span> of 5
           </span>
         </div>
 
-        {/* Views */}
-        {view === 'source' && (
-          <Source
-            selectedPlatform={selectedPlatform}
-            setSelectedPlatform={setSelectedPlatform}
-            selectedConnection={selectedConnection}
-            setSelectedConnection={setSelectedConnection}
-          />
-        )}
+        {/* Form */}
+        <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-shrink-0'
+          style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
-        {view === 'destination' && (
-          <DestinationView
-            selectedDestConnection={selectedDestConnection}
-            setSelectedDestConnection={setSelectedDestConnection}
-            showSuccessDialog={showSuccessDialog}
-            onDismissSuccess={dismissSuccess}
-          />
-        )}
+          {/* Row 1: Archive Source + Destination */}
+          <div className='grid grid-cols-2 gap-6'>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium'>
+                <span className='text-red-500'>* </span>
+                <span style={{ color: '#33363F' }}>Archive Source</span>
+              </label>
+              <input
+                type='text'
+                value={archiveSource}
+                readOnly
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
+                style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium'>
+                <span className='text-red-500'>* </span>
+                <span style={{ color: '#33363F' }}>Destination</span>
+              </label>
+              <input
+                type='text'
+                value={destination}
+                readOnly
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
+                style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Archive Policy Name + Archive Description */}
+          <div className='grid grid-cols-2 gap-6'>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium'>
+                <span className='text-red-500'>* </span>
+                <span style={{ color: '#33363F' }}>Archive Policy Name</span>
+              </label>
+              <input
+                type='text'
+                value={policyName}
+                onChange={(e) => setPolicyName(e.target.value)}
+                placeholder='Enter archive policy name'
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium text-gray-700'>
+                Archive Description <span className='text-gray-400 font-normal'>(Optional)</span>
+              </label>
+              <input
+                type='text'
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder=''
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              />
+            </div>
+          </div>
+
+        </div>
 
       </div>
 
@@ -161,32 +200,19 @@ export default function AddArchiveStep1({ initialSelectedConnection, initialSele
           Cancel
         </button>
         <div className='flex gap-3'>
-          {view === 'destination' && (
-            <button
-              onClick={() => setView('source')}
-              className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
-            >
-              ← Back
-            </button>
-          )}
-          {view === 'source' && (
-            <button
-              onClick={() => setView('destination')}
-              disabled={!selectedConnection}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedConnection ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-            >
-              Select Destination →
-            </button>
-          )}
-          {view === 'destination' && (
-            <button
-              onClick={handleNext}
-              disabled={!selectedDestConnection}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedDestConnection ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-            >
-              Next Step →
-            </button>
-          )}
+          <button
+            onClick={onBack}
+            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+          >
+            ← Back
+          </button>
+          <button
+            onClick={() => onNext?.(policyName, description)}
+            disabled={!canProceed}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${canProceed ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+          >
+            Next →
+          </button>
         </div>
       </div>
     </div>
