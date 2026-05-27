@@ -2,9 +2,11 @@ import { useState } from 'react';
 import type { ConnectedPlatform } from '../../../services/platform/platform.service';
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SelectedArchiveObject } from './Step3';
+import type { ArchiveScheduleConfig } from './Step4';
 import Step1 from './Step1';
 import Step2 from './Step2';
 import Step3 from './Step3';
+import Step4 from './Step4';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -21,6 +23,9 @@ export default function AddArchive() {
 
   // Step 3 — select objects
   const [selectedObjects, setSelectedObjects] = useState<SelectedArchiveObject[]>([]);
+
+  // Step 4 — schedule
+  const [scheduleConfig, setScheduleConfig] = useState<ArchiveScheduleConfig | null>(null);
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 5) as Step);
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -59,6 +64,16 @@ export default function AddArchive() {
           initialSelectedObjects={selectedObjects}
           onNext={(objects) => {
             setSelectedObjects(objects);
+            goNext();
+          }}
+          onBack={goBack}
+        />
+      )}
+      {currentStep === 4 && (
+        <Step4
+          initialScheduleConfig={scheduleConfig}
+          onNext={(config) => {
+            setScheduleConfig(config);
             goNext();
           }}
           onBack={goBack}
