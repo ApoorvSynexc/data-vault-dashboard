@@ -98,12 +98,224 @@ interface BackupObject {
 
 interface Step3Props {
   crmId?: string | null;
+  destinationId?: string | null;
   initialSelectedObjects?: SelectedArchiveObject[];
   onNext?: (objects: SelectedArchiveObject[]) => void;
   onBack?: () => void;
 }
 
 const ITEMS_PER_PAGE = 10;
+const MAX_CHILD_DEPTH = 5;
+const CHILD_PAGE_SIZE = 5;
+
+interface ChildRowsProps {
+  crmId: string;
+  objectName: string;
+  depth: number;
+  selectedChildObjects: Set<string>;
+  toggleChildObject: (key: string) => void;
+  includeChild: Record<string, boolean>;
+  setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
+}
+
+function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+  const archivalService = useArchivalService();
+  const [expandedChild, setExpandedChild] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['archival-object-childs', crmId, objectName],
+    queryFn: async () => {
+      const result = await archivalService.getObjectChilds(crmId, objectName);
+      const payload = (result as any)?.data ?? result;
+      const arr = (payload as any)?.childs ?? (payload as any)?.children ?? (payload as any)?.childObjects ?? payload;
+      return Array.isArray(arr) ? arr : [];
+    },
+    enabled: !!crmId && !!objectName,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const rows: any[] = data ?? [];
+
+  // Reset page when object changes
+  useEffect(() => { setPage(0); }, [objectName]);
+
+  // Auto-select MasterDetail children — run only when data arrives, not on every render
+  const autoSelectedRef = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!data || rows.length === 0) return;
+    const toSelect = rows
+      .filter((r: any) => r.relationshipType === 'MasterDetail')
+      .map((r: any) => r.apiName ?? r.id)
+      .filter((k: string) => k && !autoSelectedRef.current.has(k));
+    if (toSelect.length === 0) return;
+    toSelect.forEach((k: string) => autoSelectedRef.current.add(k));
+    setSelectedChildObjects_safe(toSelect);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  // Stable setter that doesn't need toggleChildObject in deps
+  const setSelectedChildObjects_safe = (keys: string[]) => {
+    keys.forEach((key) => toggleChildObject(key));
+  };
+
+  if (isLoading) return (
+    <tr>
+      <td colSpan={6} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', paddingLeft: depth * 20 + 16, paddingTop: 8, paddingBottom: 8 }}>
+        <div className='flex items-center gap-2 text-xs text-gray-400'>
+          <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
+          Loading...
+        </div>
+      </td>
+    </tr>
+  );
+
+  if (rows.length === 0) return null;
+
+  const totalPages = Math.ceil(rows.length / CHILD_PAGE_SIZE);
+  const pagedRows = rows.slice(page * CHILD_PAGE_SIZE, (page + 1) * CHILD_PAGE_SIZE);
+
+  return (
+    <>
+      {pagedRows.map((row: any, idx: number) => {
+        const childKey = row.apiName ?? row.id ?? String(idx);
+        const isChildSelected = selectedChildObjects.has(childKey);
+        const isChildExpanded = expandedChild === childKey;
+        const toggleOn = !!includeChild[childKey];
+        const canExpand = depth < MAX_CHILD_DEPTH && isChildSelected && toggleOn;
+
+        const handleToggle = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (!isChildSelected) return;
+          setIncludeChild((p) => {
+            const next: Record<string, boolean> = { ...p, [childKey]: !p[childKey] };
+            if (!next[childKey]) setExpandedChild((c) => c === childKey ? null : c);
+            return next;
+          });
+        };
+
+        const handleCheckbox = () => {
+          toggleChildObject(childKey);
+          if (!isChildSelected) {
+            // selecting — auto-on toggle
+            setIncludeChild((p) => ({ ...p, [childKey]: true }));
+          } else {
+            // deselecting — off toggle and collapse
+            setIncludeChild((p) => { const n = { ...p }; delete n[childKey]; return n; });
+            setExpandedChild((c) => c === childKey ? null : c);
+          }
+        };
+
+        return (
+          <React.Fragment key={childKey}>
+            <tr className='hover:bg-blue-50/30 transition-colors'
+              style={{ background: '#F8FAFC', borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #F1F5F9' }}>
+              {/* empty checkbox col */}
+              <td className='px-3 py-2.5' />
+              {/* checkbox in S.No col */}
+              <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+                <div style={{ paddingLeft: depth * 20 }}>
+                  <input type='checkbox' checked={isChildSelected} onChange={handleCheckbox}
+                    className='w-4 h-4 accent-blue-600 cursor-pointer' />
+                </div>
+              </td>
+              {/* Object col */}
+              <td className='px-3 py-2.5'>
+                <div className='flex items-center gap-2 min-w-0' style={{ paddingLeft: depth * 20 }}>
+                  <span className='flex-shrink-0 text-gray-300' style={{ fontSize: 11, letterSpacing: -1 }}>└─</span>
+                  <span className='text-sm text-gray-700 truncate'>{row.label ?? row.apiName ?? row.name ?? '--'}</span>
+                  <span className='text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0'
+                    style={{ background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>
+                    {row.relationshipType ?? 'Child'}
+                  </span>
+                  {canExpand && (
+                    <button onClick={(e) => { e.stopPropagation(); setExpandedChild((c) => c === childKey ? null : childKey); }}
+                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-gray-100'
+                      style={{ color: '#94A3B8' }}>
+                      <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                        style={{ transition: 'transform 0.2s', transform: isChildExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                        <polyline points='6 9 12 15 18 9' />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </td>
+              {/* Include Child toggle col */}
+              <td className='px-3 py-2.5 text-center' onClick={(e) => e.stopPropagation()}>
+                <ToggleSwitch on={toggleOn} disabled={!isChildSelected} onChange={handleToggle} />
+              </td>
+              {/* Type col */}
+              <td className='px-3 py-2.5 text-xs' style={{ color: '#155DFC' }}>{row.objectType ?? row.type ?? 'Standard'}</td>
+              {/* Actions col */}
+              <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+                <div className='flex items-center justify-center'>
+                  <button
+                    disabled={!isChildSelected}
+                    className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                    style={{ border: '1px solid #E2E8F0', color: isChildSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isChildSelected ? 'pointer' : 'not-allowed', opacity: isChildSelected ? 1 : 0.5 }}
+                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.label ?? row.apiName ?? row.name ?? '', recordCount: undefined }); }}
+                  >
+                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
+                    </svg>
+                    Add Filter
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {/* Recursive children */}
+            {isChildExpanded && (
+              <ChildRows
+                crmId={crmId}
+                objectName={childKey}
+                depth={depth + 1}
+                selectedChildObjects={selectedChildObjects}
+                toggleChildObject={toggleChildObject}
+                includeChild={includeChild}
+                setIncludeChild={setIncludeChild}
+                setFilterPopup={setFilterPopup}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+          <td colSpan={6} className='px-5 py-2'>
+            <div className='flex items-center justify-between'>
+              <span className='text-xs text-gray-400'>
+                Showing {page * CHILD_PAGE_SIZE + 1}–{Math.min((page + 1) * CHILD_PAGE_SIZE, rows.length)} of {rows.length}
+              </span>
+              <div className='flex items-center gap-1'>
+                <button onClick={(e) => { e.stopPropagation(); setPage((p) => Math.max(0, p - 1)); }}
+                  disabled={page === 0}
+                  className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>‹</button>
+                {(() => {
+                  let start = Math.max(0, page - 2);
+                  const end = Math.min(totalPages - 1, start + 4);
+                  start = Math.max(0, end - 4);
+                  return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((i) => (
+                    <button key={i}
+                      onClick={(e) => { e.stopPropagation(); setPage(i); }}
+                      className='w-6 h-6 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
+                      style={{ background: page === i ? '#155DFC' : 'transparent', color: page === i ? 'white' : '#64748B' }}>
+                      {i + 1}
+                    </button>
+                  ));
+                })()}
+                <button onClick={(e) => { e.stopPropagation(); setPage((p) => Math.min(totalPages - 1, p + 1)); }}
+                  disabled={page >= totalPages - 1}
+                  className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>›</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
 
 function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boolean; onChange: (e: React.MouseEvent) => void }) {
   return (
@@ -121,7 +333,7 @@ function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boole
   );
 }
 
-export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
+export default function AddArchiveStep3({ crmId, destinationId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const archivalService = useArchivalService();
@@ -213,23 +425,21 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
   const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
 
-  // Inline preview state
+  // Inline expand state for top-level objects
   const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
-  const [childPage, setChildPage] = useState(0);
-  const CHILD_PAGE_SIZE = 5;
 
   // Include child toggle state — auto-on when object is selected
   const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
 
   const toggleIncludeChild = (objectId: string) => {
     setIncludeChild((prev) => {
-      const next = { ...prev, [objectId]: !prev[objectId] };
+      const next: Record<string, boolean> = { ...prev, [objectId]: !prev[objectId] };
       if (!next[objectId]) setExpandedObjectId((cur) => cur === objectId ? null : cur);
       return next;
     });
   };
 
-  // Selected child objects (keyed by childObjectApiName)
+  // Selected child objects shared across all tree levels
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
   const toggleChildObject = (key: string) => {
     setSelectedChildObjects((prev) => {
@@ -239,38 +449,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     });
   };
 
-  // Child objects query — fires when a row is expanded
-  const { data: childObjectsData, isLoading: isLoadingChilds } = useQuery({
-    queryKey: ['archival-object-childs', crmId, expandedObjectId],
-    queryFn: async () => {
-      const result = await archivalService.getObjectChilds(crmId ?? '', expandedObjectId ?? '');
-      const payload = (result as any)?.data ?? result;
-      const arr = (payload as any)?.childs ?? (payload as any)?.children ?? (payload as any)?.childObjects ?? payload;
-      return Array.isArray(arr) ? arr : [];
-    },
-    enabled: !!crmId && !!expandedObjectId,
-    staleTime: 5 * 60 * 1000,
-  });
-  const childRows: any[] = childObjectsData ?? [];
-
-  useEffect(() => {
-    if (childRows.length === 0) return;
-    const masterDetailKeys = childRows
-      .filter((r: any) => r.relationshipType === 'MasterDetail')
-      .map((r: any) => r.childObjectApiName ?? r.id);
-    if (masterDetailKeys.length === 0) return;
-    setSelectedChildObjects((prev) => {
-      const next = new Set(prev);
-      masterDetailKeys.forEach((k: string) => next.add(k));
-      return next;
-    });
-  }, [childObjectsData]);
-
   const togglePreview = (objectId: string) => {
-    setExpandedObjectId((cur) => {
-      if (cur !== objectId) setChildPage(0);
-      return cur === objectId ? null : objectId;
-    });
+    setExpandedObjectId((cur) => cur === objectId ? null : objectId);
   };
 
   const handleNext = () => {
@@ -309,6 +489,44 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         onApply={(objectId, conditions) => {
           setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
           setFilterPopup(null);
+          const obj = allObjects.find((o) => o.id === objectId);
+          archivalService.applyConfig({
+            crmId: crmId ?? '',
+            name: obj?.name ?? objectId,
+            description: '',
+            destinationId: destinationId ?? '',
+            objectNames: [objectId],
+            schedule: 'SCHEDULE',
+            objects: [{
+              name: objectId,
+              type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
+              condition: { type: 'AND' },
+              field: conditions
+                .filter((c) => c.field)
+                .map((c) => {
+                  const OPERATOR_MAP: Record<string, string> = {
+                    'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
+                    'does not contain': 'LIKE', 'starts with': 'LIKE',
+                    'greater than': '>', 'less than': '<',
+                    'greater than or equal': '>=', 'less than or equal': '<=',
+                    'in': 'IN',
+                  };
+                  const op = OPERATOR_MAP[c.operator] ?? c.operator;
+                  return { name: c.field, filter: { value: c.value, operator: op } };
+                }),
+            }],
+            backupStatus: 'DRAFT',
+            scheduleConfig: {
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              type: 'INCREMENTAL',
+              scheduling: {
+                frequency: 'HOURLY',
+                interval: 1,
+                startDate: new Date().toISOString().slice(0, 10),
+                startTime: '12:00',
+              },
+            },
+          }).catch(console.error);
         }}
         onClose={() => setFilterPopup(null)}
       />
@@ -548,121 +766,18 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           </div>
                         </td>
                       </tr>
-                      {/* ── Child rows (tree view) ── */}
+                      {/* ── Child rows (recursive tree) ── */}
                       {isExpanded && (
-                        isLoadingChilds ? (
-                          <tr key={`${obj.id}-loading`}>
-                            <td colSpan={6} className='py-3 pl-16' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                              <div className='flex items-center gap-2 text-xs text-gray-400'>
-                                <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
-                                Loading child records...
-                              </div>
-                            </td>
-                          </tr>
-                        ) : childRows.length === 0 ? (
-                          <tr key={`${obj.id}-empty`}>
-                            <td colSpan={6} className='py-3 pl-16 text-xs text-gray-400' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                              No child records found.
-                            </td>
-                          </tr>
-                        ) : (() => {
-                          const totalChildPages = Math.ceil(childRows.length / CHILD_PAGE_SIZE);
-                          const pagedRows = childRows.slice(childPage * CHILD_PAGE_SIZE, (childPage + 1) * CHILD_PAGE_SIZE);
-                          return (
-                            <>
-                              {pagedRows.map((row: any, idx: number) => {
-                                const childKey = row.childObjectApiName ?? row.id ?? String(idx);
-                                const isChildSelected = selectedChildObjects.has(childKey);
-                                return (
-                                <tr key={childKey}
-                                  className='hover:bg-blue-50/30 transition-colors'
-                                  style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                                  <td className='px-3 py-2.5' />
-                                  <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                      type='checkbox'
-                                      checked={isChildSelected}
-                                      onChange={() => toggleChildObject(childKey)}
-                                      className='w-4 h-4 accent-blue-600 cursor-pointer'
-                                    />
-                                  </td>
-                                  <td className='px-3 py-2.5'>
-                                    <div className='flex items-center gap-2 min-w-0' style={{ paddingLeft: 20 }}>
-                                      <span className='text-gray-300 flex-shrink-0' style={{ fontSize: 10 }}>└</span>
-                                      <span className='text-sm text-gray-700 truncate'>{row.childObjectApiName ?? row.name ?? row.Name ?? '--'}</span>
-                                      <span className='text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0'
-                                        style={{ background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>
-                                        {row.relationshipType ?? 'Child'}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className='px-3 py-2.5 text-center' onClick={(e) => e.stopPropagation()}>
-                                    <ToggleSwitch
-                                      on={!!includeChild[childKey]}
-                                      disabled={!isChildSelected}
-                                      onChange={(e) => { e.stopPropagation(); if (isChildSelected) setIncludeChild((p) => ({ ...p, [childKey]: !p[childKey] })); }}
-                                    />
-                                  </td>
-                                  <td className='px-3 py-2.5 text-xs' style={{ color: '#155DFC' }}>{row.objectType ?? row.type ?? 'Standard'}</td>
-                                  <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
-                                    <div className='flex items-center justify-center'>
-                                      <button
-                                        disabled={!isChildSelected}
-                                        className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
-                                        style={{ border: '1px solid #E2E8F0', color: isChildSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isChildSelected ? 'pointer' : 'not-allowed', opacity: isChildSelected ? 1 : 0.5 }}
-                                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.childObjectApiName ?? row.name ?? row.Name ?? '', recordCount: undefined }); }}
-                                      >
-                                        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                                          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-                                        </svg>
-                                        Add Filter
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ); })}
-                              {/* Child pagination row */}
-                              <tr key={`${obj.id}-child-pagination`} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                                <td colSpan={6} className='px-5 py-2'>
-                                  <div className='flex items-center justify-between'>
-                                    <span className='text-xs text-gray-400'>
-                                      Showing {childPage * CHILD_PAGE_SIZE + 1}–{Math.min((childPage + 1) * CHILD_PAGE_SIZE, childRows.length)} of {childRows.length}
-                                    </span>
-                                    <div className='flex items-center gap-1'>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setChildPage((p) => Math.max(0, p - 1)); }}
-                                        disabled={childPage === 0}
-                                        className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
-                                        ‹
-                                      </button>
-                                      {(() => {
-                                        const half = 2;
-                                        let start = Math.max(0, childPage - half);
-                                        let end = Math.min(totalChildPages - 1, start + 4);
-                                        start = Math.max(0, end - 4);
-                                        return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((i) => (
-                                          <button key={i}
-                                            onClick={(e) => { e.stopPropagation(); setChildPage(i); }}
-                                            className='w-6 h-6 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
-                                            style={{ background: childPage === i ? '#155DFC' : 'transparent', color: childPage === i ? 'white' : '#64748B' }}>
-                                            {i + 1}
-                                          </button>
-                                        ));
-                                      })()}
-                                      {totalChildPages > 5 && childPage < totalChildPages - 3 && <span className='text-gray-400 text-xs'>...</span>}
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setChildPage((p) => Math.min(totalChildPages - 1, p + 1)); }}
-                                        disabled={childPage >= totalChildPages - 1}
-                                        className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
-                                        ›
-                                      </button>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            </>
-                          );
-                        })()
+                        <ChildRows
+                          crmId={crmId ?? ''}
+                          objectName={obj.id}
+                          depth={1}
+                          selectedChildObjects={selectedChildObjects}
+                          toggleChildObject={toggleChildObject}
+                          includeChild={includeChild}
+                          setIncludeChild={setIncludeChild}
+                          setFilterPopup={setFilterPopup}
+                        />
                       )}
                       </React.Fragment>
                     );

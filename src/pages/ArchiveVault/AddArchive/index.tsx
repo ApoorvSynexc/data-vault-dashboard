@@ -55,6 +55,7 @@ export default function AddArchive() {
       {currentStep === 3 && (
         <Step3
           crmId={selectedConnection?.crmId ?? null}
+          destinationId={selectedDestConnection?.destinationId ?? null}
           initialSelectedObjects={selectedObjects}
           onNext={(objects) => {
             setSelectedObjects(objects);
