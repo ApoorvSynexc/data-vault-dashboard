@@ -7,6 +7,7 @@ import Step1 from './Step1';
 import Step2 from './Step2';
 import Step3 from './Step3';
 import Step4 from './Step4';
+import Step5 from './Step5';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -77,6 +78,22 @@ export default function AddArchive() {
             goNext();
           }}
           onBack={goBack}
+        />
+      )}
+      {currentStep === 5 && (
+        <Step5
+          crmId={selectedConnection?.crmId ?? null}
+          destinationId={selectedDestConnection?.destinationId ?? null}
+          crmName={selectedConnection?.crmProfile?.name ?? selectedConnection?.name ?? 'Salesforce Production'}
+          crmConnectionName={selectedConnection?.name ?? 'Salesforce Org'}
+          destinationProvider={selectedDestConnection?.provider ?? 'AWS S3'}
+          destinationName={selectedDestConnection?.name ?? 'Production Bucket'}
+          policyName={policyName}
+          description={description}
+          selectedObjects={selectedObjects}
+          scheduleConfig={scheduleConfig}
+          onBack={goBack}
+          onEditStep={(step) => setCurrentStep(step as 1 | 2 | 3 | 4 | 5)}
         />
       )}
     </div>
