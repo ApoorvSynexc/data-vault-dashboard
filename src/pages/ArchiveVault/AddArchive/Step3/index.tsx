@@ -296,13 +296,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     onNext?.(result);
   };
 
-  const getDataSize = (recordCount?: number) => {
-    if (!recordCount) return '--';
-    const kb = recordCount * 2;
-    if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(1)} GB`;
-    if (kb >= 1024) return `${(kb / 1024).toFixed(1)} MB`;
-    return `${kb} KB`;
-  };
 
   return (
     <>
@@ -412,14 +405,14 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             ) : (
               <table className='w-full border-collapse table-fixed'>
                 <colgroup>
-                  <col style={{ width: 44 }} />
-                  <col style={{ width: 60 }} />
-                  <col />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 240 }} />
+                  <col style={{ width: 44 }} />   {/* checkbox */}
+                  <col style={{ width: 56 }} />   {/* S.No */}
+                  <col />                          {/* Object — flex */}
+                  <col style={{ width: 130 }} />  {/* Include Child */}
+                  <col style={{ width: 120 }} />  {/* Type */}
+                  {/* <col style={{ width: 110 }} /> */}{/* Total Records */}
+                  {/* <col style={{ width: 100 }} /> */}{/* Estimated Data Size */}
+                  <col style={{ width: 220 }} />  {/* Actions */}
                 </colgroup>
                 <thead className='sticky top-0 z-10 bg-white'>
                   <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
@@ -428,8 +421,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object</th>
                     <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Include Child</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Type</th>
-                    <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Total Records</th>
-                    <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Estimated Data Size</th>
+                    {/* <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Total Records</th> */}
+                    {/* <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Estimated Data Size</th> */}
                     <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Actions</th>
                   </tr>
                 </thead>
@@ -522,12 +515,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                         <td className='px-3 py-3 text-sm' style={{ color: '#155DFC' }}>
                           {obj.isCustom ? 'Custom' : 'Standard'}
                         </td>
-                        <td className='px-3 py-3 text-sm text-gray-700 tabular-nums'>
+                        {/* <td className='px-3 py-3 text-sm text-gray-700 tabular-nums'>
                           {obj.recordCount !== undefined ? obj.recordCount.toLocaleString() : '--'}
-                        </td>
-                        <td className='px-3 py-3 text-sm text-gray-700'>
+                        </td> */}
+                        {/* <td className='px-3 py-3 text-sm text-gray-700'>
                           {getDataSize(obj.recordCount)}
-                        </td>
+                        </td> */}
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center justify-center gap-2'>
                             <button
@@ -559,7 +552,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                       {isExpanded && (
                         isLoadingChilds ? (
                           <tr key={`${obj.id}-loading`}>
-                            <td colSpan={8} className='py-3 pl-16' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                            <td colSpan={6} className='py-3 pl-16' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
                               <div className='flex items-center gap-2 text-xs text-gray-400'>
                                 <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
                                 Loading child records...
@@ -568,7 +561,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           </tr>
                         ) : childRows.length === 0 ? (
                           <tr key={`${obj.id}-empty`}>
-                            <td colSpan={8} className='py-3 pl-16 text-xs text-gray-400' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                            <td colSpan={6} className='py-3 pl-16 text-xs text-gray-400' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
                               No child records found.
                             </td>
                           </tr>
@@ -603,10 +596,14 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                       </span>
                                     </div>
                                   </td>
-                                  <td className='px-3 py-2.5' />
+                                  <td className='px-3 py-2.5 text-center' onClick={(e) => e.stopPropagation()}>
+                                    <ToggleSwitch
+                                      on={!!includeChild[childKey]}
+                                      disabled={!isChildSelected}
+                                      onChange={(e) => { e.stopPropagation(); if (isChildSelected) setIncludeChild((p) => ({ ...p, [childKey]: !p[childKey] })); }}
+                                    />
+                                  </td>
                                   <td className='px-3 py-2.5 text-xs' style={{ color: '#155DFC' }}>{row.objectType ?? row.type ?? 'Standard'}</td>
-                                  <td className='px-3 py-2.5 text-xs text-gray-400'>--</td>
-                                  <td className='px-3 py-2.5 text-xs text-gray-400'>--</td>
                                   <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
                                     <div className='flex items-center justify-center'>
                                       <button
@@ -626,7 +623,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                               ); })}
                               {/* Child pagination row */}
                               <tr key={`${obj.id}-child-pagination`} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-                                <td colSpan={8} className='px-5 py-2'>
+                                <td colSpan={6} className='px-5 py-2'>
                                   <div className='flex items-center justify-between'>
                                     <span className='text-xs text-gray-400'>
                                       Showing {childPage * CHILD_PAGE_SIZE + 1}–{Math.min((childPage + 1) * CHILD_PAGE_SIZE, childRows.length)} of {childRows.length}
@@ -671,7 +668,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     );
                   }) : (
                     <tr>
-                      <td colSpan={8} className='px-4 py-12 text-center text-sm text-gray-500'>
+                      <td colSpan={6} className='px-4 py-12 text-center text-sm text-gray-500'>
                         No objects found matching your search.
                       </td>
                     </tr>
