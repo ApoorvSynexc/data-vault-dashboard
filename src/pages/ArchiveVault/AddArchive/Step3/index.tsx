@@ -207,12 +207,17 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
           }
         };
 
+        // depth-based background and left accent color
+        const depthBg = depth % 2 === 1 ? '#F8FAFC' : '#F1F5F9';
+        const accentColors = ['#155DFC', '#8B5CF6', '#0EA5E9', '#10B981', '#F59E0B'];
+        const accentColor = accentColors[(depth - 1) % accentColors.length];
+
         return (
           <React.Fragment key={childKey}>
-            <tr className='hover:bg-blue-50/30 transition-colors'
-              style={{ background: '#F8FAFC', borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #F1F5F9' }}>
-              {/* empty checkbox col */}
-              <td className='px-3 py-2.5' />
+            <tr className='transition-colors'
+              style={{ background: depthBg, borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #E8EDF2' }}>
+              {/* left accent border in checkbox col */}
+              <td className='py-2.5' style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: 10 }} />
               {/* checkbox in S.No col */}
               <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
                 <div style={{ paddingLeft: depth * 20 }}>
@@ -223,16 +228,18 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
               {/* Object col */}
               <td className='px-3 py-2.5'>
                 <div className='flex items-center gap-2 min-w-0' style={{ paddingLeft: depth * 20 }}>
-                  <span className='flex-shrink-0 text-gray-300' style={{ fontSize: 11, letterSpacing: -1 }}>└─</span>
-                  <span className='text-sm text-gray-700 truncate'>{row.label ?? row.apiName ?? row.name ?? '--'}</span>
-                  <span className='text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0'
-                    style={{ background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>
-                    {row.relationshipType ?? 'Child'}
-                  </span>
+                  <span className='flex-shrink-0' style={{ color: accentColor, fontSize: 12, lineHeight: 1 }}>└─</span>
+                  <span className='text-sm text-gray-800 truncate font-medium'>{row.label ?? row.apiName ?? row.name ?? '--'}</span>
+                  {row.relationshipType && (
+                    <span className='text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 font-medium'
+                      style={{ background: `${accentColor}18`, color: accentColor }}>
+                      {row.relationshipType}
+                    </span>
+                  )}
                   {canExpand && (
                     <button onClick={(e) => { e.stopPropagation(); setExpandedChild((c) => c === childKey ? null : childKey); }}
-                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-gray-100'
-                      style={{ color: '#94A3B8' }}>
+                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-white/60'
+                      style={{ color: accentColor }}>
                       <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
                         style={{ transition: 'transform 0.2s', transform: isChildExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                         <polyline points='6 9 12 15 18 9' />
@@ -246,7 +253,7 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
                 <ToggleSwitch on={toggleOn} disabled={!isChildSelected} onChange={handleToggle} />
               </td>
               {/* Type col */}
-              <td className='px-3 py-2.5 text-xs' style={{ color: '#155DFC' }}>{row.objectType ?? row.type ?? 'Standard'}</td>
+              <td className='px-3 py-2.5 text-xs text-gray-500'>{row.objectType ?? row.type ?? 'Standard'}</td>
               {/* Actions col */}
               <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
                 <div className='flex items-center justify-center'>
@@ -282,7 +289,7 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
       })}
       {/* Pagination */}
       {totalPages > 1 && (
-        <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+        <tr style={{ background: depth % 2 === 1 ? '#F8FAFC' : '#F1F5F9', borderBottom: '1px solid #E8EDF2', borderLeft: `3px solid ${['#155DFC','#8B5CF6','#0EA5E9','#10B981','#F59E0B'][(depth-1)%5]}` }}>
           <td colSpan={6} className='px-5 py-2'>
             <div className='flex items-center justify-between'>
               <span className='text-xs text-gray-400'>
