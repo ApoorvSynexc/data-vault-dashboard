@@ -15,7 +15,9 @@ function generateDummyRows(objectName: string, count: number) {
   }));
 }
 
-export type FilterCondition = { id: string; field: string; operator: string; value: string };
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id';
+
+export type FilterCondition = { id: string; field: string; dataType: FieldDataType | null; operator: string; value: string };
 
 export interface FilterPopupProps {
   objectId: string;
@@ -27,17 +29,21 @@ export interface FilterPopupProps {
   onClose: () => void;
 }
 
-const OPERATORS = [
-  { label: 'equals', value: '=' },
-  { label: 'not equals', value: '!=' },
-  { label: 'contains', value: 'LIKE' },
-  { label: 'starts with', value: 'LIKE' },
-  { label: 'greater than', value: '>' },
-  { label: 'less than', value: '<' },
-  { label: 'greater than or equal', value: '>=' },
-  { label: 'less than or equal', value: '<=' },
-  { label: 'in', value: 'IN' },
-];
+type FilterOperator = '>' | '<' | '>=' | '<=' | '=' | '!=' | 'IN' | 'LIKE';
+
+const OP_LABELS: Record<FilterOperator, string> = {
+  '=': 'equals', '!=': 'not equals', '>': 'greater than', '<': 'less than',
+  '>=': 'greater than or equal', '<=': 'less than or equal', 'IN': 'in', 'LIKE': 'contains',
+};
+
+const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
+  string:   ['=', '!=', 'LIKE', 'IN'],
+  number:   ['=', '!=', '>', '<', '>=', '<='],
+  boolean:  ['=', '!='],
+  date:     ['=', '!=', '>', '<', '>=', '<='],
+  datetime: ['=', '!=', '>', '<', '>=', '<='],
+  id:       ['=', '!=', 'IN'],
+};
 
 export default function FilterPopup({
   objectId,
@@ -53,7 +59,7 @@ export default function FilterPopup({
   const [filterTab, setFilterTab] = useState<'Field Level' | 'SOQL'>('Field Level');
   const [matchMode, setMatchMode] = useState<'ALL conditions' | 'ANY condition' | 'Custom'>('ALL conditions');
   const [conditions, setConditions] = useState<FilterCondition[]>(
-    initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', operator: '=', value: '' }]
+    initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', dataType: null, operator: '=', value: '' }]
   );
   const [soqlQuery, setSoqlQuery] = useState('');
   const [customLogic, setCustomLogic] = useState('1 AND 2');
@@ -82,7 +88,7 @@ export default function FilterPopup({
   const fields = Array.isArray(fieldsData) ? fieldsData : [];
 
   const addCondition = () => {
-    setConditions((prev) => [...prev, { id: crypto.randomUUID(), field: '', operator: '=', value: '' }]);
+    setConditions((prev) => [...prev, { id: crypto.randomUUID(), field: '', dataType: null, operator: '=', value: '' }]);
   };
 
   const removeCondition = (id: string) => {
@@ -91,6 +97,14 @@ export default function FilterPopup({
 
   const updateCondition = (id: string, patch: Partial<FilterCondition>) => {
     setConditions((prev) => prev.map((c) => c.id === id ? { ...c, ...patch } : c));
+  };
+
+  const handleFieldChange = (id: string, apiName: string) => {
+    const matched = fields.find((f: any) => f.apiName === apiName);
+    const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
+    const dataType: FieldDataType | null = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+    const operator = OPERATORS_BY_TYPE[dataType ?? 'string'][0];
+    updateCondition(id, { field: apiName, dataType, operator, value: '' });
   };
 
   const clearAll = () => setConditions([]);
@@ -230,7 +244,7 @@ export default function FilterPopup({
                     <>
                       <select
                         value={cond.field}
-                        onChange={(e) => updateCondition(cond.id, { field: e.target.value })}
+                        onChange={(e) => handleFieldChange(cond.id, e.target.value)}
                         className='w-full appearance-none px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white pr-8'
                         style={{ border: '1px solid #E2E8F0', color: cond.field ? '#33363F' : '#94a3b8' }}
                       >
@@ -254,8 +268,8 @@ export default function FilterPopup({
                     className='w-full appearance-none px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white pr-8'
                     style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   >
-                    {OPERATORS.map((op) => (
-                      <option key={op.label} value={op.value}>{op.label}</option>
+                    {(OPERATORS_BY_TYPE[(cond.dataType?.toLowerCase() as FieldDataType) ?? 'string']).map((op) => (
+                      <option key={op} value={op}>{OP_LABELS[op]}</option>
                     ))}
                   </select>
                   <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
@@ -263,14 +277,33 @@ export default function FilterPopup({
                   </span>
                 </div>
 
-                {/* Value input */}
-                <input
-                  value={cond.value}
-                  onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
-                  placeholder='Value'
-                  className='flex-1 px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
-                  style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                />
+                {/* Value input — type-aware */}
+                {cond.dataType?.toLowerCase() === 'boolean' ? (
+                  <div className='relative flex-1'>
+                    <select
+                      value={cond.value}
+                      onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
+                      className='w-full appearance-none px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white pr-8'
+                      style={{ border: '1px solid #E2E8F0', color: cond.value ? '#33363F' : '#94a3b8' }}
+                    >
+                      <option value=''>Select</option>
+                      <option value='true'>True</option>
+                      <option value='false'>False</option>
+                    </select>
+                    <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
+                    </span>
+                  </div>
+                ) : (
+                  <input
+                    type={cond.dataType?.toLowerCase() === 'integer' ? 'number' : cond.dataType?.toLowerCase() === 'date' ? 'date' : cond.dataType?.toLowerCase() === 'datetime' ? 'datetime-local' : 'text'}
+                    value={cond.value}
+                    onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
+                    placeholder='Value'
+                    className='flex-1 px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
+                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                  />
+                )}
 
                 {/* Remove */}
                 <button onClick={() => removeCondition(cond.id)}
