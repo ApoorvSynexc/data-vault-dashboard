@@ -6,11 +6,27 @@ export const ARCHIVAL_ENDPOINTS = {
   config: '/v1/archival-config',
 } as const;
 
+export type ObjectScheduleConfig = {
+  timeZone: string;
+  type: string;
+  scheduling: {
+    frequency: string;
+    interval: number;
+    startDate?: string;
+    startTime?: string;
+    weekDays?: string[];
+    monthDate?: number;
+    selectedMonths?: string[];
+    endDate?: string;
+  };
+};
+
 export type ArchivalConfigObject = {
   name: string;
   type: 'STANDARD' | 'CUSTOM';
   condition: { type: 'AND' | 'OR' };
   field: { name: string; filter: { value: string; operator: string } }[];
+  scheduleConfig: ObjectScheduleConfig;
 };
 
 export type CreateArchivalConfigPayload = {
@@ -22,18 +38,6 @@ export type CreateArchivalConfigPayload = {
   schedule: string;
   objects: ArchivalConfigObject[];
   backupStatus: string;
-  scheduleConfig?: {
-    timeZone: string;
-    type: string;
-    scheduling: {
-      frequency: string;
-      interval: number;
-      startDate?: string;
-      startTime?: string;
-      weekDays?: string[];
-      monthDate?: string;
-    };
-  };
 };
 
 export type ArchivalField = {

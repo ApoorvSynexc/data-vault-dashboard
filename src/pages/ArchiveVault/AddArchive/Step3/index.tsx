@@ -6,6 +6,8 @@ import { useArchivalService } from '../../../../services/archival/archival.servi
 import { useDebounce } from '../../../../hooks/useDebounce';
 import FilterPopup from './FilterPopup';
 import type { FilterCondition } from './FilterPopup';
+import SchedulePopup from './SchedulePopup';
+import type { ScheduleConfig } from './SchedulePopup';
 
 const STEPS = [
   { id: 1, label: 'Source & Destination', icon: (a: boolean) => (
@@ -207,40 +209,50 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
           }
         };
 
-        // depth-based background and left accent color
-        const depthBg = depth % 2 === 1 ? '#F8FAFC' : '#F1F5F9';
-        const accentColors = ['#155DFC', '#8B5CF6', '#0EA5E9', '#10B981', '#F59E0B'];
+        const accentColors = ['#155DFC', '#7C3AED', '#0891B2', '#059669', '#D97706'];
         const accentColor = accentColors[(depth - 1) % accentColors.length];
+        const rowBg = isChildSelected
+          ? `${accentColor}08`
+          : depth === 1 ? '#FAFBFC' : depth === 2 ? '#F4F6F8' : '#EFF2F5';
 
         return (
           <React.Fragment key={childKey}>
-            <tr className='transition-colors'
-              style={{ background: depthBg, borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #E8EDF2' }}>
-              {/* left accent border in checkbox col */}
-              <td className='py-2.5' style={{ borderLeft: `3px solid ${accentColor}`, paddingLeft: 10 }} />
-              {/* checkbox in S.No col */}
-              <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+            <tr className='transition-all duration-150 group'
+              style={{ background: rowBg, borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #E8EDF2' }}>
+              {/* left accent stripe — thicker for selected */}
+              <td style={{
+                borderLeft: `${isChildSelected ? 4 : 3}px solid ${isChildSelected ? accentColor : accentColor + '60'}`,
+                paddingLeft: 8,
+                paddingTop: 0, paddingBottom: 0,
+                transition: 'border-color 0.15s',
+              }} />
+              {/* checkbox */}
+              <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
                 <div style={{ paddingLeft: depth * 20 }}>
                   <input type='checkbox' checked={isChildSelected} onChange={handleCheckbox}
                     className='w-4 h-4 accent-blue-600 cursor-pointer' />
                 </div>
               </td>
               {/* Object col */}
-              <td className='px-3 py-2.5'>
-                <div className='flex items-center gap-2 min-w-0' style={{ paddingLeft: depth * 20 }}>
-                  <span className='flex-shrink-0' style={{ color: accentColor, fontSize: 12, lineHeight: 1 }}>└─</span>
-                  <span className='text-sm text-gray-800 truncate font-medium'>{row.label ?? row.apiName ?? row.name ?? '--'}</span>
+              <td className='px-3 py-2'>
+                <div className='flex items-center gap-1.5 min-w-0' style={{ paddingLeft: depth * 20 }}>
+                  {/* tree connector */}
+                  <span className='flex-shrink-0 select-none' style={{ color: accentColor + '90', fontSize: 13, fontFamily: 'monospace', lineHeight: 1 }}>└</span>
+                  <span className='flex-shrink-0 select-none' style={{ color: accentColor + '60', fontSize: 11, fontFamily: 'monospace', lineHeight: 1, marginLeft: -2 }}>──</span>
+                  <span className={`text-sm truncate ${isChildSelected ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                    {row.label ?? row.apiName ?? row.name ?? '--'}
+                  </span>
                   {row.relationshipType && (
-                    <span className='text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 font-medium'
-                      style={{ background: `${accentColor}18`, color: accentColor }}>
+                    <span className='flex-shrink-0 text-xs px-1.5 py-0.5 rounded-md font-medium'
+                      style={{ background: `${accentColor}15`, color: accentColor, border: `1px solid ${accentColor}30` }}>
                       {row.relationshipType}
                     </span>
                   )}
                   {canExpand && (
                     <button onClick={(e) => { e.stopPropagation(); setExpandedChild((c) => c === childKey ? null : childKey); }}
-                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-white/60'
-                      style={{ color: accentColor }}>
-                      <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-all hover:scale-110'
+                      style={{ color: accentColor, background: `${accentColor}15` }}>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
                         style={{ transition: 'transform 0.2s', transform: isChildExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                         <polyline points='6 9 12 15 18 9' />
                       </svg>
@@ -248,22 +260,33 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
                   )}
                 </div>
               </td>
-              {/* Include Child toggle col */}
-              <td className='px-3 py-2.5 text-center' onClick={(e) => e.stopPropagation()}>
+              {/* Include Child toggle */}
+              <td className='px-3 py-2 text-center' onClick={(e) => e.stopPropagation()}>
                 <ToggleSwitch on={toggleOn} disabled={!isChildSelected} onChange={handleToggle} />
               </td>
-              {/* Type col */}
-              <td className='px-3 py-2.5 text-xs text-gray-500'>{row.objectType ?? row.type ?? 'Standard'}</td>
-              {/* Actions col */}
-              <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+              {/* Type */}
+              <td className='px-3 py-2'>
+                <span className='text-xs font-medium px-2 py-0.5 rounded-md'
+                  style={{ background: '#F1F5F9', color: '#64748B' }}>
+                  {row.objectType ?? row.type ?? 'Standard'}
+                </span>
+              </td>
+              {/* Actions */}
+              <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
                 <div className='flex items-center justify-center'>
                   <button
                     disabled={!isChildSelected}
-                    className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
-                    style={{ border: '1px solid #E2E8F0', color: isChildSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isChildSelected ? 'pointer' : 'not-allowed', opacity: isChildSelected ? 1 : 0.5 }}
+                    className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap'
+                    style={{
+                      border: `1px solid ${isChildSelected ? accentColor + '40' : '#E2E8F0'}`,
+                      color: isChildSelected ? accentColor : '#CBD5E1',
+                      background: isChildSelected ? `${accentColor}08` : 'white',
+                      cursor: isChildSelected ? 'pointer' : 'not-allowed',
+                      opacity: isChildSelected ? 1 : 0.5,
+                    }}
                     onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.label ?? row.apiName ?? row.name ?? '', recordCount: undefined }); }}
                   >
-                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                       <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
                     </svg>
                     Add Filter
@@ -289,8 +312,8 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
       })}
       {/* Pagination */}
       {totalPages > 1 && (
-        <tr style={{ background: depth % 2 === 1 ? '#F8FAFC' : '#F1F5F9', borderBottom: '1px solid #E8EDF2', borderLeft: `3px solid ${['#155DFC','#8B5CF6','#0EA5E9','#10B981','#F59E0B'][(depth-1)%5]}` }}>
-          <td colSpan={6} className='px-5 py-2'>
+        <tr style={{ background: depth === 1 ? '#FAFBFC' : depth === 2 ? '#F4F6F8' : '#EFF2F5', borderBottom: '1px solid #E8EDF2', borderLeft: `3px solid ${['#155DFC','#7C3AED','#0891B2','#059669','#D97706'][(depth-1)%5]}40` }}>
+          <td colSpan={6} className='px-4 py-1.5'>
             <div className='flex items-center justify-between'>
               <span className='text-xs text-gray-400'>
                 Showing {page * CHILD_PAGE_SIZE + 1}–{Math.min((page + 1) * CHILD_PAGE_SIZE, rows.length)} of {rows.length}
@@ -431,6 +454,8 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   // Filter popup state
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
   const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
+  const [schedulePopup, setSchedulePopup] = useState<{ objectId: string; objectName: string } | null>(null);
+  const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>({});
 
   // Inline expand state for top-level objects
   const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
@@ -458,6 +483,50 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
 
   const togglePreview = (objectId: string) => {
     setExpandedObjectId((cur) => cur === objectId ? null : objectId);
+  };
+
+  const OPERATOR_MAP: Record<string, string> = {
+    'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
+    'does not contain': 'LIKE', 'starts with': 'LIKE',
+    'greater than': '>', 'less than': '<',
+    'greater than or equal': '>=', 'less than or equal': '<=',
+    'in': 'IN',
+  };
+
+  const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    type: 'INCREMENTAL',
+    scheduling: {
+      frequency: 'HOURLY',
+      interval: 1,
+      startDate: new Date().toISOString().slice(0, 10),
+      startTime: '12:00',
+    },
+  };
+
+  const buildPayload = (objectId: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
+    const obj = allObjects.find((o) => o.id === objectId);
+    return {
+      crmId: crmId ?? '',
+      name: obj?.name ?? objectId,
+      description: '',
+      destinationId: destinationId ?? '',
+      objectNames: [objectId],
+      schedule: 'SCHEDULE',
+      objects: [{
+        name: objectId,
+        type: (obj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
+        condition: { type: 'AND' as const },
+        field: conditions
+          .filter((c) => c.field)
+          .map((c) => ({
+            name: c.field,
+            filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
+          })),
+        scheduleConfig,
+      }],
+      backupStatus: 'DRAFT',
+    };
   };
 
   const handleNext = () => {
@@ -496,46 +565,23 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
         onApply={(objectId, conditions) => {
           setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
           setFilterPopup(null);
-          const obj = allObjects.find((o) => o.id === objectId);
-          archivalService.applyConfig({
-            crmId: crmId ?? '',
-            name: obj?.name ?? objectId,
-            description: '',
-            destinationId: destinationId ?? '',
-            objectNames: [objectId],
-            schedule: 'SCHEDULE',
-            objects: [{
-              name: objectId,
-              type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
-              condition: { type: 'AND' },
-              field: conditions
-                .filter((c) => c.field)
-                .map((c) => {
-                  const OPERATOR_MAP: Record<string, string> = {
-                    'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
-                    'does not contain': 'LIKE', 'starts with': 'LIKE',
-                    'greater than': '>', 'less than': '<',
-                    'greater than or equal': '>=', 'less than or equal': '<=',
-                    'in': 'IN',
-                  };
-                  const op = OPERATOR_MAP[c.operator] ?? c.operator;
-                  return { name: c.field, filter: { value: c.value, operator: op } };
-                }),
-            }],
-            backupStatus: 'DRAFT',
-            scheduleConfig: {
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              type: 'INCREMENTAL',
-              scheduling: {
-                frequency: 'HOURLY',
-                interval: 1,
-                startDate: new Date().toISOString().slice(0, 10),
-                startTime: '12:00',
-              },
-            },
-          }).catch(console.error);
+          const schedule = objectSchedules[objectId] ?? DEFAULT_SCHEDULE_CONFIG;
+          archivalService.applyConfig(buildPayload(objectId, conditions, schedule)).catch(console.error);
         }}
         onClose={() => setFilterPopup(null)}
+      />
+    )}
+    {schedulePopup && (
+      <SchedulePopup
+        objectName={schedulePopup.objectName}
+        onApply={(config) => {
+          const objectId = schedulePopup.objectId;
+          setObjectSchedules((prev) => ({ ...prev, [objectId]: config }));
+          setSchedulePopup(null);
+          const conditions = objectFilters[objectId] ?? [];
+          archivalService.applyConfig(buildPayload(objectId, conditions, config)).catch(console.error);
+        }}
+        onClose={() => setSchedulePopup(null)}
       />
     )}
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -662,8 +708,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                     return (
                       <React.Fragment key={obj.id}>
                       <tr key={obj.id}
-                        className='transition-colors cursor-pointer'
-                        style={{ borderBottom: isExpanded ? 'none' : '1px solid #F1F5F9', background: isSelected ? 'rgba(21,93,252,0.03)' : 'white' }}
+                        className='transition-all cursor-pointer'
+                        style={{
+                          borderBottom: isExpanded ? 'none' : '1px solid #F1F5F9',
+                          background: isSelected ? 'rgba(21,93,252,0.04)' : 'white',
+                          borderLeft: isExpanded ? '3px solid #155DFC' : '3px solid transparent',
+                        }}
                         onClick={() => {
                           const next = new Set(selectedObjects);
                           if (isSelected) {
@@ -763,12 +813,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                               disabled={!isSelected}
                               className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
                               style={{ border: '1px solid #E2E8F0', color: isSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isSelected ? 'pointer' : 'not-allowed', opacity: isSelected ? 1 : 0.5 }}
-                              onClick={(e) => { e.stopPropagation(); }}
+                              onClick={(e) => { e.stopPropagation(); if (isSelected) setSchedulePopup({ objectId: obj.id, objectName: obj.name }); }}
                             >
                               <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                                 <rect x='3' y='4' width='18' height='18' rx='2' /><line x1='16' y1='2' x2='16' y2='6' /><line x1='8' y1='2' x2='8' y2='6' /><line x1='3' y1='10' x2='21' y2='10' />
                               </svg>
-                              Add Schedule
+                              {objectSchedules[obj.id] ? 'Edit Schedule' : 'Add Schedule'}
                             </button>
                           </div>
                         </td>
