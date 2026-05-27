@@ -28,15 +28,15 @@ export interface FilterPopupProps {
 }
 
 const OPERATORS = [
-  'equals',
-  'not equals',
-  'contains',
-  'does not contain',
-  'starts with',
-  'greater than',
-  'less than',
-  'is null',
-  'is not null',
+  { label: 'equals', value: '=' },
+  { label: 'not equals', value: '!=' },
+  { label: 'contains', value: 'LIKE' },
+  { label: 'starts with', value: 'LIKE' },
+  { label: 'greater than', value: '>' },
+  { label: 'less than', value: '<' },
+  { label: 'greater than or equal', value: '>=' },
+  { label: 'less than or equal', value: '<=' },
+  { label: 'in', value: 'IN' },
 ];
 
 export default function FilterPopup({
@@ -53,7 +53,7 @@ export default function FilterPopup({
   const [filterTab, setFilterTab] = useState<'Field Level' | 'SOQL'>('Field Level');
   const [matchMode, setMatchMode] = useState<'ALL conditions' | 'ANY condition' | 'Custom'>('ALL conditions');
   const [conditions, setConditions] = useState<FilterCondition[]>(
-    initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', operator: 'equals', value: '' }]
+    initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', operator: '=', value: '' }]
   );
   const [soqlQuery, setSoqlQuery] = useState('');
   const [customLogic, setCustomLogic] = useState('1 AND 2');
@@ -82,7 +82,7 @@ export default function FilterPopup({
   const fields = Array.isArray(fieldsData) ? fieldsData : [];
 
   const addCondition = () => {
-    setConditions((prev) => [...prev, { id: crypto.randomUUID(), field: '', operator: 'equals', value: '' }]);
+    setConditions((prev) => [...prev, { id: crypto.randomUUID(), field: '', operator: '=', value: '' }]);
   };
 
   const removeCondition = (id: string) => {
@@ -255,7 +255,7 @@ export default function FilterPopup({
                     style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   >
                     {OPERATORS.map((op) => (
-                      <option key={op} value={op}>{op}</option>
+                      <option key={op.label} value={op.value}>{op.label}</option>
                     ))}
                   </select>
                   <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
