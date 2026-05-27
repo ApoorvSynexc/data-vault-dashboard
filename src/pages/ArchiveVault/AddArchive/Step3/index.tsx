@@ -203,19 +203,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     }, 0);
   }, [selectedObjects, allObjects]);
 
-  const allPageSelected = displayObjects.length > 0 && displayObjects.every((o) => selectedObjects.has(o.id));
-  const somePageSelected = displayObjects.some((o) => selectedObjects.has(o.id));
-
-  const toggleAll = () => {
-    const next = new Set(selectedObjects);
-    if (allPageSelected) {
-      displayObjects.forEach((o) => next.delete(o.id));
-    } else {
-      displayObjects.forEach((o) => next.add(o.id));
-    }
-    setSelectedObjects(next);
-  };
-
   const clearAll = () => {
     setSelectedObjects(new Set());
     setIncludeChild({});
@@ -228,8 +215,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   // Inline preview state
   const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
-  const [previewPage, setPreviewPage] = useState(0);
-  const [previewLimit, setPreviewLimit] = useState(5);
+  const [childPage, setChildPage] = useState(0);
+  const CHILD_PAGE_SIZE = 5;
 
   // Include child toggle state — auto-on when object is selected
   const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
@@ -238,6 +225,16 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setIncludeChild((prev) => {
       const next = { ...prev, [objectId]: !prev[objectId] };
       if (!next[objectId]) setExpandedObjectId((cur) => cur === objectId ? null : cur);
+      return next;
+    });
+  };
+
+  // Selected child objects (keyed by childObjectApiName)
+  const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
+  const toggleChildObject = (key: string) => {
+    setSelectedChildObjects((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
@@ -256,13 +253,24 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   });
   const childRows: any[] = childObjectsData ?? [];
 
+  useEffect(() => {
+    if (childRows.length === 0) return;
+    const masterDetailKeys = childRows
+      .filter((r: any) => r.relationshipType === 'MasterDetail')
+      .map((r: any) => r.childObjectApiName ?? r.id);
+    if (masterDetailKeys.length === 0) return;
+    setSelectedChildObjects((prev) => {
+      const next = new Set(prev);
+      masterDetailKeys.forEach((k: string) => next.add(k));
+      return next;
+    });
+  }, [childObjectsData]);
+
   const togglePreview = (objectId: string) => {
-    if (expandedObjectId === objectId) {
-      setExpandedObjectId(null);
-    } else {
-      setExpandedObjectId(objectId);
-      setPreviewPage(0);
-    }
+    setExpandedObjectId((cur) => {
+      if (cur !== objectId) setChildPage(0);
+      return cur === objectId ? null : objectId;
+    });
   };
 
   const handleNext = () => {
@@ -415,17 +423,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 </colgroup>
                 <thead className='sticky top-0 z-10 bg-white'>
                   <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
-                    <th className='px-3 py-3'>
-                      <input
-                        type='checkbox'
-                        checked={allPageSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = somePageSelected && !allPageSelected;
-                        }}
-                        onChange={toggleAll}
-                        className='w-4 h-4 accent-blue-600 cursor-pointer'
-                      />
-                    </th>
+                    <th className='px-3 py-3' />
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>S.No.</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object</th>
                     <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Include Child</th>
@@ -442,8 +440,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     const isChild = !!obj.parentObject;
 
                     const isExpanded = expandedObjectId === obj.id;
-                    const totalPreviewPages = Math.ceil(childRows.length / previewLimit);
-                    const previewRows = childRows.slice(previewPage * previewLimit, (previewPage + 1) * previewLimit);
 
                     return (
                       <React.Fragment key={obj.id}>
@@ -535,9 +531,10 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center justify-center gap-2'>
                             <button
-                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-gray-50 whitespace-nowrap'
-                              style={{ border: '1px solid #E2E8F0', color: '#64748B', background: 'white' }}
-                              onClick={(e) => { e.stopPropagation(); setFilterPopup({ objectId: obj.id, objectName: obj.name, recordCount: obj.recordCount }); }}
+                              disabled={!isSelected}
+                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                              style={{ border: '1px solid #E2E8F0', color: isSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isSelected ? 'pointer' : 'not-allowed', opacity: isSelected ? 1 : 0.5 }}
+                              onClick={(e) => { e.stopPropagation(); if (isSelected) setFilterPopup({ objectId: obj.id, objectName: obj.name, recordCount: obj.recordCount }); }}
                             >
                               <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                                 <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
@@ -545,8 +542,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                               Add Filter
                             </button>
                             <button
-                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-gray-50 whitespace-nowrap'
-                              style={{ border: '1px solid #E2E8F0', color: '#64748B', background: 'white' }}
+                              disabled={!isSelected}
+                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                              style={{ border: '1px solid #E2E8F0', color: isSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isSelected ? 'pointer' : 'not-allowed', opacity: isSelected ? 1 : 0.5 }}
                               onClick={(e) => { e.stopPropagation(); }}
                             >
                               <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -557,96 +555,117 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           </div>
                         </td>
                       </tr>
-                      {/* ── Inline preview rows ── */}
+                      {/* ── Child rows (tree view) ── */}
                       {isExpanded && (
-                        <tr key={`${obj.id}-preview`}>
-                          <td colSpan={8} className='p-0' style={{ borderBottom: '1px solid #F1F5F9' }}>
-                            <div style={{ background: '#F8FAFC' }}>
-                              {/* Preview header */}
-                              <div className='flex items-center justify-between px-5 py-2 border-b border-gray-100'>
-                                <span className='text-xs font-semibold text-gray-500'>
-                                  Preview — <span style={{ color: '#155DFC' }}>{childRows.length}</span> child records of {obj.name}
-                                </span>
-                                <div className='flex items-center gap-2'>
-                                  <span className='text-xs text-gray-400'>Rows per page</span>
-                                  <div className='relative'>
-                                    <select
-                                      value={previewLimit}
-                                      onChange={(e) => { setPreviewLimit(Number(e.target.value)); setPreviewPage(0); }}
-                                      className='appearance-none pl-3 pr-6 py-1 text-xs rounded-lg bg-white outline-none'
-                                      style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {[5, 10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-                                    </select>
-                                    <span className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400'>
-                                      <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
+                        isLoadingChilds ? (
+                          <tr key={`${obj.id}-loading`}>
+                            <td colSpan={8} className='py-3 pl-16' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                              <div className='flex items-center gap-2 text-xs text-gray-400'>
+                                <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
+                                Loading child records...
+                              </div>
+                            </td>
+                          </tr>
+                        ) : childRows.length === 0 ? (
+                          <tr key={`${obj.id}-empty`}>
+                            <td colSpan={8} className='py-3 pl-16 text-xs text-gray-400' style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                              No child records found.
+                            </td>
+                          </tr>
+                        ) : (() => {
+                          const totalChildPages = Math.ceil(childRows.length / CHILD_PAGE_SIZE);
+                          const pagedRows = childRows.slice(childPage * CHILD_PAGE_SIZE, (childPage + 1) * CHILD_PAGE_SIZE);
+                          return (
+                            <>
+                              {pagedRows.map((row: any, idx: number) => {
+                                const childKey = row.childObjectApiName ?? row.id ?? String(idx);
+                                const isChildSelected = selectedChildObjects.has(childKey);
+                                return (
+                                <tr key={childKey}
+                                  className='hover:bg-blue-50/30 transition-colors'
+                                  style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                                  <td className='px-3 py-2.5' />
+                                  <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type='checkbox'
+                                      checked={isChildSelected}
+                                      onChange={() => toggleChildObject(childKey)}
+                                      className='w-4 h-4 accent-blue-600 cursor-pointer'
+                                    />
+                                  </td>
+                                  <td className='px-3 py-2.5'>
+                                    <div className='flex items-center gap-2 min-w-0' style={{ paddingLeft: 20 }}>
+                                      <span className='text-gray-300 flex-shrink-0' style={{ fontSize: 10 }}>└</span>
+                                      <span className='text-sm text-gray-700 truncate'>{row.childObjectApiName ?? row.name ?? row.Name ?? '--'}</span>
+                                      <span className='text-xs font-medium px-1.5 py-0.5 rounded-full flex-shrink-0'
+                                        style={{ background: 'rgba(245,158,11,0.1)', color: '#D97706' }}>
+                                        {row.relationshipType ?? 'Child'}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className='px-3 py-2.5' />
+                                  <td className='px-3 py-2.5 text-xs' style={{ color: '#155DFC' }}>{row.objectType ?? row.type ?? 'Standard'}</td>
+                                  <td className='px-3 py-2.5 text-xs text-gray-400'>--</td>
+                                  <td className='px-3 py-2.5 text-xs text-gray-400'>--</td>
+                                  <td className='px-3 py-2.5' onClick={(e) => e.stopPropagation()}>
+                                    <div className='flex items-center justify-center'>
+                                      <button
+                                        disabled={!isChildSelected}
+                                        className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                                        style={{ border: '1px solid #E2E8F0', color: isChildSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isChildSelected ? 'pointer' : 'not-allowed', opacity: isChildSelected ? 1 : 0.5 }}
+                                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.childObjectApiName ?? row.name ?? row.Name ?? '', recordCount: undefined }); }}
+                                      >
+                                        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                                          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
+                                        </svg>
+                                        Add Filter
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ); })}
+                              {/* Child pagination row */}
+                              <tr key={`${obj.id}-child-pagination`} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                                <td colSpan={8} className='px-5 py-2'>
+                                  <div className='flex items-center justify-between'>
+                                    <span className='text-xs text-gray-400'>
+                                      Showing {childPage * CHILD_PAGE_SIZE + 1}–{Math.min((childPage + 1) * CHILD_PAGE_SIZE, childRows.length)} of {childRows.length}
                                     </span>
+                                    <div className='flex items-center gap-1'>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setChildPage((p) => Math.max(0, p - 1)); }}
+                                        disabled={childPage === 0}
+                                        className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
+                                        ‹
+                                      </button>
+                                      {(() => {
+                                        const half = 2;
+                                        let start = Math.max(0, childPage - half);
+                                        let end = Math.min(totalChildPages - 1, start + 4);
+                                        start = Math.max(0, end - 4);
+                                        return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((i) => (
+                                          <button key={i}
+                                            onClick={(e) => { e.stopPropagation(); setChildPage(i); }}
+                                            className='w-6 h-6 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
+                                            style={{ background: childPage === i ? '#155DFC' : 'transparent', color: childPage === i ? 'white' : '#64748B' }}>
+                                            {i + 1}
+                                          </button>
+                                        ));
+                                      })()}
+                                      {totalChildPages > 5 && childPage < totalChildPages - 3 && <span className='text-gray-400 text-xs'>...</span>}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setChildPage((p) => Math.min(totalChildPages - 1, p + 1)); }}
+                                        disabled={childPage >= totalChildPages - 1}
+                                        className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
+                                        ›
+                                      </button>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                              {/* Mini table */}
-                              <table className='w-full border-collapse text-xs'>
-                                <thead>
-                                  <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                                    {['#', 'ID', 'Name', 'Created Date', 'Owner', 'Type'].map((col) => (
-                                      <th key={col} className='px-5 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap'>
-                                        {col}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {isLoadingChilds ? (
-                                    <tr><td colSpan={6} className='px-5 py-6 text-center'>
-                                      <div className='flex items-center justify-center gap-2 text-gray-400 text-xs'>
-                                        <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
-                                        Loading child records...
-                                      </div>
-                                    </td></tr>
-                                  ) : previewRows.length === 0 ? (
-                                    <tr><td colSpan={6} className='px-5 py-6 text-center text-xs text-gray-400'>No child records found.</td></tr>
-                                  ) : previewRows.map((row: any, idx: number) => (
-                                    <tr key={row.id ?? row.Id ?? idx} className='hover:bg-blue-50/40 transition-colors' style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                      <td className='px-5 py-2 text-gray-400 tabular-nums'>{previewPage * previewLimit + idx + 1}</td>
-                                      <td className='px-5 py-2 text-gray-500 font-mono truncate' style={{ maxWidth: 160 }}>{row.id ?? row.Id ?? '--'}</td>
-                                      <td className='px-5 py-2 text-gray-800 font-medium whitespace-nowrap'>{row.name ?? row.Name ?? '--'}</td>
-                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.createdDate ?? row.CreatedDate ?? '--'}</td>
-                                      <td className='px-5 py-2 text-gray-600 whitespace-nowrap'>{row.owner ?? row.Owner ?? row.OwnerId ?? '--'}</td>
-                                      <td className='px-5 py-2 text-gray-500 whitespace-nowrap'>{row.type ?? row.Type ?? row.objectType ?? '--'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              {/* Preview pagination */}
-                              <div className='flex items-center justify-between px-5 py-2 border-t border-gray-100'>
-                                <span className='text-xs text-gray-400'>
-                                  Showing {previewPage * previewLimit + 1}–{Math.min((previewPage + 1) * previewLimit, childRows.length)} of {childRows.length}
-                                </span>
-                                <div className='flex items-center gap-1'>
-                                  <button onClick={(e) => { e.stopPropagation(); setPreviewPage((p) => Math.max(0, p - 1)); }}
-                                    disabled={previewPage === 0}
-                                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
-                                    ‹
-                                  </button>
-                                  {Array.from({ length: Math.min(totalPreviewPages, 5) }, (_, i) => i).map((i) => (
-                                    <button key={i} onClick={(e) => { e.stopPropagation(); setPreviewPage(i); }}
-                                      className='w-6 h-6 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
-                                      style={{ background: previewPage === i ? '#155DFC' : 'transparent', color: previewPage === i ? 'white' : '#64748B' }}>
-                                      {i + 1}
-                                    </button>
-                                  ))}
-                                  {totalPreviewPages > 5 && <span className='text-gray-400 text-xs'>...</span>}
-                                  <button onClick={(e) => { e.stopPropagation(); setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1)); }}
-                                    disabled={previewPage >= totalPreviewPages - 1}
-                                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>
-                                    ›
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                                </td>
+                              </tr>
+                            </>
+                          );
+                        })()
                       )}
                       </React.Fragment>
                     );
