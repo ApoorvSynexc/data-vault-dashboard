@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { SelectedArchiveObject } from '../Step3';
 import type { ArchiveScheduleConfig } from '../Step4';
+import ProgressBar from '../ProgressBar';
 
 interface Step5Props {
   crmId?: string | null;
@@ -18,55 +19,6 @@ interface Step5Props {
   onEditStep: (step: number) => void;
 }
 
-const STEPS = [
-  { id: 1, label: 'Source & Destination' },
-  { id: 2, label: 'Define Archive' },
-  { id: 3, label: 'Data' },
-  { id: 4, label: 'Schedule' },
-  { id: 5, label: 'Review' },
-];
-
-const activeStep = 5;
-
-function ProgressBar() {
-  return (
-    <div className='flex-shrink-0 bg-white rounded-2xl px-5 py-4 flex flex-col gap-3'
-      style={{ border: '0.8px solid rgba(0,0,0,0.1)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-      <div className='flex items-center w-full'>
-        {STEPS.map((step, idx) => {
-          const isActive = step.id === activeStep;
-          const isDone = step.id < activeStep;
-          return (
-            <div key={step.id} className='flex items-center flex-1 min-w-0'>
-              <div className='flex items-center gap-2 min-w-0'>
-                <div className='flex-shrink-0 flex items-center justify-center rounded-full'
-                  style={{ width: 34, height: 34, background: isActive ? '#059669' : isDone ? '#155DFC' : '#F1F5F9' }}>
-                  {isDone
-                    ? <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12' /></svg>
-                    : isActive
-                      ? <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12' /></svg>
-                      : <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#62748E' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                          <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' /><polyline points='14 2 14 8 20 8' />
-                        </svg>
-                  }
-                </div>
-                <span className='text-xs font-medium truncate' style={{ color: isActive ? '#059669' : isDone ? '#33363F' : '#62748E' }}>
-                  {step.label}
-                </span>
-              </div>
-              {idx < STEPS.length - 1 && (
-                <div className='flex-1 mx-2 h-px rounded-full' style={{ background: '#E2E8F0', minWidth: 12 }} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className='w-full h-1.5 rounded-full' style={{ background: 'rgba(0,0,0,0.08)' }}>
-        <div className='h-full rounded-full' style={{ background: '#155DFC', width: '100%' }} />
-      </div>
-    </div>
-  );
-}
 
 const freqLabel: Record<string, string> = {
   ONCE: 'One Time', HOURLY: 'Hourly', DAILY: 'Daily',
@@ -189,7 +141,7 @@ export default function Step5({
         </div>
 
         {/* Progress bar */}
-        <ProgressBar />
+        <ProgressBar activeStep={5} />
 
         {/* Main card */}
         <div className='bg-white rounded-xl flex-shrink-0'
