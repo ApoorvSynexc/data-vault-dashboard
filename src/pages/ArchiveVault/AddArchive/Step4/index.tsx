@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
+import { useArchivalService } from '../../../../services/archival/archival.service';
+import type { SelectedArchiveObject } from '../Step3';
 import ProgressBar from '../ProgressBar';
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
@@ -22,6 +24,11 @@ export type ArchiveScheduleConfig = {
 };
 
 interface Step4Props {
+  crmId?: string | null;
+  destinationId?: string | null;
+  policyName?: string;
+  description?: string;
+  selectedObjects?: SelectedArchiveObject[];
   initialScheduleConfig?: ArchiveScheduleConfig | null;
   onNext: (scheduleConfig: ArchiveScheduleConfig) => void;
   onBack: () => void;
@@ -36,9 +43,21 @@ const freqBackMap: Record<string, FrequencyType> = { ONCE: 'One Time', HOURLY: '
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+const OPERATOR_MAP: Record<string, string> = {
+  'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
+  'does not contain': 'LIKE', 'starts with': 'LIKE',
+  'greater than': '>', 'less than': '<',
+  'greater than or equal': '>=', 'less than or equal': '<=',
+  'in': 'IN',
+};
 
-export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Props) {
+export default function Step4({ crmId, destinationId, policyName = '', description = '', selectedObjects = [], initialScheduleConfig, onNext, onBack }: Step4Props) {
   const navigate = useNavigate();
+  const archivalService = useArchivalService();
+
+  const scheduledObjects = selectedObjects.filter((o) => !!o.scheduleConfig);
+  const unscheduledObjects = selectedObjects.filter((o) => !o.scheduleConfig);
+  const allScheduled = unscheduledObjects.length === 0;
 
   const init = () => {
     if (initialScheduleConfig?.scheduling) {
@@ -80,23 +99,15 @@ export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Pr
   const [endDate, setEndDate] = useState(initial.endDate);
   const [backupIn, setBackupIn] = useState('1 Hour');
   const [archiveFrequency, setArchiveFrequency] = useState('Daily');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const inputCls = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white';
 
-  const handleNext = () => {
-    if (frequency !== 'One Time' && !startDate) { alert('Please select a start date'); return; }
-    if (frequency !== 'One Time' && !startTime) { alert('Please select a starting time'); return; }
-    if (frequency === 'One Time' && runMode === 'scheduleRun' && !startDate) { alert('Please select a start date'); return; }
-    if (frequency === 'One Time' && runMode === 'scheduleRun' && !startTime) { alert('Please select a starting time'); return; }
-    if (frequency === 'Weekly' && selectedDays.length === 0) { alert('Please select at least one day'); return; }
-    if (frequency === 'Monthly' && selectedMonths.length === 0) { alert('Please select at least one month'); return; }
-    if (frequency === 'Custom' && !endDate) { alert('Please select an end date for custom schedule'); return; }
-
+  const buildScheduleConfig = (): ArchiveScheduleConfig => {
     const scheduling: any = {
       frequency: frequency === 'One Time' ? 'ONCE' : frequency.toUpperCase(),
       interval: 1,
     };
-
     if (frequency === 'One Time') {
       if (runMode === 'scheduleRun') { scheduling.startDate = startDate; scheduling.startTime = startTime; }
     } else if (frequency === 'Hourly') {
@@ -114,8 +125,63 @@ export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Pr
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
     }
+    return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
+  };
 
-    onNext({ timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling });
+  const buildObjectPayload = (obj: SelectedArchiveObject, schedCfg: ArchiveScheduleConfig | null) => {
+    const payload = obj.archivalPayload;
+    return {
+      crmId: crmId ?? '',
+      name: policyName || obj.name,
+      description,
+      destinationId: destinationId ?? '',
+      objectNames: [obj.id],
+      schedule: 'SCHEDULE',
+      ...(schedCfg ? { scheduleConfig: schedCfg } : {}),
+      objects: [{
+        name: obj.id,
+        type: obj.type,
+        condition: payload?.condition ?? { type: 'AND' as const },
+        field: (payload?.field ?? []).map((f) => ({
+          name: f.name,
+          filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
+        })),
+        ...(schedCfg ? { scheduleConfig: schedCfg } : {}),
+        ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
+      }],
+      backupStatus: 'DRAFT',
+    };
+  };
+
+  const handleNext = async () => {
+    if (!allScheduled) {
+      if (frequency !== 'One Time' && !startDate) { alert('Please select a start date'); return; }
+      if (frequency !== 'One Time' && !startTime) { alert('Please select a starting time'); return; }
+      if (frequency === 'One Time' && runMode === 'scheduleRun' && !startDate) { alert('Please select a start date'); return; }
+      if (frequency === 'One Time' && runMode === 'scheduleRun' && !startTime) { alert('Please select a starting time'); return; }
+      if (frequency === 'Weekly' && selectedDays.length === 0) { alert('Please select at least one day'); return; }
+      if (frequency === 'Monthly' && selectedMonths.length === 0) { alert('Please select at least one month'); return; }
+      if (frequency === 'Custom' && !endDate) { alert('Please select an end date for custom schedule'); return; }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const globalConfig = allScheduled ? null : buildScheduleConfig();
+
+      await Promise.all(selectedObjects.map((obj) => {
+        const schedCfg: ArchiveScheduleConfig | null = obj.scheduleConfig
+          ? { timeZone: obj.scheduleConfig.timeZone, type: obj.scheduleConfig.type, scheduling: obj.scheduleConfig.scheduling }
+          : globalConfig;
+        return archivalService.applyConfig(buildObjectPayload(obj, schedCfg));
+      }));
+
+      onNext(globalConfig ?? (selectedObjects[0]?.scheduleConfig as ArchiveScheduleConfig) ?? buildScheduleConfig());
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save archive configuration. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -147,59 +213,276 @@ export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Pr
           </span>
         </div>
 
-        {/* Card */}
-        <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-1 min-h-0'
-          style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-
-          {/* Frequency tabs */}
-          <div className='flex gap-2 flex-wrap'>
-            {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
-              <button key={freq} onClick={() => setFrequency(freq)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
-                {freq}
-              </button>
-            ))}
+        {/* Already-scheduled objects summary */}
+        {scheduledObjects.length > 0 && (
+          <div className='rounded-xl flex flex-col gap-3 flex-shrink-0'
+            style={{ border: '1px solid #BBF7D0', background: '#F0FDF4', padding: '16px 20px' }}>
+            <div className='flex items-center gap-2'>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='20 6 9 17 4 12' />
+              </svg>
+              <span className='text-sm font-semibold text-green-800'>
+                {scheduledObjects.length === selectedObjects.length
+                  ? 'All objects already have a schedule assigned'
+                  : `${scheduledObjects.length} of ${selectedObjects.length} object${selectedObjects.length > 1 ? 's' : ''} already have a schedule assigned`}
+              </span>
+            </div>
+            <div className='flex flex-col gap-2'>
+              {scheduledObjects.map((obj) => {
+                const s = obj.scheduleConfig!;
+                const freqLabel = freqBackMap[s.scheduling.frequency] ?? s.scheduling.frequency;
+                const timeStr = s.scheduling.startTime ? ` at ${s.scheduling.startTime}` : '';
+                const dateStr = s.scheduling.startDate ? ` from ${s.scheduling.startDate}` : '';
+                return (
+                  <div key={obj.uuid} className='flex items-center gap-3 px-3 py-2 rounded-lg bg-white'
+                    style={{ border: '1px solid #D1FAE5' }}>
+                    <div className='w-2 h-2 rounded-full bg-green-500 flex-shrink-0' />
+                    <span className='text-sm font-medium text-gray-800 flex-1'>{obj.name}</span>
+                    <span className='text-xs text-gray-500 flex-shrink-0'>
+                      {freqLabel}{timeStr}{dateStr} · {s.timeZone}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )}
 
-          {/* Content area */}
-          <div className='flex-1 min-h-0 overflow-y-auto'>
+        {/* Schedule form — only shown if some objects need a schedule */}
+        {!allScheduled && (
+          <>
+            {unscheduledObjects.length < selectedObjects.length && (
+              <div className='rounded-xl flex-shrink-0 flex items-center gap-3 px-4 py-3'
+                style={{ border: '1px solid #BFDBFE', background: '#EFF6FF' }}>
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#2563EB' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                  <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                </svg>
+                <span className='text-sm text-blue-800'>
+                  The schedule below will apply to{' '}
+                  <span className='font-semibold'>
+                    {unscheduledObjects.map((o) => o.name).join(', ')}
+                  </span>
+                </span>
+              </div>
+            )}
 
-            {/* One Time */}
-            {frequency === 'One Time' && (
-              <div className='space-y-5 w-full'>
-                <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3'>
-                  <svg className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' fill='currentColor' viewBox='0 0 20 20'>
-                    <path fillRule='evenodd' d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z' clipRule='evenodd' />
-                  </svg>
-                  <p className='text-sm text-blue-700'>If you chooses this option, you may not able to automate this archive in future, this option is best suitable for one time archive.</p>
-                </div>
-                <div className='flex gap-4'>
-                  <label className='flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex-1'
-                    style={{ borderColor: runMode === 'runNow' ? '#3b82f6' : '#d1d5db', background: runMode === 'runNow' ? '#eff6ff' : 'transparent' }}>
-                    <input type='radio' name='runMode' value='runNow' checked={runMode === 'runNow'} onChange={() => setRunMode('runNow')} className='mt-1 flex-shrink-0' />
-                    <div>
-                      <p className='font-semibold text-gray-900 text-sm'>Archive Now</p>
-                      <p className='text-sm text-gray-500 mt-0.5'>Archive will run once hit Archive Button</p>
+            <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-1 min-h-0'
+              style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
+              {/* Frequency tabs */}
+              <div className='flex gap-2 flex-wrap'>
+                {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
+                  <button key={freq} onClick={() => setFrequency(freq)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
+                    {freq}
+                  </button>
+                ))}
+              </div>
+
+              <div className='flex-1 min-h-0 overflow-y-auto'>
+
+                {/* One Time */}
+                {frequency === 'One Time' && (
+                  <div className='space-y-5 w-full'>
+                    <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3'>
+                      <svg className='w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5' fill='currentColor' viewBox='0 0 20 20'>
+                        <path fillRule='evenodd' d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z' clipRule='evenodd' />
+                      </svg>
+                      <p className='text-sm text-blue-700'>If you choose this option, you may not be able to automate this archive in future. This option is best suitable for one time archive.</p>
                     </div>
-                  </label>
-                  <label className='flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex-1'
-                    style={{ borderColor: runMode === 'scheduleRun' ? '#3b82f6' : '#d1d5db', background: runMode === 'scheduleRun' ? '#eff6ff' : 'transparent' }}>
-                    <input type='radio' name='runMode' value='scheduleRun' checked={runMode === 'scheduleRun'} onChange={() => setRunMode('scheduleRun')} className='mt-1 flex-shrink-0' />
-                    <div>
-                      <p className='font-semibold text-gray-900 text-sm'>Schedule Archive</p>
-                      <p className='text-sm text-gray-500 mt-0.5'>Archive will run at scheduled time</p>
+                    <div className='flex gap-4'>
+                      <label className='flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex-1'
+                        style={{ borderColor: runMode === 'runNow' ? '#3b82f6' : '#d1d5db', background: runMode === 'runNow' ? '#eff6ff' : 'transparent' }}>
+                        <input type='radio' name='runMode' value='runNow' checked={runMode === 'runNow'} onChange={() => setRunMode('runNow')} className='mt-1 flex-shrink-0' />
+                        <div>
+                          <p className='font-semibold text-gray-900 text-sm'>Archive Now</p>
+                          <p className='text-sm text-gray-500 mt-0.5'>Archive will run once hit Archive Button</p>
+                        </div>
+                      </label>
+                      <label className='flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors flex-1'
+                        style={{ borderColor: runMode === 'scheduleRun' ? '#3b82f6' : '#d1d5db', background: runMode === 'scheduleRun' ? '#eff6ff' : 'transparent' }}>
+                        <input type='radio' name='runMode' value='scheduleRun' checked={runMode === 'scheduleRun'} onChange={() => setRunMode('scheduleRun')} className='mt-1 flex-shrink-0' />
+                        <div>
+                          <p className='font-semibold text-gray-900 text-sm'>Schedule Archive</p>
+                          <p className='text-sm text-gray-500 mt-0.5'>Archive will run at scheduled time</p>
+                        </div>
+                      </label>
                     </div>
-                  </label>
-                </div>
-                {runMode === 'scheduleRun' && (
-                  <div className='space-y-5 pt-4 border-t border-gray-100'>
+                    {runMode === 'scheduleRun' && (
+                      <div className='space-y-5 pt-4 border-t border-gray-100'>
+                        <div className='grid grid-cols-2 gap-5'>
+                          <div>
+                            <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
+                            <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                          </div>
+                          <div>
+                            <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                            <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                          <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
+                            {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Hourly */}
+                {frequency === 'Hourly' && (
+                  <div className='space-y-5 w-full'>
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
-                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive in Every</label>
+                        <select value={backupIn} onChange={(e) => setBackupIn(e.target.value)} className={inputCls}>
+                          <option>1 Hour</option><option>2 Hours</option><option>6 Hours</option><option>12 Hours</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
+                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
                         <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
                       </div>
                       <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Daily */}
+                {frequency === 'Daily' && (
+                  <div className='space-y-5 w-full'>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
+                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Weekly */}
+                {frequency === 'Weekly' && (
+                  <div className='space-y-5 w-full'>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Days</label>
+                      <div className='flex gap-2 flex-wrap'>
+                        {ALL_DAYS.map((day) => (
+                          <button key={day}
+                            onClick={() => setSelectedDays((p) => p.includes(day) ? p.filter((d) => d !== day) : [...p, day])}
+                            className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedDays.includes(day) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
+                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Monthly */}
+                {frequency === 'Monthly' && (
+                  <div className='space-y-5 w-full'>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Months</label>
+                      <div className='flex gap-2 flex-wrap'>
+                        {ALL_MONTHS.map((month) => (
+                          <button key={month}
+                            onClick={() => setSelectedMonths((p) => p.includes(month) ? p.filter((m) => m !== month) : [...p, month])}
+                            className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                            {month}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
+                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                            <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
+                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
+                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom */}
+                {frequency === 'Custom' && (
+                  <div className='space-y-5 w-full'>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On Date</label>
+                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
+                        <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+                      </div>
+                    </div>
+                    <div className='grid grid-cols-2 gap-5'>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive Frequency</label>
+                        <select value={archiveFrequency} onChange={(e) => setArchiveFrequency(e.target.value)} className={inputCls}>
+                          <option>Daily</option><option>Weekly</option><option>Monthly</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
                         <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
                       </div>
                     </div>
@@ -211,175 +494,28 @@ export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Pr
                     </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Hourly */}
-            {frequency === 'Hourly' && (
-              <div className='space-y-5 w-full'>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive in Every</label>
-                    <select value={backupIn} onChange={(e) => setBackupIn(e.target.value)} className={inputCls}>
-                      <option>1 Hour</option><option>2 Hours</option><option>6 Hours</option><option>12 Hours</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                    <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                      {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                    <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
               </div>
-            )}
+            </div>
+          </>
+        )}
 
-            {/* Daily */}
-            {frequency === 'Daily' && (
-              <div className='space-y-5 w-full'>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                    <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                      {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                  <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
-                </div>
-              </div>
-            )}
-
-            {/* Weekly */}
-            {frequency === 'Weekly' && (
-              <div className='space-y-5 w-full'>
-                <div>
-                  <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Days</label>
-                  <div className='flex gap-2 flex-wrap'>
-                    {ALL_DAYS.map((day) => (
-                      <button key={day}
-                        onClick={() => setSelectedDays((p) => p.includes(day) ? p.filter((d) => d !== day) : [...p, day])}
-                        className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedDays.includes(day) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                    <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                      {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                  <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
-                </div>
-              </div>
-            )}
-
-            {/* Monthly */}
-            {frequency === 'Monthly' && (
-              <div className='space-y-5 w-full'>
-                <div>
-                  <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Months</label>
-                  <div className='flex gap-2 flex-wrap'>
-                    {ALL_MONTHS.map((month) => (
-                      <button key={month}
-                        onClick={() => setSelectedMonths((p) => p.includes(month) ? p.filter((m) => m !== month) : [...p, month])}
-                        className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                        {month}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
-                    <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                    <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                      {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                    <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Custom */}
-            {frequency === 'Custom' && (
-              <div className='space-y-5 w-full'>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On Date</label>
-                    <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
-                    <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-                <div className='grid grid-cols-2 gap-5'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive Frequency</label>
-                    <select value={archiveFrequency} onChange={(e) => setArchiveFrequency(e.target.value)} className={inputCls}>
-                      <option>Daily</option><option>Weekly</option><option>Monthly</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
-                  </div>
-                </div>
-                <div>
-                  <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                  <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                    {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                  </select>
-                </div>
-              </div>
-            )}
-
+        {/* All scheduled — full-page confirmation */}
+        {allScheduled && selectedObjects.length > 0 && (
+          <div className='bg-white rounded-xl flex flex-col items-center justify-center gap-4 flex-1 py-12'
+            style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <div className='w-14 h-14 rounded-full flex items-center justify-center' style={{ background: '#DCFCE7' }}>
+              <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='20 6 9 17 4 12' />
+              </svg>
+            </div>
+            <div className='text-center'>
+              <p className='text-lg font-bold text-gray-900'>All schedules are set</p>
+              <p className='text-sm text-gray-500 mt-1'>Every selected object already has a schedule. Click Next to proceed.</p>
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
 
       {/* Sticky Footer */}
@@ -399,9 +535,10 @@ export default function Step4({ initialScheduleConfig, onNext, onBack }: Step4Pr
           </button>
           <button
             onClick={handleNext}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            disabled={isSubmitting}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${isSubmitting ? 'bg-blue-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
           >
-            Next →
+            {isSubmitting ? 'Saving...' : 'Next →'}
           </button>
         </div>
       </div>
