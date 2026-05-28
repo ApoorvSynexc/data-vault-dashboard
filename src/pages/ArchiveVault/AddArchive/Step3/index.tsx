@@ -55,12 +55,13 @@ interface ChildRowsProps {
   selectedChildObjects: Set<string>;
   toggleChildObject: (key: string) => void;
   registerChildApiName: (uuid: string, apiName: string) => void;
+  objectFilters: Record<string, import('./FilterPopup').FilterCondition[]>;
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, registerChildApiName, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, registerChildApiName, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -72,26 +73,31 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
     staleTime: 5 * 60 * 1000,
   });
 
-  const rows: any[] = data ?? [];
+  const rawRows: any[] = data ?? [];
 
-  // Reset page when object changes
-  useEffect(() => { setPage(0); }, [objectName]);
-
-  // Register uuid→apiName mapping and auto-select MasterDetail children when data arrives
+  // Register uuid→apiName when data arrives; auto-select MasterDetail children once
   const autoSelectedRef = React.useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!data || rows.length === 0) return;
-    // Always register every row's uuid→apiName so payload can use the correct API name
-    rows.forEach((r: any) => registerChildApiName(r.uuid as string, r.apiName as string));
-    const toSelect = rows
+    if (!data || rawRows.length === 0) return;
+    rawRows.forEach((r: any) => registerChildApiName(r.uuid as string, r.apiName as string));
+    const toSelect = rawRows
       .filter((r: any) => r.relationshipType === 'MasterDetail')
       .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !autoSelectedRef.current.has(k));
     if (toSelect.length === 0) return;
-    toSelect.forEach((k: string) => autoSelectedRef.current.add(k));
+    toSelect.forEach((k: string) => { autoSelectedRef.current.add(k); });
     setSelectedChildObjects_safe(toSelect);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // Selected rows float to top, rest follow in original order
+  const rows = React.useMemo(() => [
+    ...rawRows.filter((r: any) => selectedChildObjects.has(r.uuid as string)),
+    ...rawRows.filter((r: any) => !selectedChildObjects.has(r.uuid as string)),
+  ], [rawRows, selectedChildObjects]);
+
+  // Reset page when object changes
+  useEffect(() => { setPage(0); }, [objectName]);
 
   // Stable setter that doesn't need toggleChildObject in deps
   const setSelectedChildObjects_safe = (keys: string[]) => {
@@ -210,23 +216,28 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
               {/* Actions */}
               <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
                 <div className='flex items-center justify-center'>
-                  <button
-                    disabled={!isChildSelected}
-                    className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap'
-                    style={{
-                      border: `1px solid ${isChildSelected ? accentColor + '40' : '#E2E8F0'}`,
-                      color: isChildSelected ? accentColor : '#CBD5E1',
-                      background: isChildSelected ? `${accentColor}08` : 'white',
-                      cursor: isChildSelected ? 'pointer' : 'not-allowed',
-                      opacity: isChildSelected ? 1 : 0.5,
-                    }}
-                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined }); }}
-                  >
-                    <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-                    </svg>
-                    Add Filter
-                  </button>
+                  {(() => {
+                    const hasFilter = isChildSelected && (objectFilters[childKey]?.some((c) => c.field) ?? false);
+                    return (
+                      <button
+                        disabled={!isChildSelected}
+                        className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap'
+                        style={{
+                          border: `1px solid ${!isChildSelected ? '#E2E8F0' : hasFilter ? '#155DFC' : accentColor + '40'}`,
+                          color: !isChildSelected ? '#CBD5E1' : hasFilter ? '#fff' : accentColor,
+                          background: !isChildSelected ? 'white' : hasFilter ? '#155DFC' : `${accentColor}08`,
+                          cursor: isChildSelected ? 'pointer' : 'not-allowed',
+                          opacity: isChildSelected ? 1 : 0.5,
+                        }}
+                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined }); }}
+                      >
+                        <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
+                        </svg>
+                        {hasFilter ? 'Filter Applied' : 'Add Filter'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </td>
             </tr>
@@ -239,6 +250,8 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
                 selectedChildObjects={selectedChildObjects}
                 toggleChildObject={toggleChildObject}
                 registerChildApiName={registerChildApiName}
+
+                objectFilters={objectFilters}
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
                 setFilterPopup={setFilterPopup}
@@ -317,9 +330,14 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     queryKey: ['archive-objects-all', crmId],
     queryFn: async () => {
       const response = await backupConfigService.getObjectList(crmId ?? '', 'SCHEDULE');
-      return response;
+      // Attach a stable uuid to each parent object for selection/state keying
+      return (response as any[]).map((obj: any) => ({
+        ...obj,
+        uuid: obj.uuid ?? crypto.randomUUID(),
+      }));
     },
     enabled: !!crmId,
+    staleTime: Infinity,
   });
 
   const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
@@ -377,7 +395,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   const totalSelected = selectedObjects.size;
   const totalEstRecords = useMemo(() => {
     return Array.from(selectedObjects).reduce((sum, id) => {
-      const obj = allObjects.find((o) => o.id === id);
+      const obj = allObjects.find((o) => o.uuid === id);
       return sum + (obj?.recordCount ?? 0);
     }, 0);
   }, [selectedObjects, allObjects]);
@@ -391,6 +409,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   // Filter popup state
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
   const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
+  const [filterError, setFilterError] = useState<string | null>(null);
   const [schedulePopup, setSchedulePopup] = useState<{ objectId: string; objectName: string } | null>(null);
   const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>({});
 
@@ -423,6 +442,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   const registerChildApiName = (uuid: string, apiName: string) => {
     setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
   };
+
 
   const togglePreview = (objectId: string) => {
     setExpandedObjectId((cur) => cur === objectId ? null : objectId);
@@ -486,6 +506,17 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   };
 
   const handleNext = () => {
+    const missingParent = Array.from(selectedObjects).find(
+      (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
+    );
+    const missingChild = Array.from(selectedChildObjects).find(
+      (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
+    );
+    if (missingParent || missingChild) {
+      setFilterError('All selected objects must have at least one filter applied before proceeding.');
+      return;
+    }
+    setFilterError(null);
     const children = Array.from(selectedChildObjects).map((childKey) =>
       buildChildEntry(childKey, objectFilters[childKey] ?? [])
     );
@@ -509,6 +540,15 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
         },
       };
     });
+
+    // Fire one API call per selected parent object with combined filters + schedule + children
+    Array.from(selectedObjects).forEach((uuid) => {
+      const obj = allObjects.find((o) => o.uuid === uuid);
+      const conditions = objectFilters[uuid] ?? [];
+      const schedule = objectSchedules[obj?.id ?? uuid] ?? DEFAULT_SCHEDULE_CONFIG;
+      archivalService.applyConfig(buildPayload(obj?.id ?? uuid, conditions, schedule)).catch(console.error);
+    });
+
     onNext?.(result);
   };
 
@@ -525,8 +565,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
         onApply={(objectId, conditions) => {
           setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
           setFilterPopup(null);
-          const schedule = objectSchedules[objectId] ?? DEFAULT_SCHEDULE_CONFIG;
-          archivalService.applyConfig(buildPayload(objectId, conditions, schedule)).catch(console.error);
         }}
         onClose={() => setFilterPopup(null)}
       />
@@ -538,8 +576,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
           const objectId = schedulePopup.objectId;
           setObjectSchedules((prev) => ({ ...prev, [objectId]: config }));
           setSchedulePopup(null);
-          const conditions = objectFilters[objectId] ?? [];
-          archivalService.applyConfig(buildPayload(objectId, conditions, config)).catch(console.error);
         }}
         onClose={() => setSchedulePopup(null)}
       />
@@ -659,15 +695,15 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                 </thead>
                 <tbody>
                   {displayObjects.length > 0 ? displayObjects.map((obj) => {
-                    const isSelected = selectedObjects.has(obj.id);
+                    const isSelected = selectedObjects.has(obj.uuid);
                     const isParent = !obj.parentObject && (obj.relatedObjects?.length ?? 0) > 0;
                     const isChild = !!obj.parentObject;
 
-                    const isExpanded = expandedObjectId === obj.id;
+                    const isExpanded = expandedObjectId === obj.uuid;
 
                     return (
-                      <React.Fragment key={obj.id}>
-                      <tr key={obj.id}
+                      <React.Fragment key={obj.uuid}>
+                      <tr key={obj.uuid}
                         className='transition-all cursor-pointer'
                         style={{
                           borderBottom: isExpanded ? 'none' : '1px solid #F1F5F9',
@@ -677,12 +713,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                         onClick={() => {
                           const next = new Set(selectedObjects);
                           if (isSelected) {
-                            next.delete(obj.id);
-                            setIncludeChild((p) => { const n = { ...p }; delete n[obj.id]; return n; });
-                            setExpandedObjectId((cur) => cur === obj.id ? null : cur);
+                            next.delete(obj.uuid);
+                            setIncludeChild((p) => { const n = { ...p }; delete n[obj.uuid]; return n; });
+                            setExpandedObjectId((cur) => cur === obj.uuid ? null : cur);
                           } else {
-                            next.add(obj.id);
-                            setIncludeChild((p) => ({ ...p, [obj.id]: true }));
+                            next.add(obj.uuid);
+                            setIncludeChild((p) => ({ ...p, [obj.uuid]: true }));
                           }
                           setSelectedObjects(next);
                         }}>
@@ -691,12 +727,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                             onChange={() => {
                               const next = new Set(selectedObjects);
                               if (isSelected) {
-                                next.delete(obj.id);
-                                setIncludeChild((p) => { const n = { ...p }; delete n[obj.id]; return n; });
-                                setExpandedObjectId((cur) => cur === obj.id ? null : cur);
+                                next.delete(obj.uuid);
+                                setIncludeChild((p) => { const n = { ...p }; delete n[obj.uuid]; return n; });
+                                setExpandedObjectId((cur) => cur === obj.uuid ? null : cur);
                               } else {
-                                next.add(obj.id);
-                                setIncludeChild((p) => ({ ...p, [obj.id]: true }));
+                                next.add(obj.uuid);
+                                setIncludeChild((p) => ({ ...p, [obj.uuid]: true }));
                               }
                               setSelectedObjects(next);
                             }}
@@ -722,9 +758,9 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                                 Child of {obj.parentObject}
                               </span>
                             )}
-                            {isSelected && includeChild[obj.id] && (
+                            {isSelected && includeChild[obj.uuid] && (
                               <button
-                                onClick={(e) => { e.stopPropagation(); togglePreview(obj.id); }}
+                                onClick={(e) => { e.stopPropagation(); togglePreview(obj.uuid); }}
                                 className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-colors hover:bg-gray-100'
                                 style={{ color: '#94A3B8' }}
                                 title='Preview records'
@@ -742,9 +778,9 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                         </td>
                         <td className='px-3 py-3 text-center' onClick={(e) => e.stopPropagation()}>
                           <ToggleSwitch
-                            on={!!includeChild[obj.id]}
+                            on={!!includeChild[obj.uuid]}
                             disabled={!isSelected}
-                            onChange={(e) => { e.stopPropagation(); if (isSelected) toggleIncludeChild(obj.id); }}
+                            onChange={(e) => { e.stopPropagation(); if (isSelected) toggleIncludeChild(obj.uuid); }}
                           />
                         </td>
                         <td className='px-3 py-3 text-sm' style={{ color: '#155DFC' }}>
@@ -758,17 +794,28 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                         </td> */}
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center justify-center gap-2'>
-                            <button
-                              disabled={!isSelected}
-                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
-                              style={{ border: '1px solid #E2E8F0', color: isSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isSelected ? 'pointer' : 'not-allowed', opacity: isSelected ? 1 : 0.5 }}
-                              onClick={(e) => { e.stopPropagation(); if (isSelected) setFilterPopup({ objectId: obj.id, objectName: obj.name, recordCount: obj.recordCount }); }}
-                            >
-                              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                                <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-                              </svg>
-                              Add Filter
-                            </button>
+                            {(() => {
+                              const hasFilter = isSelected && (objectFilters[obj.uuid]?.some((c) => c.field) ?? false);
+                              return (
+                                <button
+                                  disabled={!isSelected}
+                                  className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                                  style={{
+                                    border: `1px solid ${!isSelected ? '#E2E8F0' : hasFilter ? '#155DFC' : '#E2E8F0'}`,
+                                    color: !isSelected ? '#CBD5E1' : hasFilter ? '#fff' : '#64748B',
+                                    background: !isSelected ? 'white' : hasFilter ? '#155DFC' : 'white',
+                                    cursor: isSelected ? 'pointer' : 'not-allowed',
+                                    opacity: isSelected ? 1 : 0.5,
+                                  }}
+                                  onClick={(e) => { e.stopPropagation(); if (isSelected) setFilterPopup({ objectId: obj.uuid, objectName: obj.name, recordCount: obj.recordCount }); }}
+                                >
+                                  <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                                    <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
+                                  </svg>
+                                  {hasFilter ? 'Filter Applied' : 'Add Filter'}
+                                </button>
+                              );
+                            })()}
                             <button
                               disabled={!isSelected}
                               className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
@@ -782,6 +829,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                             </button>
                           </div>
                         </td>
+
                       </tr>
                       {/* ── Child rows (recursive tree) ── */}
                       {isExpanded && (
@@ -792,6 +840,8 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                           selectedChildObjects={selectedChildObjects}
                           toggleChildObject={toggleChildObject}
                           registerChildApiName={registerChildApiName}
+          
+                          objectFilters={objectFilters}
                           includeChild={includeChild}
                           setIncludeChild={setIncludeChild}
                           setFilterPopup={setFilterPopup}
@@ -838,7 +888,17 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
       </div>
 
       {/* Sticky Footer */}
-      <div className='flex-shrink-0 flex justify-between gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200'>
+      <div className='flex-shrink-0 flex flex-col gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200'>
+        {filterError && (
+          <div className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium'
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+              <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+            </svg>
+            {filterError}
+          </div>
+        )}
+        <div className='flex justify-between gap-4'>
         <button
           onClick={() => navigate('/archive-vault')}
           className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
@@ -859,6 +919,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
           >
             Next →
           </button>
+        </div>
         </div>
       </div>
     </div>
