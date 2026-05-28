@@ -367,11 +367,14 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     queryKey: ['archive-objects-all', crmId],
     queryFn: async () => {
       const response = await backupConfigService.getObjectList(crmId ?? '', 'SCHEDULE');
-      // Attach a stable uuid to each parent object for selection/state keying
-      return (response as any[]).map((obj: any) => ({
-        ...obj,
-        uuid: obj.uuid ?? crypto.randomUUID(),
-      }));
+      // Stable uuid per object: prefer server uuid, then reuse from initialSelectedObjects by id, then generate once
+      return (response as any[]).map((obj: any) => {
+        const existing = initialSelectedObjects.find((o) => o.id === (obj.id ?? obj.apiName));
+        return {
+          ...obj,
+          uuid: obj.uuid ?? existing?.uuid ?? crypto.randomUUID(),
+        };
+      });
     },
     enabled: !!crmId,
     staleTime: Infinity,
@@ -447,7 +450,13 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
   const [schedulePopup, setSchedulePopup] = useState<{ objectId: string; objectName: string } | null>(null);
-  const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>({});
+  const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>(() => {
+    const schedules: Record<string, ScheduleConfig> = {};
+    initialSelectedObjects.forEach((o) => {
+      if (o.scheduleConfig) schedules[o.uuid ?? o.id] = o.scheduleConfig;
+    });
+    return schedules;
+  });
 
   // Inline expand state for top-level objects
   const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
@@ -524,10 +533,10 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     }
     setFilterError(null);
     const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((uuid) => {
-      const obj = allObjects.find((o) => o.uuid === uuid);
+      const obj = allObjects.find((o) => o.uuid === uuid) ?? allObjects.find((o) => o.id === uuid);
       const conditions = objectFilters[uuid] ?? [];
       const children = buildChildTree(uuid);
-      const schedule = objectSchedules[obj?.id ?? uuid];
+      const schedule = objectSchedules[uuid];
       return {
         uuid,
         id: obj?.id ?? uuid,
@@ -815,17 +824,28 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                 </button>
                               );
                             })()}
-                            <button
-                              disabled={!isSelected}
-                              className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
-                              style={{ border: '1px solid #E2E8F0', color: isSelected ? '#64748B' : '#CBD5E1', background: 'white', cursor: isSelected ? 'pointer' : 'not-allowed', opacity: isSelected ? 1 : 0.5 }}
-                              onClick={(e) => { e.stopPropagation(); if (isSelected) setSchedulePopup({ objectId: obj.id, objectName: obj.name }); }}
-                            >
-                              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                                <rect x='3' y='4' width='18' height='18' rx='2' /><line x1='16' y1='2' x2='16' y2='6' /><line x1='8' y1='2' x2='8' y2='6' /><line x1='3' y1='10' x2='21' y2='10' />
-                              </svg>
-                              {objectSchedules[obj.id] ? 'Edit Schedule' : 'Add Schedule'}
-                            </button>
+                            {(() => {
+                              const hasSchedule = isSelected && !!objectSchedules[obj.uuid];
+                              return (
+                                <button
+                                  disabled={!isSelected}
+                                  className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
+                                  style={{
+                                    border: `1px solid ${!isSelected ? '#E2E8F0' : hasSchedule ? '#155DFC' : '#E2E8F0'}`,
+                                    color: !isSelected ? '#CBD5E1' : hasSchedule ? '#fff' : '#64748B',
+                                    background: !isSelected ? 'white' : hasSchedule ? '#155DFC' : 'white',
+                                    cursor: isSelected ? 'pointer' : 'not-allowed',
+                                    opacity: isSelected ? 1 : 0.5,
+                                  }}
+                                  onClick={(e) => { e.stopPropagation(); if (isSelected) setSchedulePopup({ objectId: obj.uuid, objectName: obj.name }); }}
+                                >
+                                  <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                                    <rect x='3' y='4' width='18' height='18' rx='2' /><line x1='16' y1='2' x2='16' y2='6' /><line x1='8' y1='2' x2='8' y2='6' /><line x1='3' y1='10' x2='21' y2='10' />
+                                  </svg>
+                                  {hasSchedule ? 'Edit Schedule' : 'Add Schedule'}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </td>
 

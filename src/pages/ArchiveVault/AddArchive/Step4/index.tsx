@@ -128,8 +128,10 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
   };
 
-  const buildObjectPayload = (obj: SelectedArchiveObject, schedCfg: ArchiveScheduleConfig | null) => {
+  const buildObjectPayload = (obj: SelectedArchiveObject, globalSchedule: ArchiveScheduleConfig | null) => {
     const payload = obj.archivalPayload;
+    // per-object schedule only if explicitly set in Step3; global schedule goes top-level only
+    const perObjectSchedule = obj.scheduleConfig ?? null;
     return {
       crmId: crmId ?? '',
       name: policyName || obj.name,
@@ -137,7 +139,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       destinationId: destinationId ?? '',
       objectNames: [obj.id],
       schedule: 'SCHEDULE',
-      ...(schedCfg ? { scheduleConfig: schedCfg } : {}),
+      ...(globalSchedule ? { scheduleConfig: globalSchedule } : {}),
       objects: [{
         name: obj.id,
         type: obj.type,
@@ -146,7 +148,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
           name: f.name,
           filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
         })),
-        ...(schedCfg ? { scheduleConfig: schedCfg } : {}),
+        ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
         ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
       }],
       backupStatus: 'DRAFT',
@@ -168,12 +170,9 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     try {
       const globalConfig = allScheduled ? null : buildScheduleConfig();
 
-      await Promise.all(selectedObjects.map((obj) => {
-        const schedCfg: ArchiveScheduleConfig | null = obj.scheduleConfig
-          ? { timeZone: obj.scheduleConfig.timeZone, type: obj.scheduleConfig.type, scheduling: obj.scheduleConfig.scheduling }
-          : globalConfig;
-        return archivalService.applyConfig(buildObjectPayload(obj, schedCfg));
-      }));
+      await Promise.all(selectedObjects.map((obj) =>
+        archivalService.applyConfig(buildObjectPayload(obj, globalConfig))
+      ));
 
       onNext(globalConfig ?? (selectedObjects[0]?.scheduleConfig as ArchiveScheduleConfig) ?? buildScheduleConfig());
     } catch (err) {
