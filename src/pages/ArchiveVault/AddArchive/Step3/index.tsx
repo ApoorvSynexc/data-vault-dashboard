@@ -51,17 +51,19 @@ const CHILD_PAGE_SIZE = 5;
 interface ChildRowsProps {
   crmId: string;
   objectName: string;
+  parentUuid: string;
   depth: number;
   selectedChildObjects: Set<string>;
   toggleChildObject: (key: string) => void;
   registerChildApiName: (uuid: string, apiName: string) => void;
+  registerChildParent: (childUuid: string, parentUuid: string) => void;
   objectFilters: Record<string, import('./FilterPopup').FilterCondition[]>;
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, registerChildApiName, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildParent, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -75,11 +77,14 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
 
   const rawRows: any[] = data ?? [];
 
-  // Register uuid→apiName when data arrives; auto-select MasterDetail children once
+  // Register uuid→apiName and uuid→parentUuid when data arrives; auto-select MasterDetail children once
   const autoSelectedRef = React.useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!data || rawRows.length === 0) return;
-    rawRows.forEach((r: any) => registerChildApiName(r.uuid as string, r.apiName as string));
+    rawRows.forEach((r: any) => {
+      registerChildApiName(r.uuid as string, r.apiName as string);
+      registerChildParent(r.uuid as string, parentUuid);
+    });
     const toSelect = rawRows
       .filter((r: any) => r.relationshipType === 'MasterDetail')
       .map((r: any) => r.uuid as string)
@@ -246,11 +251,12 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
               <ChildRows
                 crmId={crmId}
                 objectName={row.apiName as string}
+                parentUuid={childKey}
                 depth={depth + 1}
                 selectedChildObjects={selectedChildObjects}
                 toggleChildObject={toggleChildObject}
                 registerChildApiName={registerChildApiName}
-
+                registerChildParent={registerChildParent}
                 objectFilters={objectFilters}
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
@@ -443,6 +449,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
   };
 
+  // uuid → parentUuid registry, for building nested tree in payload
+  const [childParents, setChildParents] = useState<Record<string, string>>({});
+  const registerChildParent = (childUuid: string, parentUuid: string) => {
+    setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
+  };
+
 
   const togglePreview = (objectId: string) => {
     setExpandedObjectId((cur) => cur === objectId ? null : objectId);
@@ -467,20 +479,22 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     },
   };
 
-  const buildChildEntry = (childKey: string, childFilters: FilterCondition[]) => ({
-    name: childApiNames[childKey] ?? childKey,
-    type: 'STANDARD' as const,
-    condition: { type: 'AND' as const },
-    field: childFilters
-      .filter((c) => c.field)
-      .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
-  });
+  const buildChildTree = (parentUuid: string): any[] =>
+    Array.from(selectedChildObjects)
+      .filter((uuid) => childParents[uuid] === parentUuid)
+      .map((uuid) => ({
+        name: childApiNames[uuid] ?? uuid,
+        type: 'STANDARD' as const,
+        condition: { type: 'AND' as const },
+        field: (objectFilters[uuid] ?? [])
+          .filter((c) => c.field)
+          .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
+        children: buildChildTree(uuid),
+      }));
 
-  const buildPayload = (objectId: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
+  const buildPayload = (objectId: string, objectUuid: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
     const obj = allObjects.find((o) => o.id === objectId);
-    const children = Array.from(selectedChildObjects).map((childKey) =>
-      buildChildEntry(childKey, objectFilters[childKey] ?? [])
-    );
+    const children = buildChildTree(objectUuid);
     return {
       crmId: crmId ?? '',
       name: obj?.name ?? objectId,
@@ -517,12 +531,10 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
       return;
     }
     setFilterError(null);
-    const children = Array.from(selectedChildObjects).map((childKey) =>
-      buildChildEntry(childKey, objectFilters[childKey] ?? [])
-    );
     const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((uuid) => {
       const obj = allObjects.find((o) => o.uuid === uuid);
       const conditions = objectFilters[uuid] ?? [];
+      const children = buildChildTree(uuid);
       return {
         uuid,
         id: obj?.id ?? uuid,
@@ -546,7 +558,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
       const obj = allObjects.find((o) => o.uuid === uuid);
       const conditions = objectFilters[uuid] ?? [];
       const schedule = objectSchedules[obj?.id ?? uuid] ?? DEFAULT_SCHEDULE_CONFIG;
-      archivalService.applyConfig(buildPayload(obj?.id ?? uuid, conditions, schedule)).catch(console.error);
+      archivalService.applyConfig(buildPayload(obj?.id ?? uuid, uuid, conditions, schedule)).catch(console.error);
     });
 
     onNext?.(result);
@@ -836,11 +848,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                         <ChildRows
                           crmId={crmId ?? ''}
                           objectName={obj.id}
+                          parentUuid={obj.uuid}
                           depth={1}
                           selectedChildObjects={selectedChildObjects}
                           toggleChildObject={toggleChildObject}
                           registerChildApiName={registerChildApiName}
-          
+                          registerChildParent={registerChildParent}
                           objectFilters={objectFilters}
                           includeChild={includeChild}
                           setIncludeChild={setIncludeChild}
