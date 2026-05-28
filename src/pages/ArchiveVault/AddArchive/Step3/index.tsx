@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
@@ -93,7 +93,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
     toSelect.forEach((k: string) => { autoSelectedRef.current.add(k); });
     setSelectedChildObjects_safe(toSelect);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, parentUuid, registerChildApiName, registerChildParent]);
 
   // Selected rows float to top, rest follow in original order
   const rows = React.useMemo(() => [
@@ -332,6 +332,37 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     new Set(initialSelectedObjects.map((o) => o.uuid ?? o.id))
   );
 
+  const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>(() => {
+    const toConditions = (
+      fields: { name: string; filter: { value: string; operator: string } }[]
+    ): FilterCondition[] =>
+      fields.map((f) => ({
+        id: crypto.randomUUID(),
+        field: f.name,
+        dataType: null,
+        operator: f.filter.operator,
+        value: f.filter.value,
+      }));
+
+    const filters: Record<string, FilterCondition[]> = {};
+    const walk = (
+      children: NonNullable<SelectedArchiveObject['archivalPayload']>['children'],
+      parentKey: string
+    ) => {
+      children?.forEach((child, idx) => {
+        const key = `__restore__${parentKey}__${idx}`;
+        if (child.field?.length) filters[key] = toConditions(child.field);
+        walk((child as any).children, key);
+      });
+    };
+    initialSelectedObjects.forEach((o) => {
+      const key = o.uuid ?? o.id;
+      if (o.archivalPayload?.field?.length) filters[key] = toConditions(o.archivalPayload.field);
+      walk(o.archivalPayload?.children, key);
+    });
+    return filters;
+  });
+
   const { data: allObjectsData, isLoading: isLoadingObjects, error } = useQuery({
     queryKey: ['archive-objects-all', crmId],
     queryFn: async () => {
@@ -414,7 +445,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
 
   // Filter popup state
   const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
-  const [objectFilters, setObjectFilters] = useState<Record<string, FilterCondition[]>>({});
   const [filterError, setFilterError] = useState<string | null>(null);
   const [schedulePopup, setSchedulePopup] = useState<{ objectId: string; objectName: string } | null>(null);
   const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>({});
@@ -445,15 +475,15 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
 
   // uuid → apiName registry, populated by ChildRows on data load
   const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
-  const registerChildApiName = (uuid: string, apiName: string) => {
+  const registerChildApiName = useCallback((uuid: string, apiName: string) => {
     setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
-  };
+  }, []);
 
   // uuid → parentUuid registry, for building nested tree in payload
   const [childParents, setChildParents] = useState<Record<string, string>>({});
-  const registerChildParent = (childUuid: string, parentUuid: string) => {
+  const registerChildParent = useCallback((childUuid: string, parentUuid: string) => {
     setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
-  };
+  }, []);
 
 
   const togglePreview = (objectId: string) => {
@@ -482,15 +512,18 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   const buildChildTree = (parentUuid: string): any[] =>
     Array.from(selectedChildObjects)
       .filter((uuid) => childParents[uuid] === parentUuid)
-      .map((uuid) => ({
-        name: childApiNames[uuid] ?? uuid,
-        type: 'STANDARD' as const,
-        condition: { type: 'AND' as const },
-        field: (objectFilters[uuid] ?? [])
-          .filter((c) => c.field)
-          .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
-        children: buildChildTree(uuid),
-      }));
+      .map((uuid) => {
+        const nestedChildren = buildChildTree(uuid);
+        return {
+          name: childApiNames[uuid] ?? uuid,
+          type: 'STANDARD' as const,
+          condition: { type: 'AND' as const },
+          field: (objectFilters[uuid] ?? [])
+            .filter((c) => c.field)
+            .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
+          ...(nestedChildren.length > 0 ? { children: nestedChildren } : {}),
+        };
+      });
 
   const buildPayload = (objectId: string, objectUuid: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
     const obj = allObjects.find((o) => o.id === objectId);
