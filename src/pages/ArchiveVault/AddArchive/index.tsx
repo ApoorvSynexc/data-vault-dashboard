@@ -61,7 +61,6 @@ export default function AddArchive() {
       {currentStep === 3 && (
         <Step3
           crmId={selectedConnection?.crmId ?? null}
-          destinationId={selectedDestConnection?.destinationId ?? null}
           initialSelectedObjects={selectedObjects}
           onNext={(objects) => {
             setSelectedObjects(objects);
@@ -72,6 +71,11 @@ export default function AddArchive() {
       )}
       {currentStep === 4 && (
         <Step4
+          crmId={selectedConnection?.crmId ?? null}
+          destinationId={selectedDestConnection?.destinationId ?? null}
+          policyName={policyName}
+          description={description}
+          selectedObjects={selectedObjects}
           initialScheduleConfig={scheduleConfig}
           onNext={(config) => {
             setScheduleConfig(config);

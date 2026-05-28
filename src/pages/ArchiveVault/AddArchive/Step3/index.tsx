@@ -13,7 +13,9 @@ import ProgressBar from '../ProgressBar';
 export type SelectedArchiveObject = {
   uuid: string;
   id: string;
+  name: string;
   type: 'STANDARD' | 'CUSTOM';
+  scheduleConfig?: import('./SchedulePopup').ScheduleConfig;
   archivalPayload?: {
     name: string;
     condition: { type: 'AND' | 'OR' };
@@ -38,7 +40,6 @@ interface BackupObject {
 
 interface Step3Props {
   crmId?: string | null;
-  destinationId?: string | null;
   initialSelectedObjects?: SelectedArchiveObject[];
   onNext?: (objects: SelectedArchiveObject[]) => void;
   onBack?: () => void;
@@ -319,10 +320,9 @@ function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boole
   );
 }
 
-export default function AddArchiveStep3({ crmId, destinationId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
+export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
-  const archivalService = useArchivalService();
 
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 700);
@@ -498,17 +498,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     'in': 'IN',
   };
 
-  const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    type: 'INCREMENTAL',
-    scheduling: {
-      frequency: 'HOURLY',
-      interval: 1,
-      startDate: new Date().toISOString().slice(0, 10),
-      startTime: '12:00',
-    },
-  };
-
   const buildChildTree = (parentUuid: string): any[] =>
     Array.from(selectedChildObjects)
       .filter((uuid) => childParents[uuid] === parentUuid)
@@ -525,33 +514,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
         };
       });
 
-  const buildPayload = (objectId: string, objectUuid: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
-    const obj = allObjects.find((o) => o.id === objectId);
-    const children = buildChildTree(objectUuid);
-    return {
-      crmId: crmId ?? '',
-      name: obj?.name ?? objectId,
-      description: '',
-      destinationId: destinationId ?? '',
-      objectNames: [objectId],
-      schedule: 'SCHEDULE',
-      objects: [{
-        name: objectId,
-        type: (obj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
-        condition: { type: 'AND' as const },
-        field: conditions
-          .filter((c) => c.field)
-          .map((c) => ({
-            name: c.field,
-            filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
-          })),
-        scheduleConfig,
-        ...(children.length > 0 ? { children } : {}),
-      }],
-      backupStatus: 'DRAFT',
-    };
-  };
-
   const handleNext = () => {
     const missingParent = Array.from(selectedObjects).find(
       (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
@@ -565,10 +527,13 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
       const obj = allObjects.find((o) => o.uuid === uuid);
       const conditions = objectFilters[uuid] ?? [];
       const children = buildChildTree(uuid);
+      const schedule = objectSchedules[obj?.id ?? uuid];
       return {
         uuid,
         id: obj?.id ?? uuid,
+        name: obj?.name ?? obj?.id ?? uuid,
         type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
+        ...(schedule ? { scheduleConfig: schedule } : {}),
         archivalPayload: {
           name: obj?.name ?? obj?.id ?? uuid,
           condition: { type: 'AND' as const },
@@ -581,14 +546,6 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
           ...(children.length > 0 ? { children } : {}),
         },
       };
-    });
-
-    // Fire one API call per selected parent object with combined filters + schedule + children
-    Array.from(selectedObjects).forEach((uuid) => {
-      const obj = allObjects.find((o) => o.uuid === uuid);
-      const conditions = objectFilters[uuid] ?? [];
-      const schedule = objectSchedules[obj?.id ?? uuid] ?? DEFAULT_SCHEDULE_CONFIG;
-      archivalService.applyConfig(buildPayload(obj?.id ?? uuid, uuid, conditions, schedule)).catch(console.error);
     });
 
     onNext?.(result);
