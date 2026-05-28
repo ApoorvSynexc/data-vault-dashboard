@@ -17,6 +17,7 @@ export type SelectedArchiveObject = {
     name: string;
     condition: { type: 'AND' | 'OR' };
     field: { name: string; filter: { value: string; operator: string } }[];
+    children?: { name: string; type: 'STANDARD' | 'CUSTOM'; condition: { type: 'AND' | 'OR' }; field: { name: string; filter: { value: string; operator: string } }[] }[];
   };
 };
 
@@ -219,7 +220,7 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
                       cursor: isChildSelected ? 'pointer' : 'not-allowed',
                       opacity: isChildSelected ? 1 : 0.5,
                     }}
-                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.label ?? row.apiName ?? row.name ?? '', recordCount: undefined }); }}
+                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: childKey, recordCount: undefined }); }}
                   >
                     <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                       <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
@@ -439,8 +440,20 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     },
   };
 
+  const buildChildEntry = (childKey: string, childFilters: FilterCondition[]) => ({
+    name: childKey,
+    type: 'STANDARD' as const,
+    condition: { type: 'AND' as const },
+    field: childFilters
+      .filter((c) => c.field)
+      .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
+  });
+
   const buildPayload = (objectId: string, conditions: FilterCondition[], scheduleConfig: ScheduleConfig) => {
     const obj = allObjects.find((o) => o.id === objectId);
+    const children = Array.from(selectedChildObjects).map((childKey) =>
+      buildChildEntry(childKey, objectFilters[childKey] ?? [])
+    );
     return {
       crmId: crmId ?? '',
       name: obj?.name ?? objectId,
@@ -459,28 +472,32 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
             filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
           })),
         scheduleConfig,
+        ...(children.length > 0 ? { children } : {}),
       }],
       backupStatus: 'DRAFT',
     };
   };
 
   const handleNext = () => {
+    const children = Array.from(selectedChildObjects).map((childKey) =>
+      buildChildEntry(childKey, objectFilters[childKey] ?? [])
+    );
     const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((id) => {
       const obj = allObjects.find((o) => o.id === id);
       const conditions = objectFilters[id] ?? [];
-      const matchType = conditions.length > 0 ? 'AND' : 'AND';
       return {
         id,
         type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
         archivalPayload: {
           name: obj?.name ?? id,
-          condition: { type: matchType as 'AND' | 'OR' },
+          condition: { type: 'AND' as const },
           field: conditions
             .filter((c) => c.field)
             .map((c) => ({
               name: c.field,
-              filter: { value: c.value, operator: c.operator },
+              filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
             })),
+          ...(children.length > 0 ? { children } : {}),
         },
       };
     });

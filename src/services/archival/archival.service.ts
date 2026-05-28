@@ -21,12 +21,20 @@ export type ObjectScheduleConfig = {
   };
 };
 
+export type ArchivalConfigChild = {
+  name: string;
+  type: 'STANDARD' | 'CUSTOM';
+  condition: { type: 'AND' | 'OR' };
+  field: { name: string; filter: { value: string; operator: string } }[];
+};
+
 export type ArchivalConfigObject = {
   name: string;
   type: 'STANDARD' | 'CUSTOM';
   condition: { type: 'AND' | 'OR' };
   field: { name: string; filter: { value: string; operator: string } }[];
   scheduleConfig: ObjectScheduleConfig;
+  children?: ArchivalConfigChild[];
 };
 
 export type CreateArchivalConfigPayload = {
