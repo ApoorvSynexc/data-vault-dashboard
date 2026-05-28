@@ -60,14 +60,33 @@ export type ArchivalObjectFilter = {
   field: { name: string; filter: { value: string; operator: string } }[];
 };
 
+export type ArchivalChildObject = {
+  uuid: string;
+  apiName: string;
+  label: string;
+  relationshipType?: string;
+  objectType?: string;
+  [key: string]: unknown;
+};
+
 export function useArchivalService() {
   const http = useHttpRequest();
 
   return {
     getFields: (crmId: string, objectName: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName } }),
-    getObjectChilds: (crmId: string, objectName: string): Promise<any> =>
-      http.get(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName } }),
+    getObjectChilds: async (crmId: string, objectName: string): Promise<ArchivalChildObject[]> => {
+      const result = await http.get<any>(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName } });
+      const payload = result?.data ?? result;
+      const arr: any[] = payload?.childs ?? payload?.children ?? payload?.childObjects ?? payload ?? [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map((row: any) => ({
+        ...row,
+        uuid: crypto.randomUUID(),
+        apiName: row.apiName ?? row.id ?? '',
+        label: row.label ?? row.name ?? row.apiName ?? '',
+      }));
+    },
     applyConfig: (payload: CreateArchivalConfigPayload): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.config, payload),
   };
