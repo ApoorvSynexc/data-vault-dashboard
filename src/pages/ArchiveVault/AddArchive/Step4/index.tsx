@@ -128,29 +128,30 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
   };
 
-  const buildObjectPayload = (obj: SelectedArchiveObject, globalSchedule: ArchiveScheduleConfig | null) => {
-    const payload = obj.archivalPayload;
-    // per-object schedule only if explicitly set in Step3; global schedule goes top-level only
-    const perObjectSchedule = obj.scheduleConfig ?? null;
+  const buildCombinedPayload = (objects: SelectedArchiveObject[], globalSchedule: ArchiveScheduleConfig | null) => {
     return {
       crmId: crmId ?? '',
-      name: policyName || obj.name,
+      name: policyName || objects.map((o) => o.name).join(', '),
       description,
       destinationId: destinationId ?? '',
-      objectNames: [obj.id],
+      objectNames: objects.map((o) => o.id),
       schedule: 'SCHEDULE',
       ...(globalSchedule ? { scheduleConfig: globalSchedule } : {}),
-      objects: [{
-        name: obj.id,
-        type: obj.type,
-        condition: payload?.condition ?? { type: 'AND' as const },
-        field: (payload?.field ?? []).map((f) => ({
-          name: f.name,
-          filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
-        })),
-        ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
-        ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
-      }],
+      objects: objects.map((obj) => {
+        const payload = obj.archivalPayload;
+        const perObjectSchedule = obj.scheduleConfig ?? null;
+        return {
+          name: obj.id,
+          type: obj.type,
+          condition: payload?.condition ?? { type: 'AND' as const },
+          field: (payload?.field ?? []).map((f) => ({
+            name: f.name,
+            filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
+          })),
+          ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
+          ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
+        };
+      }),
       backupStatus: 'DRAFT',
     };
   };
@@ -170,9 +171,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     try {
       const globalConfig = allScheduled ? null : buildScheduleConfig();
 
-      await Promise.all(selectedObjects.map((obj) =>
-        archivalService.applyConfig(buildObjectPayload(obj, globalConfig))
-      ));
+      await archivalService.applyConfig(buildCombinedPayload(selectedObjects, globalConfig));
 
       onNext(globalConfig ?? (selectedObjects[0]?.scheduleConfig as ArchiveScheduleConfig) ?? buildScheduleConfig());
     } catch (err) {
