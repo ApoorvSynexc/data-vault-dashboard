@@ -11,6 +11,7 @@ import type { ScheduleConfig } from './SchedulePopup';
 import ProgressBar from '../ProgressBar';
 
 export type SelectedArchiveObject = {
+  uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
   archivalPayload?: {
@@ -22,6 +23,7 @@ export type SelectedArchiveObject = {
 };
 
 interface BackupObject {
+  uuid: string;
   id: string;
   name: string;
   type: string;
@@ -52,24 +54,20 @@ interface ChildRowsProps {
   depth: number;
   selectedChildObjects: Set<string>;
   toggleChildObject: (key: string) => void;
+  registerChildApiName: (uuid: string, apiName: string) => void;
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChildObject, registerChildApiName, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ['archival-object-childs', crmId, objectName],
-    queryFn: async () => {
-      const result = await archivalService.getObjectChilds(crmId, objectName);
-      const payload = (result as any)?.data ?? result;
-      const arr = (payload as any)?.childs ?? (payload as any)?.children ?? (payload as any)?.childObjects ?? payload;
-      return Array.isArray(arr) ? arr : [];
-    },
+    queryFn: () => archivalService.getObjectChilds(crmId, objectName),
     enabled: !!crmId && !!objectName,
     staleTime: 5 * 60 * 1000,
   });
@@ -79,13 +77,15 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
   // Reset page when object changes
   useEffect(() => { setPage(0); }, [objectName]);
 
-  // Auto-select MasterDetail children — run only when data arrives, not on every render
+  // Register uuid→apiName mapping and auto-select MasterDetail children when data arrives
   const autoSelectedRef = React.useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!data || rows.length === 0) return;
+    // Always register every row's uuid→apiName so payload can use the correct API name
+    rows.forEach((r: any) => registerChildApiName(r.uuid as string, r.apiName as string));
     const toSelect = rows
       .filter((r: any) => r.relationshipType === 'MasterDetail')
-      .map((r: any) => r.apiName ?? r.id)
+      .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !autoSelectedRef.current.has(k));
     if (toSelect.length === 0) return;
     toSelect.forEach((k: string) => autoSelectedRef.current.add(k));
@@ -116,8 +116,8 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
 
   return (
     <>
-      {pagedRows.map((row: any, idx: number) => {
-        const childKey = row.apiName ?? row.id ?? String(idx);
+      {pagedRows.map((row: any) => {
+        const childKey = row.uuid as string;
         const isChildSelected = selectedChildObjects.has(childKey);
         const isChildExpanded = expandedChild === childKey;
         const toggleOn = !!includeChild[childKey];
@@ -220,7 +220,7 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
                       cursor: isChildSelected ? 'pointer' : 'not-allowed',
                       opacity: isChildSelected ? 1 : 0.5,
                     }}
-                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: childKey, recordCount: undefined }); }}
+                    onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined }); }}
                   >
                     <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                       <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
@@ -234,10 +234,11 @@ function ChildRows({ crmId, objectName, depth, selectedChildObjects, toggleChild
             {isChildExpanded && (
               <ChildRows
                 crmId={crmId}
-                objectName={childKey}
+                objectName={row.apiName as string}
                 depth={depth + 1}
                 selectedChildObjects={selectedChildObjects}
                 toggleChildObject={toggleChildObject}
+                registerChildApiName={registerChildApiName}
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
                 setFilterPopup={setFilterPopup}
@@ -309,7 +310,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
-    new Set(initialSelectedObjects.map((o) => o.id))
+    new Set(initialSelectedObjects.map((o) => o.uuid ?? o.id))
   );
 
   const { data: allObjectsData, isLoading: isLoadingObjects, error } = useQuery({
@@ -417,6 +418,12 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     });
   };
 
+  // uuid → apiName registry, populated by ChildRows on data load
+  const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
+  const registerChildApiName = (uuid: string, apiName: string) => {
+    setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
+  };
+
   const togglePreview = (objectId: string) => {
     setExpandedObjectId((cur) => cur === objectId ? null : objectId);
   };
@@ -441,7 +448,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
   };
 
   const buildChildEntry = (childKey: string, childFilters: FilterCondition[]) => ({
-    name: childKey,
+    name: childApiNames[childKey] ?? childKey,
     type: 'STANDARD' as const,
     condition: { type: 'AND' as const },
     field: childFilters
@@ -482,14 +489,15 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     const children = Array.from(selectedChildObjects).map((childKey) =>
       buildChildEntry(childKey, objectFilters[childKey] ?? [])
     );
-    const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((id) => {
-      const obj = allObjects.find((o) => o.id === id);
-      const conditions = objectFilters[id] ?? [];
+    const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((uuid) => {
+      const obj = allObjects.find((o) => o.uuid === uuid);
+      const conditions = objectFilters[uuid] ?? [];
       return {
-        id,
+        uuid,
+        id: obj?.id ?? uuid,
         type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
         archivalPayload: {
-          name: obj?.name ?? id,
+          name: obj?.name ?? obj?.id ?? uuid,
           condition: { type: 'AND' as const },
           field: conditions
             .filter((c) => c.field)
@@ -783,6 +791,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
                           depth={1}
                           selectedChildObjects={selectedChildObjects}
                           toggleChildObject={toggleChildObject}
+                          registerChildApiName={registerChildApiName}
                           includeChild={includeChild}
                           setIncludeChild={setIncludeChild}
                           setFilterPopup={setFilterPopup}
