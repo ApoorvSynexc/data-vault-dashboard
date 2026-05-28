@@ -45,7 +45,7 @@ interface Step3Props {
 }
 
 const ITEMS_PER_PAGE = 10;
-const MAX_CHILD_DEPTH = 5;
+const MAX_CHILD_DEPTH = 4;
 const CHILD_PAGE_SIZE = 5;
 
 interface ChildRowsProps {
@@ -556,10 +556,7 @@ export default function AddArchiveStep3({ crmId, destinationId, initialSelectedO
     const missingParent = Array.from(selectedObjects).find(
       (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
     );
-    const missingChild = Array.from(selectedChildObjects).find(
-      (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
-    );
-    if (missingParent || missingChild) {
+    if (missingParent) {
       setFilterError('All selected objects must have at least one filter applied before proceeding.');
       return;
     }
