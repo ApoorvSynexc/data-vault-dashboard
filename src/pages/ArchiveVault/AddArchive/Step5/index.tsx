@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { SelectedArchiveObject } from '../Step3';
 import type { ArchiveScheduleConfig } from '../Step4';
+import { useArchivalService } from '../../../../services/archival/archival.service';
 import ProgressBar from '../ProgressBar';
 
 interface Step5Props {
-  crmId?: string | null;
-  destinationId?: string | null;
+  archivalPayload?: Record<string, unknown> | null;
   crmName?: string;
   crmConnectionName?: string;
   destinationProvider?: string;
@@ -26,6 +26,7 @@ const freqLabel: Record<string, string> = {
 };
 
 export default function Step5({
+  archivalPayload = null,
   crmName = 'Salesforce Production',
   crmConnectionName = 'Salesforce Org',
   destinationProvider = 'AWS S3',
@@ -38,6 +39,7 @@ export default function Step5({
   onEditStep,
 }: Step5Props) {
   const navigate = useNavigate();
+  const archivalService = useArchivalService();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -65,16 +67,38 @@ export default function Step5({
   const schedStartTime = scheduleConfig?.scheduling.startTime ?? '06:00 PM';
   const scheduleDisplay = `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`;
 
-  const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmChecked(false); setConfirmError(false); setShowConfirm(true); };
-  const handleSaveDraft = () => {
-    setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); navigate('/archive-vault'); }, 800);
+  const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
+    await archivalService.applyConfig({ ...archivalPayload, backupStatus } as any);
   };
-  const handleConfirmRun = () => {
+
+  const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmChecked(false); setConfirmError(false); setShowConfirm(true); };
+
+  const handleSaveDraft = async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      await fireApi('DRAFT');
+      navigate('/archive-vault');
+    } catch (err: any) {
+      setApiError(err?.message ?? 'Failed to save draft. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmRun = async () => {
     if (confirmText.toUpperCase() !== 'ARCHIVE') { setConfirmError(true); return; }
     setShowConfirm(false);
     setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); setIsSuccess(true); }, 1200);
+    setApiError(null);
+    try {
+      await fireApi('ACTIVE');
+      setIsSuccess(true);
+    } catch (err: any) {
+      setApiError(err?.message ?? 'Failed to start archive. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
