@@ -30,7 +30,7 @@ interface Step4Props {
   description?: string;
   selectedObjects?: SelectedArchiveObject[];
   initialScheduleConfig?: ArchiveScheduleConfig | null;
-  onNext: (scheduleConfig: ArchiveScheduleConfig) => void;
+  onNext: (scheduleConfig: ArchiveScheduleConfig, payload: Record<string, unknown>) => void;
   onBack: () => void;
 }
 
@@ -53,7 +53,6 @@ const OPERATOR_MAP: Record<string, string> = {
 
 export default function Step4({ crmId, destinationId, policyName = '', description = '', selectedObjects = [], initialScheduleConfig, onNext, onBack }: Step4Props) {
   const navigate = useNavigate();
-  const archivalService = useArchivalService();
 
   const scheduledObjects = selectedObjects.filter((o) => !!o.scheduleConfig);
   const unscheduledObjects = selectedObjects.filter((o) => !o.scheduleConfig);
@@ -99,7 +98,6 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const [endDate, setEndDate] = useState(initial.endDate);
   const [backupIn, setBackupIn] = useState('1 Hour');
   const [archiveFrequency, setArchiveFrequency] = useState('Daily');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const inputCls = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white';
 
@@ -128,35 +126,32 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
   };
 
-  const buildCombinedPayload = (objects: SelectedArchiveObject[], globalSchedule: ArchiveScheduleConfig | null) => {
-    return {
-      crmId: crmId ?? '',
-      name: policyName || objects.map((o) => o.name).join(', '),
-      description,
-      destinationId: destinationId ?? '',
-      objectNames: objects.map((o) => o.id),
-      schedule: 'SCHEDULE',
-      ...(globalSchedule ? { scheduleConfig: globalSchedule } : {}),
-      objects: objects.map((obj) => {
-        const payload = obj.archivalPayload;
-        const perObjectSchedule = obj.scheduleConfig ?? null;
-        return {
-          name: obj.id,
-          type: obj.type,
-          condition: payload?.condition ?? { type: 'AND' as const },
-          field: (payload?.field ?? []).map((f) => ({
-            name: f.name,
-            filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
-          })),
-          ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
-          ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
-        };
-      }),
-      backupStatus: 'DRAFT',
-    };
-  };
+  const buildCombinedPayload = (objects: SelectedArchiveObject[], globalSchedule: ArchiveScheduleConfig | null) => ({
+    crmId: crmId ?? '',
+    name: policyName || objects.map((o) => o.name).join(', '),
+    description,
+    destinationId: destinationId ?? '',
+    objectNames: objects.map((o) => o.id),
+    schedule: 'SCHEDULE',
+    ...(globalSchedule ? { scheduleConfig: globalSchedule } : {}),
+    objects: objects.map((obj) => {
+      const payload = obj.archivalPayload;
+      const perObjectSchedule = obj.scheduleConfig ?? null;
+      return {
+        name: obj.id,
+        type: obj.type,
+        condition: payload?.condition ?? { type: 'AND' as const },
+        field: (payload?.field ?? []).map((f) => ({
+          name: f.name,
+          filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
+        })),
+        ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
+        ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
+      };
+    }),
+  });
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!allScheduled) {
       if (frequency !== 'One Time' && !startDate) { alert('Please select a start date'); return; }
       if (frequency !== 'One Time' && !startTime) { alert('Please select a starting time'); return; }
@@ -166,20 +161,9 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       if (frequency === 'Monthly' && selectedMonths.length === 0) { alert('Please select at least one month'); return; }
       if (frequency === 'Custom' && !endDate) { alert('Please select an end date for custom schedule'); return; }
     }
-
-    setIsSubmitting(true);
-    try {
-      const globalConfig = allScheduled ? null : buildScheduleConfig();
-
-      await archivalService.applyConfig(buildCombinedPayload(selectedObjects, globalConfig));
-
-      onNext(globalConfig ?? (selectedObjects[0]?.scheduleConfig as ArchiveScheduleConfig) ?? buildScheduleConfig());
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save archive configuration. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    const globalConfig = allScheduled ? null : buildScheduleConfig();
+    const payload = buildCombinedPayload(selectedObjects, globalConfig);
+    onNext(globalConfig ?? (selectedObjects[0]?.scheduleConfig as ArchiveScheduleConfig) ?? buildScheduleConfig(), payload);
   };
 
   return (
@@ -533,10 +517,9 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
           </button>
           <button
             onClick={handleNext}
-            disabled={isSubmitting}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${isSubmitting ? 'bg-blue-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
           >
-            {isSubmitting ? 'Saving...' : 'Next →'}
+            Next →
           </button>
         </div>
       </div>

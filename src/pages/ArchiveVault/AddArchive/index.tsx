@@ -27,6 +27,7 @@ export default function AddArchive() {
 
   // Step 4 — schedule
   const [scheduleConfig, setScheduleConfig] = useState<ArchiveScheduleConfig | null>(null);
+  const [archivalPayload, setArchivalPayload] = useState<Record<string, unknown> | null>(null);
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 5) as Step);
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -77,8 +78,9 @@ export default function AddArchive() {
           description={description}
           selectedObjects={selectedObjects}
           initialScheduleConfig={scheduleConfig}
-          onNext={(config) => {
+          onNext={(config, payload) => {
             setScheduleConfig(config);
+            setArchivalPayload(payload);
             goNext();
           }}
           onBack={goBack}
@@ -86,8 +88,7 @@ export default function AddArchive() {
       )}
       {currentStep === 5 && (
         <Step5
-          crmId={selectedConnection?.crmId ?? null}
-          destinationId={selectedDestConnection?.destinationId ?? null}
+          archivalPayload={archivalPayload}
           crmName={selectedConnection?.crmProfile?.name ?? selectedConnection?.name ?? 'Salesforce Production'}
           crmConnectionName={selectedConnection?.name ?? 'Salesforce Org'}
           destinationProvider={selectedDestConnection?.provider ?? 'AWS S3'}
