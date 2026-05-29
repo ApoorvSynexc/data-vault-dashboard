@@ -162,7 +162,7 @@ const [confirmError, setConfirmError] = useState(false);
         </div>
 
         {/* Progress bar */}
-        <ProgressBar activeStep={5} />
+        <ProgressBar activeStep={6} />
 
         {/* Main card */}
         <div className='bg-white rounded-xl flex-shrink-0'
@@ -235,7 +235,7 @@ const [confirmError, setConfirmError] = useState(false);
             <span>{totalDataSize}</span>
           </ReviewRow>
 
-          <ReviewRow label='Scheduled' onEdit={() => onEditStep(4)} noBorder>
+          <ReviewRow label='Scheduled' onEdit={() => onEditStep(5)} noBorder>
             <span>{scheduleDisplay}</span>
           </ReviewRow>
 

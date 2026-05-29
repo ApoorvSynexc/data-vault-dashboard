@@ -182,7 +182,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
         </div>
 
         {/* Progress bar */}
-        <ProgressBar activeStep={4} />
+        <ProgressBar activeStep={5} />
 
         {/* Header */}
         <div className='flex items-start justify-between flex-shrink-0'>
@@ -191,7 +191,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
             <p className='text-gray-600 mt-1'>Configure when data to be archived</p>
           </div>
           <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-            Step <span className='text-blue-600'>4</span> of 5
+            Step <span className='text-blue-600'>5</span> of 6
           </span>
         </div>
 
