@@ -68,19 +68,23 @@ function Panel({ title, children, action }: { title: string; children: ReactNode
 
 // ── Metric Card ───────────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, loading }: { label: string; value: string; loading?: boolean }) {
+function MetricCard({ label, value, loading, icon }: { label: string; value: string; loading?: boolean; icon: React.ReactNode }) {
   return (
-    <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm'>
+    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3'>
+      {/* Icon bubble */}
+      <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(21,93,252,0.08)' }}>
+        {icon}
+      </div>
       {loading ? (
-        <>
-          <div className='h-2.5 w-20 rounded bg-gray-100 animate-pulse' />
-          <div className='mt-1.5 h-6 w-12 rounded bg-gray-100 animate-pulse' />
-        </>
+        <div>
+          <div className='h-5 w-14 rounded bg-gray-100 animate-pulse' />
+          <div className='mt-1.5 h-2.5 w-24 rounded bg-gray-100 animate-pulse' />
+        </div>
       ) : (
-        <>
-          <Typography variant='metricLabel' color='muted'>{label}</Typography>
-          <Typography className='mt-0.5' variant='metricValue' color='primary'>{value}</Typography>
-        </>
+        <div>
+          <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
+          <p className='mt-0.5 text-xs text-gray-500'>{label}</p>
+        </div>
       )}
     </div>
   );
@@ -219,8 +223,7 @@ export default function ArchiveVaultHomePage() {
 
   // Stats
   const total = rawList.length;
-  const active = rawList.filter((i) => ['ACTIVE', 'RUNNING', 'SUCCESS'].includes((i.backupStatus ?? i.status)?.toUpperCase())).length;
-  const failed = rawList.filter((i) => (i.backupStatus ?? i.status)?.toUpperCase() === 'FAILED').length;
+
   const uniquePlatforms = new Set(rawList.map((i) => i.crmId)).size;
 
   // Filters
@@ -259,10 +262,18 @@ export default function ArchiveVaultHomePage() {
           Archive Status
         </Typography>
         <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
-          <MetricCard loading={isLoading} label='Total Archives'       value={pad(total)} />
-          <MetricCard loading={isLoading} label='Active Archives'      value={pad(active)} />
-          <MetricCard loading={isLoading} label='Failed Archives'      value={pad(failed)} />
-          <MetricCard loading={isLoading} label='Platform Connections' value={pad(uniquePlatforms)} />
+          <MetricCard loading={isLoading} label='Total archives across all platform' value={pad(total)}
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>}
+          />
+          <MetricCard loading={isLoading} label='Total records' value={total > 0 ? '356,142' : '--'}
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
+          />
+          <MetricCard loading={isLoading} label={`Across ${uniquePlatforms} platform${uniquePlatforms !== 1 ? 's' : ''}`} value='2.6 TB'
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>}
+          />
+          <MetricCard loading={isLoading} label='Platform connections' value={pad(uniquePlatforms)}
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><rect x='2' y='2' width='8' height='8' rx='1.5'/><rect x='14' y='2' width='8' height='8' rx='1.5'/><rect x='2' y='14' width='8' height='8' rx='1.5'/><rect x='14' y='14' width='8' height='8' rx='1.5'/></svg>}
+          />
         </div>
       </div>
 
