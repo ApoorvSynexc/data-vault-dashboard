@@ -61,9 +61,9 @@ export default function ProgressBar({ activeStep }: { activeStep: number }) {
           const circleBg = isDone || isActive ? '#155DFC' : '#F1F5F9';
           const labelColor = isActive ? '#155DFC' : isDone ? '#33363F' : '#94A3B8';
           return (
-            <div key={step.id} className='flex items-center' style={{ flex: idx < STEPS.length - 1 ? '1 1 0%' : '0 0 auto' }}>
-              {/* Icon + label — never truncated */}
-              <div className='flex items-center gap-2 flex-shrink-0'>
+            <>
+              {/* Icon + label — shrink-0 so label width doesn't affect connector */}
+              <div key={step.id} className='flex items-center gap-2 flex-shrink-0'>
                 <div className='flex items-center justify-center rounded-full flex-shrink-0'
                   style={{ width: 34, height: 34, background: circleBg }}>
                   {isDone
@@ -75,11 +75,11 @@ export default function ProgressBar({ activeStep }: { activeStep: number }) {
                   {step.label}
                 </span>
               </div>
-              {/* Connector line — takes all remaining space before next step */}
+              {/* Connector — flex-1 alone, so all connectors are equal width */}
               {idx < STEPS.length - 1 && (
-                <div className='flex-1 h-px mx-3 rounded-full' style={{ background: isDone ? '#155DFC' : '#E2E8F0', minWidth: 16 }} />
+                <div key={`line-${step.id}`} className='flex-1 h-px mx-2 rounded-full' style={{ background: isDone ? '#155DFC' : '#E2E8F0' }} />
               )}
-            </div>
+            </>
           );
         })}
       </div>
