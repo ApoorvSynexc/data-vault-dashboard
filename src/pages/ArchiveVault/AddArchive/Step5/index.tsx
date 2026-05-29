@@ -28,11 +28,9 @@ const freqLabel: Record<string, string> = {
 export default function Step5({
   archivalPayload = null,
   crmName = 'Salesforce Production',
-  crmConnectionName = 'Salesforce Org',
   destinationProvider = 'AWS S3',
   destinationName = 'Hot tier, Standard-hot-tier bucket',
   policyName = 'Accounts-Contact-Opportunity Archive — May 14, 2026',
-  description = '',
   selectedObjects = [],
   scheduleConfig = null,
   onBack,
