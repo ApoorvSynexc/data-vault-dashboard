@@ -36,6 +36,8 @@ type TableProps<TRow> = {
   maxHeightClassName?: string;
   /** Minimum height of the table container (e.g., 'min-h-96', 'min-h-[500px]') */
   minHeightClassName?: string;
+  /** Remove outer border/bg so table blends into a parent Panel */
+  borderless?: boolean;
   /** Legacy pagination prop for backward compatibility */
   pagination?: TablePaginationConfig;
   /** New pagination control: true to show pagination, false for inner scroll */
@@ -63,6 +65,7 @@ export default function Table<TRow>({
   minWidthClassName = 'min-w-full',
   maxHeightClassName,
   minHeightClassName,
+  borderless = false,
   pagination,
   showPagination = false,
   height = 'h-96',
@@ -108,9 +111,9 @@ export default function Table<TRow>({
   const scrollContainerHeight = height === 'h-96' ? 'max-h-96' : height.startsWith('h-') ? `max-${height}` : height;
 
   return (
-    <div className={`bg-white rounded border border-gray-200 flex flex-col ${minHeightClassName || ''}`}>
+    <div className={`flex flex-col flex-1 min-h-0 ${borderless ? '' : 'bg-white rounded border border-gray-200'} ${minHeightClassName || ''}`}>
       {/* Horizontal scroll wrapper */}
-      <div className='overflow-x-auto flex-1'>
+      <div className='overflow-x-auto flex-1 min-h-0'>
         {/* Vertical scroll wrapper - only when not using legacy pagination */}
         <div
           className={
@@ -250,7 +253,7 @@ export default function Table<TRow>({
 
       {/* Pagination Footer */}
       {usePagination && (
-        <div className={`flex items-center justify-between border-t border-gray-200 px-4 py-3 ${paginationClassName || ''}`}>
+        <div className={`flex flex-shrink-0 items-center justify-between border-t border-gray-200 px-4 py-3 ${paginationClassName || ''}`}>
           <p className='text-sm text-gray-600'>
             Showing {(activePage - 1) * safePageSize + 1} to {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
           </p>
