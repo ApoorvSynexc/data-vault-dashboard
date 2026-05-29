@@ -6,10 +6,11 @@ import type { ArchiveScheduleConfig } from './Step4';
 import Step1 from './Step1';
 import Step2 from './Step2';
 import Step3 from './Step3';
+import Step3DryRun from './Step3DryRun';
 import Step4 from './Step4';
 import Step5 from './Step5';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function AddArchive() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
@@ -25,11 +26,11 @@ export default function AddArchive() {
   // Step 3 — select objects
   const [selectedObjects, setSelectedObjects] = useState<SelectedArchiveObject[]>([]);
 
-  // Step 4 — schedule
+  // Step 5 — schedule (was step 4)
   const [scheduleConfig, setScheduleConfig] = useState<ArchiveScheduleConfig | null>(null);
   const [archivalPayload, setArchivalPayload] = useState<Record<string, unknown> | null>(null);
 
-  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 5) as Step);
+  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 6) as Step);
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1) as Step);
 
   return (
@@ -71,6 +72,14 @@ export default function AddArchive() {
         />
       )}
       {currentStep === 4 && (
+        <Step3DryRun
+          crmId={selectedConnection?.crmId ?? null}
+          selectedObjects={selectedObjects}
+          onNext={goNext}
+          onBack={goBack}
+        />
+      )}
+      {currentStep === 5 && (
         <Step4
           crmId={selectedConnection?.crmId ?? null}
           destinationId={selectedDestConnection?.destinationId ?? null}
@@ -86,7 +95,7 @@ export default function AddArchive() {
           onBack={goBack}
         />
       )}
-      {currentStep === 5 && (
+      {currentStep === 6 && (
         <Step5
           archivalPayload={archivalPayload}
           crmName={selectedConnection?.crmProfile?.name ?? selectedConnection?.name ?? 'Salesforce Production'}
@@ -98,7 +107,7 @@ export default function AddArchive() {
           selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           onBack={goBack}
-          onEditStep={(step) => setCurrentStep(step as 1 | 2 | 3 | 4 | 5)}
+          onEditStep={(step) => setCurrentStep(step as 1 | 2 | 3 | 4 | 5 | 6)}
         />
       )}
     </div>

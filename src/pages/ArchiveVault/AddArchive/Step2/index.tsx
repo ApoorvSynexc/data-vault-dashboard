@@ -53,7 +53,7 @@ export default function AddArchiveStep2({
             <p className='text-gray-600 mt-1'>Define archive and storage tier</p>
           </div>
           <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-            Step <span className='text-blue-600'>2</span> of 5
+            Step <span className='text-blue-600'>2</span> of 6
           </span>
         </div>
 

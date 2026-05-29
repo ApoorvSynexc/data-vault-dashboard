@@ -612,7 +612,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             <p className='text-gray-600 mt-1'>Choose objects to be archive</p>
           </div>
           <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
-            Step <span className='text-blue-600'>3</span> of 5
+            Step <span className='text-blue-600'>3</span> of 6
           </span>
         </div>
 
@@ -657,7 +657,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                 <polyline points='20 6 9 17 4 12' />
               </svg>
-              <span className='font-medium'>{totalSelected} object selected</span>
+              <span className='font-medium'>{totalSelected} object selected · {totalEstRecords > 0 ? `~${totalEstRecords.toLocaleString()}` : '0'} est. records</span>
             </div>
 
             {/* Clear */}
