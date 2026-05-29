@@ -68,20 +68,18 @@ function Panel({ title, children, action }: { title: string; children: ReactNode
 
 // ── Metric Card ───────────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, note, loading }: { label: string; value: string; note: string; loading?: boolean }) {
+function MetricCard({ label, value, loading }: { label: string; value: string; loading?: boolean }) {
   return (
-    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
+    <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm'>
       {loading ? (
         <>
-          <div className='h-3 w-24 rounded bg-gray-100 animate-pulse' />
-          <div className='mt-3 h-8 w-16 rounded bg-gray-100 animate-pulse' />
-          <div className='mt-2 h-3 w-28 rounded bg-gray-100 animate-pulse' />
+          <div className='h-2.5 w-20 rounded bg-gray-100 animate-pulse' />
+          <div className='mt-1.5 h-6 w-12 rounded bg-gray-100 animate-pulse' />
         </>
       ) : (
         <>
           <Typography variant='metricLabel' color='muted'>{label}</Typography>
-          <Typography className='mt-1' variant='metricValue' color='primary'>{value}</Typography>
-          <Typography className='mt-2' variant='metricLabel' color='success'>{note}</Typography>
+          <Typography className='mt-0.5' variant='metricValue' color='primary'>{value}</Typography>
         </>
       )}
     </div>
@@ -256,15 +254,15 @@ export default function ArchiveVaultHomePage() {
       </div>
 
       {/* Stats Section */}
-      <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
-        <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-4'>
+      <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'>
+        <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>
           Archive Status
         </Typography>
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
-          <MetricCard loading={isLoading} label='Total Archives'       value={pad(total)}           note={`${uniquePlatforms} platform${uniquePlatforms !== 1 ? 's' : ''} connected`} />
-          <MetricCard loading={isLoading} label='Active Archives'      value={pad(active)}          note='Currently running or completed' />
-          <MetricCard loading={isLoading} label='Failed Archives'      value={pad(failed)}          note={failed > 0 ? 'Requires attention' : 'All healthy'} />
-          <MetricCard loading={isLoading} label='Platform Connections' value={pad(uniquePlatforms)} note='Connected CRM sources' />
+        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
+          <MetricCard loading={isLoading} label='Total Archives'       value={pad(total)} />
+          <MetricCard loading={isLoading} label='Active Archives'      value={pad(active)} />
+          <MetricCard loading={isLoading} label='Failed Archives'      value={pad(failed)} />
+          <MetricCard loading={isLoading} label='Platform Connections' value={pad(uniquePlatforms)} />
         </div>
       </div>
 
