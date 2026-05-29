@@ -44,20 +44,6 @@ function normalizeStatus(raw: string): string {
   return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
 }
 
-function normalizeSchedule(raw: string): string {
-  const map: Record<string, string> = { SCHEDULE: 'Schedule', REALTIME: 'Realtime', ONE_TIME: 'One Time' };
-  return map[raw?.toUpperCase()] ?? raw ?? '--';
-}
-
-function normalizeFrequency(freq?: string): string {
-  if (!freq) return 'Once';
-  const map: Record<string, string> = {
-    HOURLY: 'Hourly', DAILY: 'Daily', WEEKLY: 'Weekly',
-    MONTHLY: 'Monthly', CUSTOM: 'Custom', ONE_TIME: 'Once',
-  };
-  return map[freq.toUpperCase()] ?? freq;
-}
-
 function crmNameToPlatform(name: string): string {
   const l = name?.toLowerCase() ?? '';
   if (l.includes('salesforce')) return 'Salesforce';
@@ -118,42 +104,6 @@ function PlatformBadge({ platform }: { platform: string }) {
         <text x='20' y='23' textAnchor='middle' fontSize='14' fontWeight='700' fill={c.fill}>{c.letter}</text>
       </svg>
     </div>
-  );
-}
-
-// ── Schedule Type Badge ───────────────────────────────────────────────────────
-
-function ScheduleTypeBadge({ type }: { type: string }) {
-  const styles: Record<string, string> = {
-    Schedule: 'bg-blue-100 text-blue-700',
-    Realtime: 'bg-violet-100 text-violet-700',
-    'One Time': 'bg-gray-100 text-gray-700',
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[type] ?? 'bg-gray-100 text-gray-700'}`}>
-      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
-        <circle cx='12' cy='12' r='10' /><polyline points='12 6 12 12 16 14' />
-      </svg>
-      {type}
-    </span>
-  );
-}
-
-// ── Frequency Badge ───────────────────────────────────────────────────────────
-
-function FrequencyBadge({ frequency }: { frequency: string }) {
-  const styles: Record<string, string> = {
-    Hourly: 'bg-orange-100 text-orange-700',
-    Daily:  'bg-cyan-100 text-cyan-700',
-    Weekly: 'bg-green-100 text-green-700',
-    Monthly:'bg-purple-100 text-purple-700',
-    Custom: 'bg-indigo-100 text-indigo-700',
-    Once:   'bg-gray-100 text-gray-700',
-  };
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[frequency] ?? 'bg-gray-100 text-gray-700'}`}>
-      {frequency}
-    </span>
   );
 }
 
@@ -266,8 +216,6 @@ export default function ArchiveVaultHomePage() {
     displayName: item.name ?? item.slug ?? '--',
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
     displayStatus: normalizeStatus(item.backupStatus ?? item.status),
-    displaySchedule: normalizeSchedule(item.schedule),
-    displayFrequency: normalizeFrequency(item.scheduleConfig?.scheduling?.frequency),
     displayDate: formatDate(item.createdAt),
   }));
 
@@ -280,7 +228,7 @@ export default function ArchiveVaultHomePage() {
   // Filters
   const filtered = enriched.filter((r) => {
     if (search && !r.displayName.toLowerCase().includes(search.toLowerCase())) return false;
-    if (scheduleFilter !== 'All' && r.displaySchedule !== scheduleFilter) return false;
+    if (scheduleFilter !== 'All' && r.platform !== scheduleFilter) return false;
     if (statusFilter !== 'All' && r.displayStatus !== statusFilter) return false;
     return true;
   });
@@ -391,24 +339,20 @@ export default function ArchiveVaultHomePage() {
         <div className='flex-1 min-h-0 overflow-auto'>
           {isLoading ? (
             <div className='space-y-0'>
-              {/* Header skeleton */}
               <div className='flex gap-4 border-b border-gray-100 px-5 py-3'>
-                {['w-6', 'w-32', 'w-24', 'w-24', 'w-20', 'w-20', 'w-20', 'w-28', 'w-16', 'w-10'].map((w, i) => (
+                {['w-40', 'w-24', 'w-20', 'w-28', 'w-20', 'w-20', 'w-10'].map((w, i) => (
                   <div key={i} className={`h-3 ${w} rounded bg-gray-100 animate-pulse`} />
                 ))}
               </div>
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className='flex items-center gap-4 border-b border-gray-100 px-5 py-4'>
-                  <div className='h-3 w-6 rounded bg-gray-100 animate-pulse' />
                   <div className='h-9 w-9 rounded-lg bg-gray-100 animate-pulse' />
                   <div className='h-3 w-28 rounded bg-gray-100 animate-pulse' />
                   <div className='h-3 w-20 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-20 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-5 w-16 rounded-full bg-gray-100 animate-pulse' />
-                  <div className='h-5 w-12 rounded-full bg-gray-100 animate-pulse' />
                   <div className='h-5 w-16 rounded-full bg-gray-100 animate-pulse' />
                   <div className='h-3 w-28 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-14 rounded bg-gray-100 animate-pulse' />
+                  <div className='h-3 w-16 rounded bg-gray-100 animate-pulse' />
+                  <div className='h-3 w-16 rounded bg-gray-100 animate-pulse' />
                 </div>
               ))}
             </div>
@@ -416,30 +360,31 @@ export default function ArchiveVaultHomePage() {
             <table className='w-full'>
               <thead>
                 <tr className='border-b border-gray-100 bg-gray-50/50'>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>#</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Archive Name</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Platform</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Objects</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Schedule Type</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Frequency</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Status</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Created On</th>
-                  <th className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>Action</th>
+                  {['Archive Policy', 'Platform', 'Status', 'Created On', 'Records', 'Data Size', 'Action'].map((col) => (
+                    <th key={col} className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>
+                      <span className='flex items-center gap-1'>
+                        {col}
+                        {col !== 'Action' && (
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3 w-3 text-gray-300 flex-shrink-0'>
+                            <polyline points='6 9 12 15 18 9' />
+                          </svg>
+                        )}
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-100'>
                 {paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className='px-5 py-12 text-center text-sm text-gray-400'>
+                    <td colSpan={7} className='px-5 py-12 text-center text-sm text-gray-400'>
                       No archive policies match your filters.
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((policy, idx) => (
+                  paginated.map((policy) => (
                     <tr key={policy.backupConfigId} className='transition-colors hover:bg-gray-50/60'>
-                      <td className='px-5 py-3.5 text-xs text-gray-400 tabular-nums'>
-                        {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
-                      </td>
+                      {/* Archive Policy */}
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-2.5'>
                           <PlatformBadge platform={policy.platform} />
@@ -448,23 +393,19 @@ export default function ArchiveVaultHomePage() {
                           </span>
                         </div>
                       </td>
+                      {/* Platform */}
                       <td className='px-5 py-3.5 text-xs text-gray-600'>{policy.platform}</td>
-                      <td className='px-5 py-3.5'>
-                        <div className='flex flex-wrap gap-1'>
-                          {policy.objectNames?.slice(0, 2).map((obj) => (
-                            <span key={obj} className='inline-block rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600'>{obj}</span>
-                          ))}
-                          {(policy.objectNames?.length ?? 0) > 2 && (
-                            <span className='text-[10px] text-gray-400'>+{policy.objectNames.length - 2}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className='px-5 py-3.5'><ScheduleTypeBadge type={policy.displaySchedule} /></td>
-                      <td className='px-5 py-3.5'><FrequencyBadge frequency={policy.displayFrequency} /></td>
+                      {/* Status */}
                       <td className='px-5 py-3.5'><StatusBadge status={policy.displayStatus} /></td>
+                      {/* Created On */}
                       <td className='px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</td>
+                      {/* Records */}
+                      <td className='px-5 py-3.5 text-xs text-gray-600'>--</td>
+                      {/* Data Size */}
+                      <td className='px-5 py-3.5 text-xs text-gray-600'>--</td>
+                      {/* Action */}
                       <td className='px-5 py-3.5'>
-                        <div className='flex items-center gap-2'>
+                        <div className='flex items-center gap-1'>
                           <button type='button' title='View'
                             className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'>
                             <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
