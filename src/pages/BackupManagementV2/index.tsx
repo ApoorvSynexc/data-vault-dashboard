@@ -57,8 +57,8 @@ function Panel({
   action?: ReactNode;
 }) {
   return (
-    <section className='overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4'>
+    <section className='flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4 flex-shrink-0'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>
           {title}
         </Typography>
@@ -113,24 +113,23 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
   const completedNoteTone: MetricTone = completedChange != null && completedChange >= 0 ? 'default' : 'warning';
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
-      <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-4'>
+    <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'>
+      <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>
         Jobs Status
       </Typography>
       {statsQuery.isLoading ? (
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm animate-pulse'>
-              <div className='h-3 w-24 rounded bg-gray-100' />
-              <div className='mt-3 h-8 w-16 rounded bg-gray-100' />
-              <div className='mt-2 h-3 w-28 rounded bg-gray-100' />
+            <div key={i} className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm animate-pulse'>
+              <div className='h-2.5 w-20 rounded bg-gray-100' />
+              <div className='mt-1.5 h-6 w-12 rounded bg-gray-100' />
             </div>
           ))}
         </div>
       ) : statsQuery.isError ? (
         <p className='text-xs text-red-500'>Failed to load job stats.</p>
       ) : (
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
           <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} note={completedNote} noteTone={completedNoteTone} />
           <MetricCard label='Running Jobs' value={pad(extractCount(stats?.runningJobs))} note='All within SLA' tone='success' withBar />
           <MetricCard label='Failed Jobs' value={pad(extractCount(stats?.failedJobs))} note='Requires Intervention' tone={extractCount(stats?.failedJobs) > 0 ? 'danger' : 'default'} />
@@ -178,15 +177,15 @@ function MetricCard({
   };
 
   return (
-    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
+    <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm'>
       <Typography variant='metricLabel' color={labelColor[tone]}>
         {label}
       </Typography>
-      <Typography className='mt-1' variant='metricValue' color={valueColor[tone]}>
+      <Typography className='mt-0.5' variant='metricValue' color={valueColor[tone]}>
         {value}
       </Typography>
       {withBar ? (
-        <div className='mt-2 flex items-center gap-2'>
+        <div className='mt-1 flex items-center gap-2'>
           <Typography variant='metricLabel' color={noteColor[noteTone ?? tone]}>
             {note}
           </Typography>
@@ -195,7 +194,7 @@ function MetricCard({
           </div>
         </div>
       ) : (
-        <Typography className='mt-2' variant='metricLabel' color={noteColor[noteTone ?? tone]}>
+        <Typography className='mt-1' variant='metricLabel' color={noteColor[noteTone ?? tone]}>
           {note}
         </Typography>
       )}
@@ -413,61 +412,81 @@ function FilterBar({
   onChange: (next: FilterState) => void;
 }) {
   const selectCls =
-    'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-200';
+    'h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 cursor-pointer';
 
   return (
-    <div className='flex items-center justify-between border-b border-gray-100 px-5 py-3'>
-      <input
-        type='text'
-        value={filters.search}
-        onChange={(e) => onChange({ ...filters, search: e.target.value })}
-        placeholder='Search by name...'
-        className='rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-200 w-48'
-        aria-label='Search backups by name'
-      />
-
-      <div className='flex items-center gap-2'>
-      <Typography variant='bodySm' color='muted' className='mr-1'>
-        Filter:
-      </Typography>
-
-      <select
-        value={filters.backupType}
-        onChange={(e) => onChange({ ...filters, backupType: e.target.value as FilterState['backupType'] })}
-        className={selectCls}
-        aria-label='Filter by backup type'
-      >
-        <option value='All'>All Types</option>
-        <option value='Realtime'>Realtime</option>
-        <option value='Schedule'>Schedule</option>
-      </select>
-
-      <select
-        value={filters.status}
-        onChange={(e) => onChange({ ...filters, status: e.target.value as FilterState['status'] })}
-        className={selectCls}
-        aria-label='Filter by status'
-      >
-        <option value='All'>All Statuses</option>
-        <option value='DRAFT'>Draft</option>
-        <option value='ACTIVE'>Active</option>
-        <option value='PENDING'>Pending</option>
-        <option value='SUCCESS'>Success</option>
-        <option value='FAILED'>Failed</option>
-        <option value='PAUSED'>Paused</option>
-        <option value='RESUMED'>Resumed</option>
-      </select>
-
-      {(filters.backupType !== 'All' || filters.status !== 'All' || filters.search !== '') && (
-        <button
-          type='button'
-          onClick={() => onChange({ backupType: 'All', status: 'All', search: '' })}
-          className='text-[10px] font-medium text-blue-600 hover:underline'
-        >
-          Clear
-        </button>
-      )}
+    <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3 flex-shrink-0'>
+      {/* Search */}
+      <div className='relative flex-1 min-w-0'>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+          <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+        </svg>
+        <input
+          type='text'
+          value={filters.search}
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+          placeholder='Search by name...'
+          aria-label='Search backups by name'
+          className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
+        />
       </div>
+
+      {/* Backup Type */}
+      <div className='relative flex-shrink-0'>
+        <select
+          value={filters.backupType}
+          onChange={(e) => onChange({ ...filters, backupType: e.target.value as FilterState['backupType'] })}
+          className={selectCls}
+          aria-label='Filter by backup type'
+          style={{ minWidth: 120 }}
+        >
+          <option value='All'>All Types</option>
+          <option value='Realtime'>Realtime</option>
+          <option value='Schedule'>Schedule</option>
+        </select>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </div>
+
+      {/* Status */}
+      <div className='relative flex-shrink-0'>
+        <select
+          value={filters.status}
+          onChange={(e) => onChange({ ...filters, status: e.target.value as FilterState['status'] })}
+          className={selectCls}
+          aria-label='Filter by status'
+          style={{ minWidth: 120 }}
+        >
+          <option value='All'>All Statuses</option>
+          <option value='DRAFT'>Draft</option>
+          <option value='ACTIVE'>Active</option>
+          <option value='PENDING'>Pending</option>
+          <option value='SUCCESS'>Success</option>
+          <option value='FAILED'>Failed</option>
+          <option value='PAUSED'>Paused</option>
+          <option value='RESUMED'>Resumed</option>
+        </select>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </div>
+
+      {/* More Filter */}
+      <button type='button'
+        className='flex h-9 flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
+          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
+        </svg>
+        More Filter
+      </button>
+
+      {/* Clear Filter */}
+      <button type='button'
+        onClick={() => onChange({ backupType: 'All', status: 'All', search: '' })}
+        className='flex h-9 flex-shrink-0 items-center rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
+        Clear Filter
+      </button>
     </div>
   );
 }
@@ -691,33 +710,31 @@ export default function BackupManagementV2() {
   ];
 
   return (
-    <div className='flex w-full min-w-0 flex-col gap-5'>
-      <section className='rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm'>
-        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
-          <div>
-            <Typography as='h2' variant='pageTitle'>
-              Backup Management
-            </Typography>
-            <Typography className='mt-1' variant='body' color='muted'>
-              Track schedules, performance, and intervention points across every protected workload.
-            </Typography>
-          </div>
-
-          <button
-            type='button'
-            onClick={() => navigate('/backup-management/add')}
-            className='inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition'
-          >
-            + New Backup
-          </button>
+    <div className='flex flex-col gap-5 flex-1 min-h-0'>
+      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
+        <div>
+          <Typography as='h2' variant='pageTitle'>
+            Backup Management
+          </Typography>
+          <Typography variant='bodySm' color='muted' className='mt-0.5'>
+            Track schedules, performance, and intervention points across every protected workload.
+          </Typography>
         </div>
-      </section>
+        <button
+          type='button'
+          onClick={() => navigate('/backup-management/add')}
+          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
+        >
+          + New Backup
+        </button>
+      </div>
 
       <JobsStatusSection service={backupConfigService} />
 
       <Panel title='All Backups'>
         <FilterBar filters={filters} onChange={setFilters} />
 
+        <div className='flex-1 min-h-0 overflow-auto'>
         {backupQuery.isLoading ? (
           <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
         ) : backupQuery.isError ? (
@@ -728,8 +745,6 @@ export default function BackupManagementV2() {
             rows={filteredBackups}
             getRowKey={(row) => row.id}
             rowClassName='border-t border-gray-100'
-            // minWidthClassName='min-w-[960px]'
-            minHeightClassName='min-h-[500px]'
             pagination={{
               currentPage,
               pageSize: apiMeta.limit ?? 10,
@@ -754,6 +769,7 @@ export default function BackupManagementV2() {
             showSerialNumber={true}
           />
         )}
+        </div>
       </Panel>
 
       <WarningDialog
