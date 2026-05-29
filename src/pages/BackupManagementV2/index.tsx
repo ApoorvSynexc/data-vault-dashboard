@@ -734,7 +734,6 @@ export default function BackupManagementV2() {
       <Panel title='All Backups'>
         <FilterBar filters={filters} onChange={setFilters} />
 
-        <div className='flex-1 min-h-0 overflow-auto'>
         {backupQuery.isLoading ? (
           <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
         ) : backupQuery.isError ? (
@@ -745,6 +744,7 @@ export default function BackupManagementV2() {
             rows={filteredBackups}
             getRowKey={(row) => row.id}
             rowClassName='border-t border-gray-100'
+            borderless
             pagination={{
               currentPage,
               pageSize: apiMeta.limit ?? 10,
@@ -769,7 +769,6 @@ export default function BackupManagementV2() {
             showSerialNumber={true}
           />
         )}
-        </div>
       </Panel>
 
       <WarningDialog
