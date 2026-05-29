@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useArchivalService } from '../../services/archival/archival.service';
+import ArchiveVaultHomePage from './HomePage';
 import ArchiveVaultWelcome from './Welcome';
 
 // ── Platform Icons ────────────────────────────────────────────────────────────
@@ -143,57 +146,30 @@ const tiers = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const hasArchives = false; // flip to true when real data exists
-
 export default function ArchiveVault() {
+  const archivalService = useArchivalService();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['archival-config-list'],
+    queryFn: () => archivalService.getList(),
+    staleTime: 30 * 1000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className='flex flex-1 items-center justify-center min-h-[60vh]'>
+        <div className='flex flex-col items-center gap-4'>
+          <div className='h-10 w-10 animate-spin rounded-full border-[3px] border-gray-200 border-t-blue-600' />
+          <p className='text-sm text-gray-400'>Loading Archive Vault...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const list: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? (data as any)?.results ?? []);
+  const hasArchives = list.length > 0;
+
   if (!hasArchives) return <ArchiveVaultWelcome />;
 
-  return (
-    <div className='flex flex-col gap-5'>
-
-      {/* Page header */}
-      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
-        <div>
-          <h2 className='text-lg font-bold text-gray-900'>Archive Vault</h2>
-          <p className='mt-0.5 text-sm text-gray-500'>
-            Long-term retention with cost aware tiers and legal hold readiness.
-          </p>
-        </div>
-        <button className='flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700'>
-          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' className='h-4 w-4'>
-            <line x1='12' y1='5' x2='12' y2='19' />
-            <line x1='5' y1='12' x2='19' y2='12' />
-          </svg>
-          New Archive
-        </button>
-      </div>
-
-      {/* Archive Policies */}
-      <div className='rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
-        <div className='mb-5'>
-          <h3 className='text-sm font-semibold text-gray-900'>Archive Policies</h3>
-          <p className='mt-0.5 text-xs text-gray-500'>Current retention and export rules</p>
-        </div>
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-          {policies.map((p) => (
-            <PolicyCard
-              key={p.id}
-              title={p.title}
-              description={p.description}
-              tags={p.tags}
-              icon={p.icon}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Storage Tiers */}
-      <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
-        {tiers.map((t) => (
-          <TierCard key={t.id} title={t.title} description={t.description} price={t.price} />
-        ))}
-      </div>
-
-    </div>
-  );
+  return <ArchiveVaultHomePage />;
 }
