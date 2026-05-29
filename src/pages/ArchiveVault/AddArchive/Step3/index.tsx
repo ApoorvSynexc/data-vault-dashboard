@@ -433,13 +433,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   useEffect(() => { setCurrentPage(0); }, [debouncedSearch, selectedFilter]);
 
   const totalSelected = selectedObjects.size;
-  const totalEstRecords = useMemo(() => {
-    return Array.from(selectedObjects).reduce((sum, id) => {
-      const obj = allObjects.find((o) => o.uuid === id);
-      return sum + (obj?.recordCount ?? 0);
-    }, 0);
-  }, [selectedObjects, allObjects]);
-
   const clearAll = () => {
     setSelectedObjects(new Set());
     setIncludeChild({});
@@ -657,7 +650,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                 <polyline points='20 6 9 17 4 12' />
               </svg>
-              <span className='font-medium'>{totalSelected} object selected · {totalEstRecords > 0 ? `~${totalEstRecords.toLocaleString()}` : '0'} est. records</span>
+              <span className='font-medium'>{totalSelected} object selected</span>
             </div>
 
             {/* Clear */}
