@@ -36,16 +36,6 @@ function StatusDot({ status }: { status: string }) {
 const TABS = ['Archive Details', 'Filter Details', 'Schedule Details', 'Activity Logs'] as const;
 type Tab = typeof TABS[number];
 
-// ── Detail Row ────────────────────────────────────────────────────────────────
-
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className='flex gap-4 py-3 border-b border-gray-100 last:border-0'>
-      <span className='w-44 flex-shrink-0 text-xs font-medium text-blue-500'>{label}</span>
-      <span className='text-xs text-gray-700'>{children}</span>
-    </div>
-  );
-}
 
 // ── Metric Card ───────────────────────────────────────────────────────────────
 
@@ -327,7 +317,6 @@ export default function ArchiveDetailScreen() {
   const sc             = item?.scheduleConfig;
   const freq           = sc?.scheduling?.frequency ?? 'HOURLY';
   const startTime      = sc?.scheduling?.startTime ?? '12:00';
-  const scheduleLabel  = `${freq} ${startTime}`;
 
   const destName       = item?.destinationDetail?.destinationName ?? '--';
   const destType       = item?.destinationDetail?.type ?? '--';
@@ -440,46 +429,114 @@ export default function ArchiveDetailScreen() {
         </div>
 
         {/* Tab Content */}
-        <div className={`flex-1 min-h-0 px-6 py-4 ${activeTab !== 'Activity Logs' ? 'overflow-y-auto' : 'flex flex-col'}`}>
+        <div className={`flex-1 min-h-0 px-6 py-5 ${activeTab !== 'Activity Logs' ? 'overflow-y-auto' : 'flex flex-col'}`}>
+
+          {/* ── Archive Details ── */}
           {activeTab === 'Archive Details' && (
-            <div className='rounded-xl border border-gray-100 px-4'>
-              <DetailRow label='Archive Name'>{item?.name ?? '--'}</DetailRow>
-              <DetailRow label='Archive Source'>
-                {platformName} — {environment}{' '}
-                {item?.crmDetail?.isConnected && <span className='ml-1 text-blue-600 font-medium'>(Connected)</span>}
-              </DetailRow>
-              <DetailRow label='Archive Destination'>
-                {destName} | {destType}{' '}
-                <span className='ml-1 text-blue-600 font-medium'>(Verified)</span>
-              </DetailRow>
-              <DetailRow label='Data Size'>{dataSize}</DetailRow>
-              <DetailRow label='Archive Schedule'>{scheduleLabel}</DetailRow>
-              <DetailRow label='Object(s)'>{objectNames.join(', ') || '--'}</DetailRow>
-              <DetailRow label='Created At'>{createdAt}</DetailRow>
-              <DetailRow label='Last Backup At'>{lastBackupAt}</DetailRow>
+            <div className='grid grid-cols-1 gap-px bg-gray-100 rounded-xl overflow-hidden border border-gray-100'>
+              {[
+                { label: 'Archive Name',        value: item?.name ?? '--' },
+                { label: 'Archive Source',      value: null,
+                  custom: (
+                    <span className='flex items-center gap-2 flex-wrap'>
+                      <span className='font-medium text-gray-800'>{platformName}</span>
+                      <span className='text-gray-400'>—</span>
+                      <span className='capitalize text-gray-600'>{environment}</span>
+                      {item?.crmDetail?.isConnected && (
+                        <span className='inline-flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[10px] font-semibold text-green-700'>
+                          <span className='h-1.5 w-1.5 rounded-full bg-green-500' />Connected
+                        </span>
+                      )}
+                    </span>
+                  ),
+                },
+                { label: 'Archive Destination', value: null,
+                  custom: (
+                    <span className='flex items-center gap-2 flex-wrap'>
+                      <span className='font-medium text-gray-800'>{destName}</span>
+                      <span className='rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 uppercase'>{destType}</span>
+                      <span className='inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-semibold text-blue-700'>
+                        <span className='h-1.5 w-1.5 rounded-full bg-blue-500' />Verified
+                      </span>
+                    </span>
+                  ),
+                },
+                { label: 'Data Size',           value: dataSize },
+                { label: 'Archive Schedule',     value: null,
+                  custom: (
+                    <span className='flex items-center gap-2'>
+                      <span className='rounded-full bg-blue-50 border border-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{freq}</span>
+                      <span className='text-gray-700'>{startTime}</span>
+                    </span>
+                  ),
+                },
+                { label: 'Object(s)',            value: null,
+                  custom: (
+                    <span className='flex flex-wrap gap-1.5'>
+                      {(objectNames.length ? objectNames : ['--']).map((o) => (
+                        <span key={o} className='rounded-full bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700'>{o}</span>
+                      ))}
+                    </span>
+                  ),
+                },
+                { label: 'Created At',          value: createdAt },
+                { label: 'Last Backup At',       value: lastBackupAt },
+              ].map(({ label, value, custom }) => (
+                <div key={label} className='flex items-center gap-6 bg-white px-5 py-3.5 hover:bg-gray-50/60 transition-colors'>
+                  <span className='w-44 flex-shrink-0 text-xs font-semibold text-blue-500'>{label}</span>
+                  <span className='text-xs text-gray-700 flex-1'>{custom ?? value}</span>
+                </div>
+              ))}
             </div>
           )}
+
           {/* ── Filter Details ── */}
           {activeTab === 'Filter Details' && (() => {
-            const filters: { field: string; operator: string; value: string }[] = (item?.objects ?? []).flatMap((obj: any) =>
+            const filters: { object: string; field: string; operator: string; value: string }[] = (item?.objects ?? []).flatMap((obj: any) =>
               (obj.field ?? []).map((f: any) => ({
-                field: `${obj.name} — ${f.name}`,
+                object: obj.name,
+                field: f.name,
                 operator: f.filter?.operator ?? '=',
                 value: f.filter?.value ?? '--',
               }))
             );
             return (
               <div>
-                <p className='mb-4 text-sm font-semibold text-gray-700'>Fields Level Filters</p>
+                <div className='flex items-center gap-2 mb-5'>
+                  <div className='flex h-7 w-7 items-center justify-center rounded-lg' style={{ background: 'rgba(21,93,252,0.08)' }}>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                      <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
+                    </svg>
+                  </div>
+                  <p className='text-sm font-bold text-gray-800'>Fields Level Filters</p>
+                  <span className='ml-1 rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{filters.length}</span>
+                </div>
                 {filters.length === 0 ? (
-                  <p className='text-xs text-gray-400'>No filters applied.</p>
+                  <div className='flex flex-col items-center justify-center py-12 text-center'>
+                    <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 border border-gray-100'>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#9ca3af' strokeWidth='1.5' className='h-5 w-5'>
+                        <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
+                      </svg>
+                    </div>
+                    <p className='text-sm font-medium text-gray-500'>No filters applied</p>
+                    <p className='text-xs text-gray-400 mt-1'>All records from selected objects will be archived</p>
+                  </div>
                 ) : (
-                  <div className='space-y-3'>
+                  <div className='space-y-2'>
                     {filters.map((f, i) => (
-                      <div key={i} className='flex items-center gap-3'>
-                        <span className='w-52 flex-shrink-0 text-xs text-gray-500'>{f.field} :</span>
-                        <span className='rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-500 uppercase'>{f.operator}</span>
-                        <span className='rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-700'>{f.value}</span>
+                      <div key={i} className='flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3 hover:border-blue-100 hover:bg-blue-50/30 transition-colors'>
+                        <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-gray-100 shadow-sm'>
+                          <svg viewBox='0 0 24 24' fill='none' stroke='#6366f1' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                            <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>
+                          </svg>
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <span className='text-xs font-semibold text-gray-700'>{f.object}</span>
+                          <span className='mx-1.5 text-gray-300'>·</span>
+                          <span className='text-xs text-gray-500'>{f.field}</span>
+                        </div>
+                        <span className='rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{f.operator}</span>
+                        <span className='rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm min-w-[3rem] text-center'>{f.value}</span>
                       </div>
                     ))}
                   </div>
@@ -493,37 +550,81 @@ export default function ArchiveDetailScreen() {
             const sc = item?.scheduleConfig;
             const freq = sc?.scheduling?.frequency ?? 'Daily';
             const runsAt = sc?.scheduling?.startTime ?? '12:00 AM';
-            const tz = sc?.timeZone ?? '(GMT-04:00) Eastern Time(US & Canada)';
-            const startedFrom = sc?.scheduling?.startDate ?? '20-04-2025';
-            const summary = `${freq} ${runsAt}, ${tz}, Started From ${startedFrom}`;
+            const tz = sc?.timeZone ?? '--';
+            const startedFrom = sc?.scheduling?.startDate ?? '--';
             return (
               <div>
-                <p className='mb-1 text-sm font-semibold text-gray-700'>Currently Scheduled</p>
-                <p className='mb-4 text-xs text-gray-500'>{summary}</p>
-                <div className='rounded-xl border border-gray-100 p-4'>
-                  <div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
-                    {[
-                      { label: 'Running Frequency', value: freq },
-                      { label: 'Runs At', value: runsAt },
-                      { label: 'Time Zone', value: tz },
-                      { label: 'Started From', value: startedFrom },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <label className='block text-xs text-gray-400 mb-1'>{label}</label>
-                        <div className='flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700'>
-                          <span>{value}</span>
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3 w-3 text-gray-400 flex-shrink-0'>
-                            <polyline points='6 9 12 15 18 9' />
-                          </svg>
+                {/* Summary banner */}
+                <div className='mb-5 flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3'>
+                  <div className='flex items-center gap-3'>
+                    <div className='flex h-8 w-8 items-center justify-center rounded-lg' style={{ background: 'rgba(21,93,252,0.12)' }}>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                        <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className='text-xs font-bold text-gray-800'>Currently Scheduled</p>
+                      <p className='text-[11px] text-blue-600 font-medium mt-0.5'>{freq} at {runsAt} · {tz} · From {startedFrom}</p>
+                    </div>
+                  </div>
+                  <button type='button' className='flex items-center gap-1.5 rounded-lg bg-white border border-gray-200 px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3 w-3'>
+                      <path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/>
+                    </svg>
+                    Edit Schedule
+                  </button>
+                </div>
+
+                {/* Fields grid */}
+                <div className='grid grid-cols-2 gap-3 md:grid-cols-4'>
+                  {[
+                    {
+                      label: 'Running Frequency',
+                      value: freq,
+                      icon: (
+                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                          <polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/>
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: 'Runs At',
+                      value: runsAt,
+                      icon: (
+                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                          <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: 'Time Zone',
+                      value: tz,
+                      icon: (
+                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                          <circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>
+                        </svg>
+                      ),
+                    },
+                    {
+                      label: 'Started From',
+                      value: startedFrom,
+                      icon: (
+                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                          <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                        </svg>
+                      ),
+                    },
+                  ].map(({ label, value, icon }) => (
+                    <div key={label} className='rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 hover:border-blue-100 transition-colors'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(21,93,252,0.08)' }}>
+                          {icon}
                         </div>
+                        <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide'>{label}</span>
                       </div>
-                    ))}
-                  </div>
-                  <div className='mt-4 flex justify-end'>
-                    <button type='button' className='rounded-lg border border-gray-200 bg-white px-5 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-blue-400 hover:text-blue-600'>
-                      Edit
-                    </button>
-                  </div>
+                      <p className='text-sm font-bold text-gray-800 truncate'>{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -539,71 +640,93 @@ export default function ArchiveDetailScreen() {
             const paginated = filtered.slice((logPage - 1) * ITEMS_PER_LOG_PAGE, logPage * ITEMS_PER_LOG_PAGE);
             return (
               <div className='flex flex-col flex-1 min-h-0'>
-                {/* Filter bar — fixed */}
-                <div className='flex items-center gap-2 mb-3 flex-shrink-0'>
-                  <div className='relative'>
+                {/* Filter bar */}
+                <div className='flex items-center gap-2 mb-4 flex-shrink-0'>
+                  <div className='relative flex-1 max-w-xs'>
                     <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
                       <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
                     </svg>
                     <input type='text' value={logSearch} onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }}
-                      placeholder='Search'
-                      className='h-8 w-40 rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100' />
+                      placeholder='Search logs...'
+                      className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
                   </div>
                   <div className='relative'>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+                      <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                    </svg>
                     <input type='text' value={logFromDate} onChange={(e) => setLogFromDate(e.target.value)}
                       placeholder='From Date'
-                      className='h-8 w-32 rounded-lg border border-gray-200 bg-white px-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100' />
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                      <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                    </svg>
+                      className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
                   </div>
                   <div className='relative'>
-                    <input type='text' value={logToDate} onChange={(e) => setLogToDate(e.target.value)}
-                      placeholder='To Date'
-                      className='h-8 w-32 rounded-lg border border-gray-200 bg-white px-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100' />
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
                       <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
                     </svg>
+                    <input type='text' value={logToDate} onChange={(e) => setLogToDate(e.target.value)}
+                      placeholder='To Date'
+                      className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
                   </div>
                   <button type='button' onClick={() => { setLogSearch(''); setLogFromDate(''); setLogToDate(''); setLogPage(1); }}
-                    className='h-8 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
-                    Clear Filter
+                    className='h-9 rounded-lg border border-gray-200 bg-white px-3.5 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600'>
+                    Clear
                   </button>
                 </div>
 
-                {/* Column headers — fixed */}
+                {/* Column headers */}
                 <table className='w-full flex-shrink-0'>
                   <thead>
-                    <tr className='border-b border-gray-100'>
-                      {['Start Time', 'Status', 'Duration', 'New Records', 'Total Records', 'Data Size', 'Action'].map((col) => (
-                        <th key={col} className='pb-2 text-left text-xs font-semibold text-gray-700'>{col}</th>
+                    <tr className='border-b-2 border-gray-100'>
+                      {[
+                        { label: 'Start Time', w: 'w-44' },
+                        { label: 'Status', w: 'w-28' },
+                        { label: 'Duration', w: 'w-24' },
+                        { label: 'New Records', w: 'w-28' },
+                        { label: 'Total Records', w: 'w-28' },
+                        { label: 'Data Size', w: 'w-24' },
+                        { label: 'Action', w: 'w-20' },
+                      ].map(({ label, w }) => (
+                        <th key={label} className={`pb-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide ${w}`}>{label}</th>
                       ))}
                     </tr>
                   </thead>
                 </table>
 
-                {/* Rows — scrollable */}
+                {/* Rows */}
                 <div className='flex-1 min-h-0 overflow-y-auto'>
                   <table className='w-full'>
-                    <tbody className='divide-y divide-gray-50'>
+                    <tbody>
                       {paginated.map((log, i) => (
-                        <tr key={i} className='hover:bg-gray-50/50 transition-colors'>
-                          <td className='py-3 pr-4 text-xs text-gray-700'>{log.startTime}</td>
-                          <td className='py-3 pr-4'>
-                            <span className='inline-flex rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700'>{log.status}</span>
+                        <tr key={i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
+                          <td className='py-3 pr-4 w-44'>
+                            <span className='text-xs font-medium text-gray-700'>{log.startTime}</span>
                           </td>
-                          <td className='py-3 pr-4 text-xs text-gray-600'>{log.duration}</td>
-                          <td className='py-3 pr-4 text-xs text-gray-600'>{log.newRecords}</td>
-                          <td className='py-3 pr-4 text-xs text-gray-600'>{log.totalRecords.toLocaleString()}</td>
-                          <td className='py-3 pr-4 text-xs text-gray-600'>{log.dataSize}</td>
-                          <td className='py-3'>
-                            <div className='flex items-center gap-1.5 text-gray-400'>
-                              <button type='button' onClick={() => setSelectedLog(log)} className='flex items-center justify-center rounded p-1 transition hover:bg-gray-100 hover:text-gray-600'>
+                          <td className='py-3 pr-4 w-28'>
+                            <span className='inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-[10px] font-semibold text-green-700'>
+                              <span className='h-1.5 w-1.5 rounded-full bg-green-500' />{log.status}
+                            </span>
+                          </td>
+                          <td className='py-3 pr-4 w-24'>
+                            <span className='text-xs font-semibold text-blue-600'>{log.duration}</span>
+                          </td>
+                          <td className='py-3 pr-4 w-28'>
+                            <span className='text-xs text-gray-700'>{log.newRecords > 0 ? <span className='font-semibold text-indigo-600'>+{log.newRecords}</span> : <span className='text-gray-400'>0</span>}</span>
+                          </td>
+                          <td className='py-3 pr-4 w-28'>
+                            <span className='text-xs text-gray-600'>{log.totalRecords.toLocaleString()}</span>
+                          </td>
+                          <td className='py-3 pr-4 w-24'>
+                            <span className='text-xs font-medium text-gray-600'>{log.dataSize}</span>
+                          </td>
+                          <td className='py-3 w-20'>
+                            <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
+                              <button type='button' onClick={() => setSelectedLog(log)}
+                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
                                   <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
                                 </svg>
                               </button>
-                              <button type='button' className='flex items-center justify-center rounded p-1 transition hover:bg-gray-100 hover:text-gray-600'>
+                              <button type='button'
+                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:bg-gray-50'>
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
                                   <circle cx='12' cy='5' r='1' fill='currentColor'/><circle cx='12' cy='12' r='1' fill='currentColor'/><circle cx='12' cy='19' r='1' fill='currentColor'/>
                                 </svg>
@@ -616,20 +739,22 @@ export default function ArchiveDetailScreen() {
                   </table>
                 </div>
 
-                {/* Pagination footer — fixed */}
+                {/* Pagination footer */}
                 <div className='flex-shrink-0 mt-3 flex items-center justify-between border-t border-gray-100 pt-3'>
-                  <span className='text-xs text-gray-500'>Showing {Math.min((logPage - 1) * ITEMS_PER_LOG_PAGE + 1, filtered.length)} to {Math.min(logPage * ITEMS_PER_LOG_PAGE, filtered.length)} of {filtered.length}</span>
+                  <span className='text-xs text-gray-500'>
+                    Showing <span className='font-semibold text-gray-700'>{Math.min((logPage - 1) * ITEMS_PER_LOG_PAGE + 1, filtered.length)}</span> to <span className='font-semibold text-gray-700'>{Math.min(logPage * ITEMS_PER_LOG_PAGE, filtered.length)}</span> of <span className='font-semibold text-gray-700'>{filtered.length}</span> logs
+                  </span>
                   <div className='flex items-center gap-1'>
                     <button type='button' onClick={() => setLogPage((p) => Math.max(1, p - 1))} disabled={logPage === 1}
-                      className='flex h-7 w-7 items-center justify-center rounded text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&lt;</button>
+                      className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&lt;</button>
                     {Array.from({ length: totalLogPages }, (_, i) => i + 1).map((p) => (
                       <button key={p} type='button' onClick={() => setLogPage(p)}
-                        className={`flex h-7 w-7 items-center justify-center rounded text-xs font-medium transition ${logPage === p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition ${logPage === p ? 'bg-blue-600 text-white shadow-sm' : 'border border-gray-200 text-gray-500 hover:bg-gray-100'}`}>
                         {p}
                       </button>
                     ))}
                     <button type='button' onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))} disabled={logPage === totalLogPages}
-                      className='flex h-7 w-7 items-center justify-center rounded text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&gt;</button>
+                      className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&gt;</button>
                   </div>
                 </div>
               </div>
