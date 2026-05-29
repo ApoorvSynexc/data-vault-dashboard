@@ -416,6 +416,7 @@ export default function ArchiveVaultHomePage() {
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-1'>
                           <button type='button' title='View'
+                            onClick={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}
                             className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'>
                             <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
                               <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' /><circle cx='12' cy='12' r='3' />

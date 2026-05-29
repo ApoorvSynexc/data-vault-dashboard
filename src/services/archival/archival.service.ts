@@ -5,6 +5,7 @@ export const ARCHIVAL_ENDPOINTS = {
   objectChilds: '/v1/archival-config/object-childs',
   config: '/v1/archival-config',
   list: '/v1/archival-config/list',
+  detail: '/v1/archival-config',
 } as const;
 
 export type ObjectScheduleConfig = {
@@ -92,5 +93,7 @@ export function useArchivalService() {
       http.post(ARCHIVAL_ENDPOINTS.config, payload),
     getList: (): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.list),
+    getDetail: (slug: string): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.detail, { query: { slug } }),
   };
 }
