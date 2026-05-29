@@ -45,8 +45,7 @@ export default function Step5({
   const [showConfirm, setShowConfirm] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
-  const [confirmChecked, setConfirmChecked] = useState(false);
-  const [confirmError, setConfirmError] = useState(false);
+const [confirmError, setConfirmError] = useState(false);
 
   // Dummy data fallbacks
   const dummyObjects = selectedObjects.length > 0 ? selectedObjects : [
@@ -71,7 +70,7 @@ export default function Step5({
     await archivalService.applyConfig({ ...archivalPayload, backupStatus } as any);
   };
 
-  const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmChecked(false); setConfirmError(false); setShowConfirm(true); };
+  const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmError(false); setShowConfirm(true); };
 
   const handleSaveDraft = async () => {
     setIsLoading(true);
@@ -286,79 +285,84 @@ export default function Step5({
 
       {/* Confirm dialog */}
       {showConfirm && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center p-4'
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)' }}
-          onClick={() => setShowConfirm(false)}>
-          <div className='bg-white rounded-2xl w-full flex flex-col'
+        <div
+          className='fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6'
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+          onClick={() => setShowConfirm(false)}
+        >
+          <div
+            className='relative w-full bg-white rounded-2xl flex flex-col overflow-hidden'
             style={{ maxWidth: 520, boxShadow: '0 24px 64px rgba(0,0,0,0.22)' }}
-            onClick={(e) => e.stopPropagation()}>
-
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className='flex items-center justify-between px-7 pt-6 pb-4'>
+            <div className='flex items-center justify-between px-5 sm:px-7 pt-5 sm:pt-6 pb-4'>
               <h2 className='text-base font-semibold text-gray-900'>Confirm Archive</h2>
-              <button onClick={() => setShowConfirm(false)}
-                className='p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600'>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className='p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600'
+                aria-label='Close'
+              >
                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
                   <path d='M18 6L6 18M6 6l12 12' />
                 </svg>
               </button>
             </div>
 
-            <div className='px-7 pb-6 space-y-5'>
+            <div className='px-5 sm:px-7 pb-5 sm:pb-6 flex flex-col gap-4'>
               {/* Info banner */}
-              <div className='rounded-lg px-4 py-3 text-sm text-center' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                Estimated <span className='font-bold text-gray-900'>{totalRecords.toLocaleString()}</span> and will be moved to this archive from your <span className='font-medium text-gray-800'>{crmName}</span> org.
+              <div className='rounded-lg px-4 py-3 text-sm text-center leading-relaxed' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+                Estimated{' '}
+                <span className='font-bold text-gray-900'>{totalRecords.toLocaleString()}</span>{' '}
+                and will be moved to this archive from your{' '}
+                <span className='font-semibold text-gray-800'>{crmName}</span> org.
               </div>
 
               {/* Warning text */}
               <p className='text-sm text-center leading-relaxed' style={{ color: '#D97706' }}>
-                This will permanently remove the matched records from <span className='font-semibold'>{crmName} (na12)</span> and move them to <span className='font-semibold'>{destinationProvider} hot storage</span>. This action cannot be undone from the source.
+                This will permanently remove the matched records from{' '}
+                <span className='font-semibold'>{crmName} (na12)</span>{' '}
+                and move them to{' '}
+                <span className='font-semibold'>{destinationProvider} hot storage</span>.{' '}
+                This action cannot be undone from the source.
               </p>
 
-              {/* Checkbox */}
-              <label className='flex items-start gap-3 cursor-pointer'>
-                <input
-                  type='checkbox'
-                  checked={confirmChecked}
-                  onChange={(e) => setConfirmChecked(e.target.checked)}
-                  className='mt-0.5 w-4 h-4 accent-blue-600 flex-shrink-0 cursor-pointer'
-                />
-                <span className='text-sm text-gray-700'>
-                  I understand 2,341 open Opportunities will have broken Account references after archiving.
-                </span>
-              </label>
 
-              {/* Type ARCHIVE */}
-              <div className='flex items-center gap-3'>
-                <span className='text-sm text-gray-700 whitespace-nowrap'>
+              {/* Type ARCHIVE row — stacks on mobile, inline on sm+ */}
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3'>
+                <span className='shrink-0 text-sm text-gray-700'>
                   Type <span className='font-bold text-gray-900'>ARCHIVE</span> in the box to confirm and proceed
                 </span>
                 <input
                   type='text'
                   value={confirmText}
                   onChange={(e) => { setConfirmText(e.target.value); if (confirmError) setConfirmError(false); }}
-                  className='flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  className='w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 sm:w-36'
                   style={{ border: `1px solid ${confirmError ? '#EF4444' : '#D1D5DB'}` }}
-                  placeholder=''
+                  placeholder='ARCHIVE'
                 />
               </div>
               {confirmError && (
-                <p className='text-xs text-red-500 -mt-3'>Please type "ARCHIVE" to proceed</p>
+                <p className='text-xs text-red-500'>Please type "ARCHIVE" to proceed</p>
               )}
             </div>
 
             {/* Footer */}
-            <div className='flex items-center justify-center gap-4 px-7 py-5' style={{ borderTop: '1px solid #F1F5F9' }}>
-              <button onClick={() => setShowConfirm(false)}
-                className='px-8 py-2.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700'
-                style={{ minWidth: 120 }}>
+            <div
+              className='flex flex-col-reverse gap-2 px-5 sm:px-7 py-4 sm:py-5 sm:flex-row sm:justify-center sm:gap-4'
+              style={{ borderTop: '1px solid #F1F5F9' }}
+            >
+              <button
+                onClick={() => setShowConfirm(false)}
+                className='w-full rounded-xl border border-gray-300 bg-white px-8 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto'
+              >
                 Cancel
               </button>
-              <button onClick={handleConfirmRun}
-                className='px-8 py-2.5 text-sm font-medium rounded-lg text-white transition-colors'
-                style={{ background: '#155DFC', minWidth: 120 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
+              <button
+                onClick={handleConfirmRun}
+                className='w-full rounded-xl px-8 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 sm:w-auto'
+                style={{ background: '#155DFC' }}
+              >
                 Proceed
               </button>
             </div>
