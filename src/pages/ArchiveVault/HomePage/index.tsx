@@ -461,7 +461,7 @@ export default function ArchiveVaultHomePage() {
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-2.5'>
                           <PlatformBadge platform={policy.platform} />
-                          <span className='text-xs font-semibold text-blue-600 hover:underline cursor-pointer'>
+                          <span className='text-xs font-semibold text-blue-600 hover:underline cursor-pointer' onClick={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}>
                             {policy.displayName}
                           </span>
                         </div>
