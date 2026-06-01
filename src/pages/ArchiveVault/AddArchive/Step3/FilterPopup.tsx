@@ -50,6 +50,7 @@ export default function FilterPopup({
   );
   const [soqlQuery, setSoqlQuery] = useState('');
   const [customLogic, setCustomLogic] = useState('1 AND 2');
+  const [customLogicTouched, setCustomLogicTouched] = useState(false);
 
   const { data: fieldsData, isLoading: isLoadingFields } = useQuery({
     queryKey: ['archival-fields', crmId, objectName],
@@ -92,11 +93,48 @@ export default function FilterPopup({
     if (matchMode === 'ALL conditions') return 'AND';
     if (matchMode === 'ANY condition') return 'OR';
     const num = idx + 1;
-    const before = new RegExp(`(?:^|\\s)(AND|OR)\\s+${num}(?:\\s|$)`, 'i');
+    const before = new RegExp(`(?:^|[\\s(])(AND|OR)\\s+${num}(?:[\\s)]|$)`, 'i');
     const match = before.exec(customLogic);
     if (match) return match[1].toUpperCase();
     return 'AND';
   };
+
+  const validateCustomLogic = (expr: string, count: number): string | null => {
+    const trimmed = expr.trim();
+    if (!trimmed) return 'Expression cannot be empty.';
+
+    // Check for invalid characters — only digits, spaces, AND, OR, NOT, parentheses allowed
+    if (/[^0-9\sAaNnDdOoRr()]/i.test(trimmed))
+      return 'Only numbers, AND, OR, NOT and parentheses are allowed.';
+
+    // Extract all numbers referenced
+    const nums = trimmed.match(/\d+/g)?.map(Number) ?? [];
+    if (nums.length === 0) return 'Expression must reference at least one condition number.';
+
+    // All referenced numbers must be valid condition indices
+    const outOfRange = nums.find((n) => n < 1 || n > count);
+    if (outOfRange) return `Condition ${outOfRange} doesn't exist (you have ${count} condition${count !== 1 ? 's' : ''}).`;
+
+    // Check balanced parentheses
+    let depth = 0;
+    for (const ch of trimmed) {
+      if (ch === '(') depth++;
+      else if (ch === ')') { depth--; if (depth < 0) return 'Unmatched closing parenthesis ).'; }
+    }
+    if (depth !== 0) return 'Unmatched opening parenthesis (.';
+
+    // Must not start or end with AND / OR
+    if (/^(AND|OR)\b/i.test(trimmed)) return 'Expression cannot start with AND or OR.';
+    if (/\b(AND|OR)$/i.test(trimmed)) return 'Expression cannot end with AND or OR.';
+
+    // No double operators like AND AND or OR OR
+    if (/\b(AND|OR)\s+(AND|OR)\b/i.test(trimmed)) return 'Two consecutive operators (AND/OR) are not allowed.';
+
+    return null;
+  };
+
+  const customLogicError = matchMode === 'Custom' ? validateCustomLogic(customLogic, conditions.length) : null;
+  const canApply = matchMode !== 'Custom' || customLogicError === null;
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30' onClick={onClose}>
@@ -161,21 +199,39 @@ export default function FilterPopup({
               <span className='text-sm text-gray-500'>Match</span>
               <div className='flex rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
                 {(['ALL conditions', 'ANY condition', 'Custom'] as const).map((tab) => (
-                  <button key={tab} onClick={() => setMatchMode(tab)}
+                  <button key={tab} onClick={() => { setMatchMode(tab); setCustomLogicTouched(false); }}
                     className={`px-4 py-1.5 text-sm font-medium transition-colors ${matchMode === tab ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                     {tab}
                   </button>
                 ))}
               </div>
               {matchMode === 'Custom' && (
-                <input
-                  type='text'
-                  value={customLogic}
-                  onChange={(e) => setCustomLogic(e.target.value)}
-                  placeholder='e.g. 1 AND 2'
-                  className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
-                  style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                />
+                <div className='flex-1 flex flex-col gap-1'>
+                  <div className='relative'>
+                    <input
+                      type='text'
+                      value={customLogic}
+                      onChange={(e) => { setCustomLogic(e.target.value); setCustomLogicTouched(true); }}
+                      onBlur={() => setCustomLogicTouched(true)}
+                      placeholder='e.g. 1 AND ((2 AND 3) OR 4) OR 5'
+                      className='w-full px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 font-mono'
+                      style={{
+                        border: `1px solid ${customLogicTouched && customLogicError ? '#EF4444' : '#E2E8F0'}`,
+                        color: '#33363F',
+                        boxShadow: customLogicTouched && customLogicError ? '0 0 0 3px rgba(239,68,68,0.1)' : 'none',
+                      }}
+                    />
+                    {/* Valid / invalid icon */}
+                    {customLogicTouched && (
+                      <span className='absolute right-2.5 top-1/2 -translate-y-1/2'>
+                        {customLogicError
+                          ? <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#EF4444' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/></svg>
+                          : <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#22C55E' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>
+                        }
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -314,9 +370,10 @@ export default function FilterPopup({
             Cancel
           </button>
           <button
-            onClick={() => onApply(objectId, conditions, matchMode, customLogic)}
-            className='px-5 py-2 text-sm font-medium text-white rounded-lg transition-colors'
-            style={{ background: '#155DFC' }}>
+            onClick={() => { if (!canApply) { setCustomLogicTouched(true); return; } onApply(objectId, conditions, matchMode, customLogic); }}
+            disabled={!canApply}
+            className='px-5 py-2 text-sm font-medium rounded-lg transition-colors'
+            style={{ background: canApply ? '#155DFC' : '#CBD5E1', color: canApply ? 'white' : '#94A3B8', cursor: canApply ? 'pointer' : 'not-allowed' }}>
             Apply Filter
           </button>
         </div>

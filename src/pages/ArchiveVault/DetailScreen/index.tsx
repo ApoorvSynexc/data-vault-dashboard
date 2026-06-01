@@ -703,92 +703,88 @@ export default function ArchiveDetailScreen() {
                 </button>
               </div>
 
-              {/* Column headers */}
-              <table className='w-full flex-shrink-0'>
-                <thead>
-                  <tr className='border-b-2 border-gray-100'>
-                    {(['Start Time', 'Status', 'Duration', 'New Records', 'Total Records', 'Data Size', 'Action'] as const).map((col) => (
-                      <th key={col} className='pb-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4'>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-              </table>
-
-              {/* Rows */}
+              {/* Single table — sticky thead keeps headers aligned with rows */}
               <div className='flex-1 min-h-0 overflow-y-auto'>
-                {jobsLoading ? (
-                  <div className='flex items-center justify-center py-12'>
-                    <div className='h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
-                  </div>
-                ) : jobRows.length === 0 ? (
-                  <div className='flex flex-col items-center justify-center py-12 text-center'>
-                    <p className='text-sm font-medium text-gray-500'>No activity logs found</p>
-                  </div>
-                ) : (
-                  <table className='w-full'>
-                    <tbody>
-                      {jobRows.map((job, i) => {
-                        const jobStatus = job.status?.toUpperCase() ?? '';
-                        const statusColor: Record<string, string> = {
-                          SUCCESS: 'border-green-200 bg-green-50 text-green-700',
-                          COMPLETED: 'border-green-200 bg-green-50 text-green-700',
-                          FAILED: 'border-red-200 bg-red-50 text-red-700',
-                          RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
-                          PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
-                        };
-                        const dotColor: Record<string, string> = {
-                          SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
-                          FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
-                        };
-                        const newRecs = job.recordCount ?? 0;
-                        const totalRecs = job.object?.reduce((acc, o) => acc + (o.totalRecordCount ?? 0), 0) ?? 0;
-                        return (
-                          <tr key={job.backupJobId ?? i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
-                            <td className='py-3 pr-4'>
-                              <span className='text-xs font-medium text-gray-700'>{fmtJobTime(job.startedAt)}</span>
-                            </td>
-                            <td className='py-3 pr-4'>
-                              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusColor[jobStatus] ?? 'border-gray-200 bg-gray-50 text-gray-600'}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${dotColor[jobStatus] ?? 'bg-gray-400'}`} />
-                                {job.status ?? '--'}
-                              </span>
-                            </td>
-                            <td className='py-3 pr-4'>
-                              <span className='text-xs font-semibold text-blue-600'>{calcDuration(job.startedAt, job.completedAt)}</span>
-                            </td>
-                            <td className='py-3 pr-4'>
-                              {newRecs > 0
-                                ? <span className='text-xs font-semibold text-indigo-600'>+{newRecs}</span>
-                                : <span className='text-xs text-gray-400'>0</span>}
-                            </td>
-                            <td className='py-3 pr-4'>
-                              <span className='text-xs text-gray-600'>{totalRecs.toLocaleString()}</span>
-                            </td>
-                            <td className='py-3 pr-4'>
-                              <span className='text-xs font-medium text-gray-600'>{formatBytes(job.sizeInBytes)}</span>
-                            </td>
-                            <td className='py-3'>
-                              <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
-                                <button type='button' onClick={() => setSelectedLog(job)}
-                                  className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
-                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                                    <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
-                                  </svg>
-                                </button>
-                                <button type='button'
-                                  className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:bg-gray-50'>
-                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                                    <circle cx='12' cy='5' r='1' fill='currentColor'/><circle cx='12' cy='12' r='1' fill='currentColor'/><circle cx='12' cy='19' r='1' fill='currentColor'/>
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
+                <table className='w-full border-collapse'>
+                  <thead className='sticky top-0 z-10 bg-white'>
+                    <tr className='border-b-2 border-gray-100'>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Start Time</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Status</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Duration</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>New Records</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Total Records</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Data Size</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobsLoading ? (
+                      <tr><td colSpan={7} className='py-12 text-center'>
+                        <div className='inline-block h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
+                      </td></tr>
+                    ) : jobRows.length === 0 ? (
+                      <tr><td colSpan={7} className='py-12 text-center text-sm font-medium text-gray-500'>No activity logs found</td></tr>
+                    ) : jobRows.map((job, i) => {
+                      const jobStatus = job.status?.toUpperCase() ?? '';
+                      const statusColor: Record<string, string> = {
+                        SUCCESS: 'border-green-200 bg-green-50 text-green-700',
+                        COMPLETED: 'border-green-200 bg-green-50 text-green-700',
+                        FAILED: 'border-red-200 bg-red-50 text-red-700',
+                        RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
+                        PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
+                      };
+                      const dotColor: Record<string, string> = {
+                        SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
+                        FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
+                      };
+                      const newRecs = job.recordCount ?? 0;
+                      const totalRecs = job.object?.reduce((acc, o) => acc + (o.totalRecordCount ?? 0), 0) ?? 0;
+                      return (
+                        <tr key={job.backupJobId ?? i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
+                          <td className='py-3 pr-4 whitespace-nowrap'>
+                            <span className='text-xs font-medium text-gray-700'>{fmtJobTime(job.startedAt)}</span>
+                          </td>
+                          <td className='py-3 pr-4'>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusColor[jobStatus] ?? 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${dotColor[jobStatus] ?? 'bg-gray-400'}`} />
+                              {job.status ?? '--'}
+                            </span>
+                          </td>
+                          <td className='py-3 pr-4'>
+                            <span className='text-xs font-semibold text-blue-600'>{calcDuration(job.startedAt, job.completedAt)}</span>
+                          </td>
+                          <td className='py-3 pr-4'>
+                            {newRecs > 0
+                              ? <span className='text-xs font-semibold text-indigo-600'>+{newRecs}</span>
+                              : <span className='text-xs text-gray-400'>0</span>}
+                          </td>
+                          <td className='py-3 pr-4'>
+                            <span className='text-xs text-gray-600'>{totalRecs.toLocaleString()}</span>
+                          </td>
+                          <td className='py-3 pr-4'>
+                            <span className='text-xs font-medium text-gray-600'>{formatBytes(job.sizeInBytes)}</span>
+                          </td>
+                          <td className='py-3'>
+                            <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
+                              <button type='button' onClick={() => setSelectedLog(job)}
+                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
+                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                                  <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
+                                </svg>
+                              </button>
+                              <button type='button'
+                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:bg-gray-50'>
+                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                                  <circle cx='12' cy='5' r='1' fill='currentColor'/><circle cx='12' cy='12' r='1' fill='currentColor'/><circle cx='12' cy='19' r='1' fill='currentColor'/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
               {/* Pagination footer */}
