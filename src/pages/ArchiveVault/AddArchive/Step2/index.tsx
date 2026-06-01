@@ -58,7 +58,7 @@ export default function AddArchiveStep2({
         </div>
 
         {/* Form */}
-        <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-shrink-0'
+        <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-1 min-h-0'
           style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
           {/* Row 1: Archive Source + Destination */}

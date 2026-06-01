@@ -51,10 +51,10 @@ const STEPS = [
 
 export default function ProgressBar({ activeStep }: { activeStep: number }) {
   return (
-    <div className='flex-shrink-0 bg-white rounded-2xl px-6 py-4 flex flex-col gap-3'
+    <div className='flex-shrink-0 bg-white rounded-2xl px-4 sm:px-6 py-4 flex flex-col gap-3'
       style={{ border: '0.8px solid rgba(0,0,0,0.1)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
       {/* Step indicators */}
-      <div className='flex items-center w-full'>
+      <div className='flex items-center w-full min-w-0'>
         {STEPS.map((step, idx) => {
           const isActive = step.id === activeStep;
           const isDone = step.id < activeStep;
@@ -62,22 +62,23 @@ export default function ProgressBar({ activeStep }: { activeStep: number }) {
           const labelColor = isActive ? '#155DFC' : isDone ? '#33363F' : '#94A3B8';
           return (
             <>
-              {/* Icon + label — shrink-0 so label width doesn't affect connector */}
-              <div key={step.id} className='flex items-center gap-2 flex-shrink-0'>
+              {/* Circle + label */}
+              <div key={step.id} className='flex items-center gap-1.5 flex-shrink-0'>
                 <div className='flex items-center justify-center rounded-full flex-shrink-0'
-                  style={{ width: 34, height: 34, background: circleBg }}>
+                  style={{ width: 28, height: 28, background: circleBg }}>
                   {isDone
-                    ? <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12' /></svg>
+                    ? <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12' /></svg>
                     : step.icon(isActive)
                   }
                 </div>
-                <span className='text-xs font-medium whitespace-nowrap' style={{ color: labelColor }}>
+                {/* Label: hidden on xs, visible from sm */}
+                <span className='hidden sm:block text-xs font-medium whitespace-nowrap' style={{ color: labelColor }}>
                   {step.label}
                 </span>
               </div>
-              {/* Connector — flex-1 alone, so all connectors are equal width */}
+              {/* Connector — flex-1 with min-w-0 so it shrinks on small screens */}
               {idx < STEPS.length - 1 && (
-                <div key={`line-${step.id}`} className='flex-1 h-px mx-2 rounded-full' style={{ background: isDone ? '#155DFC' : '#E2E8F0' }} />
+                <div key={`line-${step.id}`} className='flex-1 min-w-0 h-px mx-1 sm:mx-2 rounded-full' style={{ background: isDone ? '#155DFC' : '#E2E8F0' }} />
               )}
             </>
           );

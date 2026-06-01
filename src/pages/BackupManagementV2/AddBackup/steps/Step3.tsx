@@ -46,70 +46,73 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
         </div>
 
         {/* Main Content */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-          {/* Backup Source */}
-          <div>
-            <label className='block text-sm font-semibold text-gray-900 mb-2'>
-              <span className='text-red-500'>*</span> Backup Source
-            </label>
-            <input
-              type='text'
-              value='Salesforce Production'
-              disabled
-              className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
-            />
-          </div>
+        <div className='bg-white rounded-xl p-6 flex flex-col flex-1 min-h-0'
+          style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            {/* Backup Source */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-900 mb-2'>
+                <span className='text-red-500'>*</span> Backup Source
+              </label>
+              <input
+                type='text'
+                value='Salesforce Production'
+                disabled
+                className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
+              />
+            </div>
 
-          {/* Backup Destination */}
-          <div>
-            <label className='block text-sm font-semibold text-gray-900 mb-2'>
-              <span className='text-red-500'>*</span> Backup Destination
-            </label>
-            <input
-              type='text'
-              value='AWS S3'
-              disabled
-              className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
-            />
-          </div>
+            {/* Backup Destination */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-900 mb-2'>
+                <span className='text-red-500'>*</span> Backup Destination
+              </label>
+              <input
+                type='text'
+                value='AWS S3'
+                disabled
+                className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
+              />
+            </div>
 
-          {/* Backup Policy Name */}
-          <div>
-            <label className='block text-sm font-semibold text-gray-900 mb-2'>
-              <span className='text-red-500'>*</span> Backup Policy Name
-            </label>
-            <input
-              type='text'
-              value={policyName}
-              onChange={(e) => {
-                setPolicyName(e.target.value);
-                if (policyNameError && e.target.value.trim()) {
-                  setPolicyNameError(false);
-                }
-              }}
-              placeholder='Enter backup policy name'
-              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
-                policyNameError
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 focus:ring-blue-500'
-              }`}
-            />
-            {policyNameError && (
-              <p className='text-sm text-red-600 mt-2'>Backup Policy Name is required</p>
-            )}
-          </div>
+            {/* Backup Policy Name */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-900 mb-2'>
+                <span className='text-red-500'>*</span> Backup Policy Name
+              </label>
+              <input
+                type='text'
+                value={policyName}
+                onChange={(e) => {
+                  setPolicyName(e.target.value);
+                  if (policyNameError && e.target.value.trim()) {
+                    setPolicyNameError(false);
+                  }
+                }}
+                placeholder='Enter backup policy name'
+                className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
+                  policyNameError
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+              />
+              {policyNameError && (
+                <p className='text-sm text-red-600 mt-2'>Backup Policy Name is required</p>
+              )}
+            </div>
 
-          {/* Backup Description */}
-          <div>
-            <label className='block text-sm font-semibold text-gray-900 mb-2'>
-              Backup Description (Optional)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className='w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none'
-              rows={4}
-            />
+            {/* Backup Description */}
+            <div>
+              <label className='block text-sm font-semibold text-gray-900 mb-2'>
+                Backup Description (Optional)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className='w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none'
+                rows={4}
+              />
+            </div>
           </div>
         </div>
       </div>
