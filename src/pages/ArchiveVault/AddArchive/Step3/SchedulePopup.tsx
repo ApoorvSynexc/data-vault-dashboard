@@ -31,6 +31,7 @@ const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function SchedulePopup({ objectName, onApply, onClose }: SchedulePopupProps) {
+  const [overrideEnabled, setOverrideEnabled] = useState(false);
   const [frequency, setFrequency] = useState<FrequencyType>('Daily');
   const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>('runNow');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Mon']);
@@ -107,17 +108,52 @@ export default function SchedulePopup({ objectName, onApply, onClose }: Schedule
         {/* Body */}
         <div className='flex-1 overflow-y-auto px-8 py-6'>
 
-          {/* Frequency buttons */}
-          <div className='flex gap-2 flex-wrap mb-6'>
+          {/* Override toggle */}
+          <div className='flex items-center justify-between gap-4 mb-6 p-4 rounded-xl'
+            style={{ background: overrideEnabled ? 'rgba(21,93,252,0.04)' : '#F8FAFC', border: `1px solid ${overrideEnabled ? 'rgba(21,93,252,0.18)' : '#E2E8F0'}`, transition: 'all 0.2s' }}>
+            <div className='flex items-start gap-3'>
+              <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5'
+                style={{ background: overrideEnabled ? 'rgba(21,93,252,0.1)' : '#EEF2F7' }}>
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke={overrideEnabled ? '#155DFC' : '#94A3B8'} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='12' cy='12' r='3' /><path d='M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14' />
+                </svg>
+              </div>
+              <div>
+                <p className='text-sm font-semibold' style={{ color: overrideEnabled ? '#155DFC' : '#374151' }}>
+                  Use a custom schedule for this object
+                </p>
+                <p className='text-xs mt-0.5' style={{ color: '#64748B' }}>
+                  Override the global archive schedule and set an independent frequency just for <span className='font-medium text-gray-700'>{objectName}</span>.
+                </p>
+              </div>
+            </div>
+            {/* Toggle switch */}
+            <button
+              type='button'
+              onClick={() => setOverrideEnabled((v) => !v)}
+              className='flex-shrink-0 relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none'
+              style={{ width: 44, height: 24, background: overrideEnabled ? '#155DFC' : '#CBD5E1' }}
+              aria-checked={overrideEnabled}
+              role='switch'>
+              <span
+                className='inline-block rounded-full bg-white shadow transition-transform duration-200'
+                style={{ width: 18, height: 18, transform: overrideEnabled ? 'translateX(22px)' : 'translateX(3px)' }}
+              />
+            </button>
+          </div>
+
+          {/* Frequency buttons — always visible, disabled when override is off */}
+          <div className={`flex gap-2 flex-wrap mb-6 transition-opacity ${!overrideEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
             {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
-              <button key={freq} onClick={() => setFrequency(freq)}
+              <button key={freq} onClick={() => setFrequency(freq)} disabled={!overrideEnabled}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
                 {freq}
               </button>
             ))}
           </div>
 
-          {/* One Time */}
+          {/* Frequency content — always visible, disabled when override is off */}
+          <div className={`transition-opacity ${!overrideEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
           {frequency === 'One Time' && (
             <div className='space-y-4'>
               <div className='bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3'>
@@ -328,6 +364,7 @@ export default function SchedulePopup({ objectName, onApply, onClose }: Schedule
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -335,7 +372,8 @@ export default function SchedulePopup({ objectName, onApply, onClose }: Schedule
           <button onClick={onClose} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
             Cancel
           </button>
-          <button onClick={handleSave} className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 text-sm'>
+          <button onClick={handleSave} disabled={!overrideEnabled}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors text-sm ${overrideEnabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
             Save
           </button>
         </div>
