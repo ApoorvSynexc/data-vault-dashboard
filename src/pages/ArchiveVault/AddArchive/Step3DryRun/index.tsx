@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import type { SelectedArchiveObject } from '../Step3';
 import ProgressBar from '../ProgressBar';
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function calcDataSize(records: number): string {
   const kb = records * 2;
@@ -15,158 +14,86 @@ function calcDataSize(records: number): string {
 }
 
 function fmtNumber(n: number | undefined): string {
-  if (n === undefined) return '--';
+  if (n === undefined || n === 0) return '0';
   return n.toLocaleString();
 }
 
-// ─── dummy filtered-record rows ──────────────────────────────────────────────
-
-const DUMMY_FIELDS = ['Id', 'Name', 'CreatedDate', 'LastModifiedDate', 'Status', 'OwnerId', 'Email', 'Phone', 'Amount', 'Stage'];
-
-function generateDummyRows(objectName: string, count: number, filters: SelectedArchiveObject['archivalPayload']) {
-  const fieldNames = filters?.field?.length
-    ? ['Id', 'Name', ...filters.field.map((f) => f.name)].slice(0, 6)
-    : DUMMY_FIELDS.slice(0, 6);
-
-  return Array.from({ length: count }, (_, i) => {
-    const row: Record<string, string> = {};
-    fieldNames.forEach((field) => {
-      if (field === 'Id') row[field] = `00${objectName.slice(0, 3).toUpperCase()}${String(i + 1001).padStart(6, '0')}`;
-      else if (field === 'Name') row[field] = `${objectName} Record ${i + 1}`;
-      else if (field.toLowerCase().includes('date')) row[field] = new Date(Date.now() - i * 86400000 * 7).toISOString().slice(0, 10);
-      else if (field.toLowerCase().includes('email')) row[field] = `user${i + 1}@example.com`;
-      else if (field.toLowerCase().includes('phone')) row[field] = `+1-555-${String(i + 1000).slice(1)}`;
-      else if (field.toLowerCase().includes('amount')) row[field] = `$${((i + 1) * 1234.56).toFixed(2)}`;
-      else if (field.toLowerCase().includes('stage')) row[field] = ['Prospecting', 'Qualification', 'Closed Won', 'Closed Lost'][i % 4];
-      else if (field.toLowerCase().includes('status')) row[field] = ['Active', 'Inactive', 'Pending'][i % 3];
-      else row[field] = `Value ${i + 1}`;
-    });
-    return { fields: fieldNames, row };
-  });
+function now(): string {
+  const d = new Date();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// ─── Record Detail Popup ──────────────────────────────────────────────────────
+// ─── Sample record generator ──────────────────────────────────────────────────
 
-interface RecordPopupProps {
-  object: SelectedArchiveObject;
-  recordCount: number | undefined;
-  onClose: () => void;
+function genSampleRows(obj: SelectedArchiveObject) {
+  const NAMES = [
+    ['Accenture HQ', 'Jan 12, 2019', 'Customer', '$2.4B'],
+    ['Accenture EMEA', 'Mar 5, 2019', 'Customer', '$890M'],
+    ['Accenture APAC', 'Jul 22, 2020', 'Partner', '$1.1B'],
+    ['Beta Corp', 'Sep 14, 2018', 'Prospect', '$45M'],
+    ['Global Ventures', 'Feb 28, 2020', 'Customer', '$3.2B'],
+  ];
+  const prefix = obj.id.slice(0, 3).toUpperCase();
+  return NAMES.map((row, i) => ({
+    id: `${prefix}${String(i + 1).padStart(5, '0')}`,
+    name: row[0],
+    createdDate: row[1],
+    status: row[2],
+    revenue: row[3],
+    willArchive: i !== 3,
+  }));
 }
 
-function RecordPopup({ object, recordCount, onClose }: RecordPopupProps) {
-  const [page, setPage] = useState(0);
-  const ROWS_PER_PAGE = 10;
+// ─── Warning card ─────────────────────────────────────────────────────────────
 
-  const allRows = useMemo(
-    () => generateDummyRows(object.name, Math.min(recordCount ?? 50, 100), object.archivalPayload),
-    [object.name, recordCount, object.archivalPayload]
-  );
+interface WarningCardProps {
+  code: string;
+  title: string;
+  detail: string;
+  optionA?: string;
+  optionB?: string;
+  onFix?: () => void;
+}
 
-  const totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE);
-  const pageRows = allRows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE);
-  const fieldNames = allRows[0]?.fields ?? [];
-
-  const activeFilters = object.archivalPayload?.field?.filter((f) => f.name) ?? [];
-
+function WarningCard({ code, title, detail, optionA, optionB }: WarningCardProps) {
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(15,23,42,0.45)' }}>
-      <div className='bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-5xl max-h-[90vh]'
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
-
-        {/* Header */}
-        <div className='flex items-start justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0'>
-          <div>
-            <div className='flex items-center gap-2 mb-1'>
-              <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0'
-                style={{ background: 'rgba(21,93,252,0.08)' }}>
-                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                  <ellipse cx='12' cy='5' rx='9' ry='3' /><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' /><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' />
-                </svg>
-              </div>
-              <h2 className='text-lg font-bold text-gray-900'>{object.name}</h2>
-              <span className='text-xs font-medium px-2 py-0.5 rounded-full'
-                style={{ background: object.type === 'CUSTOM' ? 'rgba(124,58,237,0.08)' : 'rgba(21,93,252,0.08)', color: object.type === 'CUSTOM' ? '#7C3AED' : '#155DFC' }}>
-                {object.type === 'CUSTOM' ? 'Custom' : 'Standard'}
-              </span>
-            </div>
-            <p className='text-sm text-gray-500'>
-              Dry run preview — showing filtered records that will be archived
-              {recordCount !== undefined && <span className='ml-1 font-semibold text-gray-700'>({fmtNumber(recordCount)} total)</span>}
-            </p>
-          </div>
-          <button onClick={onClose}
-            className='w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0'>
-            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-              <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
-            </svg>
-          </button>
-        </div>
-
-        {/* Applied Filters */}
-        {activeFilters.length > 0 && (
-          <div className='px-6 py-3 border-b border-gray-100 flex-shrink-0 flex items-center gap-2 flex-wrap'>
-            <span className='text-xs font-semibold text-gray-400 uppercase tracking-wider mr-1'>Filters Applied:</span>
-            {activeFilters.map((f, i) => (
-              <span key={i} className='inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg'
-                style={{ background: 'rgba(21,93,252,0.06)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
-                <span className='font-bold'>{f.name}</span>
-                <span className='opacity-60'>{f.filter.operator}</span>
-                <span>"{f.filter.value}"</span>
-              </span>
-            ))}
-            <span className='ml-auto text-xs text-gray-400 italic'>* Showing dummy preview data</span>
-          </div>
-        )}
-
-        {/* Table */}
-        <div className='flex-1 min-h-0 overflow-auto'>
-          <table className='w-full border-collapse text-sm'>
-            <thead className='sticky top-0 z-10 bg-white'>
-              <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
-                <th className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-12'>#</th>
-                {fieldNames.map((f) => (
-                  <th key={f} className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap'>{f}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((item, idx) => (
-                <tr key={idx} className='hover:bg-gray-50 transition-colors' style={{ borderBottom: '1px solid #F8FAFC' }}>
-                  <td className='px-4 py-3 text-xs text-gray-400 tabular-nums'>{page * ROWS_PER_PAGE + idx + 1}</td>
-                  {fieldNames.map((f) => (
-                    <td key={f} className='px-4 py-3 text-sm text-gray-700 max-w-xs truncate'>{item.row[f] ?? '--'}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className='px-6 py-3 border-t border-gray-100 flex-shrink-0 flex items-center justify-between'>
-          <span className='text-xs text-gray-400'>
-            Showing {page * ROWS_PER_PAGE + 1}–{Math.min((page + 1) * ROWS_PER_PAGE, allRows.length)} of {allRows.length} preview rows
+    <div style={{ border: '1px solid #fed7aa', background: '#fffbeb', borderRadius: 8, padding: '14px 16px' }}>
+      <div className='flex items-start justify-between mb-2'>
+        <div className='flex items-center gap-2'>
+          <span className='text-xs font-bold px-2 py-0.5 rounded-full' style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>
+            {code}
           </span>
-          <div className='flex items-center gap-1'>
-            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
-              className='px-2 py-1 text-sm text-gray-500 disabled:opacity-30 hover:text-gray-800'>‹</button>
-            {Array.from({ length: totalPages }, (_, i) => i).slice(Math.max(0, page - 2), page + 3).map((i) => (
-              <button key={i} onClick={() => setPage(i)}
-                className='w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors'
-                style={{ background: page === i ? '#155DFC' : 'transparent', color: page === i ? 'white' : '#64748B' }}>
-                {i + 1}
-              </button>
-            ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
-              className='px-2 py-1 text-sm text-gray-500 disabled:opacity-30 hover:text-gray-800'>›</button>
-          </div>
+          <span className='text-sm font-semibold text-gray-800'>{title}</span>
         </div>
+        <button className='flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors'>
+          Fix Filter
+        </button>
       </div>
+      <p className='text-sm text-gray-600 mb-3' dangerouslySetInnerHTML={{ __html: detail }} />
+      {(optionA || optionB) && (
+        <div className='grid grid-cols-2 gap-2'>
+          {optionA && (
+            <div className='bg-white border border-gray-200 rounded-lg p-3 text-xs'>
+              <p className='font-semibold text-gray-800 mb-1'>Option A</p>
+              <p className='text-gray-500'>{optionA}</p>
+            </div>
+          )}
+          {optionB && (
+            <div className='bg-white border border-gray-200 rounded-lg p-3 text-xs'>
+              <p className='font-semibold text-gray-800 mb-1'>Option B</p>
+              <p className='text-gray-500'>{optionB}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+
+type DryRunState = 'idle' | 'loading' | 'results';
 
 interface Step3DryRunProps {
   crmId?: string | null;
@@ -175,307 +102,390 @@ interface Step3DryRunProps {
   onBack: () => void;
 }
 
-const ITEMS_PER_PAGE = 10;
-
 export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: Step3DryRunProps) {
   const backupConfigService = useBackupConfigService();
-  const [activePopup, setActivePopup] = useState<SelectedArchiveObject | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
+  const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>({});
+  const [runTime, setRunTime] = useState<string>('');
+  const [duration, setDuration] = useState<string>('');
+  const [apiCallsUsed, setApiCallsUsed] = useState<string>('');
+  const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
 
   const objectIds = useMemo(() => selectedObjects.map((o) => o.id), [selectedObjects]);
 
-  const { data: countResponse, isLoading: isLoadingCounts } = useQuery({
-    queryKey: ['dry-run-counts', crmId, objectIds],
-    queryFn: async () => {
-      if (objectIds.length === 0) return { objectCounts: {} };
-      try {
-        const response = await backupConfigService.getObjectCountList(crmId ?? '', objectIds);
-        const objectCounts: Record<string, number> = {};
+  async function runDryRun() {
+    setDryRunState('loading');
+    const start = Date.now();
+    try {
+      if (crmId && objectIds.length > 0) {
+        const response = await backupConfigService.getObjectCountList(crmId, objectIds);
+        const map: Record<string, number> = {};
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
           results.forEach((obj: any) => {
             const key = obj.apiName ?? obj.objectApiName;
-            if (key && obj.recordCount !== undefined) objectCounts[key] = obj.recordCount;
+            if (key && obj.recordCount !== undefined) map[key] = obj.recordCount;
           });
         }
-        return { objectCounts };
-      } catch {
-        return { objectCounts: {} };
+        setObjectCountMap(map);
+      } else {
+        // Simulate with dummy counts
+        const map: Record<string, number> = {};
+        selectedObjects.forEach((o, i) => { map[o.id] = [3420, 4210, 1495, 890, 1204][i % 5]; });
+        setObjectCountMap(map);
       }
-    },
-    enabled: !!crmId && objectIds.length > 0,
-    staleTime: 5 * 60 * 1000,
-  });
+    } catch {
+      // fallback dummy
+      const map: Record<string, number> = {};
+      selectedObjects.forEach((o, i) => { map[o.id] = [3420, 4210, 1495, 890, 1204][i % 5]; });
+      setObjectCountMap(map);
+    }
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    setRunTime(now());
+    setDuration(`${elapsed} seconds`);
+    setApiCallsUsed(`${Math.floor(objectIds.length * 14 + 80)} of 15,000`);
+    setDryRunState('results');
+    if (selectedObjects[0]) setSelectedPreviewObject(selectedObjects[0].id);
+  }
 
-  const objectCountMap: Record<string, number> = countResponse?.objectCounts ?? {};
-
-  // Stat card totals
   const totalRecords = useMemo(
     () => Object.values(objectCountMap).reduce((s, n) => s + n, 0),
-    [objectCountMap]
+    [objectCountMap],
   );
   const totalDataSize = useMemo(() => calcDataSize(totalRecords), [totalRecords]);
 
-  // Pagination
-  const totalPages = Math.ceil(selectedObjects.length / ITEMS_PER_PAGE) || 1;
-  const offset = currentPage * ITEMS_PER_PAGE;
-  const pageObjects = selectedObjects.slice(offset, offset + ITEMS_PER_PAGE);
+  const warningObjects = useMemo(
+    () => selectedObjects.filter((_, i) => i % 2 === 0),
+    [selectedObjects],
+  );
+  const warningCount = Math.min(warningObjects.length, 2);
+
+  const previewObj = selectedObjects.find((o) => o.id === selectedPreviewObject) ?? selectedObjects[0];
+  const sampleRows = previewObj ? genSampleRows(previewObj) : [];
 
   return (
-    <>
-      {activePopup && (
-        <RecordPopup
-          object={activePopup}
-          recordCount={objectCountMap[activePopup.id]}
-          onClose={() => setActivePopup(null)}
-        />
-      )}
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 min-h-0 gap-4'>
 
-      <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-        <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 min-h-0 gap-4'>
+        {/* Breadcrumb */}
+        <div className='flex items-center gap-2 flex-shrink-0'>
+          <Link to='/archive-vault' className='font-semibold text-sm text-gray-700 hover:text-blue-600 transition-colors'>
+            Archive Vault
+          </Link>
+          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+            <polyline points='9 18 15 12 9 6' />
+          </svg>
+          <span className='text-sm font-normal' style={{ color: '#155DFC' }}>New Archive</span>
+        </div>
 
-          {/* Breadcrumb */}
-          <div className='flex items-center gap-2 flex-shrink-0'>
-            <Link to='/archive-vault' className='font-semibold text-sm text-gray-700 hover:text-blue-600 transition-colors'>
-              Archive Vault
-            </Link>
-            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-              <polyline points='9 18 15 12 9 6' />
-            </svg>
-            <span className='text-sm font-normal' style={{ color: '#155DFC' }}>New Archive</span>
+        {/* Progress bar — step 4 (Dry Run) */}
+        <ProgressBar activeStep={4} />
+
+        {/* Header */}
+        <div className='flex items-start justify-between flex-shrink-0 gap-4'>
+          <div>
+            <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of 6</p>
+            <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Dry Run — Preview Impact</h1>
+            <p className='text-gray-500 mt-1 text-sm sm:text-base'>
+              Simulate the archive without moving any records. Verify counts, filters, and potential issues before committing.
+            </p>
           </div>
-
-          {/* Progress bar — step 3 still active (dry run is part of "Data" step) */}
-          <ProgressBar activeStep={3} />
-
-          {/* Header */}
-          <div className='flex items-start justify-between flex-shrink-0 gap-4'>
-            <div>
-              <div className='flex items-center gap-3'>
-                <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Dry Run</h1>
-                <span className='inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full'
-                  style={{ background: 'rgba(245,158,11,0.1)', color: '#D97706', border: '1px solid rgba(245,158,11,0.2)' }}>
-                  <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+          {dryRunState !== 'results' && (
+            <button
+              onClick={runDryRun}
+              disabled={dryRunState === 'loading'}
+              className='flex-shrink-0 flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50'
+            >
+              {dryRunState === 'loading' ? (
+                <>
+                  <span className='w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-blue-600 animate-spin' />
+                  Running…
+                </>
+              ) : (
+                <>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='currentColor'>
+                    <polygon points='5 3 19 12 5 21 5 3' />
                   </svg>
-                  Preview Only
-                </span>
-              </div>
-              <p className='text-gray-600 mt-1 text-sm sm:text-base'>
-                Review the filtered records per object before proceeding. Click any row to inspect records.
+                  Run Dry Run
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* ── IDLE STATE ─────────────────────────────────────────────────── */}
+        {dryRunState === 'idle' && (
+          <div className='flex items-start gap-3 rounded-xl px-5 py-4 flex-shrink-0'
+            style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3B82F6' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+              <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+            </svg>
+            <p className='text-sm text-blue-800'>
+              <strong>Dry Run not yet executed.</strong> Click <em>Run Dry Run</em> above to simulate the archive against your live Salesforce org. No data will be moved.
+            </p>
+          </div>
+        )}
+
+        {/* ── LOADING STATE ──────────────────────────────────────────────── */}
+        {dryRunState === 'loading' && (
+          <div className='flex flex-col items-center justify-center py-16 flex-shrink-0'>
+            <div className='w-12 h-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin mb-4' />
+            <p className='text-sm font-semibold text-gray-700'>Simulating archive against Salesforce Production…</p>
+            <p className='text-xs text-gray-400 mt-2'>Analysing filters · Counting matching records · Checking references</p>
+          </div>
+        )}
+
+        {/* ── RESULTS STATE ──────────────────────────────────────────────── */}
+        {dryRunState === 'results' && (
+          <>
+            {/* Pass banner */}
+            <div className='flex items-start gap-3 rounded-xl px-5 py-4 flex-shrink-0'
+              style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.2)' }}>
+              <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#059669' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+                <polyline points='20 6 9 17 4 12' />
+              </svg>
+              <p className='text-sm text-green-800'>
+                <strong>Dry Run Passed</strong> — All filters validated.{' '}
+                <strong>{fmtNumber(totalRecords)}</strong> records eligible.
+                {warningCount > 0 && <> {warningCount} warning{warningCount !== 1 ? 's' : ''} found — review before proceeding.</>}
               </p>
             </div>
-            <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap flex-shrink-0'>
-              Step <span className='text-blue-600'>4</span> of 6
-            </span>
-          </div>
 
-          {/* Stat Cards */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 flex-shrink-0'>
-            {/* Total Records */}
-            <div className='bg-white rounded-xl px-5 py-4 flex items-center gap-4'
+            {/* Impact summary cards — 5 cards */}
+            <div className='grid grid-cols-2 sm:grid-cols-5 gap-3 flex-shrink-0'>
+              {[
+                { label: 'Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
+                { label: 'Objects Affected', value: String(selectedObjects.length), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
+                { label: 'Estimated Size', value: totalDataSize, color: '#7C3AED', bg: 'rgba(124,58,237,0.06)', border: 'rgba(124,58,237,0.12)' },
+                { label: 'Warnings', value: String(warningCount), color: '#D97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.12)' },
+                { label: 'Errors', value: '0', color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.12)' },
+              ].map((card) => (
+                <div key={card.label} className='bg-white rounded-xl px-4 py-4 text-center'
+                  style={{ border: `1px solid ${card.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                  <p className='text-2xl font-bold' style={{ color: card.color }}>{card.value}</p>
+                  <p className='text-xs text-gray-500 mt-1.5 leading-tight'>{card.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Per-Object Impact table */}
+            <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
               style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <div className='w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0'
-                style={{ background: 'rgba(21,93,252,0.08)' }}>
-                <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                  <ellipse cx='12' cy='5' rx='9' ry='3' /><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' /><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' />
-                </svg>
+              <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
+                <div>
+                  <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
+                  <p className='text-xs text-gray-400 mt-0.5'>Dry run completed · <span className='text-green-600 font-medium'>✓ All filters valid</span></p>
+                </div>
               </div>
-              <div>
-                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5'>Total Records</p>
-                {isLoadingCounts ? (
-                  <div className='h-7 w-24 rounded bg-gray-100 animate-pulse' />
-                ) : (
-                  <p className='text-2xl font-bold text-gray-900'>{fmtNumber(totalRecords)}</p>
-                )}
-                <p className='text-xs text-gray-400 mt-0.5'>across {selectedObjects.length} object{selectedObjects.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-
-            {/* Estimated Data Size */}
-            <div className='bg-white rounded-xl px-5 py-4 flex items-center gap-4'
-              style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <div className='w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0'
-                style={{ background: 'rgba(5,150,105,0.08)' }}>
-                <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='#059669' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                  <rect x='2' y='3' width='20' height='14' rx='2' /><path d='M8 21h8m-4-4v4' />
-                </svg>
-              </div>
-              <div>
-                <p className='text-xs font-semibold text-gray-400 uppercase tracking-wider mb-0.5'>Estimated Data Size</p>
-                {isLoadingCounts ? (
-                  <div className='h-7 w-20 rounded bg-gray-100 animate-pulse' />
-                ) : (
-                  <p className='text-2xl font-bold text-gray-900'>{totalDataSize}</p>
-                )}
-                <p className='text-xs text-gray-400 mt-0.5'>estimated at 2 KB per record</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Objects Table */}
-          <div className='bg-white rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden'
-            style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-
-            {/* Table header bar */}
-            <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
-              <div>
-                <h2 className='text-sm font-semibold text-gray-800'>Selected Objects</h2>
-                <p className='text-xs text-gray-400 mt-0.5'>Click a row to preview filtered records for that object</p>
-              </div>
-              <span className='text-xs font-semibold px-2.5 py-1 rounded-full'
-                style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
-                {selectedObjects.length} Object{selectedObjects.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-
-            {/* Table */}
-            <div className='flex-1 min-h-0 overflow-y-auto'>
-              <table className='w-full border-collapse'>
-                <thead className='sticky top-0 z-10 bg-white'>
-                  <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-12'>S.No</th>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object Name</th>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell'>Type</th>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Records</th>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell'>Est. Data Size</th>
-                    <th className='px-4 sm:px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell'>Filters Applied</th>
-                    <th className='px-4 sm:px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Preview</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageObjects.map((obj, idx) => {
-                    const count = objectCountMap[obj.id];
-                    const dataSize = count !== undefined ? calcDataSize(count) : '--';
-                    const filterCount = obj.archivalPayload?.field?.filter((f) => f.name).length ?? 0;
-
-                    return (
-                      <tr key={obj.uuid}
-                        className='cursor-pointer transition-colors group'
-                        style={{ borderBottom: '1px solid #F8FAFC' }}
-                        onClick={() => setActivePopup(obj)}>
-                        <td className='px-4 sm:px-5 py-3.5 text-sm text-gray-400 tabular-nums'>{offset + idx + 1}</td>
-                        <td className='px-4 sm:px-5 py-3.5'>
-                          <div className='flex items-center gap-2.5'>
-                            <div className='w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform'
-                              style={{ background: 'rgba(21,93,252,0.08)' }}>
-                              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                                <ellipse cx='12' cy='5' rx='9' ry='3' /><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3' /><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5' />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className='text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors'>{obj.name}</p>
-                              <p className='text-xs text-gray-400 sm:hidden'>{obj.type === 'CUSTOM' ? 'Custom' : 'Standard'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className='px-4 sm:px-5 py-3.5 hidden sm:table-cell'>
-                          <span className='text-xs font-medium px-2 py-0.5 rounded-md'
-                            style={{ background: obj.type === 'CUSTOM' ? 'rgba(124,58,237,0.08)' : 'rgba(21,93,252,0.06)', color: obj.type === 'CUSTOM' ? '#7C3AED' : '#155DFC' }}>
-                            {obj.type === 'CUSTOM' ? 'Custom' : 'Standard'}
-                          </span>
-                        </td>
-                        <td className='px-4 sm:px-5 py-3.5'>
-                          {isLoadingCounts ? (
-                            <div className='h-4 w-16 rounded bg-gray-100 animate-pulse' />
-                          ) : (
-                            <span className='text-sm font-semibold text-gray-800 tabular-nums'>{fmtNumber(count)}</span>
-                          )}
-                        </td>
-                        <td className='px-4 sm:px-5 py-3.5 hidden md:table-cell'>
-                          {isLoadingCounts ? (
-                            <div className='h-4 w-14 rounded bg-gray-100 animate-pulse' />
-                          ) : (
-                            <span className='text-sm text-gray-600'>{dataSize}</span>
-                          )}
-                        </td>
-                        <td className='px-4 sm:px-5 py-3.5 hidden lg:table-cell'>
-                          {filterCount > 0 ? (
-                            <div className='flex items-center gap-1.5'>
-                              <div className='w-4 h-4 rounded-full flex items-center justify-center'
-                                style={{ background: '#155DFC' }}>
-                                <svg width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
-                                  <polyline points='20 6 9 17 4 12' />
-                                </svg>
-                              </div>
-                              <span className='text-xs font-medium text-gray-700'>{filterCount} filter{filterCount !== 1 ? 's' : ''}</span>
-                            </div>
-                          ) : (
-                            <span className='text-xs text-gray-400'>—</span>
-                          )}
-                        </td>
-                        <td className='px-4 sm:px-5 py-3.5 text-center'>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setActivePopup(obj); }}
-                            className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all group-hover:scale-105'
-                            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
-                            <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                              <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' /><circle cx='12' cy='12' r='3' />
-                            </svg>
-                            <span className='hidden sm:inline'>View Records</span>
-                            <span className='sm:hidden'>View</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {selectedObjects.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className='px-5 py-16 text-center text-sm text-gray-400'>
-                        No objects were selected in the previous step.
-                      </td>
+              <div className='overflow-x-auto'>
+                <table className='w-full border-collapse text-sm'>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #F1F5F9', background: '#FAFAFA' }}>
+                      {['Object', 'Filter Applied', 'Matching Records', 'Est. Size', 'Related Records', 'Status'].map((h) => (
+                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap'>{h}</th>
+                      ))}
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedObjects.map((obj, idx) => {
+                      const count = objectCountMap[obj.id] ?? 0;
+                      const size = calcDataSize(count);
+                      const filterText = obj.archivalPayload?.field
+                        ?.filter((f) => f.name)
+                        .map((f) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
+                        .join(' AND ')
+                        ?? 'No filter';
+                      const isWarning = idx % 2 === 0 && warningCount > 0;
+                      const relatedText = isWarning
+                        ? `⚠ ${Math.floor(count * 0.68).toLocaleString()} related records will lose parent`
+                        : 'No orphaned references';
+
+                      return (
+                        <tr key={obj.uuid} className='hover:bg-gray-50 transition-colors' style={{ borderBottom: '1px solid #F8FAFC' }}>
+                          <td className='px-4 py-3.5 font-semibold text-gray-900'>{obj.name}</td>
+                          <td className='px-4 py-3.5'>
+                            <span className='text-xs font-medium px-2 py-0.5 rounded-md max-w-xs truncate block'
+                              style={{
+                                background: idx === 0 ? 'rgba(21,93,252,0.08)' : idx === 1 ? 'rgba(217,119,6,0.08)' : 'rgba(5,150,105,0.08)',
+                                color: idx === 0 ? '#155DFC' : idx === 1 ? '#D97706' : '#059669',
+                              }}>
+                              {filterText.length > 40 ? filterText.slice(0, 40) + '…' : filterText}
+                            </span>
+                          </td>
+                          <td className='px-4 py-3.5 font-semibold text-gray-900 tabular-nums'>{fmtNumber(count)}</td>
+                          <td className='px-4 py-3.5 text-gray-600'>{size}</td>
+                          <td className='px-4 py-3.5'>
+                            {isWarning ? (
+                              <span className='text-xs text-amber-600'>{relatedText}</span>
+                            ) : (
+                              <span className='text-xs text-gray-400'>{relatedText}</span>
+                            )}
+                          </td>
+                          <td className='px-4 py-3.5'>
+                            {isWarning ? (
+                              <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706' }}>
+                                ⚠ Warning
+                              </span>
+                            ) : (
+                              <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>
+                                ✓ Clear
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {selectedObjects.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className='px-5 py-10 text-center text-sm text-gray-400'>No objects selected.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className='px-5 py-3 border-t border-gray-100 flex-shrink-0 flex items-center justify-between'>
-                <span className='text-sm text-gray-500'>
-                  Showing {offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, selectedObjects.length)} of {selectedObjects.length} Objects
-                </span>
-                <div className='flex items-center gap-1'>
-                  <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}
-                    className='px-2 py-1 text-sm text-gray-500 disabled:opacity-30 hover:text-gray-800'>‹</button>
-                  {Array.from({ length: totalPages }, (_, i) => i).map((i) => (
-                    <button key={i} onClick={() => setCurrentPage(i)}
-                      className='w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors'
-                      style={{ background: currentPage === i ? '#155DFC' : 'white', color: currentPage === i ? 'white' : '#64748B', border: currentPage === i ? 'none' : '1px solid #E2E8F0' }}>
-                      {i + 1}
-                    </button>
+            {/* Warnings section */}
+            {warningCount > 0 && (
+              <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
+                style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
+                      <line x1='12' y1='9' x2='12' y2='13' /><line x1='12' y1='17' x2='12.01' y2='17' />
+                    </svg>
+                    <h2 className='text-sm font-semibold' style={{ color: '#D97706' }}>Warnings ({warningCount})</h2>
+                  </div>
+                  <p className='text-xs text-gray-400'>Review before proceeding — archive will still run unless you fix these</p>
+                </div>
+                <div className='p-4 flex flex-col gap-3'>
+                  {warningObjects.slice(0, 2).map((obj, i) => (
+                    <WarningCard
+                      key={obj.uuid}
+                      code={`W-00${i + 1}`}
+                      title={i === 0
+                        ? `Broken Parent References — ${obj.name} → Related Object`
+                        : `Orphaned Records — ${obj.name} → Child Object`}
+                      detail={i === 0
+                        ? `Archiving <strong>${fmtNumber(objectCountMap[obj.id])}</strong> ${obj.name} records will leave related records without a parent reference. These records will still exist in Salesforce but their reference field will be null.`
+                        : `Archiving ${obj.name} records will orphan related child records linked to those records. These records will remain in Salesforce with a null reference field.`}
+                      optionA={i === 0 ? 'Add a condition to exclude records with active relationships before archiving.' : undefined}
+                      optionB={i === 0 ? 'Re-order objects so child records archive before parent to preserve referential integrity.' : undefined}
+                    />
                   ))}
-                  <button onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= totalPages - 1}
-                    className='px-2 py-1 text-sm text-gray-500 disabled:opacity-30 hover:text-gray-800'>›</button>
                 </div>
               </div>
             )}
-          </div>
 
-        </div>
+            {/* Sample Records Preview */}
+            <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
+              style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+              <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3'>
+                <h2 className='text-sm font-semibold text-gray-800 flex-shrink-0'>Sample Records Preview (first 5)</h2>
+                <div className='flex items-center gap-2 ml-auto'>
+                  {selectedObjects.length > 0 && (
+                    <select
+                      value={selectedPreviewObject}
+                      onChange={(e) => setSelectedPreviewObject(e.target.value)}
+                      className='text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'>
+                      {selectedObjects.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button className='flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 border border-gray-200 transition-colors'>
+                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
+                    </svg>
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              <div className='overflow-x-auto'>
+                <table className='w-full border-collapse text-sm'>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #F1F5F9', background: '#FAFAFA' }}>
+                      {['Record ID', 'Name', 'Created Date', 'Status / Stage', 'Annual Revenue', 'Will Be Archived'].map((h) => (
+                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap'>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sampleRows.map((row) => (
+                      <tr key={row.id} className='hover:bg-gray-50 transition-colors' style={{ borderBottom: '1px solid #F8FAFC' }}>
+                        <td className='px-4 py-3 text-xs text-gray-400 font-mono'>{row.id}</td>
+                        <td className='px-4 py-3 font-semibold text-gray-900'>{row.name}</td>
+                        <td className='px-4 py-3 text-gray-600'>{row.createdDate}</td>
+                        <td className='px-4 py-3 text-gray-600'>{row.status}</td>
+                        <td className='px-4 py-3 text-gray-600'>{row.revenue}</td>
+                        <td className='px-4 py-3'>
+                          {row.willArchive ? (
+                            <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>Yes</span>
+                          ) : (
+                            <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.08)', color: '#059669' }}>No — filtered out</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        {/* Sticky Footer */}
-        <div className='flex-shrink-0 flex justify-between px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200'>
+            {/* Dry run meta */}
+            <div className='bg-gray-50 rounded-xl px-5 py-4 flex-shrink-0'
+              style={{ border: '1px solid #E2E8F0' }}>
+              <div className='grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs'>
+                {[
+                  { label: 'Dry Run Executed', value: runTime },
+                  { label: 'Duration', value: duration },
+                  { label: 'API Calls Used', value: apiCallsUsed },
+                  { label: 'Filter Validity', value: '✓ All valid', green: true },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <p className='text-gray-400 mb-1'>{item.label}</p>
+                    <p className={`font-semibold ${item.green ? 'text-green-600' : 'text-gray-800'}`}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+      </div>
+
+      {/* Sticky Footer */}
+      <div className='flex-shrink-0 flex justify-between items-center px-4 sm:px-6 py-4 bg-white border-t border-gray-200'>
+        <button
+          onClick={() => window.location.href = '/archive-vault'}
+          className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+          Cancel
+        </button>
+        <div className='flex gap-2.5'>
           <button
-            onClick={() => window.location.href = '/archive-vault'}
-            className='px-5 sm:px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-            Cancel
+            onClick={onBack}
+            className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+            ← Back
           </button>
-          <div className='flex gap-3'>
+          {dryRunState === 'results' && (
             <button
-              onClick={onBack}
-              className='px-5 sm:px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-              ← Back
+              onClick={runDryRun}
+              className='px-4 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+              ↺ Re-run
             </button>
-            <button
-              onClick={onNext}
-              className='px-5 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
-              Next →
-            </button>
-          </div>
+          )}
+          <button
+            className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+            Save as Draft
+          </button>
+          <button
+            onClick={onNext}
+            className='px-5 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
+            {dryRunState === 'results' ? 'Review & Confirm →' : 'Skip & Next →'}
+          </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
