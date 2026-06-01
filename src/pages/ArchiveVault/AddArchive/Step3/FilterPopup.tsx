@@ -12,7 +12,7 @@ export interface FilterPopupProps {
   recordCount?: number;
   crmId?: string | null;
   initialConditions?: FilterCondition[];
-  onApply: (objectId: string, conditions: FilterCondition[]) => void;
+  onApply: (objectId: string, conditions: FilterCondition[], matchMode: 'ALL conditions' | 'ANY condition' | 'Custom', customLogic: string) => void;
   onClose: () => void;
 }
 
@@ -314,7 +314,7 @@ export default function FilterPopup({
             Cancel
           </button>
           <button
-            onClick={() => onApply(objectId, conditions)}
+            onClick={() => onApply(objectId, conditions, matchMode, customLogic)}
             className='px-5 py-2 text-sm font-medium text-white rounded-lg transition-colors'
             style={{ background: '#155DFC' }}>
             Apply Filter
