@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
 import Typography from '../../../components/Typography';
@@ -135,11 +135,45 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ── Confirm Dialog ────────────────────────────────────────────────────────────
+
+function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfirm, onCancel }: {
+  title: string; message: string; confirmLabel: string; danger?: boolean;
+  loading?: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div className='w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6'>
+        <h3 className='text-sm font-bold text-gray-900 mb-2'>{title}</h3>
+        <p className='text-xs text-gray-500 mb-6'>{message}</p>
+        <div className='flex justify-end gap-2'>
+          <button type='button' onClick={onCancel} disabled={loading}
+            className='rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50'>
+            Cancel
+          </button>
+          <button type='button' onClick={onConfirm} disabled={loading}
+            className={`rounded-lg px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-50 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+            {loading ? 'Please wait…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Action Dropdown ───────────────────────────────────────────────────────────
 
-function ActionDropdown() {
+type PolicyRow = { backupConfigId: string; name: string; slug: string; displayStatus: string };
+
+function ActionDropdown({ policy, onPause, onDelete, onViewDetails }: {
+  policy: PolicyRow;
+  onPause: () => void;
+  onDelete: () => void;
+  onViewDetails: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isPaused = policy.displayStatus === 'PAUSED';
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -161,12 +195,22 @@ function ActionDropdown() {
       </button>
       {open && (
         <div className='absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'>
-          {(['View Details', 'Edit Policy', 'Pause', 'Delete'] as const).map((label) => (
-            <button key={label} type='button' onClick={() => setOpen(false)}
-              className={`flex w-full items-center px-3 py-2 text-left text-xs font-medium transition ${label === 'Delete' ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'}`}>
-              {label}
-            </button>
-          ))}
+          <button type='button' onClick={() => { setOpen(false); onViewDetails(); }}
+            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
+            View Details
+          </button>
+          <button type='button' onClick={() => setOpen(false)}
+            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
+            Edit Policy
+          </button>
+          <button type='button' onClick={() => { setOpen(false); onPause(); }}
+            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button type='button' onClick={() => { setOpen(false); onDelete(); }}
+            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50'>
+            Delete
+          </button>
         </div>
       )}
     </div>
@@ -181,11 +225,31 @@ export default function ArchiveVaultHomePage() {
   const navigate = useNavigate();
   const archivalService = useArchivalService();
   const platformService = usePlatformService();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
   const [scheduleFilter, setScheduleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
+
+  const pauseMutation = useMutation({
+    mutationFn: ({ backupConfigId, isPaused }: { backupConfigId: string; isPaused: boolean }) =>
+      archivalService.updateConfig(backupConfigId, { backupStatus: isPaused ? 'RESUMED' : 'PAUSED' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
+      setConfirmPause(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (backupConfigId: string) => archivalService.deleteConfig(backupConfigId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
+      setConfirmDelete(null);
+    },
+  });
 
   const { data: rawListData, isLoading: isLoadingList } = useQuery({
     queryKey: ['archival-config-list'],
@@ -422,7 +486,12 @@ export default function ArchiveVaultHomePage() {
                               <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' /><circle cx='12' cy='12' r='3' />
                             </svg>
                           </button>
-                          <ActionDropdown />
+                          <ActionDropdown
+                            policy={policy}
+                            onViewDetails={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}
+                            onPause={() => setConfirmPause(policy)}
+                            onDelete={() => setConfirmDelete(policy)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -457,6 +526,33 @@ export default function ArchiveVaultHomePage() {
           </div>
         )}
       </Panel>
+
+      {/* Pause / Resume confirm */}
+      {confirmPause && (
+        <ConfirmDialog
+          title={confirmPause.displayStatus === 'PAUSED' ? `Resume "${confirmPause.name}"?` : `Pause "${confirmPause.name}"?`}
+          message={confirmPause.displayStatus === 'PAUSED'
+            ? 'The archive will resume running on its scheduled frequency.'
+            : 'The archive will stop running until you resume it.'}
+          confirmLabel={confirmPause.displayStatus === 'PAUSED' ? 'Resume' : 'Pause'}
+          loading={pauseMutation.isPending}
+          onConfirm={() => pauseMutation.mutate({ backupConfigId: confirmPause.backupConfigId, isPaused: confirmPause.displayStatus === 'PAUSED' })}
+          onCancel={() => setConfirmPause(null)}
+        />
+      )}
+
+      {/* Delete confirm */}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          message='This action cannot be undone. All associated job history will be permanently removed.'
+          confirmLabel='Delete'
+          danger
+          loading={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(confirmDelete.backupConfigId)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 }
