@@ -10,6 +10,10 @@ import SchedulePopup from './SchedulePopup';
 import type { ScheduleConfig } from './SchedulePopup';
 import ProgressBar from '../ProgressBar';
 
+export type ArchivalCondition =
+  | { type: 'AND' | 'OR' }
+  | { type: 'CUSTOM'; expression: string };
+
 export type SelectedArchiveObject = {
   uuid: string;
   id: string;
@@ -18,9 +22,9 @@ export type SelectedArchiveObject = {
   scheduleConfig?: import('./SchedulePopup').ScheduleConfig;
   archivalPayload?: {
     name: string;
-    condition: { type: 'AND' | 'OR' };
+    condition: ArchivalCondition;
     field: { name: string; filter: { value: string; operator: string } }[];
-    children?: { name: string; type: 'STANDARD' | 'CUSTOM'; condition: { type: 'AND' | 'OR' }; field: { name: string; filter: { value: string; operator: string } }[] }[];
+    children?: { name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
   };
 };
 
@@ -363,6 +367,15 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     return filters;
   });
 
+  const [objectMatchModes, setObjectMatchModes] = useState<Record<string, ArchivalCondition>>(() => {
+    const modes: Record<string, ArchivalCondition> = {};
+    initialSelectedObjects.forEach((o) => {
+      const key = o.uuid ?? o.id;
+      modes[key] = o.archivalPayload?.condition ?? { type: 'AND' };
+    });
+    return modes;
+  });
+
   const { data: allObjectsData, isLoading: isLoadingObjects, error } = useQuery({
     queryKey: ['archive-objects-all', crmId],
     queryFn: async () => {
@@ -508,7 +521,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         return {
           name: childApiNames[uuid] ?? uuid,
           type: 'STANDARD' as const,
-          condition: { type: 'AND' as const },
+          condition: objectMatchModes[uuid] ?? { type: 'AND' as const },
           field: (objectFilters[uuid] ?? [])
             .filter((c) => c.field)
             .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
@@ -538,7 +551,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         ...(schedule ? { scheduleConfig: schedule } : {}),
         archivalPayload: {
           name: obj?.name ?? obj?.id ?? uuid,
-          condition: { type: 'AND' as const },
+          condition: objectMatchModes[uuid] ?? { type: 'AND' as const },
           field: conditions
             .filter((c) => c.field)
             .map((c) => ({
@@ -563,8 +576,13 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         recordCount={filterPopup.recordCount}
         crmId={crmId}
         initialConditions={objectFilters[filterPopup.objectId] ?? []}
-        onApply={(objectId, conditions) => {
+        onApply={(objectId, conditions, matchMode, customLogic) => {
           setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
+          let cond: ArchivalCondition;
+          if (matchMode === 'ANY condition') cond = { type: 'OR' };
+          else if (matchMode === 'Custom') cond = { type: 'CUSTOM', expression: customLogic };
+          else cond = { type: 'AND' };
+          setObjectMatchModes((prev) => ({ ...prev, [objectId]: cond }));
           setFilterPopup(null);
         }}
         onClose={() => setFilterPopup(null)}
