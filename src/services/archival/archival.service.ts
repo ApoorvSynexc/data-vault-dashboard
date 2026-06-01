@@ -6,6 +6,7 @@ export const ARCHIVAL_ENDPOINTS = {
   config: '/v1/archival-config',
   list: '/v1/archival-config/list',
   detail: '/v1/archival-config',
+  jobs: '/v1/archival-job/list',
 } as const;
 
 export type ObjectScheduleConfig = {
@@ -71,6 +72,33 @@ export type ArchivalChildObject = {
   [key: string]: unknown;
 };
 
+export type ArchivalJobItem = {
+  archivalJobId: string;
+  archivalConfigId?: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string;
+  jobType?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+  sizeInBytes?: number;
+  newRecords?: number;
+  totalRecords?: number;
+  errorMessage?: string;
+  [key: string]: unknown;
+};
+
+export type ArchivalJobListApiResponse = {
+  success: boolean;
+  message: string;
+  data: ArchivalJobItem[];
+  meta: {
+    limit: number;
+    nextCursor: string | null;
+    totalRecords: number;
+    totalPages: number;
+  };
+};
+
 export function useArchivalService() {
   const http = useHttpRequest();
 
@@ -95,5 +123,11 @@ export function useArchivalService() {
       http.get(ARCHIVAL_ENDPOINTS.list),
     getDetail: (slug: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.detail, { query: { slug } }),
+    listJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
+      const query: any = { slug, pagination, limit };
+      if (cursor) query.cursor = cursor;
+      if (status) query.status = status.toUpperCase();
+      return http.get<ArchivalJobListApiResponse>(ARCHIVAL_ENDPOINTS.jobs, { query });
+    },
   };
 }
