@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
+import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
+import type { BackupJobItem } from '../../../services/backup-config/backup-config.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -93,26 +95,31 @@ const DUMMY_RECORDS = [
 
 // ── Dummy data ────────────────────────────────────────────────────────────────
 
-type ActivityLog = {
-  startTime: string;
-  startedAt: string;
-  status: string;
-  duration: string;
-  newRecords: number;
-  totalRecords: number;
-  dataSize: string;
-  archiveType: string;
-};
+// ── Job helpers ───────────────────────────────────────────────────────────────
 
-const DUMMY_ACTIVITY_LOGS: ActivityLog[] = [
-  { startTime: 'Apr 24, 2026, 02:00 AM', startedAt: 'Apr 24, 2026\n02:00 AM', status: 'Completed', duration: '1m 10s', newRecords: 6,    totalRecords: 40545, dataSize: '2 GB',   archiveType: 'Scheduled' },
-  { startTime: 'Apr 23, 2026, 02:00 AM', startedAt: 'Apr 23, 2026\n02:00 AM', status: 'Completed', duration: '45s',    newRecords: 2,    totalRecords: 40543, dataSize: '2 GB',   archiveType: 'Scheduled' },
-  { startTime: 'Apr 22, 2026, 02:00 AM', startedAt: 'Apr 22, 2026\n02:00 AM', status: 'Completed', duration: '2m 45s', newRecords: 245,  totalRecords: 40298, dataSize: '1.9 GB', archiveType: 'Scheduled' },
-  { startTime: 'Apr 21, 2026, 02:00 AM', startedAt: 'Apr 21, 2026\n02:00 AM', status: 'Completed', duration: '6m 45s', newRecords: 645,  totalRecords: 39653, dataSize: '1.7 GB', archiveType: 'Scheduled' },
-  { startTime: 'Apr 20, 2026, 02:00 AM', startedAt: 'Apr 20, 2026\n02:00 AM', status: 'Completed', duration: '1m 4s',  newRecords: 0,    totalRecords: 39653, dataSize: '1.7 GB', archiveType: 'Scheduled' },
-  { startTime: 'Apr 19, 2026, 02:00 AM', startedAt: 'Apr 19, 2026\n02:00 AM', status: 'Completed', duration: '15m 43s',newRecords: 8012, totalRecords: 31641, dataSize: '1.1 GB', archiveType: 'Scheduled' },
-  { startTime: 'Apr 19, 2026, 02:00 AM', startedAt: 'Apr 19, 2026\n02:00 AM', status: 'Completed', duration: '5m 3s',  newRecords: 20,   totalRecords: 31621, dataSize: '1.1 GB', archiveType: 'Scheduled' },
-];
+function calcDuration(startedAt?: string, completedAt?: string): string {
+  if (!startedAt || !completedAt) return '--';
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (ms < 0) return '--';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+}
+
+function fmtJobTime(iso?: string): string {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtJobTimeMultiline(iso?: string): string {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return `${date}\n${time}`;
+}
 
 const DUMMY_ARCHIVED_RECORDS = [
   { name: 'Charlie Operations Case', object: 'Case', id: 'A00vsdef6ax033', lastModified: 'April 20, 2020' },
@@ -125,7 +132,7 @@ const DUMMY_ARCHIVED_RECORDS = [
 
 // ── Archive History Modal ─────────────────────────────────────────────────────
 
-function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () => void }) {
+function ArchiveHistoryModal({ log, onClose }: { log: BackupJobItem; onClose: () => void }) {
   const [modalPage, setModalPage] = useState(1);
   const MODAL_PAGE_SIZE = 10;
   const totalModalPages = Math.max(1, Math.ceil(DUMMY_ARCHIVED_RECORDS.length / MODAL_PAGE_SIZE));
@@ -143,7 +150,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
             </svg>
           </div>
           <div className='flex-1 min-w-0'>
-            <h2 className='text-base font-bold text-gray-900'>Archive History - {log.startTime}</h2>
+            <h2 className='text-base font-bold text-gray-900'>Archive History - {fmtJobTime(log.startedAt)}</h2>
             <button type='button' className='mt-0.5 text-xs text-blue-600 hover:underline'>
               Archive job details →
             </button>
@@ -168,7 +175,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
                   <path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/>
                 </svg>
               ),
-              label: 'Status', value: log.status, valueClass: 'text-green-600 font-semibold',
+              label: 'Status', value: log.status ?? '--', valueClass: 'text-green-600 font-semibold',
             },
             {
               icon: (
@@ -176,7 +183,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
                   <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
                 </svg>
               ),
-              label: 'Started At', value: log.startedAt, multiline: true,
+              label: 'Started At', value: fmtJobTimeMultiline(log.startedAt), multiline: true,
             },
             {
               icon: (
@@ -184,7 +191,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
                   <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
                 </svg>
               ),
-              label: 'Duration', value: log.duration,
+              label: 'Duration', value: calcDuration(log.startedAt, log.completedAt),
             },
             {
               icon: (
@@ -192,7 +199,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
                   <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
                 </svg>
               ),
-              label: 'Data Size', value: log.dataSize,
+              label: 'Data Size', value: formatBytes(log.sizeInBytes),
             },
             {
               icon: (
@@ -200,7 +207,7 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
                   <rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/>
                 </svg>
               ),
-              label: 'Archive Type', value: log.archiveType,
+              label: 'Archive Type', value: log.jobType ?? 'Scheduled',
             },
           ].map(({ icon, label, value, valueClass, multiline }) => (
             <div key={label} className='flex flex-1 items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2'>
@@ -282,20 +289,51 @@ function ArchiveHistoryModal({ log, onClose }: { log: ActivityLog; onClose: () =
   );
 }
 
-const ITEMS_PER_LOG_PAGE = 10;
 
 export default function ArchiveDetailScreen() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const archivalService = useArchivalService();
+  const backupConfigService = useBackupConfigService();
   const [activeTab, setActiveTab] = useState<Tab>('Archive Details');
   const [recordSearch, setRecordSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [logSearch, setLogSearch] = useState('');
   const [logFromDate, setLogFromDate] = useState('');
   const [logToDate, setLogToDate] = useState('');
-  const [logPage, setLogPage] = useState(1);
-  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [logCursor, setLogCursor] = useState<string | null>(null);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
+  const [logPageIndex, setLogPageIndex] = useState(0);
+  const [selectedLog, setSelectedLog] = useState<BackupJobItem | null>(null);
+
+  const { data: jobsResponse, isLoading: jobsLoading } = useQuery({
+    queryKey: ['archival-jobs', slug, logCursor],
+    queryFn: () => backupConfigService.listBackupJobs(slug!, true, logCursor ?? undefined, 20),
+    staleTime: 30_000,
+    enabled: !!slug,
+  });
+
+  const jobRows: BackupJobItem[] = (jobsResponse as any)?.data ?? [];
+  const jobsMeta = (jobsResponse as any)?.meta ?? {};
+  const nextCursor: string | null = jobsMeta?.nextCursor ?? null;
+  const totalJobRecords: number = jobsMeta?.totalRecords ?? jobRows.length;
+
+  const handleLogNext = () => {
+    if (!nextCursor) return;
+    const newHistory = [...cursorHistory, nextCursor];
+    setCursorHistory(newHistory);
+    setLogPageIndex(logPageIndex + 1);
+    setLogCursor(nextCursor);
+  };
+
+  const handleLogPrev = () => {
+    if (logPageIndex === 0) return;
+    const newHistory = cursorHistory.slice(0, -1);
+    setCursorHistory(newHistory);
+    const prevCursor = newHistory[newHistory.length - 1] ?? null;
+    setLogPageIndex(logPageIndex - 1);
+    setLogCursor(prevCursor);
+  };
 
   const { data: rawDetail, isLoading } = useQuery({
     queryKey: ['archival-config-detail', slug],
@@ -631,135 +669,145 @@ export default function ArchiveDetailScreen() {
           })()}
 
           {/* ── Activity Logs ── */}
-          {activeTab === 'Activity Logs' && (() => {
-            const filtered = DUMMY_ACTIVITY_LOGS.filter((l) => {
-              if (logSearch && !l.startTime.toLowerCase().includes(logSearch.toLowerCase())) return false;
-              return true;
-            });
-            const totalLogPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_LOG_PAGE));
-            const paginated = filtered.slice((logPage - 1) * ITEMS_PER_LOG_PAGE, logPage * ITEMS_PER_LOG_PAGE);
-            return (
-              <div className='flex flex-col flex-1 min-h-0'>
-                {/* Filter bar */}
-                <div className='flex items-center gap-2 mb-4 flex-shrink-0'>
-                  <div className='relative flex-1 max-w-xs'>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                      <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
-                    </svg>
-                    <input type='text' value={logSearch} onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }}
-                      placeholder='Search logs...'
-                      className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
-                  </div>
-                  <div className='relative'>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                      <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                    </svg>
-                    <input type='text' value={logFromDate} onChange={(e) => setLogFromDate(e.target.value)}
-                      placeholder='From Date'
-                      className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
-                  </div>
-                  <div className='relative'>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                      <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                    </svg>
-                    <input type='text' value={logToDate} onChange={(e) => setLogToDate(e.target.value)}
-                      placeholder='To Date'
-                      className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
-                  </div>
-                  <button type='button' onClick={() => { setLogSearch(''); setLogFromDate(''); setLogToDate(''); setLogPage(1); }}
-                    className='h-9 rounded-lg border border-gray-200 bg-white px-3.5 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600'>
-                    Clear
-                  </button>
+          {activeTab === 'Activity Logs' && (
+            <div className='flex flex-col flex-1 min-h-0'>
+              {/* Filter bar */}
+              <div className='flex items-center gap-2 mb-4 flex-shrink-0'>
+                <div className='relative flex-1 max-w-xs'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+                    <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                  </svg>
+                  <input type='text' value={logSearch} onChange={(e) => setLogSearch(e.target.value)}
+                    placeholder='Search logs...'
+                    className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
                 </div>
+                <div className='relative'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+                    <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                  </svg>
+                  <input type='text' value={logFromDate} onChange={(e) => setLogFromDate(e.target.value)}
+                    placeholder='From Date'
+                    className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
+                </div>
+                <div className='relative'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
+                    <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                  </svg>
+                  <input type='text' value={logToDate} onChange={(e) => setLogToDate(e.target.value)}
+                    placeholder='To Date'
+                    className='h-9 w-36 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
+                </div>
+                <button type='button' onClick={() => { setLogSearch(''); setLogFromDate(''); setLogToDate(''); setLogCursor(null); setCursorHistory([null]); setLogPageIndex(0); }}
+                  className='h-9 rounded-lg border border-gray-200 bg-white px-3.5 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600'>
+                  Clear
+                </button>
+              </div>
 
-                {/* Column headers */}
-                <table className='w-full flex-shrink-0'>
-                  <thead>
-                    <tr className='border-b-2 border-gray-100'>
-                      {[
-                        { label: 'Start Time', w: 'w-44' },
-                        { label: 'Status', w: 'w-28' },
-                        { label: 'Duration', w: 'w-24' },
-                        { label: 'New Records', w: 'w-28' },
-                        { label: 'Total Records', w: 'w-28' },
-                        { label: 'Data Size', w: 'w-24' },
-                        { label: 'Action', w: 'w-20' },
-                      ].map(({ label, w }) => (
-                        <th key={label} className={`pb-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide ${w}`}>{label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                </table>
+              {/* Column headers */}
+              <table className='w-full flex-shrink-0'>
+                <thead>
+                  <tr className='border-b-2 border-gray-100'>
+                    {(['Start Time', 'Status', 'Duration', 'New Records', 'Total Records', 'Data Size', 'Action'] as const).map((col) => (
+                      <th key={col} className='pb-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4'>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+              </table>
 
-                {/* Rows */}
-                <div className='flex-1 min-h-0 overflow-y-auto'>
+              {/* Rows */}
+              <div className='flex-1 min-h-0 overflow-y-auto'>
+                {jobsLoading ? (
+                  <div className='flex items-center justify-center py-12'>
+                    <div className='h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
+                  </div>
+                ) : jobRows.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-12 text-center'>
+                    <p className='text-sm font-medium text-gray-500'>No activity logs found</p>
+                  </div>
+                ) : (
                   <table className='w-full'>
                     <tbody>
-                      {paginated.map((log, i) => (
-                        <tr key={i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
-                          <td className='py-3 pr-4 w-44'>
-                            <span className='text-xs font-medium text-gray-700'>{log.startTime}</span>
-                          </td>
-                          <td className='py-3 pr-4 w-28'>
-                            <span className='inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-[10px] font-semibold text-green-700'>
-                              <span className='h-1.5 w-1.5 rounded-full bg-green-500' />{log.status}
-                            </span>
-                          </td>
-                          <td className='py-3 pr-4 w-24'>
-                            <span className='text-xs font-semibold text-blue-600'>{log.duration}</span>
-                          </td>
-                          <td className='py-3 pr-4 w-28'>
-                            <span className='text-xs text-gray-700'>{log.newRecords > 0 ? <span className='font-semibold text-indigo-600'>+{log.newRecords}</span> : <span className='text-gray-400'>0</span>}</span>
-                          </td>
-                          <td className='py-3 pr-4 w-28'>
-                            <span className='text-xs text-gray-600'>{log.totalRecords.toLocaleString()}</span>
-                          </td>
-                          <td className='py-3 pr-4 w-24'>
-                            <span className='text-xs font-medium text-gray-600'>{log.dataSize}</span>
-                          </td>
-                          <td className='py-3 w-20'>
-                            <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
-                              <button type='button' onClick={() => setSelectedLog(log)}
-                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
-                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                                  <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
-                                </svg>
-                              </button>
-                              <button type='button'
-                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:bg-gray-50'>
-                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                                  <circle cx='12' cy='5' r='1' fill='currentColor'/><circle cx='12' cy='12' r='1' fill='currentColor'/><circle cx='12' cy='19' r='1' fill='currentColor'/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {jobRows.map((job, i) => {
+                        const jobStatus = job.status?.toUpperCase() ?? '';
+                        const statusColor: Record<string, string> = {
+                          SUCCESS: 'border-green-200 bg-green-50 text-green-700',
+                          COMPLETED: 'border-green-200 bg-green-50 text-green-700',
+                          FAILED: 'border-red-200 bg-red-50 text-red-700',
+                          RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
+                          PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
+                        };
+                        const dotColor: Record<string, string> = {
+                          SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
+                          FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
+                        };
+                        const newRecs = job.recordCount ?? 0;
+                        const totalRecs = job.object?.reduce((acc, o) => acc + (o.totalRecordCount ?? 0), 0) ?? 0;
+                        return (
+                          <tr key={job.backupJobId ?? i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
+                            <td className='py-3 pr-4'>
+                              <span className='text-xs font-medium text-gray-700'>{fmtJobTime(job.startedAt)}</span>
+                            </td>
+                            <td className='py-3 pr-4'>
+                              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusColor[jobStatus] ?? 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${dotColor[jobStatus] ?? 'bg-gray-400'}`} />
+                                {job.status ?? '--'}
+                              </span>
+                            </td>
+                            <td className='py-3 pr-4'>
+                              <span className='text-xs font-semibold text-blue-600'>{calcDuration(job.startedAt, job.completedAt)}</span>
+                            </td>
+                            <td className='py-3 pr-4'>
+                              {newRecs > 0
+                                ? <span className='text-xs font-semibold text-indigo-600'>+{newRecs}</span>
+                                : <span className='text-xs text-gray-400'>0</span>}
+                            </td>
+                            <td className='py-3 pr-4'>
+                              <span className='text-xs text-gray-600'>{totalRecs.toLocaleString()}</span>
+                            </td>
+                            <td className='py-3 pr-4'>
+                              <span className='text-xs font-medium text-gray-600'>{formatBytes(job.sizeInBytes)}</span>
+                            </td>
+                            <td className='py-3'>
+                              <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
+                                <button type='button' onClick={() => setSelectedLog(job)}
+                                  className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
+                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                                    <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
+                                  </svg>
+                                </button>
+                                <button type='button'
+                                  className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-gray-300 hover:bg-gray-50'>
+                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
+                                    <circle cx='12' cy='5' r='1' fill='currentColor'/><circle cx='12' cy='12' r='1' fill='currentColor'/><circle cx='12' cy='19' r='1' fill='currentColor'/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
-                </div>
+                )}
+              </div>
 
-                {/* Pagination footer */}
-                <div className='flex-shrink-0 mt-3 flex items-center justify-between border-t border-gray-100 pt-3'>
-                  <span className='text-xs text-gray-500'>
-                    Showing <span className='font-semibold text-gray-700'>{Math.min((logPage - 1) * ITEMS_PER_LOG_PAGE + 1, filtered.length)}</span> to <span className='font-semibold text-gray-700'>{Math.min(logPage * ITEMS_PER_LOG_PAGE, filtered.length)}</span> of <span className='font-semibold text-gray-700'>{filtered.length}</span> logs
+              {/* Pagination footer */}
+              <div className='flex-shrink-0 mt-3 flex items-center justify-between border-t border-gray-100 pt-3'>
+                <span className='text-xs text-gray-500'>
+                  Showing <span className='font-semibold text-gray-700'>{totalJobRecords === 0 ? 0 : logPageIndex * 20 + 1}</span> to <span className='font-semibold text-gray-700'>{Math.min((logPageIndex + 1) * 20, totalJobRecords)}</span> of <span className='font-semibold text-gray-700'>{totalJobRecords}</span> logs
+                </span>
+                <div className='flex items-center gap-1'>
+                  <button type='button' onClick={handleLogPrev} disabled={logPageIndex === 0}
+                    className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&lt;</button>
+                  <span className='flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-semibold text-white shadow-sm'>
+                    {logPageIndex + 1}
                   </span>
-                  <div className='flex items-center gap-1'>
-                    <button type='button' onClick={() => setLogPage((p) => Math.max(1, p - 1))} disabled={logPage === 1}
-                      className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&lt;</button>
-                    {Array.from({ length: totalLogPages }, (_, i) => i + 1).map((p) => (
-                      <button key={p} type='button' onClick={() => setLogPage(p)}
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition ${logPage === p ? 'bg-blue-600 text-white shadow-sm' : 'border border-gray-200 text-gray-500 hover:bg-gray-100'}`}>
-                        {p}
-                      </button>
-                    ))}
-                    <button type='button' onClick={() => setLogPage((p) => Math.min(totalLogPages, p + 1))} disabled={logPage === totalLogPages}
-                      className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&gt;</button>
-                  </div>
+                  <button type='button' onClick={handleLogNext} disabled={!nextCursor}
+                    className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&gt;</button>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
       </div>
 
