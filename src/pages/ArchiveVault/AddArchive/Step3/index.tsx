@@ -116,7 +116,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
 
   if (isLoading) return (
     <tr>
-      <td colSpan={6} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', paddingLeft: depth * 20 + 16, paddingTop: 8, paddingBottom: 8 }}>
+      <td colSpan={7} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', paddingLeft: depth * 20 + 16, paddingTop: 8, paddingBottom: 8 }}>
         <div className='flex items-center gap-2 text-xs text-gray-400'>
           <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />
           Loading...
@@ -161,8 +161,9 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
           }
         };
 
-        const accentColors = ['#155DFC', '#7C3AED', '#0891B2', '#059669', '#D97706'];
-        const accentColor = accentColors[(depth - 1) % accentColors.length];
+        // Level color palette matches Depth badge: Level 2=purple, Level 3=amber, Level 4=green, Level 5=teal, Level 6+=rose
+        const levelColors: Record<number, string> = { 1: '#7C3AED', 2: '#A16207', 3: '#008020', 4: '#0891B2', 5: '#E11D48' };
+        const accentColor = levelColors[depth] ?? '#E11D48';
         const rowBg = isChildSelected
           ? `${accentColor}08`
           : depth === 1 ? '#FAFBFC' : depth === 2 ? '#F4F6F8' : '#EFF2F5';
@@ -215,6 +216,19 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
               {/* Include Child toggle */}
               <td className='px-3 py-2 text-center' onClick={(e) => e.stopPropagation()}>
                 <ToggleSwitch on={toggleOn} disabled={!isChildSelected} onChange={handleToggle} />
+              </td>
+              {/* Depth */}
+              <td className='px-3 py-2'>
+                {(() => {
+                  const levelColorMap: Record<number, string> = { 1: '#7C3AED', 2: '#A16207', 3: '#008020', 4: '#0891B2', 5: '#E11D48' };
+                  const color = levelColorMap[depth] ?? '#E11D48';
+                  return (
+                    <span className='inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold'
+                      style={{ whiteSpace: 'pre', background: `${color}14`, color }}>
+                      Level {depth + 1}
+                    </span>
+                  );
+                })()}
               </td>
               {/* Type */}
               <td className='px-3 py-2'>
@@ -274,7 +288,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
       {/* Pagination */}
       {totalPages > 1 && (
         <tr style={{ background: depth === 1 ? '#FAFBFC' : depth === 2 ? '#F4F6F8' : '#EFF2F5', borderBottom: '1px solid #E8EDF2', borderLeft: `3px solid ${['#155DFC','#7C3AED','#0891B2','#059669','#D97706'][(depth-1)%5]}40` }}>
-          <td colSpan={6} className='px-4 py-1.5'>
+          <td colSpan={7} className='px-4 py-1.5'>
             <div className='flex items-center justify-between'>
               <span className='text-xs text-gray-400'>
                 Showing {page * CHILD_PAGE_SIZE + 1}–{Math.min((page + 1) * CHILD_PAGE_SIZE, rows.length)} of {rows.length}
@@ -696,6 +710,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                   <col style={{ width: 56 }} />   {/* S.No */}
                   <col />                          {/* Object — flex */}
                   <col style={{ width: 130 }} />  {/* Include Child */}
+                  <col style={{ width: 100 }} />  {/* Depth */}
                   <col style={{ width: 120 }} />  {/* Type */}
                   {/* <col style={{ width: 110 }} /> */}{/* Total Records */}
                   {/* <col style={{ width: 100 }} /> */}{/* Estimated Data Size */}
@@ -707,6 +722,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>S.No.</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object</th>
                     <th className='px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Include Child</th>
+                    <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Depth</th>
                     <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Type</th>
                     {/* <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Total Records</th> */}
                     {/* <th className='px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Estimated Data Size</th> */}
@@ -803,6 +819,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                             onChange={(e) => { e.stopPropagation(); if (isSelected) toggleIncludeChild(obj.uuid); }}
                           />
                         </td>
+                        <td className='px-3 py-3'>
+                          <span className='inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold'
+                            style={{ whiteSpace: 'pre', background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+                            Level 1
+                          </span>
+                        </td>
                         <td className='px-3 py-3 text-sm' style={{ color: '#155DFC' }}>
                           {obj.isCustom ? 'Custom' : 'Standard'}
                         </td>
@@ -883,7 +905,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                     );
                   }) : (
                     <tr>
-                      <td colSpan={6} className='px-4 py-12 text-center text-sm text-gray-500'>
+                      <td colSpan={7} className='px-4 py-12 text-center text-sm text-gray-500'>
                         No objects found matching your search.
                       </td>
                     </tr>
