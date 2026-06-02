@@ -74,7 +74,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['archival-object-childs', crmId, objectName],
+    queryKey: ['archival-object-childs', crmId, parentUuid, objectName],
     queryFn: () => archivalService.getObjectChilds(crmId, objectName),
     enabled: !!crmId && !!objectName,
     staleTime: 5 * 60 * 1000,
