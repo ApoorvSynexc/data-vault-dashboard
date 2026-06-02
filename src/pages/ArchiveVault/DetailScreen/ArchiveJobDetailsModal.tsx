@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatBytes } from '../../../utils';
 import dayjs from 'dayjs';
+import { formatBytes } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -39,11 +40,11 @@ interface ArchiveJobDetail {
 
 function getStatusStyle(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(55,197,91,0.12)', color: '#008020', dot: 'bg-green-500' };
-  if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.08)', color: '#F24400', dot: 'bg-red-500' };
-  if (s === 'RUNNING') return { bg: 'rgba(21,93,252,0.08)', color: '#155DFC', dot: 'bg-blue-500' };
-  if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.08)', color: '#A16207', dot: 'bg-yellow-400' };
-  return { bg: '#F3F4F6', color: '#374151', dot: 'bg-gray-400' };
+  if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
+  if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
+  if (s === 'RUNNING') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
+  if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
+  return { bg: '#F3F4F6', color: '#374151' };
 }
 
 function getStatusLabel(status: string) {
@@ -55,45 +56,14 @@ function getStatusLabel(status: string) {
   return status || 'Unknown';
 }
 
-function calcDuration(startedAt?: string, completedAt?: string): string {
-  if (!startedAt || !completedAt) return '--';
-  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (ms < 0) return '--';
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const rem = s % 60;
-  return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
-}
-
-// ── Flatten nested objects into a flat list ───────────────────────────────────
 
 function flattenObjects(objects: ArchiveJobObject[], depth = 0): { obj: ArchiveJobObject; depth: number }[] {
   const result: { obj: ArchiveJobObject; depth: number }[] = [];
   for (const obj of objects) {
     result.push({ obj, depth });
-    if (obj.children?.length) {
-      result.push(...flattenObjects(obj.children, depth + 1));
-    }
+    if (obj.children?.length) result.push(...flattenObjects(obj.children, depth + 1));
   }
   return result;
-}
-
-// ── Stat card ─────────────────────────────────────────────────────────────────
-
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
-  return (
-    <div className='flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
-      <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(21,93,252,0.08)' }}>
-        {icon}
-      </div>
-      <div className='min-w-0'>
-        <p className='text-[10px] text-gray-400 uppercase tracking-wide'>{label}</p>
-        <p className='text-sm font-bold text-gray-900 truncate'>{value}</p>
-        {sub && <p className='text-[10px] text-gray-400 mt-0.5'>{sub}</p>}
-      </div>
-    </div>
-  );
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
@@ -104,13 +74,20 @@ type Props = {
   onClose: () => void;
 };
 
+type FilterType = 'All' | 'Completed' | 'Failed' | 'Pending';
+
 export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClose }: Props) {
   const archivalService = useBackupConfigService();
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const itemsPerPage = 10;
 
   const queryKey = ['archival-job-detail', backupJobId];
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
       const res = await archivalService.listBackupJobs(configSlug, true, undefined, 20);
@@ -122,238 +99,306 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
 
   const job: ArchiveJobDetail | null = data ?? null;
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey });
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try { await queryClient.invalidateQueries({ queryKey }); }
+    finally { setIsRefreshing(false); }
   };
 
   const flatRows = flattenObjects(job?.object ?? []);
   const totalInserted = flatRows.reduce((sum, { obj }) => sum + (obj.insertCount ?? 0), 0);
-  const totalSize = flatRows.reduce((sum, { obj }) => sum + (obj.sizeInBytes ?? 0), 0);
   const totalApiCalls = flatRows.reduce((sum, { obj }) => sum + (obj.salesforceApiCount ?? 0), 0);
+  const startedAt = job?.startedAt ? new Date(job.startedAt) : null;
 
-  const statusStyle = job ? getStatusStyle(job.status) : { bg: '#F3F4F6', color: '#374151', dot: 'bg-gray-400' };
+  const completedObjects = flatRows.filter(({ obj }) => ['COMPLETED', 'SUCCESS'].includes(obj.status?.toUpperCase() ?? '')).length;
+  const failedObjects = flatRows.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED').length;
+
+  const statCards = [
+    { value: flatRows.length,   label: 'Objects Archived',    color: '#008020', icon: <IconBox color='#008020' /> },
+    { value: totalInserted,     label: 'Records Inserted',    color: '#008020', icon: <IconFile color='#008020' /> },
+    { value: totalApiCalls,     label: 'API Calls',           color: '#155DFC', icon: <IconSync color='#155DFC' /> },
+    { value: failedObjects,     label: 'Failed Objects',      color: '#F24400', icon: <IconTrash color='#F24400' /> },
+    { value: completedObjects,  label: 'Objects Synced',      color: '#155DFC', icon: <IconDone color='#155DFC' /> },
+  ];
+
+  // Filter + search
+  let filtered = flatRows.filter(({ obj }) =>
+    obj.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['COMPLETED', 'SUCCESS'].includes(obj.status?.toUpperCase() ?? ''));
+  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED');
+  if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const startIdx = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filtered.slice(startIdx, startIdx + itemsPerPage);
+
+  const pageNums: number[] = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) pageNums.push(i);
+  } else if (currentPage <= 3) {
+    pageNums.push(1, 2, 3, 4, 5);
+  } else if (currentPage >= totalPages - 2) {
+    for (let i = totalPages - 4; i <= totalPages; i++) pageNums.push(i);
+  } else {
+    for (let i = currentPage - 2; i <= currentPage + 2; i++) pageNums.push(i);
+  }
+
+  const levelColorMap: Record<number, string> = { 0: '#155DFC', 1: '#7C3AED', 2: '#A16207', 3: '#008020', 4: '#0891B2' };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}>
-      <div className='bg-white rounded-2xl w-full flex flex-col' style={{ maxWidth: 900, height: '88vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
-
-        {/* Header */}
-        <div className='flex items-center justify-between px-7 pt-6 pb-5 flex-shrink-0' style={{ borderBottom: '1.5px solid #F1F5F9' }}>
-          <div className='flex items-center gap-3'>
-            <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full' style={{ background: 'rgba(21,93,252,0.1)' }}>
-              <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'>
-                <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
-              </svg>
-            </div>
-            <div>
-              <h2 className='text-lg font-bold text-gray-900 leading-snug'>
-                Archive Job Details
-              </h2>
-              <p className='text-xs text-gray-400 mt-0.5'>
-                {job?.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY h:mm A') : backupJobId}
-              </p>
-            </div>
+    <div
+      className='fixed inset-0 z-[60] flex items-center justify-center p-4'
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+    >
+      <div
+        className='bg-white rounded-2xl w-full flex flex-col'
+        style={{ maxWidth: '1024px', height: '86vh', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+      >
+        {/* ── Header ── */}
+        <div className='flex items-start justify-between px-7 pt-6 pb-4 flex-shrink-0'>
+          <div>
+            <h2 className='font-bold' style={{ fontSize: '20px', color: '#111827' }}>
+              Archive Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | hh:mm A')}` : ''}
+            </h2>
+            <p className='text-sm mt-1' style={{ color: '#64748B' }}>Archive job details →</p>
           </div>
-          <div className='flex items-center gap-2'>
-            {/* Refresh button */}
+          <div className='flex items-center gap-2 mt-0.5'>
             <button
-              type='button'
               onClick={handleRefresh}
-              disabled={isFetching}
+              disabled={isRefreshing}
               className='flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-50'
             >
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`}>
-                <polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/>
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
+                className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}>
+                <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
               </svg>
-              {isFetching ? 'Refreshing…' : 'Refresh'}
+              Refresh
             </button>
             <button
-              type='button'
               onClick={onClose}
-              className='flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
+              className='p-1.5 rounded-lg hover:bg-gray-100 transition'
+              style={{ color: '#6B7280' }}
             >
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round' className='h-4.5 w-4.5'>
-                <path d='M18 6L6 18M6 6l12 12'/>
+              <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M18 6L6 18M6 6l12 12' />
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className='flex-1 min-h-0 flex flex-col px-7 py-5'>
-          {isLoading ? (
-            <div className='flex items-center justify-center h-full'>
-              <div className='h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-blue-600' />
-            </div>
-          ) : error || !job ? (
-            <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
-              <div className='flex h-14 w-14 items-center justify-center rounded-full bg-red-50'>
-                <svg viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='1.8' className='h-6 w-6'>
-                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                </svg>
+        {/* ── Stat Cards ── */}
+        <div className='px-7 pb-4 flex-shrink-0'>
+          <div className='grid grid-cols-5 gap-3'>
+            {statCards.map(({ value, label, color, icon }) => (
+              <div
+                key={label}
+                className='rounded-xl px-4 pt-3 pb-3 flex flex-col gap-0.5'
+                style={{ border: '1.5px solid #E8EDF5', background: '#fff' }}
+              >
+                <div className='flex items-start justify-between'>
+                  <div>
+                    <span className='text-2xl font-bold leading-tight block' style={{ color }}>
+                      {typeof value === 'number' && value > 9999 ? value.toLocaleString() : value}
+                    </span>
+                    <span className='text-xs mt-0.5 block' style={{ color: '#64748B' }}>{label}</span>
+                  </div>
+                  <div className='mt-0.5'>{icon}</div>
+                </div>
               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Search + Filter ── */}
+        <div className='px-7 pb-3 flex items-center gap-2 flex-shrink-0'>
+          <div className='relative'>
+            <div className='absolute inset-y-0 left-3 flex items-center pointer-events-none'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' />
+              </svg>
+            </div>
+            <input
+              type='text'
+              placeholder='Search Object'
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className='pl-8 pr-4 py-1.5 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+              style={{ border: '1.5px solid #E5E7EB', color: '#33363F', width: '200px' }}
+            />
+          </div>
+
+          {(['All', 'Completed', 'Failed', 'Pending'] as FilterType[]).map(f => (
+            <button
+              key={f}
+              onClick={() => { setActiveFilter(f); setCurrentPage(1); }}
+              className='px-4 py-1.5 rounded-full text-sm font-medium transition'
+              style={activeFilter === f
+                ? { background: '#155DFC', color: '#fff' }
+                : { background: '#F3F4F6', color: '#374151' }
+              }
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Table ── */}
+        <div className='flex-1 overflow-auto mx-7 rounded-xl relative' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+          {(isLoading || isRefreshing) && (
+            <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/80 backdrop-blur-sm'>
+              <svg className='w-8 h-8 animate-spin text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+              </svg>
+              <p className='text-sm font-medium text-gray-500'>Loading data...</p>
+            </div>
+          )}
+          {error && !isLoading && (
+            <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
               <p className='text-sm font-semibold text-gray-700'>Failed to load job details</p>
               <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
             </div>
-          ) : (
-            <div className='flex flex-col gap-5 flex-1 min-h-0'>
-
-              {/* Stat cards row */}
-              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 flex-shrink-0'>
-                {/* Status */}
-                <div className='flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
-                  <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl' style={{ background: statusStyle.bg }}>
-                    <span className={`h-3 w-3 rounded-full ${statusStyle.dot}`} />
-                  </div>
-                  <div>
-                    <p className='text-[10px] text-gray-400 uppercase tracking-wide'>Status</p>
-                    <p className='text-sm font-bold' style={{ color: statusStyle.color }}>{getStatusLabel(job.status)}</p>
-                  </div>
-                </div>
-                <StatCard
-                  label='Started At'
-                  value={job.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY') : '--'}
-                  sub={job.startedAt ? dayjs(job.startedAt).format('h:mm A') : undefined}
-                  icon={
-                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4'>
-                      <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                    </svg>
-                  }
-                />
-                <StatCard
-                  label='Duration'
-                  value={calcDuration(job.startedAt, job.completedAt)}
-                  icon={
-                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4'>
-                      <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-                    </svg>
-                  }
-                />
-                <StatCard
-                  label='Data Size'
-                  value={formatBytes(totalSize)}
-                  icon={
-                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4'>
-                      <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
-                    </svg>
-                  }
-                />
-              </div>
-
-              {/* Summary stats row */}
-              <div className='grid grid-cols-3 gap-3 flex-shrink-0'>
-                <div className='rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3'>
-                  <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>Total Inserted Records</p>
-                  <p className='text-xl font-bold text-green-600'>{totalInserted.toLocaleString()}</p>
-                </div>
-                <div className='rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3'>
-                  <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>Salesforce API Calls</p>
-                  <p className='text-xl font-bold text-blue-600'>{totalApiCalls.toLocaleString()}</p>
-                </div>
-                <div className='rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3'>
-                  <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>Destination</p>
-                  <p className='text-xl font-bold text-gray-800'>{job.destination?.type ?? '--'}</p>
-                </div>
-              </div>
-
-              {/* Per-Object table */}
-              <div className='rounded-xl border border-gray-100 flex flex-col flex-1 min-h-0'>
-                <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60 flex-shrink-0'>
-                  <div className='flex items-center gap-2'>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4'>
-                      <rect x='3' y='3' width='18' height='18' rx='2'/><line x1='3' y1='9' x2='21' y2='9'/><line x1='9' y1='21' x2='9' y2='9'/>
-                    </svg>
-                    <span className='text-sm font-bold text-gray-800'>Object Details</span>
-                    <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{flatRows.length}</span>
-                  </div>
-                </div>
-                <div className='overflow-auto flex-1 min-h-0'>
-                  <table className='w-full'>
-                    <thead className='sticky top-0 z-10 bg-gray-50'>
-                      <tr className='border-b border-gray-100'>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Object</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Depth</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Status</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Inserted</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Completed</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Data Size</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>API Calls</th>
-                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Error</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {flatRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className='py-8 text-center text-xs text-gray-500'>No objects found</td>
-                        </tr>
-                      ) : flatRows.map(({ obj, depth }, i) => {
-                        const st = getStatusStyle(obj.status ?? '');
-                        return (
-                          <tr key={obj.id ?? i} className='border-b border-gray-50 hover:bg-blue-50/20 transition-colors'>
-                            <td className='px-4 py-2.5'>
-                              <span className='flex items-center gap-1 text-xs font-medium text-gray-800' style={{ paddingLeft: depth * 16 }}>
-                                {depth > 0 && (
-                                  <span className='text-gray-300 mr-0.5'>{'↳'}</span>
-                                )}
-                                {obj.name}
-                                {obj.type && (
-                                  <span className='ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold text-gray-500 uppercase'>{obj.type}</span>
-                                )}
-                              </span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              <span className='inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold'
-                                style={{
-                                  whiteSpace: 'pre',
-                                  background: depth === 0 ? 'rgba(21,93,252,0.08)' : depth === 1 ? 'rgba(139,92,246,0.08)' : depth === 2 ? 'rgba(234,179,8,0.08)' : 'rgba(55,197,91,0.08)',
-                                  color: depth === 0 ? '#155DFC' : depth === 1 ? '#7C3AED' : depth === 2 ? '#A16207' : '#008020',
-                                }}>
-                                Level {depth + 1}
-                              </span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              {obj.status ? (
-                                <span className='inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap'
-                                  style={{ borderColor: st.color + '40', background: st.bg, color: st.color }}>
-                                  <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                                  {getStatusLabel(obj.status)}
-                                </span>
-                              ) : <span className='text-xs text-gray-400'>--</span>}
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              <span className='text-xs font-semibold text-green-600'>{(obj.insertCount ?? 0).toLocaleString()}</span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              <span className='text-xs text-gray-600'>{(obj.completedRecordCount ?? 0).toLocaleString()}</span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              <span className='text-xs text-gray-600'>{formatBytes(obj.sizeInBytes)}</span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              <span className='text-xs text-gray-600'>{obj.salesforceApiCount ?? '--'}</span>
-                            </td>
-                            <td className='px-4 py-2.5'>
-                              {obj.errorMessage ? (
-                                <span className='text-xs text-red-600' title={obj.errorMessage}>
-                                  {obj.errorMessage.length > 40 ? obj.errorMessage.slice(0, 40) + '…' : obj.errorMessage}
-                                </span>
-                              ) : (
-                                <span className='text-xs text-gray-300'>--</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
           )}
+          <table className='w-full' style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '22%' }}>Object</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '10%' }}>Depth</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '13%' }}>Status</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Inserted</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Data Size</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>API Calls</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Archive Mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.length === 0 && !isLoading ? (
+                <tr>
+                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                    No objects found.
+                  </td>
+                </tr>
+              ) : paginatedData.map(({ obj, depth }, idx) => {
+                const st = getStatusStyle(obj.status ?? '');
+                const levelColor = levelColorMap[depth] ?? '#E11D48';
+                return (
+                  <tr
+                    key={obj.id ?? idx}
+                    style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
+                    className='hover:bg-gray-50 transition-colors'
+                  >
+                    {/* Object Name */}
+                    <td className='px-5 py-3.5'>
+                      <span className='flex items-center gap-1 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 14 }}>
+                        {depth > 0 && <span style={{ color: '#CBD5E1' }}>↳</span>}
+                        {obj.name}
+                      </span>
+                    </td>
+                    {/* Depth */}
+                    <td className='px-5 py-3.5'>
+                      <span
+                        className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold'
+                        style={{ background: `${levelColor}18`, color: levelColor, whiteSpace: 'pre' }}
+                      >
+                        Level {depth + 1}
+                      </span>
+                    </td>
+                    {/* Status */}
+                    <td className='px-5 py-3.5'>
+                      {obj.status ? (
+                        <span
+                          className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap'
+                          style={{ background: st.bg, color: st.color }}
+                        >
+                          {getStatusLabel(obj.status)}
+                        </span>
+                      ) : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>}
+                    </td>
+                    {/* Inserted */}
+                    <td className='px-5 py-3.5'>
+                      <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? 0).toLocaleString()}</span>
+                    </td>
+                    {/* Data Size */}
+                    <td className='px-5 py-3.5'>
+                      <span className='text-sm' style={{ color: '#374151' }}>{formatBytes(obj.sizeInBytes)}</span>
+                    </td>
+                    {/* API Calls */}
+                    <td className='px-5 py-3.5'>
+                      <span className='text-sm' style={{ color: '#374151' }}>{obj.salesforceApiCount ?? '--'}</span>
+                    </td>
+                    {/* Archive Mode */}
+                    <td className='px-5 py-3.5'>
+                      <span className='text-sm' style={{ color: '#374151' }}>{job?.jobType === 'BULK' ? 'Scheduled' : 'Realtime'}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
 
+        {/* ── Pagination ── */}
+        <div className='flex items-center justify-between px-7 py-4 flex-shrink-0'>
+          <p className='text-sm font-medium' style={{ color: '#155DFC' }}>
+            Showing {filtered.length === 0 ? 0 : Math.min(startIdx + itemsPerPage, filtered.length)} of {filtered.length} Object{filtered.length !== 1 ? 's' : ''}
+          </p>
+          <div className='flex items-center gap-1'>
+            {pageNums.map(n => (
+              <button
+                key={n}
+                onClick={() => setCurrentPage(n)}
+                className='w-7 h-7 rounded-md text-xs font-medium transition flex items-center justify-center'
+                style={currentPage === n
+                  ? { background: '#155DFC', color: '#fff' }
+                  : { background: '#F3F4F6', color: '#374151' }
+                }
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
+  );
+}
+
+/* ── Icons ── */
+function IconBox({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z' />
+    </svg>
+  );
+}
+function IconFile({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' /><polyline points='14 2 14 8 20 8' />
+    </svg>
+  );
+}
+function IconSync({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='23 4 23 10 17 10' /><polyline points='1 20 1 14 7 14' />
+      <path d='M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15' />
+    </svg>
+  );
+}
+function IconTrash({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='3 6 5 6 21 6' />
+      <path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6' />
+      <path d='M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2' />
+    </svg>
+  );
+}
+function IconDone({ color }: { color: string }) {
+  return (
+    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke={color} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+      <polyline points='20 6 9 17 4 12' />
+    </svg>
   );
 }
