@@ -273,6 +273,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                     <thead className='bg-gray-50/80'>
                       <tr className='border-b border-gray-100'>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Object</th>
+                        <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Depth</th>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Status</th>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Inserted</th>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Completed</th>
@@ -284,7 +285,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                     <tbody>
                       {flatRows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className='py-8 text-center text-xs text-gray-500'>No objects found</td>
+                          <td colSpan={8} className='py-8 text-center text-xs text-gray-500'>No objects found</td>
                         </tr>
                       ) : flatRows.map(({ obj, depth }, i) => {
                         const st = getStatusStyle(obj.status ?? '');
@@ -299,6 +300,16 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                                 {obj.type && (
                                   <span className='ml-1 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold text-gray-500 uppercase'>{obj.type}</span>
                                 )}
+                              </span>
+                            </td>
+                            <td className='px-4 py-2.5'>
+                              <span className='inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold'
+                                style={{
+                                  whiteSpace: 'pre',
+                                  background: depth === 0 ? 'rgba(21,93,252,0.08)' : depth === 1 ? 'rgba(139,92,246,0.08)' : depth === 2 ? 'rgba(234,179,8,0.08)' : 'rgba(55,197,91,0.08)',
+                                  color: depth === 0 ? '#155DFC' : depth === 1 ? '#7C3AED' : depth === 2 ? '#A16207' : '#008020',
+                                }}>
+                                Level {depth + 1}
                               </span>
                             </td>
                             <td className='px-4 py-2.5'>
