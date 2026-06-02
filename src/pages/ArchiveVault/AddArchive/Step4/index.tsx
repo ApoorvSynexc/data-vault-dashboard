@@ -138,6 +138,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       const payload = obj.archivalPayload;
       const perObjectSchedule = obj.scheduleConfig ?? null;
       return {
+        id: obj.uuid,
         name: obj.id,
         type: obj.type,
         condition: payload?.condition ?? { type: 'AND' as const },
