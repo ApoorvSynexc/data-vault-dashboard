@@ -24,7 +24,7 @@ export type SelectedArchiveObject = {
     name: string;
     condition: ArchivalCondition;
     field: { name: string; filter: { value: string; operator: string } }[];
-    children?: { name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
+    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
   };
 };
 
@@ -519,6 +519,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       .map((uuid) => {
         const nestedChildren = buildChildTree(uuid);
         return {
+          id: uuid,
           name: childApiNames[uuid] ?? uuid,
           type: 'STANDARD' as const,
           condition: objectMatchModes[uuid] ?? { type: 'AND' as const },
