@@ -50,11 +50,13 @@ const STEPS = [
 ];
 
 export default function ProgressBar({ activeStep }: { activeStep: number }) {
+  const pct = ((activeStep - 1) / (STEPS.length - 1)) * 100;
   return (
-    <div className='flex-shrink-0 bg-white rounded-2xl px-4 sm:px-6 py-4 flex flex-col gap-3'
+    <div className='flex-shrink-0 bg-white rounded-2xl overflow-hidden'
       style={{ border: '0.8px solid rgba(0,0,0,0.1)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
       {/* Step indicators */}
-      <div className='flex items-center w-full min-w-0'>
+      <div className='flex items-center w-full min-w-0 px-4 py-4'>
         {STEPS.map((step, idx) => {
           const isActive = step.id === activeStep;
           const isDone = step.id < activeStep;
@@ -62,7 +64,6 @@ export default function ProgressBar({ activeStep }: { activeStep: number }) {
           const labelColor = isActive ? '#155DFC' : isDone ? '#33363F' : '#94A3B8';
           return (
             <>
-              {/* Circle + label */}
               <div key={step.id} className='flex items-center gap-1.5 flex-shrink-0'>
                 <div className='flex items-center justify-center rounded-full flex-shrink-0'
                   style={{ width: 28, height: 28, background: circleBg }}>
@@ -71,24 +72,30 @@ export default function ProgressBar({ activeStep }: { activeStep: number }) {
                     : step.icon(isActive)
                   }
                 </div>
-                {/* Label: hidden on xs, visible from sm */}
                 <span className='hidden sm:block text-xs font-medium whitespace-nowrap' style={{ color: labelColor }}>
                   {step.label}
                 </span>
               </div>
-              {/* Connector — flex-1 with min-w-0 so it shrinks on small screens */}
               {idx < STEPS.length - 1 && (
-                <div key={`line-${step.id}`} className='flex-1 min-w-0 h-px mx-1 sm:mx-2 rounded-full' style={{ background: isDone ? '#155DFC' : '#E2E8F0' }} />
+                <div key={`line-${step.id}`} className='flex-1 min-w-0 h-px mx-1 sm:mx-2 rounded-full'
+                  style={{ background: isDone ? '#155DFC' : '#E2E8F0' }} />
               )}
             </>
           );
         })}
       </div>
 
-      {/* Progress bar */}
-      <div className='w-full h-1.5 rounded-full' style={{ background: 'rgba(0,0,0,0.08)' }}>
-        <div className='h-full rounded-full transition-all duration-300'
-          style={{ background: '#155DFC', width: `${((activeStep - 1) / (STEPS.length - 1)) * 100}%` }} />
+      {/* Progress bar — track inset to span between first and last circle centers */}
+      <div className='w-full relative' style={{ height: 3 }}>
+        {/* full track background */}
+        <div className='absolute inset-0' style={{ background: '#EEF2FF' }} />
+        {/* filled portion, left edge = px(16) + half-circle(14) = 30px, width scales within that track */}
+        <div className='absolute top-0 bottom-0 transition-all duration-500'
+          style={{
+            background: '#155DFC',
+            left: 30,
+            width: `calc((100% - 60px) * ${pct} / 100)`,
+          }} />
       </div>
     </div>
   );
