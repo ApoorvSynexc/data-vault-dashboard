@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
 import Typography from '../../../components/Typography';
+import { formatBytes } from '../../../utils';
 
 // ── API types ─────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ type ArchivalConfigItem = {
   objectNames: string[];
   createdAt: string;
   updatedAt: string;
+  sizeInBytes?: number;
   scheduleConfig?: {
     type: string;
     timeZone: string;
@@ -254,7 +256,7 @@ export default function ArchiveVaultHomePage() {
   const { data: rawListData, isLoading: isLoadingList } = useQuery({
     queryKey: ['archival-config-list'],
     queryFn: () => archivalService.getList(),
-    staleTime: 30_000,
+    staleTime: 0,
   });
 
   const { data: platformsData, isLoading: isLoadingPlatforms } = useQuery({
@@ -287,7 +289,7 @@ export default function ArchiveVaultHomePage() {
 
   // Stats
   const total = rawList.length;
-
+  const totalSizeInBytes = rawList.reduce((sum, i) => sum + (i.sizeInBytes ?? 0), 0);
   const uniquePlatforms = new Set(rawList.map((i) => i.crmId)).size;
 
   // Filters
@@ -332,7 +334,7 @@ export default function ArchiveVaultHomePage() {
           <MetricCard loading={isLoading} label='Total records' value={total > 0 ? '356,142' : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
           />
-          <MetricCard loading={isLoading} label={`Across ${uniquePlatforms} platform${uniquePlatforms !== 1 ? 's' : ''}`} value='2.6 TB'
+          <MetricCard loading={isLoading} label={`Across ${uniquePlatforms} platform${uniquePlatforms !== 1 ? 's' : ''}`} value={formatBytes(totalSizeInBytes)}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>}
           />
           <MetricCard loading={isLoading} label='Platform connections' value={pad(uniquePlatforms)}
@@ -475,7 +477,7 @@ export default function ArchiveVaultHomePage() {
                       {/* Records */}
                       <td className='px-5 py-3.5 text-xs text-gray-600'>--</td>
                       {/* Data Size */}
-                      <td className='px-5 py-3.5 text-xs text-gray-600'>--</td>
+                      <td className='px-5 py-3.5 text-xs text-gray-600'>{policy.sizeInBytes ? formatBytes(policy.sizeInBytes) : '--'}</td>
                       {/* Action */}
                       <td className='px-5 py-3.5'>
                         <div className='flex items-center gap-1'>
