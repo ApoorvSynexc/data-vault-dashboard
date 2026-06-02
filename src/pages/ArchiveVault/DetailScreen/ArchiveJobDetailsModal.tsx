@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useArchivalService } from '../../../services/archival/archival.service';
 import { formatBytes } from '../../../utils';
 import dayjs from 'dayjs';
 import { useBackupConfigService } from '../../../services';
