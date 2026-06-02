@@ -61,6 +61,7 @@ interface ChildRowsProps {
   selectedChildObjects: Set<string>;
   toggleChildObject: (key: string) => void;
   registerChildApiName: (uuid: string, apiName: string) => void;
+  registerChildFieldApiName: (uuid: string, fieldApiName: string) => void;
   registerChildParent: (childUuid: string, parentUuid: string) => void;
   objectFilters: Record<string, import('./FilterPopup').FilterCondition[]>;
   includeChild: Record<string, boolean>;
@@ -68,7 +69,7 @@ interface ChildRowsProps {
   setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildParent, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildFieldApiName, registerChildParent, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -88,6 +89,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
     if (!data || rawRows.length === 0) return;
     rawRows.forEach((r: any) => {
       registerChildApiName(r.uuid as string, r.apiName as string);
+      registerChildFieldApiName(r.uuid as string, r.fieldApiName as string);
       registerChildParent(r.uuid as string, parentUuid);
     });
     const toSelect = rawRows
@@ -275,6 +277,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                 selectedChildObjects={selectedChildObjects}
                 toggleChildObject={toggleChildObject}
                 registerChildApiName={registerChildApiName}
+                registerChildFieldApiName={registerChildFieldApiName}
                 registerChildParent={registerChildParent}
                 objectFilters={objectFilters}
                 includeChild={includeChild}
@@ -508,6 +511,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
   }, []);
 
+  // uuid → fieldApiName registry, populated by ChildRows on data load
+  const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
+  const registerChildFieldApiName = useCallback((uuid: string, fieldApiName: string) => {
+    setChildFieldApiNames((prev) => prev[uuid] === fieldApiName ? prev : { ...prev, [uuid]: fieldApiName });
+  }, []);
+
   // uuid → parentUuid registry, for building nested tree in payload
   const [childParents, setChildParents] = useState<Record<string, string>>({});
   const registerChildParent = useCallback((childUuid: string, parentUuid: string) => {
@@ -535,6 +544,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         return {
           id: uuid,
           name: childApiNames[uuid] ?? uuid,
+          fieldApiName: childFieldApiNames[uuid] ?? undefined,
           type: 'STANDARD' as const,
           condition: objectMatchModes[uuid] ?? { type: 'AND' as const },
           field: (objectFilters[uuid] ?? [])
@@ -894,6 +904,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           selectedChildObjects={selectedChildObjects}
                           toggleChildObject={toggleChildObject}
                           registerChildApiName={registerChildApiName}
+                          registerChildFieldApiName={registerChildFieldApiName}
                           registerChildParent={registerChildParent}
                           objectFilters={objectFilters}
                           includeChild={includeChild}
