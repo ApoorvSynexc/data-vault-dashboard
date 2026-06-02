@@ -366,29 +366,33 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       }));
 
     const filters: Record<string, FilterCondition[]> = {};
-    const walk = (
-      children: NonNullable<SelectedArchiveObject['archivalPayload']>['children'],
-      parentKey: string
-    ) => {
-      children?.forEach((child, idx) => {
-        const key = `__restore__${parentKey}__${idx}`;
+    const walk = (children: any[], parentKey: string) => {
+      children?.forEach((child) => {
+        const key = child.id ?? parentKey;
         if (child.field?.length) filters[key] = toConditions(child.field);
-        walk((child as any).children, key);
+        if (child.children?.length) walk(child.children, key);
       });
     };
     initialSelectedObjects.forEach((o) => {
       const key = o.uuid ?? o.id;
       if (o.archivalPayload?.field?.length) filters[key] = toConditions(o.archivalPayload.field);
-      walk(o.archivalPayload?.children, key);
+      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children, key);
     });
     return filters;
   });
 
   const [objectMatchModes, setObjectMatchModes] = useState<Record<string, ArchivalCondition>>(() => {
     const modes: Record<string, ArchivalCondition> = {};
+    const walk = (children: any[]) => {
+      children?.forEach((child) => {
+        if (child.id) modes[child.id] = child.condition ?? { type: 'AND' };
+        if (child.children?.length) walk(child.children);
+      });
+    };
     initialSelectedObjects.forEach((o) => {
       const key = o.uuid ?? o.id;
       modes[key] = o.archivalPayload?.condition ?? { type: 'AND' };
+      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children);
     });
     return modes;
   });
@@ -484,8 +488,36 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // Inline expand state for top-level objects
   const [expandedObjectId, setExpandedObjectId] = useState<string | null>(null);
 
-  // Include child toggle state — auto-on when object is selected
-  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
+  // Restore child state from initialSelectedObjects — computed once as a ref so it's available for useState initialisers below
+  const restoredChildState = React.useRef((() => {
+    const selectedUuids = new Set<string>();
+    const apiNames: Record<string, string> = {};
+    const fieldApiNames: Record<string, string> = {};
+    const parents: Record<string, string> = {};
+    const childInclude: Record<string, boolean> = {};
+    const walk = (children: any[], parentUuid: string) => {
+      children?.forEach((child) => {
+        if (!child.id) return;
+        selectedUuids.add(child.id);
+        if (child.name) apiNames[child.id] = child.name;
+        if (child.fieldApiName) fieldApiNames[child.id] = child.fieldApiName;
+        parents[child.id] = parentUuid;
+        childInclude[child.id] = true;
+        if (child.children?.length) walk(child.children, child.id);
+      });
+    };
+    initialSelectedObjects.forEach((o) => {
+      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children, o.uuid ?? o.id);
+    });
+    return { selectedUuids, apiNames, fieldApiNames, parents, childInclude };
+  })()).current;
+
+  // Include child toggle state — auto-on when object is selected; restore from initial selection
+  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = { ...restoredChildState.childInclude };
+    initialSelectedObjects.forEach((o) => { init[o.uuid ?? o.id] = true; });
+    return init;
+  });
 
   const toggleIncludeChild = (objectId: string) => {
     setIncludeChild((prev) => {
@@ -496,7 +528,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   };
 
   // Selected child objects shared across all tree levels
-  const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
+  const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(restoredChildState.selectedUuids);
   const toggleChildObject = (key: string) => {
     setSelectedChildObjects((prev) => {
       const next = new Set(prev);
@@ -506,19 +538,19 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   };
 
   // uuid → apiName registry, populated by ChildRows on data load
-  const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
+  const [childApiNames, setChildApiNames] = useState<Record<string, string>>(restoredChildState.apiNames);
   const registerChildApiName = useCallback((uuid: string, apiName: string) => {
     setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
   }, []);
 
   // uuid → fieldApiName registry, populated by ChildRows on data load
-  const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
+  const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>(restoredChildState.fieldApiNames);
   const registerChildFieldApiName = useCallback((uuid: string, fieldApiName: string) => {
     setChildFieldApiNames((prev) => prev[uuid] === fieldApiName ? prev : { ...prev, [uuid]: fieldApiName });
   }, []);
 
   // uuid → parentUuid registry, for building nested tree in payload
-  const [childParents, setChildParents] = useState<Record<string, string>>({});
+  const [childParents, setChildParents] = useState<Record<string, string>>(restoredChildState.parents);
   const registerChildParent = useCallback((childUuid: string, parentUuid: string) => {
     setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
   }, []);
