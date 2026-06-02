@@ -193,7 +193,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                   <span className='flex-shrink-0 select-none' style={{ color: accentColor + '90', fontSize: 13, fontFamily: 'monospace', lineHeight: 1 }}>└</span>
                   <span className='flex-shrink-0 select-none' style={{ color: accentColor + '60', fontSize: 11, fontFamily: 'monospace', lineHeight: 1, marginLeft: -2 }}>──</span>
                   <span className={`text-sm truncate ${isChildSelected ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                    {row.label ?? row.apiName ?? row.name ?? '--'}
+                    {row.relationshipName ?? row.label ?? row.apiName ?? row.name ?? '--'}
                   </span>
                   {row.relationshipType && (
                     <span className='flex-shrink-0 text-xs px-1.5 py-0.5 rounded-md font-medium'
