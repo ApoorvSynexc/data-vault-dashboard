@@ -127,10 +127,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     queryClient.invalidateQueries({ queryKey });
   };
 
-  const totalInserted = (job?.object ?? []).reduce((sum, o) => sum + (o.insertCount ?? 0), 0);
-  const totalSize = (job?.object ?? []).reduce((sum, o) => sum + (o.sizeInBytes ?? 0), 0);
-  const totalApiCalls = (job?.object ?? []).reduce((sum, o) => sum + (o.salesforceApiCount ?? 0), 0);
   const flatRows = flattenObjects(job?.object ?? []);
+  const totalInserted = flatRows.reduce((sum, { obj }) => sum + (obj.insertCount ?? 0), 0);
+  const totalSize = flatRows.reduce((sum, { obj }) => sum + (obj.sizeInBytes ?? 0), 0);
+  const totalApiCalls = flatRows.reduce((sum, { obj }) => sum + (obj.salesforceApiCount ?? 0), 0);
 
   const statusStyle = job ? getStatusStyle(job.status) : { bg: '#F3F4F6', color: '#374151', dot: 'bg-gray-400' };
 
@@ -181,7 +181,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
         </div>
 
         {/* Body */}
-        <div className='flex-1 min-h-0 overflow-y-auto px-7 py-5'>
+        <div className='flex-1 min-h-0 flex flex-col px-7 py-5'>
           {isLoading ? (
             <div className='flex items-center justify-center h-full'>
               <div className='h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-blue-600' />
@@ -197,10 +197,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
             </div>
           ) : (
-            <div className='flex flex-col gap-5'>
+            <div className='flex flex-col gap-5 flex-1 min-h-0'>
 
               {/* Stat cards row */}
-              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+              <div className='grid grid-cols-2 gap-3 sm:grid-cols-4 flex-shrink-0'>
                 {/* Status */}
                 <div className='flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm'>
                   <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl' style={{ background: statusStyle.bg }}>
@@ -242,7 +242,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               </div>
 
               {/* Summary stats row */}
-              <div className='grid grid-cols-3 gap-3'>
+              <div className='grid grid-cols-3 gap-3 flex-shrink-0'>
                 <div className='rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3'>
                   <p className='text-[10px] text-gray-400 uppercase tracking-wide mb-1'>Total Inserted Records</p>
                   <p className='text-xl font-bold text-green-600'>{totalInserted.toLocaleString()}</p>
@@ -258,8 +258,8 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               </div>
 
               {/* Per-Object table */}
-              <div className='rounded-xl border border-gray-100 overflow-hidden'>
-                <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
+              <div className='rounded-xl border border-gray-100 flex flex-col flex-1 min-h-0'>
+                <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60 flex-shrink-0'>
                   <div className='flex items-center gap-2'>
                     <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-4 w-4'>
                       <rect x='3' y='3' width='18' height='18' rx='2'/><line x1='3' y1='9' x2='21' y2='9'/><line x1='9' y1='21' x2='9' y2='9'/>
@@ -268,9 +268,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                     <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{flatRows.length}</span>
                   </div>
                 </div>
-                <div className='overflow-x-auto'>
+                <div className='overflow-auto flex-1 min-h-0'>
                   <table className='w-full'>
-                    <thead className='bg-gray-50/80'>
+                    <thead className='sticky top-0 z-10 bg-gray-50'>
                       <tr className='border-b border-gray-100'>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Object</th>
                         <th className='px-4 py-2.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Depth</th>
