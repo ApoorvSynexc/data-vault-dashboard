@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 
-type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id';
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
 
-export type FilterCondition = { id: string; field: string; dataType: FieldDataType | null; operator: string; value: string };
+export type FilterCondition = { id: string; field: string; dataType: FieldDataType | null; operator: string; value: string; picklistValues?: { value: string; label: string }[] };
 
 export interface FilterPopupProps {
   objectId: string;
@@ -30,6 +30,7 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   date:     ['=', '!=', '>', '<', '>=', '<='],
   datetime: ['=', '!=', '>', '<', '>=', '<='],
   id:       ['=', '!=', 'IN'],
+  picklist: ['=', '!='],
 };
 
 export default function FilterPopup({
@@ -83,7 +84,8 @@ export default function FilterPopup({
     const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
     const dataType: FieldDataType | null = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
     const operator = OPERATORS_BY_TYPE[dataType ?? 'string'][0];
-    updateCondition(id, { field: apiName, dataType, operator, value: '' });
+    const picklistValues = dataType === 'picklist' ? ((matched as any)?.picklistValues ?? []) : undefined;
+    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues });
   };
 
   const clearAll = () => setConditions([]);
@@ -273,7 +275,7 @@ export default function FilterPopup({
                             style={{ border: '1px solid #E2E8F0', color: cond.field ? '#33363F' : '#94a3b8' }}
                           >
                             <option value=''>Field Name</option>
-                            {fields.filter((f: any) => f.dataType !== 'REFERENCE').map((f: any) => (
+                            {fields.map((f: any) => (
                               <option key={f.apiName} value={f.apiName}>{f.label || f.apiName}</option>
                             ))}
                           </select>
@@ -302,7 +304,7 @@ export default function FilterPopup({
                     </div>
 
                     {/* Value input */}
-                    {cond.dataType?.toLowerCase() === 'boolean' ? (
+                    {cond.dataType === 'boolean' ? (
                       <div className='relative flex-1'>
                         <select
                           value={cond.value}
@@ -313,6 +315,23 @@ export default function FilterPopup({
                           <option value=''>Select</option>
                           <option value='true'>True</option>
                           <option value='false'>False</option>
+                        </select>
+                        <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
+                          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
+                        </span>
+                      </div>
+                    ) : cond.dataType === 'picklist' ? (
+                      <div className='relative flex-1'>
+                        <select
+                          value={cond.value}
+                          onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
+                          className='w-full appearance-none px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white pr-8'
+                          style={{ border: '1px solid #E2E8F0', color: cond.value ? '#33363F' : '#94a3b8' }}
+                        >
+                          <option value=''>Select value</option>
+                          {(cond.picklistValues ?? []).map((pv) => (
+                            <option key={pv.value} value={pv.value}>{pv.label}</option>
+                          ))}
                         </select>
                         <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
                           <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
