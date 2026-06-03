@@ -91,6 +91,7 @@ export default function AddArchive() {
         <Step3DryRun
           crmId={selectedConnection?.crmId ?? null}
           selectedObjects={selectedObjects}
+          archivalPayload={archivalPayload}
           onNext={goNext}
           onBack={goBack}
         />

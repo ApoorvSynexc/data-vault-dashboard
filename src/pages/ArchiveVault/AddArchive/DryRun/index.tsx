@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useArchivalService } from '../../../../services/archival/archival.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
 
@@ -98,13 +99,18 @@ type DryRunState = 'idle' | 'loading' | 'results';
 interface Step3DryRunProps {
   crmId?: string | null;
   selectedObjects: SelectedArchiveObject[];
+  archivalPayload?: Record<string, unknown> | null;
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: Step3DryRunProps) {
+export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
   const backupConfigService = useBackupConfigService();
+  const archivalService = useArchivalService();
+  const navigate = useNavigate();
   const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>({});
   const [runTime, setRunTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
@@ -169,6 +175,20 @@ export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: 
 
   const previewObj = selectedObjects.find((o) => o.id === selectedPreviewObject) ?? selectedObjects[0];
   const sampleRows = previewObj ? genSampleRows(previewObj) : [];
+
+  async function handleSaveDraft() {
+    if (!archivalPayload) return;
+    setIsSavingDraft(true);
+    setDraftError(null);
+    try {
+      await archivalService.applyConfig({ ...archivalPayload, backupStatus: 'DRAFT' } as any);
+      navigate('/archive-vault');
+    } catch (err: any) {
+      setDraftError(err?.message ?? 'Failed to save draft. Please try again.');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -463,34 +483,41 @@ export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: 
       </div>
 
       {/* Sticky Footer */}
-      <div className='flex-shrink-0 flex justify-between items-center px-4 sm:px-6 py-4 bg-white border-t border-gray-200'>
-        <button
-          onClick={() => window.location.href = '/archive-vault'}
-          className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-          Cancel
-        </button>
-        <div className='flex gap-2.5'>
+      <div className='flex-shrink-0 flex flex-col px-4 sm:px-6 py-4 bg-white border-t border-gray-200 gap-2'>
+        {draftError && (
+          <p className='text-xs text-red-500 text-right'>{draftError}</p>
+        )}
+        <div className='flex justify-between items-center'>
           <button
-            onClick={onBack}
+            onClick={() => navigate('/archive-vault')}
             className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-            ← Back
+            Cancel
           </button>
-          {dryRunState === 'results' && (
+          <div className='flex gap-2.5'>
             <button
-              onClick={runDryRun}
-              className='px-4 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-              ↺ Re-run
+              onClick={onBack}
+              className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+              ← Back
             </button>
-          )}
-          <button
-            className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
-            Save as Draft
-          </button>
-          <button
-            onClick={onNext}
-            className='px-5 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
-            {dryRunState === 'results' ? 'Review & Confirm →' : 'Skip & Next →'}
-          </button>
+            {dryRunState === 'results' && (
+              <button
+                onClick={runDryRun}
+                className='px-4 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm'>
+                ↺ Re-run
+              </button>
+            )}
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || !archivalPayload}
+              className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm disabled:opacity-50'>
+              {isSavingDraft ? 'Saving…' : 'Save as Draft'}
+            </button>
+            <button
+              onClick={onNext}
+              className='px-5 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
+              {dryRunState === 'results' ? 'Review & Confirm →' : 'Skip & Next →'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
