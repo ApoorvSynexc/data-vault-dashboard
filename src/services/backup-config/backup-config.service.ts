@@ -93,6 +93,9 @@ export type BackupJobObject = {
   status: string;
   totalRecordCount: number;
   completedRecordCount?: number;
+  insertCount?: number;
+  deletedSuccessRecordCount?: number;
+  deletedfailedRecordCount?: number;
   sizeInBytes?: number;
   condition?: { type: string };
   field?: unknown[];
