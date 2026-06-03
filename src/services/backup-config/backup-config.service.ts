@@ -244,9 +244,17 @@ export function useBackupConfigService() {
     getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
       const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
         crmId,
-        apiNames: objectApiNames,
+        items: objectApiNames.map((apiName) => ({ apiName })),
       });
 
+      return response;
+    },
+
+    getArchivalObjectCountList: async (crmId: string, items: { apiName: string; filters?: string[] }[]) => {
+      const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
+        crmId,
+        items,
+      });
       return response;
     },
     getObjectFields: async (crmId: string, objectName: string) => {

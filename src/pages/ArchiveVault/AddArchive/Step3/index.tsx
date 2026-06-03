@@ -50,6 +50,14 @@ interface Step3Props {
 }
 
 const ITEMS_PER_PAGE = 10;
+
+const OPERATOR_MAP: Record<string, string> = {
+  'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
+  'does not contain': 'LIKE', 'starts with': 'LIKE',
+  'greater than': '>', 'less than': '<',
+  'greater than or equal': '>=', 'less than or equal': '<=',
+  'in': 'IN',
+};
 const MAX_CHILD_DEPTH = 4;
 const CHILD_PAGE_SIZE = 5;
 
@@ -436,15 +444,20 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     queryFn: async () => {
       if (currentPageIds.length === 0) return { objectCounts: {} };
       try {
-        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentPageIds);
+        const items = currentPageObjects.map((obj) => {
+          const conditions = objectFilters[obj.uuid] ?? [];
+          const filters = conditions
+            .filter((c) => c.field && c.value)
+            .map((c) => `${c.field} ${OPERATOR_MAP[c.operator] ?? c.operator} '${c.value}'`);
+          return filters.length > 0 ? { apiName: obj.id, filters } : { apiName: obj.id };
+        });
+        const response = await backupConfigService.getArchivalObjectCountList(crmId ?? '', items);
         const objectCounts: Record<string, number> = {};
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
           results.forEach((obj: any) => {
             const key = obj.apiName ?? obj.objectApiName;
-            if (key && obj.recordCount !== undefined) {
-              objectCounts[key] = obj.recordCount;
-            }
+            if (key && obj.recordCount !== undefined) objectCounts[key] = obj.recordCount;
           });
         }
         return { objectCounts };
@@ -560,13 +573,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setExpandedObjectId((cur) => cur === objectId ? null : objectId);
   };
 
-  const OPERATOR_MAP: Record<string, string> = {
-    'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
-    'does not contain': 'LIKE', 'starts with': 'LIKE',
-    'greater than': '>', 'less than': '<',
-    'greater than or equal': '>=', 'less than or equal': '<=',
-    'in': 'IN',
-  };
 
   const buildChildTree = (parentUuid: string): any[] =>
     Array.from(selectedChildObjects)
