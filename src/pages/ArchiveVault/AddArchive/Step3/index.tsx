@@ -437,45 +437,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
   const offset = currentPage * ITEMS_PER_PAGE;
   const currentPageObjects = allFiltered.slice(offset, offset + ITEMS_PER_PAGE);
-  const currentPageIds = currentPageObjects.map((o) => o.id);
+  const displayObjects = currentPageObjects;
 
-  const { data: countResponse, isLoading: isLoadingCount } = useQuery({
-    queryKey: ['archive-objects-count', crmId, currentPageIds],
-    queryFn: async () => {
-      if (currentPageIds.length === 0) return { objectCounts: {} };
-      try {
-        const items = currentPageObjects.map((obj) => {
-          const conditions = objectFilters[obj.uuid] ?? [];
-          const filters = conditions
-            .filter((c) => c.field && c.value)
-            .map((c) => `${c.field} ${OPERATOR_MAP[c.operator] ?? c.operator} '${c.value}'`);
-          return filters.length > 0 ? { apiName: obj.id, filters } : { apiName: obj.id };
-        });
-        const response = await backupConfigService.getArchivalObjectCountList(crmId ?? '', items);
-        const objectCounts: Record<string, number> = {};
-        const results = (response?.data as any)?.results;
-        if (Array.isArray(results)) {
-          results.forEach((obj: any) => {
-            const key = obj.apiName ?? obj.objectApiName;
-            if (key && obj.recordCount !== undefined) objectCounts[key] = obj.recordCount;
-          });
-        }
-        return { objectCounts };
-      } catch {
-        return { objectCounts: {} };
-      }
-    },
-    enabled: !!crmId && currentPageIds.length > 0,
-  });
-
-  const displayObjects = useMemo(() => {
-    return currentPageObjects.map((obj) => ({
-      ...obj,
-      recordCount: countResponse?.objectCounts?.[obj.id] ?? undefined,
-    }));
-  }, [currentPageObjects, countResponse?.objectCounts]);
-
-  const isLoading = isLoadingObjects || isLoadingCount;
+  const isLoading = isLoadingObjects;
 
   useEffect(() => { setCurrentPage(0); }, [debouncedSearch, selectedFilter]);
 
