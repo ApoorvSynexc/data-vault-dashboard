@@ -118,7 +118,14 @@ export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: 
     const start = Date.now();
     try {
       if (crmId && objectIds.length > 0) {
-        const response = await backupConfigService.getObjectCountList(crmId, objectIds);
+        const items = selectedObjects.map((o) => {
+          const fields = o.archivalPayload?.field ?? [];
+          const filters = fields
+            .filter((f) => f.name && f.filter?.value)
+            .map((f) => `${f.name} ${f.filter.operator} '${f.filter.value}'`);
+          return filters.length > 0 ? { apiName: o.id, filters } : { apiName: o.id };
+        });
+        const response = await backupConfigService.getArchivalObjectCountList(crmId, items);
         const map: Record<string, number> = {};
         const results = (response?.data as any)?.results;
         if (Array.isArray(results)) {
