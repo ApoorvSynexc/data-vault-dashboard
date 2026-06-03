@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { SelectedArchiveObject } from '../Step3';
-import type { ArchiveScheduleConfig } from '../Step4';
+import type { SelectedArchiveObject } from '../SelectObjects';
+import type { ArchiveScheduleConfig } from '../Schedule';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import ProgressBar from '../ProgressBar';
 

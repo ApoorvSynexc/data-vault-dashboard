@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import type { SelectedArchiveObject } from '../Step3';
+import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

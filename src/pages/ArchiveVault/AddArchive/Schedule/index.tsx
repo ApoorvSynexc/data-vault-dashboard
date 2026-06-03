@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import { useArchivalService } from '../../../../services/archival/archival.service';
-import type { SelectedArchiveObject } from '../Step3';
+import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';

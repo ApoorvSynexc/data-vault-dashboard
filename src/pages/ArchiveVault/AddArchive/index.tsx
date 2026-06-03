@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import type { ConnectedPlatform } from '../../../services/platform/platform.service';
 import type { Destination } from '../../../services/destination/destination.service';
-import type { SelectedArchiveObject } from './Step3';
-import type { ArchiveScheduleConfig } from './Step4';
-import Step1 from './Step1';
-import Step2 from './Step2';
-import Step3 from './Step3';
-import Step3DryRun from './Step3DryRun';
-import Step4 from './Step4';
-import Step5 from './Step5';
+import type { SelectedArchiveObject } from './SelectObjects';
+import type { ArchiveScheduleConfig } from './Schedule';
+import Step1 from './SourceDestination';
+import Step2 from './DefineArchive';
+import Step3 from './SelectObjects';
+import Step3DryRun from './DryRun';
+import Step4 from './Schedule';
+import Step5 from './Review';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
