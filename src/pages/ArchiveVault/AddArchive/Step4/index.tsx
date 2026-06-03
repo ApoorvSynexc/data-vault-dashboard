@@ -183,7 +183,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
         </div>
 
         {/* Progress bar */}
-        <ProgressBar activeStep={5} />
+        <ProgressBar activeStep={4} />
 
         {/* Header */}
         <div className='flex items-start justify-between flex-shrink-0'>

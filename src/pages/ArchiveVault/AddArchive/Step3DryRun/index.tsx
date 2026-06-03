@@ -186,7 +186,7 @@ export default function Step3DryRun({ crmId, selectedObjects, onNext, onBack }: 
         </div>
 
         {/* Progress bar — step 4 (Dry Run) */}
-        <ProgressBar activeStep={4} />
+        <ProgressBar activeStep={5} />
 
         {/* Header */}
         <div className='flex items-start justify-between flex-shrink-0 gap-4'>
