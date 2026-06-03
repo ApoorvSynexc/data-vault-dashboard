@@ -4,17 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import type { BackupJobItem } from '../../../services/backup-config/backup-config.service';
+import { formatBytes } from '../../../utils';
 import ArchiveJobDetailsModal from './ArchiveJobDetailsModal';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatBytes(bytes?: number): string {
-  if (!bytes) return '--';
-  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
-}
 
 function StatusDot({ status }: { status: string }) {
   const color: Record<string, string> = {
@@ -631,8 +622,8 @@ export default function ArchiveDetailScreen() {
                       <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Start Time</th>
                       <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Status</th>
                       <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Duration</th>
-                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>New Records</th>
-                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Total Records</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Records Uploaded</th>
+                      <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Records Deleted</th>
                       <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide pr-4 whitespace-nowrap'>Data Size</th>
                       <th className='pb-2.5 pt-1 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>Action</th>
                     </tr>
@@ -657,8 +648,9 @@ export default function ArchiveDetailScreen() {
                         SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
                         FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
                       };
-                      const newRecs = job.recordCount ?? 0;
-                      const totalRecs = job.object?.reduce((acc, o) => acc + (o.totalRecordCount ?? 0), 0) ?? 0;
+                      const recordsUploaded = job.object?.reduce((acc, o) => acc + (o.completedRecordCount ?? 0), 0) ?? (job.recordCount ?? 0);
+                      const recordsDeleted  = job.object?.reduce((acc, o) => acc + ((o as any).deletedSuccessRecordCount ?? 0), 0) ?? 0;
+                      const totalSizeBytes  = job.object?.reduce((acc, o) => acc + (o.sizeInBytes ?? 0), 0) ?? (job.sizeInBytes ?? 0);
                       return (
                         <tr key={job.backupJobId ?? i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
                           <td className='py-3 pr-4 whitespace-nowrap'>
@@ -674,15 +666,13 @@ export default function ArchiveDetailScreen() {
                             <span className='text-xs font-semibold text-blue-600'>{calcDuration(job.startedAt, job.completedAt)}</span>
                           </td>
                           <td className='py-3 pr-4'>
-                            {newRecs > 0
-                              ? <span className='text-xs font-semibold text-indigo-600'>+{newRecs}</span>
-                              : <span className='text-xs text-gray-400'>0</span>}
+                            <span className='text-xs font-semibold text-green-600'>{recordsUploaded.toLocaleString()}</span>
                           </td>
                           <td className='py-3 pr-4'>
-                            <span className='text-xs text-gray-600'>{totalRecs.toLocaleString()}</span>
+                            <span className='text-xs font-semibold text-blue-600'>{recordsDeleted.toLocaleString()}</span>
                           </td>
                           <td className='py-3 pr-4'>
-                            <span className='text-xs font-medium text-gray-600'>{formatBytes(job.sizeInBytes)}</span>
+                            <span className='text-xs font-medium text-gray-600'>{formatBytes(totalSizeBytes || undefined)}</span>
                           </td>
                           <td className='py-3'>
                             <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
