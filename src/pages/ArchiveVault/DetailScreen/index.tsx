@@ -357,67 +357,54 @@ export default function ArchiveDetailScreen() {
           {/* ── Filters & Schedule ── */}
           {activeTab === 'Filters & Schedule' && (() => {
             const objects: any[] = item?.objects ?? [];
-
-            // Root-level scheduleConfig used as fallback if object has none
             const rootSc = item?.scheduleConfig ?? null;
 
-            // Flatten tree: { obj, depth } — depth 0 = parent, depth ≥ 1 = child
-            type TreeRow = { obj: any; depth: number };
+            // Flatten tree preserving last-child info for tree lines
+            type TreeRow = { obj: any; depth: number; isLastAtDepth: boolean[] };
             const treeRows: TreeRow[] = [];
-            const walk = (items: any[], depth: number) => {
-              for (const o of items) {
-                treeRows.push({ obj: o, depth });
-                if (o.children?.length) walk(o.children, depth + 1);
-              }
+            const walk = (items: any[], depth: number, parentIsLast: boolean[]) => {
+              items.forEach((o, i) => {
+                const isLast = i === items.length - 1;
+                treeRows.push({ obj: o, depth, isLastAtDepth: [...parentIsLast, isLast] });
+                if (o.children?.length) walk(o.children, depth + 1, [...parentIsLast, isLast]);
+              });
             };
-            walk(objects, 0);
+            walk(objects, 0, []);
 
+            const parentCount = objects.length;
+            const childCount  = treeRows.length - parentCount;
             const totalFilters = treeRows.reduce((acc, { obj }) => acc + (obj.field?.length ?? 0), 0);
 
             return (
               <div className='flex flex-col gap-4'>
 
-                {/* Schedule summary banner — shows root-level schedule if present */}
-                {rootSc && (
-                  <div className='flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3'>
-                    <div className='flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0' style={{ background: 'rgba(21,93,252,0.12)' }}>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
+                {/* Stats row */}
+                <div className='flex items-center gap-3'>
+                  {[
+                    { label: 'Parent Objects', value: parentCount, color: '#155DFC', bg: 'rgba(21,93,252,0.07)' },
+                    { label: 'Child Objects',  value: childCount,  color: '#6366f1', bg: 'rgba(99,102,241,0.07)' },
+                    { label: 'Total Filters',  value: totalFilters, color: '#059669', bg: 'rgba(5,150,105,0.07)' },
+                  ].map(c => (
+                    <div key={c.label} className='flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 border'
+                      style={{ background: c.bg, borderColor: c.bg.replace('0.07', '0.15') }}>
+                      <p className='text-lg font-bold leading-none' style={{ color: c.color }}>{c.value}</p>
+                      <p className='text-[11px] font-medium text-gray-500'>{c.label}</p>
+                    </div>
+                  ))}
+                  {rootSc && (
+                    <div className='ml-auto flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/60 px-3.5 py-2.5'>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-3.5 w-3.5 flex-shrink-0'>
                         <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
                       </svg>
+                      <div>
+                        <p className='text-[10px] text-gray-400 leading-none'>Default schedule</p>
+                        <p className='text-[11px] font-bold text-blue-700 leading-tight mt-0.5 uppercase'>
+                          {rootSc?.scheduling?.frequency ?? '--'}
+                          {rootSc?.scheduling?.startTime ? ` · ${rootSc.scheduling.startTime}` : ''}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className='text-xs font-bold text-gray-800'>Default Schedule <span className='font-normal text-gray-400'>(applied to objects without their own schedule)</span></p>
-                      <p className='text-[11px] text-blue-600 font-medium mt-0.5'>
-                        <span className='uppercase'>{rootSc?.scheduling?.frequency ?? '--'}</span>
-                        {rootSc?.scheduling?.startTime ? ` · ${rootSc.scheduling.startTime}` : ''}
-                        {rootSc?.timeZone ? ` · ${rootSc.timeZone}` : ''}
-                        {rootSc?.scheduling?.startDate ? ` · from ${rootSc.scheduling.startDate}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Section label row */}
-                <div className='flex items-center gap-4'>
-                  <div className='flex items-center gap-2'>
-                    <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(21,93,252,0.08)' }}>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-3 w-3'>
-                        <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
-                      </svg>
-                    </div>
-                    <p className='text-sm font-bold text-gray-800'>Fields Level Filters</p>
-                    <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{totalFilters}</span>
-                  </div>
-                  <span className='text-gray-200'>·</span>
-                  <div className='flex items-center gap-2'>
-                    <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(99,102,241,0.08)' }}>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='#6366f1' strokeWidth='1.8' className='h-3 w-3'>
-                        <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
-                      </svg>
-                    </div>
-                    <p className='text-sm font-bold text-gray-800'>Objects</p>
-                    <span className='rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600'>{treeRows.length}</span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Tree grid */}
@@ -432,93 +419,164 @@ export default function ArchiveDetailScreen() {
                   </div>
                 ) : (
                   <div className='rounded-xl border border-gray-100 overflow-hidden'>
-                    {/* Table header */}
-                    <div className='grid bg-gray-50 border-b border-gray-100 px-4 py-2.5' style={{ gridTemplateColumns: '240px 1fr 220px' }}>
-                      <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Object</span>
+                    {/* Sticky header */}
+                    <div className='grid sticky top-0 z-10 bg-gray-50 border-b border-gray-100 px-4 py-2.5'
+                      style={{ gridTemplateColumns: '260px 1fr 220px' }}>
+                      <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Object / Relationship</span>
                       <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Field Filters</span>
                       <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Schedule</span>
                     </div>
 
-                    {treeRows.map(({ obj, depth }, idx) => {
+                    {treeRows.map(({ obj, depth, isLastAtDepth }, idx) => {
                       const fields: any[] = obj.field ?? [];
                       const isParent = depth === 0;
-                      // Per-object schedule takes priority; fall back to root schedule
                       const osc = isParent ? (obj.scheduleConfig ?? rootSc) : null;
-                      const showSchedule = isParent && osc;
                       const isObjSchedule = isParent && !!obj.scheduleConfig;
-                      const oscFreq = osc?.scheduling?.frequency ?? '--';
+                      const oscFreq = osc?.scheduling?.frequency;
                       const oscTime = osc?.scheduling?.startTime ?? null;
                       const oscTz   = osc?.timeZone ?? null;
                       const oscDate = osc?.scheduling?.startDate ?? null;
+                      const conditionType: string = obj.condition?.type ?? 'AND';
+                      const hasChildren = !!(obj.children?.length);
 
                       return (
                         <div
                           key={obj.id ?? idx}
-                          className='grid border-b border-gray-50 last:border-0 hover:bg-blue-50/20 transition-colors'
-                          style={{ gridTemplateColumns: '240px 1fr 220px' }}
+                          className={[
+                            'grid border-b last:border-0 transition-colors',
+                            isParent
+                              ? 'bg-white hover:bg-blue-50/30 border-gray-100'
+                              : 'bg-gray-50/40 hover:bg-indigo-50/30 border-gray-50',
+                          ].join(' ')}
+                          style={{ gridTemplateColumns: '260px 1fr 220px' }}
                         >
                           {/* Object column */}
-                          <div
-                            className='flex items-start gap-2 py-3.5 pr-3'
-                            style={{ paddingLeft: `${16 + depth * 18}px` }}
-                          >
-                            {depth > 0 && (
-                              <svg viewBox='0 0 16 16' fill='none' className='h-3 w-3 mt-0.5 flex-shrink-0' style={{ color: '#cbd5e1' }}>
-                                <path d='M2 2 v8 h12' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'/>
-                              </svg>
-                            )}
+                          <div className='flex items-center gap-0 py-3 pr-3' style={{ paddingLeft: '16px' }}>
+                            {/* Tree lines — border-based, reliable in any row height */}
+                            {Array.from({ length: depth }).map((_, di) => {
+                              const isCurrentLevel = di === depth - 1;
+                              const ancestorContinues = !isLastAtDepth[di];
+                              return (
+                                <div
+                                  key={di}
+                                  className='self-stretch flex-shrink-0 relative'
+                                  style={{ width: 18 }}
+                                >
+                                  {/* Vertical line — full height for pass-through, half-height for last connector */}
+                                  {(isCurrentLevel || ancestorContinues) && (
+                                    <div
+                                      className='absolute'
+                                      style={{
+                                        left: 8,
+                                        top: 0,
+                                        width: 1,
+                                        bottom: isCurrentLevel && isLastAtDepth[di] ? '50%' : 0,
+                                        background: '#e2e8f0',
+                                      }}
+                                    />
+                                  )}
+                                  {/* Horizontal elbow at the connector level */}
+                                  {isCurrentLevel && (
+                                    <div
+                                      className='absolute'
+                                      style={{ left: 8, top: '50%', width: 10, height: 1, background: '#e2e8f0' }}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {/* Icon */}
                             <div
-                              className='flex h-5 w-5 shrink-0 items-center justify-center rounded'
-                              style={{ background: isParent ? 'rgba(21,93,252,0.08)' : 'rgba(99,102,241,0.07)' }}
+                              className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md mr-2'
+                              style={{ background: isParent ? 'rgba(21,93,252,0.08)' : 'rgba(99,102,241,0.08)' }}
                             >
-                              <svg viewBox='0 0 24 24' fill='none' stroke={isParent ? '#155DFC' : '#6366f1'} strokeWidth='2' className='h-2.5 w-2.5'>
+                              <svg viewBox='0 0 24 24' fill='none' stroke={isParent ? '#155DFC' : '#6366f1'} strokeWidth='2' className='h-3 w-3'>
                                 <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>
                               </svg>
                             </div>
+
+                            {/* Name + meta */}
                             <div className='min-w-0 flex-1'>
-                              <p className='text-xs font-semibold text-gray-800 truncate leading-tight'>{obj.name ?? '--'}</p>
+                              <div className='flex items-center gap-1.5 flex-wrap'>
+                                <p className='text-xs font-semibold text-gray-800 truncate'>{obj.name ?? '--'}</p>
+                                {isParent && hasChildren && (() => {
+                                  const countDesc = (children: any[]): number =>
+                                    children.reduce((n, c) => n + 1 + (c.children?.length ? countDesc(c.children) : 0), 0);
+                                  const total = countDesc(obj.children);
+                                  return (
+                                    <span className='rounded-full border px-1.5 py-px text-[9px] font-semibold'
+                                      style={{ background: 'rgba(21,93,252,0.06)', borderColor: 'rgba(21,93,252,0.15)', color: '#155DFC' }}>
+                                      {total} child{total !== 1 ? 'ren' : ''}
+                                    </span>
+                                  );
+                                })()}
+                                {fields.length > 0 && (
+                                  <span className='rounded-full border px-1.5 py-px text-[9px] font-semibold'
+                                    style={{ background: 'rgba(5,150,105,0.06)', borderColor: 'rgba(5,150,105,0.2)', color: '#059669' }}>
+                                    {fields.length} filter{fields.length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
                               {obj.fieldApiName && (
-                                <p className='text-[10px] text-gray-400 truncate leading-tight mt-0.5'>via {obj.fieldApiName}</p>
+                                <p className='text-[10px] text-gray-400 truncate mt-0.5'>
+                                  <span className='text-gray-300'>via</span> {obj.fieldApiName}
+                                </p>
                               )}
                             </div>
                           </div>
 
                           {/* Filters column */}
-                          <div className='px-4 py-3.5 flex flex-col gap-1.5 justify-center'>
+                          <div className='px-4 py-3 flex flex-col gap-1.5 justify-center border-l border-gray-100'>
                             {fields.length === 0 ? (
-                              <span className='text-[11px] text-gray-300 italic'>No filters</span>
+                              <span className='text-[11px] text-gray-300 italic'>—</span>
                             ) : (
-                              fields.map((f: any, fi: number) => (
-                                <div key={fi} className='flex items-center gap-1.5 flex-wrap'>
-                                  <span className='text-[11px] font-medium text-gray-700'>{f.name}</span>
-                                  <span className='rounded border border-blue-200 bg-blue-50 px-1.5 py-px text-[9px] font-bold text-blue-600 uppercase tracking-wide'>{f.filter?.operator ?? '='}</span>
-                                  <span className='rounded border border-gray-200 bg-white px-2 py-px text-[11px] font-medium text-gray-700 shadow-sm'>{f.filter?.value ?? '--'}</span>
-                                </div>
-                              ))
+                              <>
+                                {fields.map((f: any, fi: number) => (
+                                  <div key={fi} className='flex items-center gap-1.5 flex-wrap'>
+                                    <span className='text-[11px] font-medium text-gray-700'>{f.name}</span>
+                                    <span className='rounded border border-blue-200 bg-blue-50 px-1.5 py-px text-[9px] font-bold text-blue-600 uppercase tracking-wide'>{f.filter?.operator ?? '='}</span>
+                                    <span className='rounded border border-gray-200 bg-white px-2 py-px text-[11px] font-medium text-gray-700 shadow-sm font-mono'>{f.filter?.value ?? '--'}</span>
+                                    {fi < fields.length - 1 && (
+                                      <span className='text-[9px] font-bold px-1 py-px rounded'
+                                        style={{ background: conditionType === 'AND' ? 'rgba(21,93,252,0.08)' : 'rgba(217,119,6,0.08)', color: conditionType === 'AND' ? '#155DFC' : '#D97706' }}>
+                                        {conditionType}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </>
                             )}
                           </div>
 
-                          {/* Schedule column — per-object schedule (or root fallback) on parent rows only */}
-                          <div className='px-4 py-3.5 flex flex-col justify-center'>
-                            {showSchedule ? (
+                          {/* Schedule column */}
+                          <div className='px-4 py-3 flex flex-col justify-center border-l border-gray-100'>
+                            {!isParent ? (
+                              <span className='text-[11px] text-gray-200'>—</span>
+                            ) : osc ? (
                               <div className='flex flex-col gap-0.5'>
-                                <div className='flex items-center gap-1.5'>
-                                  <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{oscFreq}</span>
+                                <div className='flex items-center gap-1.5 flex-wrap'>
+                                  <span className='rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border'
+                                    style={{ background: isObjSchedule ? 'rgba(21,93,252,0.08)' : 'rgba(148,163,184,0.1)', borderColor: isObjSchedule ? 'rgba(21,93,252,0.2)' : '#e2e8f0', color: isObjSchedule ? '#155DFC' : '#64748b' }}>
+                                    {oscFreq}
+                                  </span>
                                   {!isObjSchedule && (
-                                    <span className='text-[9px] text-gray-400 italic'>default</span>
+                                    <span className='text-[9px] text-gray-400 italic'>inherited</span>
                                   )}
                                 </div>
                                 {(oscTime || oscTz) && (
-                                  <p className='text-[10px] text-gray-400 leading-tight mt-0.5'>
-                                    {oscTime && <span>{oscTime}</span>}
-                                    {oscTime && oscTz && <span> · </span>}
+                                  <p className='text-[10px] text-gray-500 leading-tight mt-0.5'>
+                                    {oscTime && <span className='font-medium'>{oscTime}</span>}
+                                    {oscTime && oscTz && <span className='text-gray-300'> · </span>}
                                     {oscTz && <span>{oscTz}</span>}
                                   </p>
                                 )}
-                                {oscDate && <p className='text-[10px] text-gray-400'>from {oscDate}</p>}
+                                {oscDate && (
+                                  <p className='text-[10px] text-gray-400'>from {oscDate}</p>
+                                )}
                               </div>
                             ) : (
-                              <span className='text-[11px] text-gray-200'>—</span>
+                              <span className='text-[11px] text-gray-400 italic'>Not set</span>
                             )}
                           </div>
                         </div>
