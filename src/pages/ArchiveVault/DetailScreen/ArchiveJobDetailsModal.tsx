@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { formatBytes } from '../../../utils';
+import { formatBytes, computeArchiveJobStats } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -57,14 +57,6 @@ function getStatusLabel(status: string) {
 }
 
 
-function flattenObjects(objects: ArchiveJobObject[], depth = 0): { obj: ArchiveJobObject; depth: number }[] {
-  const result: { obj: ArchiveJobObject; depth: number }[] = [];
-  for (const obj of objects) {
-    result.push({ obj, depth });
-    if (obj.children?.length) result.push(...flattenObjects(obj.children, depth + 1));
-  }
-  return result;
-}
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 
@@ -105,17 +97,12 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     finally { setIsRefreshing(false); }
   };
 
-  const flatRows = flattenObjects(job?.object ?? []);
-  const totalInserted = flatRows.reduce((sum, { obj }) => sum + (obj.insertCount ?? 0), 0);
-  const totalApiCalls = flatRows.reduce((sum, { obj }) => sum + (obj.salesforceApiCount ?? 0), 0);
+  const { flatRows, totalInserted, totalApiCalls, completedObjects, failedObjects } = computeArchiveJobStats(job?.object ?? []);
   const startedAt = job?.startedAt ? new Date(job.startedAt) : null;
-
-  const completedObjects = flatRows.filter(({ obj }) => ['COMPLETED', 'SUCCESS'].includes(obj.status?.toUpperCase() ?? '')).length;
-  const failedObjects = flatRows.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED').length;
 
   const statCards = [
     { value: flatRows.length,   label: 'Objects Archived',    color: '#008020', icon: <IconBox color='#008020' /> },
-    { value: totalInserted,     label: 'Records Inserted',    color: '#008020', icon: <IconFile color='#008020' /> },
+    { value: totalInserted,     label: 'Total Records',    color: '#008020', icon: <IconFile color='#008020' /> },
     { value: totalApiCalls,     label: 'API Calls',           color: '#155DFC', icon: <IconSync color='#155DFC' /> },
     { value: failedObjects,     label: 'Failed Objects',      color: '#F24400', icon: <IconTrash color='#F24400' /> },
     { value: completedObjects,  label: 'Objects Synced',      color: '#155DFC', icon: <IconDone color='#155DFC' /> },
@@ -265,7 +252,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '22%' }}>Object</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '10%' }}>Depth</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '13%' }}>Status</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Inserted</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Total Records</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Data Size</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>API Calls</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Archive Mode</th>
@@ -314,7 +301,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                         </span>
                       ) : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>}
                     </td>
-                    {/* Inserted */}
+                    {/* Total Records */}
                     <td className='px-5 py-3.5'>
                       <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? 0).toLocaleString()}</span>
                     </td>

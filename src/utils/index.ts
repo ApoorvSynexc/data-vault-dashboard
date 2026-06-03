@@ -39,6 +39,35 @@ export function formatBytes(bytes: number | null | undefined): string {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+export interface ArchiveJobStats {
+  flatRows: { obj: any; depth: number }[];
+  totalInserted: number;
+  totalApiCalls: number;
+  completedObjects: number;
+  failedObjects: number;
+}
+
+export function computeArchiveJobStats(objects: any[]): ArchiveJobStats {
+  const flatRows: { obj: any; depth: number }[] = [];
+  const flatten = (items: any[], depth: number) => {
+    for (const obj of items) {
+      flatRows.push({ obj, depth });
+      if (obj.children?.length) flatten(obj.children, depth + 1);
+    }
+  };
+  flatten(objects, 0);
+
+  let totalInserted = 0, totalApiCalls = 0, completedObjects = 0, failedObjects = 0;
+  for (const { obj } of flatRows) {
+    totalInserted  += obj.insertCount ?? 0;
+    totalApiCalls  += obj.salesforceApiCount ?? 0;
+    const s = obj.status?.toUpperCase() ?? '';
+    if (s === 'COMPLETED' || s === 'SUCCESS') completedObjects++;
+    else if (s === 'FAILED') failedObjects++;
+  }
+  return { flatRows, totalInserted, totalApiCalls, completedObjects, failedObjects };
+}
+
 export function calculateNextRun(
   startTime: string | null | undefined,
   startDate: string | null | undefined,
