@@ -36,7 +36,7 @@ function StatusDot({ status }: { status: string }) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-const TABS = ['Archive Details', 'Filter Details', 'Schedule Details', 'Activity Logs'] as const;
+const TABS = ['Archive Details', 'Filters & Schedule', 'Activity Logs'] as const;
 type Tab = typeof TABS[number];
 
 
@@ -354,142 +354,178 @@ export default function ArchiveDetailScreen() {
             </div>
           )}
 
-          {/* ── Filter Details ── */}
-          {activeTab === 'Filter Details' && (() => {
-            const filters: { object: string; field: string; operator: string; value: string }[] = (item?.objects ?? []).flatMap((obj: any) =>
-              (obj.field ?? []).map((f: any) => ({
-                object: obj.name,
-                field: f.name,
-                operator: f.filter?.operator ?? '=',
-                value: f.filter?.value ?? '--',
-              }))
-            );
-            return (
-              <div>
-                <div className='flex items-center gap-2 mb-5'>
-                  <div className='flex h-7 w-7 items-center justify-center rounded-lg' style={{ background: 'rgba(21,93,252,0.08)' }}>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                      <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
-                    </svg>
-                  </div>
-                  <p className='text-sm font-bold text-gray-800'>Fields Level Filters</p>
-                  <span className='ml-1 rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{filters.length}</span>
-                </div>
-                {filters.length === 0 ? (
-                  <div className='flex flex-col items-center justify-center py-12 text-center'>
-                    <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 border border-gray-100'>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='#9ca3af' strokeWidth='1.5' className='h-5 w-5'>
-                        <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
-                      </svg>
-                    </div>
-                    <p className='text-sm font-medium text-gray-500'>No filters applied</p>
-                    <p className='text-xs text-gray-400 mt-1'>All records from selected objects will be archived</p>
-                  </div>
-                ) : (
-                  <div className='space-y-2'>
-                    {filters.map((f, i) => (
-                      <div key={i} className='flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3 hover:border-blue-100 hover:bg-blue-50/30 transition-colors'>
-                        <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-gray-100 shadow-sm'>
-                          <svg viewBox='0 0 24 24' fill='none' stroke='#6366f1' strokeWidth='1.8' className='h-3.5 w-3.5'>
-                            <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>
-                          </svg>
-                        </div>
-                        <div className='flex-1 min-w-0'>
-                          <span className='text-xs font-semibold text-gray-700'>{f.object}</span>
-                          <span className='mx-1.5 text-gray-300'>·</span>
-                          <span className='text-xs text-gray-500'>{f.field}</span>
-                        </div>
-                        <span className='rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{f.operator}</span>
-                        <span className='rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm min-w-[3rem] text-center'>{f.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {/* ── Filters & Schedule ── */}
+          {activeTab === 'Filters & Schedule' && (() => {
+            const objects: any[] = item?.objects ?? [];
 
-          {/* ── Schedule Details ── */}
-          {activeTab === 'Schedule Details' && (() => {
-            const sc = item?.scheduleConfig;
-            const freq = sc?.scheduling?.frequency ?? 'Daily';
-            const runsAt = sc?.scheduling?.startTime ?? '12:00 AM';
-            const tz = sc?.timeZone ?? '--';
-            const startedFrom = sc?.scheduling?.startDate ?? '--';
+            // Root-level scheduleConfig used as fallback if object has none
+            const rootSc = item?.scheduleConfig ?? null;
+
+            // Flatten tree: { obj, depth } — depth 0 = parent, depth ≥ 1 = child
+            type TreeRow = { obj: any; depth: number };
+            const treeRows: TreeRow[] = [];
+            const walk = (items: any[], depth: number) => {
+              for (const o of items) {
+                treeRows.push({ obj: o, depth });
+                if (o.children?.length) walk(o.children, depth + 1);
+              }
+            };
+            walk(objects, 0);
+
+            const totalFilters = treeRows.reduce((acc, { obj }) => acc + (obj.field?.length ?? 0), 0);
+
             return (
-              <div>
-                {/* Summary banner */}
-                <div className='mb-5 flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3'>
-                  <div className='flex items-center gap-3'>
-                    <div className='flex h-8 w-8 items-center justify-center rounded-lg' style={{ background: 'rgba(21,93,252,0.12)' }}>
+              <div className='flex flex-col gap-4'>
+
+                {/* Schedule summary banner — shows root-level schedule if present */}
+                {rootSc && (
+                  <div className='flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3'>
+                    <div className='flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0' style={{ background: 'rgba(21,93,252,0.12)' }}>
                       <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
                         <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
                       </svg>
                     </div>
                     <div>
-                      <p className='text-xs font-bold text-gray-800'>Currently Scheduled</p>
-                      <p className='text-[11px] text-blue-600 font-medium mt-0.5'>{freq} at {runsAt} · {tz} · From {startedFrom}</p>
+                      <p className='text-xs font-bold text-gray-800'>Default Schedule <span className='font-normal text-gray-400'>(applied to objects without their own schedule)</span></p>
+                      <p className='text-[11px] text-blue-600 font-medium mt-0.5'>
+                        <span className='uppercase'>{rootSc?.scheduling?.frequency ?? '--'}</span>
+                        {rootSc?.scheduling?.startTime ? ` · ${rootSc.scheduling.startTime}` : ''}
+                        {rootSc?.timeZone ? ` · ${rootSc.timeZone}` : ''}
+                        {rootSc?.scheduling?.startDate ? ` · from ${rootSc.scheduling.startDate}` : ''}
+                      </p>
                     </div>
                   </div>
-                  <button type='button' className='flex items-center gap-1.5 rounded-lg bg-white border border-gray-200 px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'>
-                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3 w-3'>
-                      <path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'/><path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'/>
-                    </svg>
-                    Edit Schedule
-                  </button>
+                )}
+
+                {/* Section label row */}
+                <div className='flex items-center gap-4'>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(21,93,252,0.08)' }}>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-3 w-3'>
+                        <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3'/>
+                      </svg>
+                    </div>
+                    <p className='text-sm font-bold text-gray-800'>Fields Level Filters</p>
+                    <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-600'>{totalFilters}</span>
+                  </div>
+                  <span className='text-gray-200'>·</span>
+                  <div className='flex items-center gap-2'>
+                    <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(99,102,241,0.08)' }}>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#6366f1' strokeWidth='1.8' className='h-3 w-3'>
+                        <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
+                      </svg>
+                    </div>
+                    <p className='text-sm font-bold text-gray-800'>Objects</p>
+                    <span className='rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600'>{treeRows.length}</span>
+                  </div>
                 </div>
 
-                {/* Fields grid */}
-                <div className='grid grid-cols-2 gap-3 md:grid-cols-4'>
-                  {[
-                    {
-                      label: 'Running Frequency',
-                      value: freq,
-                      icon: (
-                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
-                          <polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-2.12-9.36L23 10'/>
-                        </svg>
-                      ),
-                    },
-                    {
-                      label: 'Runs At',
-                      value: runsAt,
-                      icon: (
-                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
-                          <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-                        </svg>
-                      ),
-                    },
-                    {
-                      label: 'Time Zone',
-                      value: tz,
-                      icon: (
-                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
-                          <circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>
-                        </svg>
-                      ),
-                    },
-                    {
-                      label: 'Started From',
-                      value: startedFrom,
-                      icon: (
-                        <svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' className='h-4 w-4'>
-                          <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                        </svg>
-                      ),
-                    },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className='rounded-xl border border-gray-100 bg-gray-50/50 p-3.5 hover:border-blue-100 transition-colors'>
-                      <div className='flex items-center gap-2 mb-2'>
-                        <div className='flex h-6 w-6 items-center justify-center rounded-md' style={{ background: 'rgba(21,93,252,0.08)' }}>
-                          {icon}
-                        </div>
-                        <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide'>{label}</span>
-                      </div>
-                      <p className='text-sm font-bold text-gray-800 truncate'>{value}</p>
+                {/* Tree grid */}
+                {treeRows.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-14 rounded-xl border border-gray-100 bg-gray-50/40'>
+                    <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 border border-gray-100'>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='#9ca3af' strokeWidth='1.5' className='h-5 w-5'>
+                        <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
+                      </svg>
                     </div>
-                  ))}
-                </div>
+                    <p className='text-sm font-medium text-gray-500'>No objects configured</p>
+                  </div>
+                ) : (
+                  <div className='rounded-xl border border-gray-100 overflow-hidden'>
+                    {/* Table header */}
+                    <div className='grid bg-gray-50 border-b border-gray-100 px-4 py-2.5' style={{ gridTemplateColumns: '240px 1fr 220px' }}>
+                      <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Object</span>
+                      <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Field Filters</span>
+                      <span className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>Schedule</span>
+                    </div>
+
+                    {treeRows.map(({ obj, depth }, idx) => {
+                      const fields: any[] = obj.field ?? [];
+                      const isParent = depth === 0;
+                      // Per-object schedule takes priority; fall back to root schedule
+                      const osc = isParent ? (obj.scheduleConfig ?? rootSc) : null;
+                      const showSchedule = isParent && osc;
+                      const isObjSchedule = isParent && !!obj.scheduleConfig;
+                      const oscFreq = osc?.scheduling?.frequency ?? '--';
+                      const oscTime = osc?.scheduling?.startTime ?? null;
+                      const oscTz   = osc?.timeZone ?? null;
+                      const oscDate = osc?.scheduling?.startDate ?? null;
+
+                      return (
+                        <div
+                          key={obj.id ?? idx}
+                          className='grid border-b border-gray-50 last:border-0 hover:bg-blue-50/20 transition-colors'
+                          style={{ gridTemplateColumns: '240px 1fr 220px' }}
+                        >
+                          {/* Object column */}
+                          <div
+                            className='flex items-start gap-2 py-3.5 pr-3'
+                            style={{ paddingLeft: `${16 + depth * 18}px` }}
+                          >
+                            {depth > 0 && (
+                              <svg viewBox='0 0 16 16' fill='none' className='h-3 w-3 mt-0.5 flex-shrink-0' style={{ color: '#cbd5e1' }}>
+                                <path d='M2 2 v8 h12' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'/>
+                              </svg>
+                            )}
+                            <div
+                              className='flex h-5 w-5 shrink-0 items-center justify-center rounded'
+                              style={{ background: isParent ? 'rgba(21,93,252,0.08)' : 'rgba(99,102,241,0.07)' }}
+                            >
+                              <svg viewBox='0 0 24 24' fill='none' stroke={isParent ? '#155DFC' : '#6366f1'} strokeWidth='2' className='h-2.5 w-2.5'>
+                                <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>
+                              </svg>
+                            </div>
+                            <div className='min-w-0 flex-1'>
+                              <p className='text-xs font-semibold text-gray-800 truncate leading-tight'>{obj.name ?? '--'}</p>
+                              {obj.fieldApiName && (
+                                <p className='text-[10px] text-gray-400 truncate leading-tight mt-0.5'>via {obj.fieldApiName}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Filters column */}
+                          <div className='px-4 py-3.5 flex flex-col gap-1.5 justify-center'>
+                            {fields.length === 0 ? (
+                              <span className='text-[11px] text-gray-300 italic'>No filters</span>
+                            ) : (
+                              fields.map((f: any, fi: number) => (
+                                <div key={fi} className='flex items-center gap-1.5 flex-wrap'>
+                                  <span className='text-[11px] font-medium text-gray-700'>{f.name}</span>
+                                  <span className='rounded border border-blue-200 bg-blue-50 px-1.5 py-px text-[9px] font-bold text-blue-600 uppercase tracking-wide'>{f.filter?.operator ?? '='}</span>
+                                  <span className='rounded border border-gray-200 bg-white px-2 py-px text-[11px] font-medium text-gray-700 shadow-sm'>{f.filter?.value ?? '--'}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Schedule column — per-object schedule (or root fallback) on parent rows only */}
+                          <div className='px-4 py-3.5 flex flex-col justify-center'>
+                            {showSchedule ? (
+                              <div className='flex flex-col gap-0.5'>
+                                <div className='flex items-center gap-1.5'>
+                                  <span className='rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{oscFreq}</span>
+                                  {!isObjSchedule && (
+                                    <span className='text-[9px] text-gray-400 italic'>default</span>
+                                  )}
+                                </div>
+                                {(oscTime || oscTz) && (
+                                  <p className='text-[10px] text-gray-400 leading-tight mt-0.5'>
+                                    {oscTime && <span>{oscTime}</span>}
+                                    {oscTime && oscTz && <span> · </span>}
+                                    {oscTz && <span>{oscTz}</span>}
+                                  </p>
+                                )}
+                                {oscDate && <p className='text-[10px] text-gray-400'>from {oscDate}</p>}
+                              </div>
+                            ) : (
+                              <span className='text-[11px] text-gray-200'>—</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })()}
