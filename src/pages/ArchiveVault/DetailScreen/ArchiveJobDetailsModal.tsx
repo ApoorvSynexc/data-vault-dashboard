@@ -16,6 +16,8 @@ interface ArchiveJobObject {
   completedRecordCount?: number;
   totalRecordCount?: number;
   insertCount?: number;
+  deletedSuccessRecordCount?: number;
+  deletedfailedRecordCount?: number;
   errorMessage?: string;
   bulkJobId?: string;
   condition?: { type: string };
@@ -249,25 +251,27 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
           <table className='w-full' style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '22%' }}>Object</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '10%' }}>Depth</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '13%' }}>Status</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Total Records</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '20%' }}>Object</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '9%' }}>Depth</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '12%' }}>Status</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Uploaded</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Deleted</th>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Failed</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Data Size</th>
                 <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>API Calls</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Archive Mode</th>
               </tr>
             </thead>
             <tbody>
               {paginatedData.length === 0 && !isLoading ? (
                 <tr>
-                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                  <td colSpan={8} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
                     No objects found.
                   </td>
                 </tr>
               ) : paginatedData.map(({ obj, depth }, idx) => {
                 const st = getStatusStyle(obj.status ?? '');
                 const levelColor = levelColorMap[depth] ?? '#E11D48';
+                const deletedFailed = obj.deletedfailedRecordCount ?? 0;
                 return (
                   <tr
                     key={obj.id ?? idx}
@@ -301,9 +305,30 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                         </span>
                       ) : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>}
                     </td>
-                    {/* Total Records */}
+                    {/* Records Uploaded */}
                     <td className='px-5 py-3.5'>
-                      <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? 0).toLocaleString()}</span>
+                      <span className='text-sm font-semibold' style={{ color: '#008020' }}>
+                        {(obj.insertCount ?? 0).toLocaleString()}
+                      </span>
+                    </td>
+                    {/* Records Deleted */}
+                    <td className='px-5 py-3.5'>
+                      <span className='text-sm font-semibold' style={{ color: '#155DFC' }}>
+                        {(obj.deletedSuccessRecordCount ?? 0).toLocaleString()}
+                      </span>
+                    </td>
+                    {/* Records Failed */}
+                    <td className='px-5 py-3.5'>
+                      {deletedFailed > 0 ? (
+                        <span className='inline-flex items-center gap-1 text-sm font-semibold' style={{ color: '#F24400' }}>
+                          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                          </svg>
+                          {deletedFailed.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className='text-sm font-semibold' style={{ color: '#94A3B8' }}>0</span>
+                      )}
                     </td>
                     {/* Data Size */}
                     <td className='px-5 py-3.5'>
@@ -312,10 +337,6 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                     {/* API Calls */}
                     <td className='px-5 py-3.5'>
                       <span className='text-sm' style={{ color: '#374151' }}>{obj.salesforceApiCount ?? '--'}</span>
-                    </td>
-                    {/* Archive Mode */}
-                    <td className='px-5 py-3.5'>
-                      <span className='text-sm' style={{ color: '#374151' }}>{job?.jobType === 'BULK' ? 'Scheduled' : 'Realtime'}</span>
                     </td>
                   </tr>
                 );
