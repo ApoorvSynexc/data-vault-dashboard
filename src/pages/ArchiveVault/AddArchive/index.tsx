@@ -72,14 +72,6 @@ export default function AddArchive() {
         />
       )}
       {currentStep === 4 && (
-        <Step3DryRun
-          crmId={selectedConnection?.crmId ?? null}
-          selectedObjects={selectedObjects}
-          onNext={goNext}
-          onBack={goBack}
-        />
-      )}
-      {currentStep === 5 && (
         <Step4
           crmId={selectedConnection?.crmId ?? null}
           destinationId={selectedDestConnection?.destinationId ?? null}
@@ -92,6 +84,14 @@ export default function AddArchive() {
             setArchivalPayload(payload);
             goNext();
           }}
+          onBack={goBack}
+        />
+      )}
+      {currentStep === 5 && (
+        <Step3DryRun
+          crmId={selectedConnection?.crmId ?? null}
+          selectedObjects={selectedObjects}
+          onNext={goNext}
           onBack={goBack}
         />
       )}
