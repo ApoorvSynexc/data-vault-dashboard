@@ -24,7 +24,8 @@ export type SelectedArchiveObject = {
     name: string;
     condition: ArchivalCondition;
     field: { name: string; filter: { value: string; operator: string } }[];
-    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
+    soqlQuery?: string;
+    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[]; soqlQuery?: string }[];
   };
 };
 
@@ -389,6 +390,15 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     return filters;
   });
 
+  const [objectSoqlQueries, setObjectSoqlQueries] = useState<Record<string, string>>(() => {
+    const queries: Record<string, string> = {};
+    initialSelectedObjects.forEach((o) => {
+      const key = o.uuid ?? o.id;
+      if (o.archivalPayload?.soqlQuery) queries[key] = o.archivalPayload.soqlQuery;
+    });
+    return queries;
+  });
+
   const [objectMatchModes, setObjectMatchModes] = useState<Record<string, ArchivalCondition>>(() => {
     const modes: Record<string, ArchivalCondition> = {};
     const walk = (children: any[]) => {
@@ -552,16 +562,17 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           field: (objectFilters[uuid] ?? [])
             .filter((c) => c.field)
             .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
+          ...(objectSoqlQueries[uuid] ? { soqlQuery: objectSoqlQueries[uuid] } : {}),
           ...(nestedChildren.length > 0 ? { children: nestedChildren } : {}),
         };
       });
 
   const handleNext = () => {
     const missingParent = Array.from(selectedObjects).find(
-      (uuid) => !(objectFilters[uuid]?.some((c) => c.field))
+      (uuid) => !objectSoqlQueries[uuid] && !(objectFilters[uuid]?.some((c) => c.field))
     );
     if (missingParent) {
-      setFilterError('All selected objects must have at least one filter applied before proceeding.');
+      setFilterError('All selected objects must have at least one filter or SOQL query applied before proceeding.');
       return;
     }
     setFilterError(null);
@@ -570,6 +581,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       const conditions = objectFilters[uuid] ?? [];
       const children = buildChildTree(uuid);
       const schedule = objectSchedules[uuid];
+      const soqlQuery = objectSoqlQueries[uuid];
       return {
         uuid,
         id: obj?.id ?? uuid,
@@ -585,6 +597,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               name: c.field,
               filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
             })),
+          ...(soqlQuery ? { soqlQuery } : {}),
           ...(children.length > 0 ? { children } : {}),
         },
       };
@@ -603,13 +616,19 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         recordCount={filterPopup.recordCount}
         crmId={crmId}
         initialConditions={objectFilters[filterPopup.objectId] ?? []}
-        onApply={(objectId, conditions, matchMode, customLogic) => {
-          setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
-          let cond: ArchivalCondition;
-          if (matchMode === 'ANY condition') cond = { type: 'OR' };
-          else if (matchMode === 'Custom') cond = { type: 'CUSTOM', expression: customLogic };
-          else cond = { type: 'AND' };
-          setObjectMatchModes((prev) => ({ ...prev, [objectId]: cond }));
+        onApply={(objectId, conditions, matchMode, customLogic, soqlQuery) => {
+          if (soqlQuery !== undefined) {
+            setObjectSoqlQueries((prev) => ({ ...prev, [objectId]: soqlQuery }));
+            setObjectFilters((prev) => { const next = { ...prev }; delete next[objectId]; return next; });
+          } else {
+            setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
+            setObjectSoqlQueries((prev) => { const next = { ...prev }; delete next[objectId]; return next; });
+            let cond: ArchivalCondition;
+            if (matchMode === 'ANY condition') cond = { type: 'OR' };
+            else if (matchMode === 'Custom') cond = { type: 'CUSTOM', expression: customLogic };
+            else cond = { type: 'AND' };
+            setObjectMatchModes((prev) => ({ ...prev, [objectId]: cond }));
+          }
           setFilterPopup(null);
         }}
         onClose={() => setFilterPopup(null)}
