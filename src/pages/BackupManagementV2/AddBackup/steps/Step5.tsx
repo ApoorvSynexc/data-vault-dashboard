@@ -144,66 +144,82 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-lg border border-gray-200 mx-6 mb-4 flex flex-col flex-1 min-h-0'>
-        {/* Search and Filter */}
-        <div className='px-6 py-3 flex items-center gap-4 justify-between flex-shrink-0'>
-          <div className='flex-1'>
+      <div className='bg-white rounded-xl mx-6 mb-4 flex flex-col flex-1 min-h-0 overflow-hidden'
+        style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
+        {/* Toolbar */}
+        <div className='flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0'>
+          {/* Search */}
+          <div className='relative flex-shrink-0' style={{ width: 200 }}>
+            <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
+              <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+              </svg>
+            </span>
             <input
               type='text'
               placeholder='Search Object'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+              className='w-full pl-8 pr-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
+              style={{ border: '1px solid #E2E8F0' }}
             />
           </div>
 
-          <div className='flex gap-2'>
-            {(['All', 'Custom', 'Standard'] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setSelectedFilter(filter)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedFilter === filter
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {filter}
+          {/* Type filter tabs */}
+          <div className='flex rounded-lg overflow-hidden flex-shrink-0' style={{ border: '1px solid #E2E8F0' }}>
+            {(['All', 'Custom', 'Standard'] as const).map((f) => (
+              <button key={f} onClick={() => setSelectedFilter(f)}
+                className={`px-4 py-1.5 text-sm font-medium transition-colors ${selectedFilter === f ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                {f}
               </button>
             ))}
           </div>
 
-          <div className='text-sm font-semibold text-blue-600 flex-shrink-0'>
-            {selectedObjects.size} Selected
+          <div className='flex-1' />
+
+          {/* Selected badge */}
+          <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm flex-shrink-0'
+            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <polyline points='20 6 9 17 4 12' />
+            </svg>
+            <span className='font-medium'>{selectedObjects.size} object selected</span>
           </div>
+
+          {/* Clear */}
+          <button
+            onClick={() => setSelectedObjects(new Set())}
+            className='text-sm font-medium text-gray-500 hover:text-gray-700 flex-shrink-0'>
+            Clear
+          </button>
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className='flex items-center justify-center py-12 flex-shrink-0'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className='mx-6 my-4 rounded-lg bg-red-50 border border-red-200 px-5 py-4 flex-shrink-0'>
-            <p className='text-sm font-semibold text-red-700 mb-0.5'>Failed to load objects</p>
-            <p className='text-sm text-red-600'>
-              {(error as any)?.message || 'Something went wrong. Please try again.'}
-            </p>
-          </div>
-        )}
-
-        {/* Table Container - Scrollable */}
-        {!isLoading && !error && (
-          <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
-            <div className='flex-1 min-h-0 overflow-y-auto px-6 py-2'>
-              <table className='w-full border-collapse'>
+        {/* Table */}
+        <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+          <div className='flex-1 min-h-0 overflow-y-auto'>
+            {isLoading ? (
+              <div className='flex items-center justify-center py-16'>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
+              </div>
+            ) : error ? (
+              <div className='mx-5 my-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3'>
+                <p className='text-sm font-semibold text-red-700'>Failed to load objects</p>
+                <p className='text-sm text-red-600'>{(error as any)?.message || 'Something went wrong.'}</p>
+              </div>
+            ) : (
+              <table className='w-full border-collapse table-fixed'>
+                <colgroup>
+                  <col style={{ width: 44 }} />
+                  <col style={{ width: 52 }} />
+                  <col />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 150 }} />
+                </colgroup>
                 <thead className='sticky top-0 z-20 bg-white'>
-                  <tr className='border-b border-gray-200'>
-                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 w-12'>#</th>
-                    <th className='px-4 py-3 text-left'>
+                  <tr className='border-b border-gray-100'>
+                    <th className='px-3 py-2.5 text-left'>
                       <input
                         type='checkbox'
                         checked={filteredObjects.length > 0 && filteredObjects.every(o => selectedObjects.has(o.id))}
@@ -219,13 +235,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                           filteredObjects.forEach(o => allSel ? next.delete(o.id) : next.add(o.id));
                           setSelectedObjects(next);
                         }}
-                        className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
+                        className='w-4 h-4 rounded accent-blue-600 cursor-pointer'
                       />
                     </th>
-                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Object</th>
-                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Type</th>
-                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Records</th>
-                    <th className='px-4 py-3 text-left text-sm font-medium text-gray-600'>Estimated data size</th>
+                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>#</th>
+                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Object</th>
+                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Type</th>
+                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Records</th>
+                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Estimated Data Size</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,117 +257,74 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                       return `${kb} KB`;
                     })();
                     return (
-                      <tr key={obj.id} className={`border-b border-gray-200 ${isSelected ? 'bg-blue-50' : 'hover:bg-blue-50'}`}>
-                        <td className='px-4 py-3 text-sm text-gray-600'>{currentPage * ITEMS_PER_PAGE + idx + 1}</td>
-                        <td className='px-4 py-3'>
+                      <tr key={obj.id}
+                        onClick={() => { const next = new Set(selectedObjects); isSelected ? next.delete(obj.id) : next.add(obj.id); setSelectedObjects(next); }}
+                        className={`border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}>
+                        <td className='px-3 py-2.5' onClick={e => e.stopPropagation()}>
                           <input type='checkbox' checked={isSelected}
-                            onChange={() => {
-                              const next = new Set(selectedObjects);
-                              isSelected ? next.delete(obj.id) : next.add(obj.id);
-                              setSelectedObjects(next);
-                            }}
-                            className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
+                            onChange={() => { const next = new Set(selectedObjects); isSelected ? next.delete(obj.id) : next.add(obj.id); setSelectedObjects(next); }}
+                            className='w-4 h-4 rounded accent-blue-600 cursor-pointer'
                           />
                         </td>
-                        <td className='px-4 py-3 text-sm text-gray-900'>{obj.name}</td>
-                        <td className='px-4 py-3 text-sm text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</td>
-                        <td className='px-4 py-3 text-sm text-gray-700'>{recordCount?.toLocaleString() ?? '--'}</td>
-                        <td className='px-4 py-3 text-sm text-gray-700'>{dataSize}</td>
+                        <td className='px-3 py-2.5 text-sm text-gray-400'>{currentPage * ITEMS_PER_PAGE + idx + 1}</td>
+                        <td className='px-3 py-2.5 text-sm font-medium text-gray-800'>{obj.name}</td>
+                        <td className='px-3 py-2.5'>
+                          <span className='text-xs font-medium text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</span>
+                        </td>
+                        <td className='px-3 py-2.5 text-sm text-gray-600'>{recordCount?.toLocaleString() ?? '--'}</td>
+                        <td className='px-3 py-2.5 text-sm text-gray-600'>{dataSize}</td>
                       </tr>
                     );
                   }) : (
-                    <tr><td colSpan={6} className='px-4 py-10 text-center text-sm text-gray-500'>No objects found matching your search.</td></tr>
+                    <tr><td colSpan={6} className='px-4 py-12 text-center text-sm text-gray-400'>No objects found matching your search.</td></tr>
                   )}
                 </tbody>
               </table>
-            </div>
+            )}
+          </div>
 
-            {/* Pagination Controls */}
-            <div className='px-6 py-3 flex-shrink-0 border-t border-gray-200'>
-              <div className='flex items-center justify-between'>
-                <div className='text-sm text-gray-600'>
-                  Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
-                </div>
-
-                <div className='flex items-center gap-4'>
-                  {/* Page Number Pagination */}
-                  <div className='flex items-center gap-2'>
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-                      disabled={currentPage === 0}
-                      className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-                    >
-                      &lt;
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className='flex items-center gap-1'>
-                      {(() => {
-                        const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
-                        const pages: (number | string)[] = [];
-                        const maxVisiblePages = 5;
-                        const halfVisible = Math.floor(maxVisiblePages / 2);
-
-                        if (totalPages <= maxVisiblePages) {
-                          for (let i = 0; i < totalPages; i++) {
-                            pages.push(i);
-                          }
-                        } else {
-                          pages.push(0);
-                          if (currentPage > halfVisible + 1) pages.push('...');
-
-                          const start = Math.max(1, currentPage - halfVisible);
-                          const end = Math.min(totalPages - 1, currentPage + halfVisible);
-
-                          for (let i = start; i <= end; i++) {
-                            if (!pages.includes(i)) pages.push(i);
-                          }
-
-                          if (currentPage < totalPages - halfVisible - 2) pages.push('...');
-                          if (!pages.includes(totalPages - 1)) pages.push(totalPages - 1);
-                        }
-
-                        return pages.map((page, idx) => {
-                          if (page === '...') {
-                            return (
-                              <span key={`dots-${idx}`} className='px-2 text-gray-400'>
-                                ...
-                              </span>
-                            );
-                          }
-                          const pageNum = page as number;
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                                currentPage === pageNum
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
-                              }`}
-                            >
-                              {pageNum + 1}
-                            </button>
-                          );
-                        });
-                      })()}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                      disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
-                      className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-                    >
-                      &gt;
-                    </button>
-                  </div>
-                </div>
+          {/* Pagination */}
+          {!isLoading && !error && (
+            <div className='flex items-center justify-between border-t border-gray-100 px-5 py-3 flex-shrink-0'>
+              <p className='text-sm text-gray-500'>
+                Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
+              </p>
+              <div className='flex items-center gap-2'>
+                <button onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} disabled={currentPage === 0}
+                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'>
+                  &lt;
+                </button>
+                {(() => {
+                  const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
+                  const pages: (number | string)[] = [];
+                  const half = 2;
+                  if (totalPages <= 5) {
+                    for (let i = 0; i < totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(0);
+                    if (currentPage > half + 1) pages.push('...');
+                    const start = Math.max(1, currentPage - half);
+                    const end = Math.min(totalPages - 2, currentPage + half);
+                    for (let i = start; i <= end; i++) if (!pages.includes(i)) pages.push(i);
+                    if (currentPage < totalPages - half - 2) pages.push('...');
+                    if (!pages.includes(totalPages - 1)) pages.push(totalPages - 1);
+                  }
+                  return pages.map((page, i) => page === '...'
+                    ? <span key={`d${i}`} className='px-2 text-gray-400'>...</span>
+                    : <button key={page} onClick={() => setCurrentPage(page as number)}
+                        className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'}`}>
+                        {(page as number) + 1}
+                      </button>
+                  );
+                })()}
+                <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
+                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'>
+                  &gt;
+                </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Action Buttons */}
