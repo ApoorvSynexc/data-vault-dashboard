@@ -49,7 +49,8 @@ export default function FilterPopup({
   const [conditions, setConditions] = useState<FilterCondition[]>(
     initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', dataType: null, operator: '=', value: '' }]
   );
-  const [soqlQuery, setSoqlQuery] = useState('');
+  const soqlPrefix = `SELECT FIELDS(ALL) FROM ${objectName} WHERE `;
+  const [soqlUserClause, setSoqlUserClause] = useState('');
   const [customLogic, setCustomLogic] = useState('1 AND 2');
   const [customLogicTouched, setCustomLogicTouched] = useState(false);
 
@@ -176,21 +177,35 @@ export default function FilterPopup({
 
         {filterTab === 'SOQL' ? (
           <>
-            <div className='flex-1 min-h-0 px-6 py-4 flex flex-col gap-3 overflow-y-auto'>
-              <textarea
-                value={soqlQuery}
-                onChange={(e) => setSoqlQuery(e.target.value)}
-                placeholder='Insert SOQL here ......'
-                className='w-full flex-1 resize-none px-4 py-3 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700'
-                style={{ border: '1px solid #E2E8F0', minHeight: 140, background: '#FAFBFC' }}
-              />
+            <div className='flex-1 min-h-0 px-6 py-4 flex flex-col gap-2 overflow-y-auto'>
+              <p className='text-xs text-gray-400'>Write the WHERE clause condition after the fixed prefix.</p>
+              <div
+                className='flex flex-col rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20'
+                style={{ border: '1px solid #E2E8F0', background: '#FAFBFC' }}
+              >
+                {/* Non-editable prefix */}
+                <div
+                  className='px-4 pt-3 pb-1 text-sm font-mono select-none text-blue-700 bg-blue-50 border-b border-blue-100'
+                  style={{ userSelect: 'none', pointerEvents: 'none' }}
+                >
+                  {soqlPrefix}
+                </div>
+                {/* Editable user clause */}
+                <textarea
+                  value={soqlUserClause}
+                  onChange={(e) => setSoqlUserClause(e.target.value)}
+                  placeholder="e.g. CreatedDate > 2023-01-01T00:00:00Z AND Status = 'Active'"
+                  className='w-full resize-none px-4 py-3 text-sm font-mono outline-none bg-transparent text-gray-800 placeholder-gray-400'
+                  style={{ minHeight: 100 }}
+                />
+              </div>
             </div>
             <div className='flex items-center px-6 py-4 border-t border-gray-100 flex-shrink-0'>
               <button
                 className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors'
                 onClick={() => {}}
               >
-                Execute Query →
+                Validate Query →
               </button>
             </div>
           </>
