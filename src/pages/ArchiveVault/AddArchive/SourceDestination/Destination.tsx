@@ -66,9 +66,9 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
 
       <div className='grid grid-cols-2 gap-8 flex-1 min-h-0'>
         {/* Left — Available Destination Platforms */}
-        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
-          <h2 className='text-lg font-semibold text-gray-900 mb-6'>Available Destination Platform</h2>
-          <div className='space-y-3'>
+        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col' style={{ height: 'clamp(280px, 45vh, 420px)' }}>
+          <h2 className='text-lg font-semibold text-gray-900 mb-4 flex-shrink-0'>Available Destination Platform</h2>
+          <div className='flex-1 overflow-y-auto space-y-3 pr-1'>
             <button
               className='w-full p-4 rounded-lg border-2 transition-all text-left border-blue-500 bg-blue-50'
             >
@@ -87,8 +87,8 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
         </div>
 
         {/* Right — Available AWS Connections */}
-        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
-          <h2 className='text-lg font-semibold text-gray-900 mb-6'>
+        <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col' style={{ height: 'clamp(280px, 45vh, 420px)' }}>
+          <h2 className='text-lg font-semibold text-gray-900 mb-4 flex-shrink-0'>
             Available {selectedDestProvider.provider} Connections
           </h2>
           {isLoading ? (
@@ -96,7 +96,7 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
             </div>
           ) : (
-            <div className='space-y-4'>
+            <div className='flex-1 overflow-y-auto space-y-4 pr-1'>
               {destConnections.map((conn) => {
                 const isSelected = selectedDestConnection?.destinationId === conn.destinationId;
                 return (

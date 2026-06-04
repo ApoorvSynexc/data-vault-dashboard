@@ -43,9 +43,9 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
   return (
     <div className='grid grid-cols-2 gap-8 flex-1 min-h-0'>
       {/* Left — Available Source Platforms */}
-      <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
-        <h2 className='text-lg font-semibold text-gray-900 mb-6'>Available Source Platform</h2>
-        <div className='space-y-3'>
+      <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col' style={{ height: 'clamp(280px, 45vh, 420px)' }}>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4 flex-shrink-0'>Available Source Platform</h2>
+        <div className='flex-1 overflow-y-auto space-y-3 pr-1'>
           {AVAILABLE_PLATFORMS.map((platform) => {
             const isSelected = selectedPlatform?.crmId === platform.crmId;
             return (
@@ -68,8 +68,8 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
       </div>
 
       {/* Right — Select Connections */}
-      <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col'>
-        <h2 className='text-lg font-semibold text-gray-900 mb-6'>
+      <div className='bg-white rounded-lg shadow-sm p-6 flex flex-col' style={{ height: 'clamp(280px, 45vh, 420px)' }}>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4 flex-shrink-0'>
           Select {selectedPlatform?.crmName || 'Platform'} Connections
         </h2>
         {selectedPlatform ? (
@@ -78,7 +78,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
             </div>
           ) : (
-            <div className='space-y-4'>
+            <div className='flex-1 overflow-y-auto space-y-3 pr-1'>
               {connections.map((connection: any) => {
                 const isSelected = selectedConnection?.crmId === connection.crmId;
                 return (
@@ -103,7 +103,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
             </div>
           )
         ) : (
-          <div className='flex items-center justify-center h-64 text-gray-500'>
+          <div className='flex items-center justify-center flex-1 text-gray-500'>
             <p>Select a platform to view connections</p>
           </div>
         )}
