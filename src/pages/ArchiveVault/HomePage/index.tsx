@@ -72,7 +72,7 @@ function Panel({ title, children, action }: { title: string; children: ReactNode
 
 function MetricCard({ label, value, loading, icon }: { label: string; value: string; loading?: boolean; icon: React.ReactNode }) {
   return (
-    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3'>
+    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3 min-w-0'>
       {/* Icon bubble */}
       <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(21,93,252,0.08)' }}>
         {icon}
@@ -83,9 +83,9 @@ function MetricCard({ label, value, loading, icon }: { label: string; value: str
           <div className='mt-1.5 h-2.5 w-24 rounded bg-gray-100 animate-pulse' />
         </div>
       ) : (
-        <div>
-          <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
-          <p className='mt-0.5 text-xs text-gray-500'>{label}</p>
+        <div className='min-w-0'>
+          <p className='text-xl font-bold leading-tight text-gray-900 truncate'>{value}</p>
+          <p className='mt-0.5 text-xs text-gray-500 truncate'>{label}</p>
         </div>
       )}
     </div>
@@ -267,13 +267,21 @@ export default function ArchiveVaultHomePage() {
     staleTime: 0,
   });
 
+  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['archival-config-stats'],
+    queryFn: () => archivalService.getStats(),
+    staleTime: 0,
+  });
+
+  const stats = (statsData as any)?.data ?? statsData ?? null;
+
   const { data: platformsData, isLoading: isLoadingPlatforms } = useQuery({
     queryKey: ['connected-platforms'],
     queryFn: () => platformService.getConnectedPlatforms(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const isLoading = isLoadingList || isLoadingPlatforms;
+  const isLoading = isLoadingList || isLoadingPlatforms || isLoadingStats;
 
   const rawList: ArchivalConfigItem[] = Array.isArray(rawListData)
     ? rawListData
@@ -335,17 +343,17 @@ export default function ArchiveVaultHomePage() {
         <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>
           Archive Status
         </Typography>
-        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
-          <MetricCard loading={isLoading} label='Total archives across all platform' value={pad(total)}
+        <div className='grid grid-cols-4 gap-3'>
+          <MetricCard loading={isLoading} label='Total archives across all platform' value={stats?.totalArchives != null ? pad(stats.totalArchives) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>}
           />
-          <MetricCard loading={isLoading} label='Total records' value={total > 0 ? '356,142' : '--'}
+          <MetricCard loading={isLoading} label='Total records' value={stats?.totalRecords != null ? Number(stats.totalRecords).toLocaleString() : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
           />
-          <MetricCard loading={isLoading} label={`Across ${uniquePlatforms} platform${uniquePlatforms !== 1 ? 's' : ''}`} value={formatBytes(totalSizeInBytes)}
+          <MetricCard loading={isLoading} label='Total data archived' value={stats?.totalDataSize != null ? formatBytes(stats.totalDataSize) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>}
           />
-          <MetricCard loading={isLoading} label='Platform connections' value={pad(uniquePlatforms)}
+          <MetricCard loading={isLoading} label='Platform connections' value={stats?.totalPlatforms != null ? pad(stats.totalPlatforms) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><rect x='2' y='2' width='8' height='8' rx='1.5'/><rect x='14' y='2' width='8' height='8' rx='1.5'/><rect x='2' y='14' width='8' height='8' rx='1.5'/><rect x='14' y='14' width='8' height='8' rx='1.5'/></svg>}
           />
         </div>

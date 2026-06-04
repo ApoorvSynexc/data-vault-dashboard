@@ -118,7 +118,7 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
         Jobs Status
       </Typography>
       {statsQuery.isLoading ? (
-        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid grid-cols-4 gap-3'>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm animate-pulse'>
               <div className='h-2.5 w-20 rounded bg-gray-100' />
@@ -129,7 +129,7 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
       ) : statsQuery.isError ? (
         <p className='text-xs text-red-500'>Failed to load job stats.</p>
       ) : (
-        <div className='grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid grid-cols-4 gap-3'>
           <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} note={completedNote} noteTone={completedNoteTone} />
           <MetricCard label='Running Jobs' value={pad(extractCount(stats?.runningJobs))} note='All within SLA' tone='success' withBar />
           <MetricCard label='Failed Jobs' value={pad(extractCount(stats?.failedJobs))} note='Requires Intervention' tone={extractCount(stats?.failedJobs) > 0 ? 'danger' : 'default'} />
@@ -177,11 +177,11 @@ function MetricCard({
   };
 
   return (
-    <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm'>
+    <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm min-w-0'>
       <Typography variant='metricLabel' color={labelColor[tone]}>
         {label}
       </Typography>
-      <Typography className='mt-0.5' variant='metricValue' color={valueColor[tone]} style={{ fontSize: '1.25rem', lineHeight: '1.6rem' }}>
+      <Typography className='mt-0.5 truncate' variant='metricValue' color={valueColor[tone]} style={{ fontSize: '1.25rem', lineHeight: '1.6rem' }}>
         {value}
       </Typography>
       {withBar ? (
