@@ -59,9 +59,9 @@ function crmNameToPlatform(name: string): string {
 function Panel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <section className='flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4 flex-shrink-0'>
-        <Typography as='h3' variant='sectionTitle' color='secondary'>{title}</Typography>
-        {action}
+      <div className='flex items-center gap-3 border-b border-gray-100 px-5 py-2.5 flex-shrink-0 overflow-x-auto'>
+        <Typography as='h3' variant='sectionTitle' color='secondary' className='flex-shrink-0'>{title}</Typography>
+        {action && <div className='flex items-center gap-2 flex-shrink-0 ml-auto'>{action}</div>}
       </div>
       {children}
     </section>
@@ -119,7 +119,7 @@ function StatusBadge({ status }: { status: string }) {
     RUNNING:   'bg-green-100 text-green-700',
     SCHEDULED: 'bg-blue-100 text-blue-700',
     SUCCESS:   'bg-green-100 text-green-700',
-    PENDING:   'bg-blue-100 text-blue-700',
+    PENDING:   'bg-indigo-100 text-indigo-700',
     DRAFT:     'bg-yellow-100 text-yellow-700',
     PAUSED:    'bg-gray-100 text-gray-700',
     FAILED:    'bg-red-100 text-red-700',
@@ -127,7 +127,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const labels: Record<string, string> = {
     ACTIVE: 'Active', RUNNING: 'Running', SCHEDULED: 'Scheduled',
-    SUCCESS: 'Success', PENDING: 'Pending', DRAFT: 'Draft',
+    SUCCESS: 'Success', PENDING: 'Running', DRAFT: 'Draft',
     PAUSED: 'Paused', FAILED: 'Failed', ONE_TIME: 'One Time',
   };
   return (
@@ -311,8 +311,10 @@ export default function ArchiveVaultHomePage() {
   // Filters
   const filtered = enriched.filter((r) => {
     if (search && !r.displayName.toLowerCase().includes(search.toLowerCase())) return false;
-    if (scheduleFilter !== 'All' && r.platform !== scheduleFilter) return false;
-    if (statusFilter !== 'All' && r.displayStatus !== statusFilter) return false;
+    if (statusFilter !== 'All') {
+      if (statusFilter === 'RUNNING' && r.displayStatus !== 'RUNNING' && r.displayStatus !== 'PENDING') return false;
+      else if (statusFilter !== 'RUNNING' && r.displayStatus !== statusFilter) return false;
+    }
     return true;
   });
 
@@ -360,71 +362,64 @@ export default function ArchiveVaultHomePage() {
       </div>
 
       {/* Table Panel */}
-      <Panel title='All Archives'>
+      <Panel
+        title='All Archives'
+        action={
+          <div className='flex items-center gap-2 flex-shrink-0'>
+            {/* Search */}
+            <div className='relative'>
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+                <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+              </svg>
+              <input
+                type='text'
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                placeholder='Search Archive'
+                className='h-7 w-44 rounded-full border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
+              />
+            </div>
+            <div className='h-5 w-px bg-gray-200' />
+            {/* Status pills — only statuses that actually come from the API */}
+            {([
+              { label: 'All',     value: 'All'     },
+              { label: 'Active',  value: 'ACTIVE'  },
+              { label: 'Running', value: 'RUNNING' },
+              { label: 'Paused',  value: 'PAUSED'  },
+              { label: 'Draft',   value: 'DRAFT'   },
+              { label: 'Success', value: 'SUCCESS' },
+              { label: 'Failed',  value: 'FAILED'  },
+            ] as { label: string; value: string }[]).map(({ label, value }) => {
 
-        {/* Filter Bar */}
-        <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3 flex-shrink-0'>
-          {/* Search */}
-          <div className='relative flex-1 min-w-0'>
-            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-              <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
-            </svg>
-            <input type='text' value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              placeholder='Search Archive'
-              className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
-            />
+              const active = statusFilter === value;
+              return (
+                <button
+                  key={value}
+                  type='button'
+                  onClick={() => { setStatusFilter(value); setCurrentPage(1); }}
+                  className={`h-7 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+                    active
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+            <div className='h-5 w-px bg-gray-200 mx-1' />
+            <button
+              type='button'
+              className='flex h-7 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:border-gray-300 whitespace-nowrap'
+            >
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='h-3.5 w-3.5'>
+                <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/>
+              </svg>
+              Export CSV
+            </button>
           </div>
-
-          {/* All Platform */}
-          <div className='relative flex-shrink-0'>
-            <select value={scheduleFilter} onChange={(e) => { setScheduleFilter(e.target.value); setCurrentPage(1); }}
-              className='h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 cursor-pointer'
-              style={{ minWidth: 120 }}>
-              <option value='All'>All Platform</option>
-              <option value='Schedule'>Salesforce</option>
-              <option value='Realtime'>HubSpot</option>
-              <option value='One Time'>Zoho</option>
-            </select>
-            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
-              <polyline points='6 9 12 15 18 9' />
-            </svg>
-          </div>
-
-          {/* All Objects */}
-          <div className='relative flex-shrink-0'>
-            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className='h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 cursor-pointer'
-              style={{ minWidth: 120 }}>
-              <option value='All'>All Objects</option>
-              <option value='ACTIVE'>Active</option>
-              <option value='SUCCESS'>Success</option>
-              <option value='PENDING'>Pending</option>
-              <option value='DRAFT'>Draft</option>
-              <option value='PAUSED'>Paused</option>
-              <option value='FAILED'>Failed</option>
-            </select>
-            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
-              <polyline points='6 9 12 15 18 9' />
-            </svg>
-          </div>
-
-          {/* More Filter */}
-          <button type='button'
-            className='flex h-9 flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
-            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-              <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-            </svg>
-            More Filter
-          </button>
-
-          {/* Clear Filter */}
-          <button type='button'
-            onClick={() => { setSearch(''); setScheduleFilter('All'); setStatusFilter('All'); setCurrentPage(1); }}
-            className='flex h-9 flex-shrink-0 items-center rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
-            Clear Filter
-          </button>
-        </div>
+        }
+      >
 
         {/* Table */}
         <div className='flex-1 min-h-0 overflow-auto'>
