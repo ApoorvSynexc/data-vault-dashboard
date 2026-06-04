@@ -12,6 +12,7 @@ export interface FilterPopupProps {
   recordCount?: number;
   crmId?: string | null;
   initialConditions?: FilterCondition[];
+  initialSoqlQuery?: string;
   onApply: (objectId: string, conditions: FilterCondition[], matchMode: 'ALL conditions' | 'ANY condition' | 'Custom', customLogic: string, soqlQuery?: string) => void;
   onClose: () => void;
 }
@@ -39,18 +40,19 @@ export default function FilterPopup({
   recordCount,
   crmId,
   initialConditions = [],
+  initialSoqlQuery = '',
   onApply,
   onClose,
 }: FilterPopupProps) {
   const archivalService = useArchivalService();
 
-  const [filterTab, setFilterTab] = useState<'Field Level' | 'SOQL'>('Field Level');
+  const [filterTab, setFilterTab] = useState<'Field Level' | 'SOQL'>(initialSoqlQuery ? 'SOQL' : 'Field Level');
   const [matchMode, setMatchMode] = useState<'ALL conditions' | 'ANY condition' | 'Custom'>('ALL conditions');
   const [conditions, setConditions] = useState<FilterCondition[]>(
     initialConditions.length > 0 ? initialConditions : [{ id: crypto.randomUUID(), field: '', dataType: null, operator: '=', value: '' }]
   );
   const soqlPrefix = `SELECT FIELDS(ALL) FROM ${objectName} WHERE `;
-  const [soqlUserClause, setSoqlUserClause] = useState('');
+  const [soqlUserClause, setSoqlUserClause] = useState(initialSoqlQuery);
   const [customLogic, setCustomLogic] = useState('1 AND 2');
   const [customLogicTouched, setCustomLogicTouched] = useState(false);
 
