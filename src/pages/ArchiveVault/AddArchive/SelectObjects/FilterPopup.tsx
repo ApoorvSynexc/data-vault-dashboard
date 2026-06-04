@@ -12,7 +12,7 @@ export interface FilterPopupProps {
   recordCount?: number;
   crmId?: string | null;
   initialConditions?: FilterCondition[];
-  onApply: (objectId: string, conditions: FilterCondition[], matchMode: 'ALL conditions' | 'ANY condition' | 'Custom', customLogic: string) => void;
+  onApply: (objectId: string, conditions: FilterCondition[], matchMode: 'ALL conditions' | 'ANY condition' | 'Custom', customLogic: string, soqlQuery?: string) => void;
   onClose: () => void;
 }
 
@@ -404,7 +404,14 @@ export default function FilterPopup({
             Cancel
           </button>
           <button
-            onClick={() => { if (!canApply) { setCustomLogicTouched(true); return; } onApply(objectId, conditions, matchMode, customLogic); }}
+            onClick={() => {
+            if (filterTab === 'SOQL') {
+              onApply(objectId, [], 'ALL conditions', '', soqlUserClause.trim() || undefined);
+              return;
+            }
+            if (!canApply) { setCustomLogicTouched(true); return; }
+            onApply(objectId, conditions, matchMode, customLogic);
+          }}
             disabled={!canApply}
             className='px-5 py-2 text-sm font-medium rounded-lg transition-colors'
             style={{ background: canApply ? '#155DFC' : '#CBD5E1', color: canApply ? 'white' : '#94A3B8', cursor: canApply ? 'pointer' : 'not-allowed' }}>
