@@ -54,6 +54,8 @@ type TableProps<TRow> = {
   showSerialNumber?: boolean;
   /** Starting number for serial number column. Default: 1. Useful for external pagination */
   serialNumberStart?: number;
+  /** Override cell padding. Default: 'px-4 py-3' */
+  cellPaddingClassName?: string;
 } & SelectableTableProps<TRow>;
 
 export default function Table<TRow>({
@@ -80,6 +82,7 @@ export default function Table<TRow>({
   getRowClassName,
   showSerialNumber = false,
   serialNumberStart = 1,
+  cellPaddingClassName = 'px-4 py-3',
 }: TableProps<TRow>) {
   const [internalPage, setInternalPage] = useState(1);
 
@@ -128,12 +131,12 @@ export default function Table<TRow>({
             <thead className='sticky top-0 z-20 bg-white'>
               <tr className='border-b border-gray-200 shadow-sm'>
                 {showSerialNumber && (
-                  <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>
+                  <th className={`${cellPaddingClassName} text-left text-sm font-medium text-gray-600 whitespace-nowrap`}>
                     #
                   </th>
                 )}
                 {showCheckbox && (
-                  <th className='px-4 py-3 text-left'>
+                  <th className={`${cellPaddingClassName} text-left`}>
                     <input
                       type='checkbox'
                       checked={(() => {
@@ -185,7 +188,7 @@ export default function Table<TRow>({
                   <th
                     key={column.key}
                     className={[
-                      'px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap',
+                      `${cellPaddingClassName} text-left text-sm font-medium text-gray-600 whitespace-nowrap`,
                       column.headerClassName ?? '',
                     ].join(' ')}
                     style={column.width ? { width: column.width } : undefined}
@@ -205,10 +208,10 @@ export default function Table<TRow>({
                   return (
                     <tr key={getRowKey(row, index)} className={computedRowClassName}>
                       {showSerialNumber && (
-                        <td className='px-4 py-3 text-sm text-gray-600'>{serialNumber}</td>
+                        <td className={`${cellPaddingClassName} text-sm text-gray-600`}>{serialNumber}</td>
                       )}
                       {showCheckbox && (
-                        <td className='px-4 py-3'>
+                        <td className={cellPaddingClassName}>
                           <input
                             type='checkbox'
                             checked={isSelected || false}
@@ -230,7 +233,7 @@ export default function Table<TRow>({
                       {columns.map((column) => (
                         <td
                           key={column.key}
-                          className={['px-4 py-3', column.className ?? ''].join(' ')}
+                          className={[cellPaddingClassName, column.className ?? ''].join(' ')}
                           style={column.width ? { width: column.width } : undefined}
                         >
                           {column.render(row, index)}
@@ -253,7 +256,7 @@ export default function Table<TRow>({
 
       {/* Pagination Footer */}
       {usePagination && (
-        <div className={`flex flex-shrink-0 items-center justify-between border-t border-gray-200 px-4 py-3 ${paginationClassName || ''}`}>
+        <div className={`flex flex-shrink-0 items-center justify-between border-t border-gray-200 ${paginationClassName || 'px-4 py-3'}`}>
           <p className='text-sm text-gray-600'>
             Showing {(activePage - 1) * safePageSize + 1} to {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
           </p>

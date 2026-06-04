@@ -58,7 +58,7 @@ function Panel({
 }) {
   return (
     <section className='flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4 flex-shrink-0'>
+      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>
           {title}
         </Typography>
@@ -181,7 +181,7 @@ function MetricCard({
       <Typography variant='metricLabel' color={labelColor[tone]}>
         {label}
       </Typography>
-      <Typography className='mt-0.5' variant='metricValue' color={valueColor[tone]}>
+      <Typography className='mt-0.5' variant='metricValue' color={valueColor[tone]} style={{ fontSize: '1.25rem', lineHeight: '1.6rem' }}>
         {value}
       </Typography>
       {withBar ? (
@@ -415,7 +415,7 @@ function FilterBar({
     'h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 cursor-pointer';
 
   return (
-    <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3 flex-shrink-0'>
+    <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-2 flex-shrink-0'>
       {/* Search */}
       <div className='relative flex-1 min-w-0'>
         <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
@@ -745,6 +745,8 @@ export default function BackupManagementV2() {
             getRowKey={(row) => row.id}
             rowClassName='border-t border-gray-100'
             borderless
+            cellPaddingClassName='px-4 py-2.5'
+            paginationClassName='px-5 py-2'
             pagination={{
               currentPage,
               pageSize: apiMeta.limit ?? 10,
