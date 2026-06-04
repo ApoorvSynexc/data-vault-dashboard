@@ -167,15 +167,11 @@ function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfir
 
 type PolicyRow = { backupConfigId: string; name: string; slug: string; displayStatus: string };
 
-function ActionDropdown({ policy, onPause, onDelete, onViewDetails }: {
-  policy: PolicyRow;
-  onPause: () => void;
-  onDelete: () => void;
-  onViewDetails: () => void;
-}) {
+type DropdownMenuItem = { label: string; danger?: boolean; onClick?: () => void };
+
+function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const isPaused = policy.displayStatus === 'PAUSED';
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -188,7 +184,8 @@ function ActionDropdown({ policy, onPause, onDelete, onViewDetails }: {
   return (
     <div className='relative' ref={ref}>
       <button type='button' onClick={() => setOpen((v) => !v)}
-        className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'>
+        className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
+        aria-label='Row actions'>
         <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
           <circle cx='12' cy='5' r='1' fill='currentColor' />
           <circle cx='12' cy='12' r='1' fill='currentColor' />
@@ -197,22 +194,13 @@ function ActionDropdown({ policy, onPause, onDelete, onViewDetails }: {
       </button>
       {open && (
         <div className='absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'>
-          <button type='button' onClick={() => { setOpen(false); onViewDetails(); }}
-            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
-            View Details
-          </button>
-          <button type='button' onClick={() => setOpen(false)}
-            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
-            Edit Policy
-          </button>
-          <button type='button' onClick={() => { setOpen(false); onPause(); }}
-            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50'>
-            {isPaused ? 'Resume' : 'Pause'}
-          </button>
-          <button type='button' onClick={() => { setOpen(false); onDelete(); }}
-            className='flex w-full items-center px-3 py-2 text-left text-xs font-medium text-red-600 transition hover:bg-red-50'>
-            Delete
-          </button>
+          {items.map((item) => (
+            <button key={item.label} type='button'
+              onClick={() => { setOpen(false); item.onClick?.(); }}
+              className={`flex w-full items-center px-3 py-2 text-left text-xs font-medium transition ${item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'}`}>
+              {item.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -235,6 +223,26 @@ export default function ArchiveVaultHomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
+  const [confirmActivate, setConfirmActivate] = useState<PolicyRow | null>(null);
+  const [confirmRunNow, setConfirmRunNow] = useState<PolicyRow | null>(null);
+
+  const activateMutation = useMutation({
+    mutationFn: (backupConfigId: string) =>
+      archivalService.updateConfig(backupConfigId, { backupStatus: 'ACTIVE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
+      setConfirmActivate(null);
+    },
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: (backupConfigId: string) =>
+      archivalService.updateConfig(backupConfigId, { backupStatus: 'RUNNING' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
+      setConfirmRunNow(null);
+    },
+  });
 
   const pauseMutation = useMutation({
     mutationFn: ({ backupConfigId, isPaused }: { backupConfigId: string; isPaused: boolean }) =>
@@ -489,10 +497,22 @@ export default function ArchiveVaultHomePage() {
                             </svg>
                           </button>
                           <ActionDropdown
-                            policy={policy}
-                            onViewDetails={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}
-                            onPause={() => setConfirmPause(policy)}
-                            onDelete={() => setConfirmDelete(policy)}
+                            items={[
+                              ...(policy.displayStatus === 'DRAFT' ? [{
+                                label: 'Activate',
+                                onClick: () => setConfirmActivate(policy),
+                              }] : []),
+                              ...(policy.displayStatus !== 'DRAFT' ? [{
+                                label: 'Run Now',
+                                onClick: () => setConfirmRunNow(policy),
+                              }] : []),
+                              ...(policy.displayStatus !== 'DRAFT' ? [{
+                                label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause',
+                                onClick: () => setConfirmPause(policy),
+                              }] : []),
+                              { label: 'Edit Policy', onClick: () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`) },
+                              { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
+                            ]}
                           />
                         </div>
                       </td>
@@ -553,6 +573,30 @@ export default function ArchiveVaultHomePage() {
           loading={deleteMutation.isPending}
           onConfirm={() => deleteMutation.mutate(confirmDelete.backupConfigId)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {/* Activate confirm */}
+      {confirmActivate && (
+        <ConfirmDialog
+          title={`Activate "${confirmActivate.name}"?`}
+          message='The archive will become active and run on its scheduled frequency.'
+          confirmLabel='Activate'
+          loading={activateMutation.isPending}
+          onConfirm={() => activateMutation.mutate(confirmActivate.backupConfigId)}
+          onCancel={() => setConfirmActivate(null)}
+        />
+      )}
+
+      {/* Run Now confirm */}
+      {confirmRunNow && (
+        <ConfirmDialog
+          title={`Run "${confirmRunNow.name}" now?`}
+          message='This will trigger an immediate archive run outside the regular schedule.'
+          confirmLabel='Run Now'
+          loading={runNowMutation.isPending}
+          onConfirm={() => runNowMutation.mutate(confirmRunNow.backupConfigId)}
+          onCancel={() => setConfirmRunNow(null)}
         />
       )}
     </div>
