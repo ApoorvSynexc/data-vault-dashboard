@@ -9,6 +9,7 @@ export const ARCHIVAL_ENDPOINTS = {
   jobs: '/v1/archival-job/list',
   update: '/v1/archival-config',
   delete: '/v1/archival-config',
+  stats: '/v1/archival-config/stats',
 } as const;
 
 export type ObjectScheduleConfig = {
@@ -129,6 +130,8 @@ export function useArchivalService() {
       http.put(ARCHIVAL_ENDPOINTS.update, payload, { query: { backupConfigId } }),
     deleteConfig: (backupConfigId: string): Promise<any> =>
       http.delete(ARCHIVAL_ENDPOINTS.delete, { query: { backupConfigId } }),
+    getStats: (): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.stats),
     listJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
       const query: any = { slug, pagination, limit };
       if (cursor) query.cursor = cursor;
