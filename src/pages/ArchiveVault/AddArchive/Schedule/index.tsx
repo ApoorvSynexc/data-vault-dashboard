@@ -146,7 +146,6 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
           name: f.name,
           filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
         })),
-        ...(payload?.soqlQuery ? { soqlQuery: payload.soqlQuery } : {}),
         ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
         ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
       };

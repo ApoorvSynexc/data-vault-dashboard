@@ -12,7 +12,8 @@ import ProgressBar from '../ProgressBar';
 
 export type ArchivalCondition =
   | { type: 'AND' | 'OR' }
-  | { type: 'CUSTOM'; expression: string };
+  | { type: 'CUSTOM'; expression: string }
+  | { type: 'SOQL'; soqlQuery: string };
 
 export type SelectedArchiveObject = {
   uuid: string;
@@ -24,8 +25,7 @@ export type SelectedArchiveObject = {
     name: string;
     condition: ArchivalCondition;
     field: { name: string; filter: { value: string; operator: string } }[];
-    soqlQuery?: string;
-    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[]; soqlQuery?: string }[];
+    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
   };
 };
 
@@ -73,12 +73,13 @@ interface ChildRowsProps {
   registerChildFieldApiName: (uuid: string, fieldApiName: string) => void;
   registerChildParent: (childUuid: string, parentUuid: string) => void;
   objectFilters: Record<string, import('./FilterPopup').FilterCondition[]>;
+  objectSoqlQueries: Record<string, string>;
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildFieldApiName, registerChildParent, objectFilters, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildFieldApiName, registerChildParent, objectFilters, objectSoqlQueries, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -252,7 +253,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
               <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
                 <div className='flex items-center justify-center'>
                   {(() => {
-                    const hasFilter = isChildSelected && (objectFilters[childKey]?.some((c) => c.field) ?? false);
+                    const hasFilter = isChildSelected && ((objectFilters[childKey]?.some((c) => c.field) ?? false) || !!objectSoqlQueries[childKey]);
                     return (
                       <button
                         disabled={!isChildSelected}
@@ -289,6 +290,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                 registerChildFieldApiName={registerChildFieldApiName}
                 registerChildParent={registerChildParent}
                 objectFilters={objectFilters}
+                objectSoqlQueries={objectSoqlQueries}
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
                 setFilterPopup={setFilterPopup}
@@ -394,7 +396,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     const queries: Record<string, string> = {};
     initialSelectedObjects.forEach((o) => {
       const key = o.uuid ?? o.id;
-      if (o.archivalPayload?.soqlQuery) queries[key] = o.archivalPayload.soqlQuery;
+      const cond = o.archivalPayload?.condition;
+      if (cond?.type === 'SOQL') queries[key] = cond.soqlQuery;
     });
     return queries;
   });
@@ -562,7 +565,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           field: (objectFilters[uuid] ?? [])
             .filter((c) => c.field)
             .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
-          ...(objectSoqlQueries[uuid] ? { soqlQuery: objectSoqlQueries[uuid] } : {}),
           ...(nestedChildren.length > 0 ? { children: nestedChildren } : {}),
         };
       });
@@ -581,7 +583,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       const conditions = objectFilters[uuid] ?? [];
       const children = buildChildTree(uuid);
       const schedule = objectSchedules[uuid];
-      const soqlQuery = objectSoqlQueries[uuid];
       return {
         uuid,
         id: obj?.id ?? uuid,
@@ -597,7 +598,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               name: c.field,
               filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
             })),
-          ...(soqlQuery ? { soqlQuery } : {}),
           ...(children.length > 0 ? { children } : {}),
         },
       };
@@ -616,10 +616,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         recordCount={filterPopup.recordCount}
         crmId={crmId}
         initialConditions={objectFilters[filterPopup.objectId] ?? []}
+        initialSoqlQuery={objectSoqlQueries[filterPopup.objectId] ?? ''}
         onApply={(objectId, conditions, matchMode, customLogic, soqlQuery) => {
           if (soqlQuery !== undefined) {
             setObjectSoqlQueries((prev) => ({ ...prev, [objectId]: soqlQuery }));
             setObjectFilters((prev) => { const next = { ...prev }; delete next[objectId]; return next; });
+            setObjectMatchModes((prev) => ({ ...prev, [objectId]: { type: 'SOQL', soqlQuery } }));
           } else {
             setObjectFilters((prev) => ({ ...prev, [objectId]: conditions }));
             setObjectSoqlQueries((prev) => { const next = { ...prev }; delete next[objectId]; return next; });
@@ -868,7 +870,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                         <td className='px-3 py-3' onClick={(e) => e.stopPropagation()}>
                           <div className='flex items-center justify-center gap-2'>
                             {(() => {
-                              const hasFilter = isSelected && (objectFilters[obj.uuid]?.some((c) => c.field) ?? false);
+                              const hasFilter = isSelected && ((objectFilters[obj.uuid]?.some((c) => c.field) ?? false) || !!objectSoqlQueries[obj.uuid]);
                               return (
                                 <button
                                   disabled={!isSelected}
