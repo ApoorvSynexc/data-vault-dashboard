@@ -84,8 +84,8 @@ function MetricCard({ label, value, loading, icon }: { label: string; value: str
         </div>
       ) : (
         <div className='min-w-0'>
-          <p className='text-xl font-bold leading-tight text-gray-900 truncate'>{value}</p>
-          <p className='mt-0.5 text-xs text-gray-500 truncate'>{label}</p>
+          <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
+          <p className='mt-0.5 text-xs text-gray-500 leading-tight'>{label}</p>
         </div>
       )}
     </div>
@@ -346,17 +346,17 @@ export default function ArchiveVaultHomePage() {
           Archive Status
         </Typography>
         <div className='grid grid-cols-4 gap-3'>
-          <MetricCard loading={isLoading} label='Total archives across all platform' value={stats?.totalArchives != null ? pad(stats.totalArchives) : '--'}
+          <MetricCard loading={isLoading} label='Total archives' value={stats?.totalArchival != null ? pad(stats.totalArchival) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>}
+          />
+          <MetricCard loading={isLoading} label='Completed archives' value={stats?.completedArchival != null ? pad(stats.completedArchival) : '--'}
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/><polyline points='22 4 12 14.01 9 11.01'/></svg>}
+          />
+          <MetricCard loading={isLoading} label='Total data archived' value={stats?.totalSize != null ? formatBytes(stats.totalSize) : '--'}
+            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>}
           />
           <MetricCard loading={isLoading} label='Total records' value={stats?.totalRecords != null ? Number(stats.totalRecords).toLocaleString() : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
-          />
-          <MetricCard loading={isLoading} label='Total data archived' value={stats?.totalDataSize != null ? formatBytes(stats.totalDataSize) : '--'}
-            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>}
-          />
-          <MetricCard loading={isLoading} label='Platform connections' value={stats?.totalPlatforms != null ? pad(stats.totalPlatforms) : '--'}
-            icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><rect x='2' y='2' width='8' height='8' rx='1.5'/><rect x='14' y='2' width='8' height='8' rx='1.5'/><rect x='2' y='14' width='8' height='8' rx='1.5'/><rect x='14' y='14' width='8' height='8' rx='1.5'/></svg>}
           />
         </div>
       </div>
