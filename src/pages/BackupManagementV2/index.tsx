@@ -9,7 +9,7 @@ import { useBackupConfigService } from '../../services/backup-config/backup-conf
 import { formatBytes, formatDateTime } from '../../utils';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
-type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
+type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
 type BackupType = 'Realtime' | 'Schedule';
 
 type BackupConfigItem = {
@@ -58,11 +58,11 @@ function Panel({
 }) {
   return (
     <section className='flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-      <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
-        <Typography as='h3' variant='sectionTitle' color='secondary'>
+      <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-2.5 flex-shrink-0 overflow-x-auto'>
+        <Typography as='h3' variant='sectionTitle' color='secondary' className='flex-shrink-0'>
           {title}
         </Typography>
-        {action}
+        {action && <div className='flex items-center gap-2 flex-shrink-0 ml-auto'>{action}</div>}
       </div>
       {children}
     </section>
@@ -312,7 +312,8 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
   const styles: Record<string, string> = {
     'DRAFT': 'bg-yellow-100 text-yellow-700',
     'ACTIVE': 'bg-blue-100 text-blue-700',
-    'PENDING': 'bg-blue-100 text-blue-700',
+    'PENDING': 'bg-indigo-100 text-indigo-700',
+    'RUNNING': 'bg-indigo-100 text-indigo-700',
     'SUCCESS': 'bg-green-100 text-green-700',
     'FAILED': 'bg-red-100 text-red-700',
     'PAUSED': 'bg-gray-100 text-gray-700',
@@ -322,7 +323,8 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
   const labels: Record<string, string> = {
     'DRAFT': 'Draft',
     'ACTIVE': 'Active',
-    'PENDING': 'Pending',
+    'PENDING': 'Running',
+    'RUNNING': 'Running',
     'SUCCESS': 'Success',
     'FAILED': 'Failed',
     'PAUSED': 'Paused',
@@ -411,13 +413,9 @@ function FilterBar({
   filters: FilterState;
   onChange: (next: FilterState) => void;
 }) {
-  const selectCls =
-    'h-9 appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-7 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 cursor-pointer';
-
   return (
-    <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-2 flex-shrink-0'>
-      {/* Search */}
-      <div className='relative flex-1 min-w-0'>
+    <div className='border-b border-gray-100 px-5 py-2 flex-shrink-0'>
+      <div className='relative'>
         <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
           <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
         </svg>
@@ -430,63 +428,6 @@ function FilterBar({
           className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
         />
       </div>
-
-      {/* Backup Type */}
-      <div className='relative flex-shrink-0'>
-        <select
-          value={filters.backupType}
-          onChange={(e) => onChange({ ...filters, backupType: e.target.value as FilterState['backupType'] })}
-          className={selectCls}
-          aria-label='Filter by backup type'
-          style={{ minWidth: 120 }}
-        >
-          <option value='All'>All Types</option>
-          <option value='Realtime'>Realtime</option>
-          <option value='Schedule'>Schedule</option>
-        </select>
-        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
-          <polyline points='6 9 12 15 18 9' />
-        </svg>
-      </div>
-
-      {/* Status */}
-      <div className='relative flex-shrink-0'>
-        <select
-          value={filters.status}
-          onChange={(e) => onChange({ ...filters, status: e.target.value as FilterState['status'] })}
-          className={selectCls}
-          aria-label='Filter by status'
-          style={{ minWidth: 120 }}
-        >
-          <option value='All'>All Statuses</option>
-          <option value='DRAFT'>Draft</option>
-          <option value='ACTIVE'>Active</option>
-          <option value='PENDING'>Pending</option>
-          <option value='SUCCESS'>Success</option>
-          <option value='FAILED'>Failed</option>
-          <option value='PAUSED'>Paused</option>
-          <option value='RESUMED'>Resumed</option>
-        </select>
-        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
-          <polyline points='6 9 12 15 18 9' />
-        </svg>
-      </div>
-
-      {/* More Filter */}
-      <button type='button'
-        className='flex h-9 flex-shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
-        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
-          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-        </svg>
-        More Filter
-      </button>
-
-      {/* Clear Filter */}
-      <button type='button'
-        onClick={() => onChange({ backupType: 'All', status: 'All', search: '' })}
-        className='flex h-9 flex-shrink-0 items-center rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-600 transition hover:border-gray-300'>
-        Clear Filter
-      </button>
     </div>
   );
 }
@@ -603,13 +544,18 @@ export default function BackupManagementV2() {
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: formatDateTime(item.lastBackupAt),
       dataSize: formatBytes(item.sizeInBytes),
-      backupStatus: (item.backupStatus as 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED') || 'PENDING',
+      backupStatus: (item.backupStatus as BackupStatus) || 'PENDING',
     };
   });
 
   const filteredBackups = parsedRows.filter((row) => {
     if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
-    if (filters.status !== 'All' && row.status !== filters.status) return false;
+    if (filters.status !== 'All') {
+      if (filters.status === 'REALTIME' && row.backupType !== 'Realtime') return false;
+      else if (filters.status === 'SCHEDULED' && row.backupType !== 'Schedule') return false;
+      else if (filters.status === 'RUNNING' && row.status !== 'RUNNING' && row.status !== 'PENDING') return false;
+      else if (filters.status !== 'REALTIME' && filters.status !== 'SCHEDULED' && filters.status !== 'RUNNING' && row.status !== filters.status) return false;
+    }
     if (filters.search && !row.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
@@ -731,9 +677,67 @@ export default function BackupManagementV2() {
 
       <JobsStatusSection service={backupConfigService} />
 
-      <Panel title='All Backups'>
-        <FilterBar filters={filters} onChange={setFilters} />
-
+      <Panel
+        title='All Backups'
+        action={
+          <div className='flex items-center gap-2 flex-shrink-0'>
+            {/* Search */}
+            <div className='relative'>
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+                <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+              </svg>
+              <input
+                type='text'
+                value={filters.search}
+                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
+                placeholder='Search by name...'
+                className='h-7 w-44 rounded-full border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
+              />
+            </div>
+            <div className='h-5 w-px bg-gray-200' />
+            {/* Status pills */}
+            {([
+              { label: 'All',           value: 'All'      },
+              { label: 'Active',        value: 'ACTIVE'   },
+              { label: 'Running',       value: 'RUNNING'  },
+              { label: 'Paused',        value: 'PAUSED'   },
+              { label: 'Draft',         value: 'DRAFT'    },
+              { label: 'Success',       value: 'SUCCESS'  },
+              { label: 'Real-Time Sync',value: 'REALTIME' },
+              { label: 'Scheduled',     value: 'SCHEDULED'},
+              { label: 'Failed',        value: 'FAILED'   },
+            ] as { label: string; value: string }[]).map(({ label, value }) => {
+              const active = filters.status === value || (value === 'All' && filters.status === 'All');
+              return (
+                <button
+                  key={value}
+                  type='button'
+                  onClick={() => setFilters((f) => ({ ...f, status: value as FilterState['status'] }))}
+                  className={`h-7 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+                    active
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+            {/* Divider */}
+            <div className='h-5 w-px bg-gray-200 mx-1' />
+            {/* Export CSV */}
+            <button
+              type='button'
+              className='flex h-7 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:border-gray-300 whitespace-nowrap'
+            >
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='h-3.5 w-3.5'>
+                <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/>
+              </svg>
+              Export CSV
+            </button>
+          </div>
+        }
+      >
         {backupQuery.isLoading ? (
           <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
         ) : backupQuery.isError ? (
