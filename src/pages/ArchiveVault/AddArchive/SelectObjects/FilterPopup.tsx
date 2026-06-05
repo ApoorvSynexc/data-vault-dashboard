@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
+import { useMutation } from '@tanstack/react-query';
 
 type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
 
@@ -11,6 +12,7 @@ export interface FilterPopupProps {
   objectName: string;
   recordCount?: number;
   crmId?: string | null;
+  isParent: boolean;
   initialConditions?: FilterCondition[];
   initialSoqlQuery?: string;
   onApply: (objectId: string, conditions: FilterCondition[], matchMode: 'ALL conditions' | 'ANY condition' | 'Custom', customLogic: string, soqlQuery?: string) => void;
@@ -39,6 +41,7 @@ export default function FilterPopup({
   objectName,
   recordCount,
   crmId,
+  isParent,
   initialConditions = [],
   initialSoqlQuery = '',
   onApply,
@@ -141,6 +144,31 @@ export default function FilterPopup({
   const customLogicError = matchMode === 'Custom' ? validateCustomLogic(customLogic, conditions.length) : null;
   const canApply = matchMode !== 'Custom' || customLogicError === null;
 
+  type ValidateStatus = 'idle' | 'loading' | 'valid' | 'invalid';
+  const [validateStatus, setValidateStatus] = useState<ValidateStatus>('idle');
+  const [validateMessage, setValidateMessage] = useState<string>('');
+
+  const validateMutation = useMutation({
+    mutationFn: ({ isParentVal, soqlClause }: { isParentVal: boolean; soqlClause: string }) => {
+      const object = {
+        name: objectName,
+        condition: { type: 'SOQL', soqlQuery: soqlClause.trim() },
+        field: [],
+      };
+      return archivalService.validateSoql({ object, isParent: isParentVal });
+    },
+    onSuccess: (data: any) => {
+      const msg = data?.data?.message ?? data?.message ?? 'Query is valid.';
+      setValidateStatus('valid');
+      setValidateMessage(msg);
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Invalid SOQL query.';
+      setValidateStatus('invalid');
+      setValidateMessage(msg);
+    },
+  });
+
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30' onClick={onClose}>
       <div
@@ -233,13 +261,37 @@ export default function FilterPopup({
                 )}
               </div>
             </div>
-            <div className='flex items-center px-6 py-4 border-t border-gray-100 flex-shrink-0'>
-              <button
-                className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors'
-                onClick={() => {}}
-              >
-                Validate Query →
-              </button>
+            <div className='flex flex-col gap-2 px-6 py-4 border-t border-gray-100 flex-shrink-0'>
+              <div className='flex items-center gap-3'>
+                <button
+                  disabled={!soqlUserClause.trim() || validateMutation.isPending}
+                  onClick={() => {
+                    setValidateStatus('loading');
+                    setValidateMessage('');
+                    validateMutation.mutate({ isParentVal: isParent, soqlClause: soqlUserClause });
+                  }}
+                  className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {validateMutation.isPending ? (
+                    <>
+                      <span className='h-3.5 w-3.5 rounded-full border-2 border-gray-400 border-t-blue-600 animate-spin' />
+                      Validating…
+                    </>
+                  ) : 'Validate Query →'}
+                </button>
+                {validateStatus === 'valid' && (
+                  <span className='flex items-center gap-1.5 text-xs font-medium text-green-600'>
+                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>
+                    {validateMessage}
+                  </span>
+                )}
+                {validateStatus === 'invalid' && (
+                  <span className='flex items-center gap-1.5 text-xs font-medium text-red-600'>
+                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/></svg>
+                    {validateMessage}
+                  </span>
+                )}
+              </div>
             </div>
           </>
         ) : (

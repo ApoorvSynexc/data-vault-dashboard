@@ -265,7 +265,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                           cursor: isChildSelected ? 'pointer' : 'not-allowed',
                           opacity: isChildSelected ? 1 : 0.5,
                         }}
-                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined }); }}
+                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined, isParent: false }); }}
                       >
                         <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                           <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
@@ -464,7 +464,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   };
 
   // Filter popup state
-  const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number } | null>(null);
+  const [filterPopup, setFilterPopup] = useState<{ objectId: string; objectName: string; recordCount?: number; isParent: boolean } | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
   const [schedulePopup, setSchedulePopup] = useState<{ objectId: string; objectName: string } | null>(null);
   const [objectSchedules, setObjectSchedules] = useState<Record<string, ScheduleConfig>>(() => {
@@ -615,6 +615,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         objectName={filterPopup.objectName}
         recordCount={filterPopup.recordCount}
         crmId={crmId}
+        isParent={filterPopup.isParent}
         initialConditions={objectFilters[filterPopup.objectId] ?? []}
         initialSoqlQuery={objectSoqlQueries[filterPopup.objectId] ?? ''}
         onApply={(objectId, conditions, matchMode, customLogic, soqlQuery) => {
@@ -882,7 +883,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                     cursor: isSelected ? 'pointer' : 'not-allowed',
                                     opacity: isSelected ? 1 : 0.5,
                                   }}
-                                  onClick={(e) => { e.stopPropagation(); if (isSelected) setFilterPopup({ objectId: obj.uuid, objectName: obj.id, recordCount: obj.recordCount }); }}
+                                  onClick={(e) => { e.stopPropagation(); if (isSelected) setFilterPopup({ objectId: obj.uuid, objectName: obj.id, recordCount: obj.recordCount, isParent: true }); }}
                                 >
                                   <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                                     <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
