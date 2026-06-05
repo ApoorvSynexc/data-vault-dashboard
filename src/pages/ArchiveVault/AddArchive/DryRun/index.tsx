@@ -103,7 +103,7 @@ interface Step3DryRunProps {
   onBack: () => void;
 }
 
-export default function Step3DryRun({ crmId: _crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
+export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
   const navigate = useNavigate();
   const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
@@ -122,7 +122,7 @@ export default function Step3DryRun({ crmId: _crmId, selectedObjects, archivalPa
     const start = Date.now();
     try {
       const objects = (archivalPayload?.objects as any[]) ?? [];
-      const response = await archivalService.runDryRun({ objects });
+      const response = await archivalService.runDryRun({ crmId: crmId ?? '', objects });
       const data = (response as any)?.data ?? response;
       const map: Record<string, number> = {};
       const results: any[] = data?.results ?? data?.objects ?? (Array.isArray(data) ? data : []);
