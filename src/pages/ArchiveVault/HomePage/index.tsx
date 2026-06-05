@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
 import Typography from '../../../components/Typography';
+import Table from '../../../components/Table';
+import type { TableColumn } from '../../../components/Table';
 import { formatBytes } from '../../../utils';
 
 // ── API types ─────────────────────────────────────────────────────────────────
@@ -422,134 +424,95 @@ export default function ArchiveVaultHomePage() {
       >
 
         {/* Table */}
-        <div className='flex-1 min-h-0 overflow-auto'>
-          {isLoading ? (
-            <div className='space-y-0'>
-              <div className='flex gap-4 border-b border-gray-100 px-5 py-3'>
-                {['w-40', 'w-24', 'w-20', 'w-28', 'w-20', 'w-20', 'w-10'].map((w, i) => (
-                  <div key={i} className={`h-3 ${w} rounded bg-gray-100 animate-pulse`} />
-                ))}
-              </div>
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className='flex items-center gap-4 border-b border-gray-100 px-5 py-4'>
-                  <div className='h-9 w-9 rounded-lg bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-28 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-20 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-5 w-16 rounded-full bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-28 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-16 rounded bg-gray-100 animate-pulse' />
-                  <div className='h-3 w-16 rounded bg-gray-100 animate-pulse' />
+        {(() => {
+          type EnrichedPolicy = typeof enriched[number];
+          const columns: TableColumn<EnrichedPolicy>[] = [
+            {
+              key: 'displayName',
+              header: 'Archive Policy',
+              render: (policy) => (
+                <div className='flex items-center gap-2.5'>
+                  <PlatformBadge platform={policy.platform} />
+                  <span
+                    className='text-xs font-semibold text-blue-600 hover:underline cursor-pointer'
+                    onClick={(e) => { e.stopPropagation(); navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`); }}
+                  >
+                    {policy.displayName}
+                  </span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <table className='w-full'>
-              <thead>
-                <tr className='border-b border-gray-100 bg-gray-50/50'>
-                  {['Archive Policy', 'Platform', 'Status', 'Created On', 'Records', 'Data Size', 'Action'].map((col) => (
-                    <th key={col} className='px-5 py-3 text-left text-xs font-semibold text-gray-500'>
-                      <span className='flex items-center gap-1'>
-                        {col}
-                        {col !== 'Action' && (
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3 w-3 text-gray-300 flex-shrink-0'>
-                            <polyline points='6 9 12 15 18 9' />
-                          </svg>
-                        )}
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-gray-100'>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className='px-5 py-12 text-center text-sm text-gray-400'>
-                      No archive policies match your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  paginated.map((policy) => (
-                    <tr key={policy.backupConfigId} className='transition-colors hover:bg-gray-50/60'>
-                      {/* Archive Policy */}
-                      <td className='px-5 py-3.5'>
-                        <div className='flex items-center gap-2.5'>
-                          <PlatformBadge platform={policy.platform} />
-                          <span className='text-xs font-semibold text-blue-600 hover:underline cursor-pointer' onClick={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}>
-                            {policy.displayName}
-                          </span>
-                        </div>
-                      </td>
-                      {/* Platform */}
-                      <td className='px-5 py-3.5 text-xs text-gray-600'>{policy.platform}</td>
-                      {/* Status */}
-                      <td className='px-5 py-3.5'><StatusBadge status={policy.displayStatus} /></td>
-                      {/* Created On */}
-                      <td className='px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</td>
-                      {/* Records */}
-                      <td className='px-5 py-3.5 text-xs text-gray-600'>--</td>
-                      {/* Data Size */}
-                      <td className='px-5 py-3.5 text-xs text-gray-600'>{policy.sizeInBytes ? formatBytes(policy.sizeInBytes) : '--'}</td>
-                      {/* Action */}
-                      <td className='px-5 py-3.5'>
-                        <div className='flex items-center gap-1'>
-                          <button type='button' title='View'
-                            onClick={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}
-                            className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'>
-                            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-                              <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' /><circle cx='12' cy='12' r='3' />
-                            </svg>
-                          </button>
-                          <ActionDropdown
-                            items={[
-                              ...(policy.displayStatus === 'DRAFT' ? [{
-                                label: 'Activate',
-                                onClick: () => setConfirmActivate(policy),
-                              }] : []),
-                              ...(policy.displayStatus !== 'DRAFT' ? [{
-                                label: 'Run Now',
-                                onClick: () => setConfirmRunNow(policy),
-                              }] : []),
-                              ...(policy.displayStatus !== 'DRAFT' ? [{
-                                label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause',
-                                onClick: () => setConfirmPause(policy),
-                              }] : []),
-                              { label: 'Edit Policy', onClick: () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`) },
-                              { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+              ),
+            },
+            {
+              key: 'platform',
+              header: 'Platform',
+              render: (policy) => <span className='text-xs text-gray-600'>{policy.platform}</span>,
+            },
+            {
+              key: 'displayStatus',
+              header: 'Status',
+              render: (policy) => <StatusBadge status={policy.displayStatus} />,
+            },
+            {
+              key: 'displayDate',
+              header: 'Created On',
+              render: (policy) => <span className='text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</span>,
+            },
+            {
+              key: 'records',
+              header: 'Records',
+              render: () => <span className='text-xs text-gray-600'>--</span>,
+            },
+            {
+              key: 'sizeInBytes',
+              header: 'Data Size',
+              render: (policy) => <span className='text-xs text-gray-600'>{policy.sizeInBytes ? formatBytes(policy.sizeInBytes) : '--'}</span>,
+            },
+            {
+              key: 'action',
+              header: 'Action',
+              render: (policy) => (
+                <div className='flex items-center gap-1'>
+                  <button type='button' title='View'
+                    onClick={() => navigate(`/archive-vault/${policy.slug ?? policy.backupConfigId}`)}
+                    className='flex items-center justify-center rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' /><circle cx='12' cy='12' r='3' />
+                    </svg>
+                  </button>
+                  <ActionDropdown
+                    items={[
+                      ...(policy.displayStatus === 'DRAFT' ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
+                      { label: 'Edit Policy', onClick: () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`) },
+                      { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
+                    ]}
+                  />
+                </div>
+              ),
+            },
+          ];
 
-        {/* Pagination */}
-        {!isLoading && (
-          <div className='flex items-center justify-between border-t border-gray-100 px-5 py-3 flex-shrink-0'>
-            <Typography variant='bodySm' color='muted'>
-              Showing {filtered.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
-            </Typography>
-            <div className='flex items-center gap-1'>
-              <button type='button' onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className='flex h-7 w-7 items-center justify-center rounded text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&lt;</button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, currentPage - 3), currentPage + 2).map((page) => (
-                <button key={page} type='button' onClick={() => setCurrentPage(page)}
-                  className={`flex h-7 w-7 items-center justify-center rounded text-xs font-medium transition ${currentPage === page ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-                  {page}
-                </button>
-              ))}
-              {totalPages > 5 && currentPage < totalPages - 2 && (
-                <span className='px-1 text-xs text-gray-400'>...</span>
-              )}
-              <button type='button' onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className='flex h-7 w-7 items-center justify-center rounded text-xs text-gray-500 transition hover:bg-gray-100 disabled:opacity-30'>&gt;</button>
-            </div>
-          </div>
-        )}
+          return (
+            <Table<EnrichedPolicy>
+              columns={columns}
+              rows={filtered}
+              getRowKey={(p) => p.backupConfigId}
+              loading={isLoading}
+              skeletonConfig={{ rows: 4, colWidths: ['w-40', 'w-24', 'w-20', 'w-28', 'w-20', 'w-20', 'w-10'] }}
+              headerVariant='uppercase'
+              rowClassName='hover:bg-gray-50/60 transition-colors'
+              cellPaddingClassName='px-5 py-3.5'
+              emptyState='No archive policies match your filters.'
+              pagination={{
+                currentPage,
+                pageSize: ITEMS_PER_PAGE,
+                totalRecords: filtered.length,
+                onPageChange: setCurrentPage,
+              }}
+            />
+          );
+        })()}
       </Panel>
 
       {/* Pause / Resume confirm */}
