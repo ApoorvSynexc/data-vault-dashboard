@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
+import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
@@ -331,66 +332,25 @@ export default function BackupHistory(_: BackupHistoryProps) {
       </div>
 
       {/* Backup History Table */}
-      <div className='flex flex-col flex-1 min-h-0 bg-white rounded border border-gray-200'>
-        {/* Scrollable table area */}
-        <div className='flex-1 overflow-y-auto min-h-0'>
-          <table className='w-full'>
-            <thead className='sticky top-0 z-20 bg-white border-b border-gray-200'>
-              <tr>
-                <th className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>#</th>
-                {columns.map((col) => (
-                  <th key={col.key} className='px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap'>
-                    {col.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {currentJobs.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length + 1} className='px-4 py-10 text-center text-sm text-gray-500'>
-                    No backup history found.
-                  </td>
-                </tr>
-              ) : (
-                currentJobs.map((job: BackupJob, index: number) => (
-                  <tr key={job.backupJobId} className='border-b border-gray-200 hover:bg-gray-50'>
-                    <td className='px-4 py-3 text-sm text-gray-600'>{pageIndex * itemsPerPage + index + 1}</td>
-                    {columns.map((col) => (
-                      <td key={col.key} className='px-4 py-3'>
-                        {col.render(job, index)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Custom Pagination */}
-        <div className='px-4 py-3 border-t border-gray-200 flex items-center justify-between flex-shrink-0'>
-          <div className='text-sm text-gray-600'>
-            Showing {currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to {pageIndex * itemsPerPage + currentJobs.length} of {totalItems}
-          </div>
-          <div className='flex items-center gap-2'>
-            <button
-              onClick={handlePrev}
-              disabled={!hasPrevPage}
-              className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
-            >
-              ← Prev
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!hasNextPage}
-              className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      </div>
+      <Table<BackupJob>
+        columns={columns}
+        rows={currentJobs}
+        getRowKey={(job) => job.backupJobId}
+        showSerialNumber
+        serialNumberStart={pageIndex * itemsPerPage + 1}
+        rowClassName='border-b border-gray-200 hover:bg-gray-50'
+        cellPaddingClassName='px-4 py-3'
+        emptyState='No backup history found.'
+        onRowClick={(job) => setSelectedJobId(job.backupJobId)}
+        paginationConfig={{
+          type: 'cursor',
+          hasPrev: hasPrevPage,
+          hasNext: hasNextPage,
+          onPrev: handlePrev,
+          onNext: handleNext,
+          label: `Showing ${currentJobs.length > 0 ? pageIndex * itemsPerPage + 1 : 0} to ${pageIndex * itemsPerPage + currentJobs.length} of ${totalItems}`,
+        }}
+      />
 
       {/* Job Details Modal */}
       {selectedJobId && (
