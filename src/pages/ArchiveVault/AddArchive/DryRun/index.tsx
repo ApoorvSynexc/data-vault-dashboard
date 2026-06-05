@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
+import Table from '../../../../components/Table';
+import type { TableColumn } from '../../../../components/Table';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -281,81 +283,98 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
             </div>
 
             {/* Per-Object Impact table */}
-            <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
-              style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
-                <div>
-                  <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
-                  <p className='text-xs text-gray-400 mt-0.5'>Dry run completed · <span className='text-green-600 font-medium'>✓ All filters valid</span></p>
+            {(() => {
+              type ImpactRow = SelectedArchiveObject & { _idx: number };
+              const impactRows: ImpactRow[] = selectedObjects.map((obj, idx) => ({ ...obj, _idx: idx }));
+              const impactColumns: TableColumn<ImpactRow>[] = [
+                {
+                  key: 'name',
+                  header: 'Object',
+                  render: (obj) => <span className='font-semibold text-gray-900 text-sm'>{obj.name}</span>,
+                },
+                {
+                  key: 'filter',
+                  header: 'Filter Applied',
+                  render: (obj) => {
+                    const filterText = obj.archivalPayload?.field
+                      ?.filter((f) => f.name)
+                      .map((f) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
+                      .join(' AND ') ?? 'No filter';
+                    const colors = [
+                      { bg: 'rgba(21,93,252,0.08)', color: '#155DFC' },
+                      { bg: 'rgba(217,119,6,0.08)', color: '#D97706' },
+                      { bg: 'rgba(5,150,105,0.08)', color: '#059669' },
+                    ];
+                    const c = colors[obj._idx % colors.length];
+                    return (
+                      <span className='text-xs font-medium px-2 py-0.5 rounded-md max-w-xs truncate block'
+                        style={{ background: c.bg, color: c.color }}>
+                        {filterText.length > 40 ? filterText.slice(0, 40) + '…' : filterText}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  key: 'matchingRecords',
+                  header: 'Matching Records',
+                  render: (obj) => {
+                    const count = objectCountMap[obj.id] ?? 0;
+                    return <span className='font-semibold text-gray-900 tabular-nums text-sm'>{fmtNumber(count)}</span>;
+                  },
+                },
+                {
+                  key: 'estSize',
+                  header: 'Est. Size',
+                  render: (obj) => {
+                    const count = objectCountMap[obj.id] ?? 0;
+                    return <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>;
+                  },
+                },
+                {
+                  key: 'relatedRecords',
+                  header: 'Related Records',
+                  render: (obj) => {
+                    const count = objectCountMap[obj.id] ?? 0;
+                    const isWarning = obj._idx % 2 === 0 && warningCount > 0;
+                    return isWarning
+                      ? <span className='text-xs text-amber-600'>⚠ {Math.floor(count * 0.68).toLocaleString()} related records will lose parent</span>
+                      : <span className='text-xs text-gray-400'>No orphaned references</span>;
+                  },
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  render: (obj) => {
+                    const isWarning = obj._idx % 2 === 0 && warningCount > 0;
+                    return isWarning
+                      ? <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706' }}>⚠ Warning</span>
+                      : <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>✓ Clear</span>;
+                  },
+                },
+              ];
+              return (
+                <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
+                  style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
+                    <div>
+                      <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
+                      <p className='text-xs text-gray-400 mt-0.5'>Dry run completed · <span className='text-green-600 font-medium'>✓ All filters valid</span></p>
+                    </div>
+                  </div>
+                  <Table<ImpactRow>
+                    columns={impactColumns}
+                    rows={impactRows}
+                    getRowKey={(obj) => obj.uuid}
+                    headerVariant='uppercase'
+                    borderless
+                    cellPaddingClassName='px-4 py-3.5'
+                    rowClassName='hover:bg-gray-50 transition-colors'
+                    getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
+                    emptyState='No objects selected.'
+                  />
                 </div>
-              </div>
-              <div className='overflow-x-auto'>
-                <table className='w-full border-collapse text-sm'>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #F1F5F9', background: '#FAFAFA' }}>
-                      {['Object', 'Filter Applied', 'Matching Records', 'Est. Size', 'Related Records', 'Status'].map((h) => (
-                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap'>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedObjects.map((obj, idx) => {
-                      const count = objectCountMap[obj.id] ?? 0;
-                      const size = calcDataSize(count);
-                      const filterText = obj.archivalPayload?.field
-                        ?.filter((f) => f.name)
-                        .map((f) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
-                        .join(' AND ')
-                        ?? 'No filter';
-                      const isWarning = idx % 2 === 0 && warningCount > 0;
-                      const relatedText = isWarning
-                        ? `⚠ ${Math.floor(count * 0.68).toLocaleString()} related records will lose parent`
-                        : 'No orphaned references';
-
-                      return (
-                        <tr key={obj.uuid} className='hover:bg-gray-50 transition-colors' style={{ borderBottom: '1px solid #F8FAFC' }}>
-                          <td className='px-4 py-3.5 font-semibold text-gray-900'>{obj.name}</td>
-                          <td className='px-4 py-3.5'>
-                            <span className='text-xs font-medium px-2 py-0.5 rounded-md max-w-xs truncate block'
-                              style={{
-                                background: idx === 0 ? 'rgba(21,93,252,0.08)' : idx === 1 ? 'rgba(217,119,6,0.08)' : 'rgba(5,150,105,0.08)',
-                                color: idx === 0 ? '#155DFC' : idx === 1 ? '#D97706' : '#059669',
-                              }}>
-                              {filterText.length > 40 ? filterText.slice(0, 40) + '…' : filterText}
-                            </span>
-                          </td>
-                          <td className='px-4 py-3.5 font-semibold text-gray-900 tabular-nums'>{fmtNumber(count)}</td>
-                          <td className='px-4 py-3.5 text-gray-600'>{size}</td>
-                          <td className='px-4 py-3.5'>
-                            {isWarning ? (
-                              <span className='text-xs text-amber-600'>{relatedText}</span>
-                            ) : (
-                              <span className='text-xs text-gray-400'>{relatedText}</span>
-                            )}
-                          </td>
-                          <td className='px-4 py-3.5'>
-                            {isWarning ? (
-                              <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706' }}>
-                                ⚠ Warning
-                              </span>
-                            ) : (
-                              <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>
-                                ✓ Clear
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {selectedObjects.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className='px-5 py-10 text-center text-sm text-gray-400'>No objects selected.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Warnings section */}
             {warningCount > 0 && (
@@ -414,35 +433,35 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                   </button>
                 </div>
               </div>
-              <div className='overflow-x-auto'>
-                <table className='w-full border-collapse text-sm'>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #F1F5F9', background: '#FAFAFA' }}>
-                      {['Record ID', 'Name', 'Created Date', 'Status / Stage', 'Annual Revenue', 'Will Be Archived'].map((h) => (
-                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap'>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sampleRows.map((row) => (
-                      <tr key={row.id} className='hover:bg-gray-50 transition-colors' style={{ borderBottom: '1px solid #F8FAFC' }}>
-                        <td className='px-4 py-3 text-xs text-gray-400 font-mono'>{row.id}</td>
-                        <td className='px-4 py-3 font-semibold text-gray-900'>{row.name}</td>
-                        <td className='px-4 py-3 text-gray-600'>{row.createdDate}</td>
-                        <td className='px-4 py-3 text-gray-600'>{row.status}</td>
-                        <td className='px-4 py-3 text-gray-600'>{row.revenue}</td>
-                        <td className='px-4 py-3'>
-                          {row.willArchive ? (
-                            <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>Yes</span>
-                          ) : (
-                            <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.08)', color: '#059669' }}>No — filtered out</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                type SampleRow = ReturnType<typeof genSampleRows>[number];
+                const sampleColumns: TableColumn<SampleRow>[] = [
+                  { key: 'id', header: 'Record ID', render: (r) => <span className='text-xs text-gray-400 font-mono'>{r.id}</span> },
+                  { key: 'name', header: 'Name', render: (r) => <span className='font-semibold text-gray-900 text-sm'>{r.name}</span> },
+                  { key: 'createdDate', header: 'Created Date', render: (r) => <span className='text-gray-600 text-sm'>{r.createdDate}</span> },
+                  { key: 'status', header: 'Status / Stage', render: (r) => <span className='text-gray-600 text-sm'>{r.status}</span> },
+                  { key: 'revenue', header: 'Annual Revenue', render: (r) => <span className='text-gray-600 text-sm'>{r.revenue}</span> },
+                  {
+                    key: 'willArchive',
+                    header: 'Will Be Archived',
+                    render: (r) => r.willArchive
+                      ? <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>Yes</span>
+                      : <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.08)', color: '#059669' }}>No — filtered out</span>,
+                  },
+                ];
+                return (
+                  <Table<SampleRow>
+                    columns={sampleColumns}
+                    rows={sampleRows}
+                    getRowKey={(r) => r.id}
+                    headerVariant='uppercase'
+                    borderless
+                    cellPaddingClassName='px-4 py-3'
+                    rowClassName='hover:bg-gray-50 transition-colors'
+                    getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
+                  />
+                );
+              })()}
             </div>
 
             {/* Dry run meta */}
