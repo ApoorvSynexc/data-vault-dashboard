@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import Table from '../../../../components/Table';
+import type { TableColumn } from '../../../../components/Table';
 
 type TriggerRecord = {
   triggerName: string;
@@ -21,14 +23,11 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
   const triggers: TriggerRecord[] = backup?.triggerResults ?? [];
 
   const created = triggers.filter((t) => t.status === 'CREATED').length;
-  const failed = triggers.filter((t) => t.status === 'FAILED').length;
+  const failed  = triggers.filter((t) => t.status === 'FAILED').length;
 
   const filtered = triggers.filter((t) => {
-    const matchesFilter =
-      filter === 'all' || t.status.toLowerCase() === filter;
-    const matchesSearch = t.triggerName
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const matchesFilter = filter === 'all' || t.status.toLowerCase() === filter;
+    const matchesSearch = t.triggerName.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -39,11 +38,63 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
         const parsed = JSON.parse(match[0]);
         return parsed[0]?.message ?? error;
       }
-    } catch {
-      // fall through
-    }
+    } catch { /* fall through */ }
     return error;
   };
+
+  const columns: TableColumn<TriggerRecord>[] = [
+    {
+      key: 'triggerName',
+      header: 'Trigger Name',
+      render: (t) => <span className='font-mono text-gray-800'>{t.triggerName}</span>,
+    },
+    {
+      key: 'triggerStatus',
+      header: 'Trigger Status',
+      render: (t) => {
+        const isFailed = t.status === 'FAILED';
+        return (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${isFailed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isFailed ? 'bg-red-500' : 'bg-green-500'}`} />
+            {t.status}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'permissionSetStatus',
+      header: 'Permission Set Status',
+      render: (t) => t.permissionSetStatus ? (
+        <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700'>
+          <span className='w-1.5 h-1.5 rounded-full bg-green-500' />
+          {t.permissionSetStatus}
+        </span>
+      ) : <span className='text-gray-400'>—</span>,
+    },
+    {
+      key: 'error',
+      header: 'Error',
+      className: 'max-w-xs',
+      render: (t) => {
+        const errorMsg = t.error ? parseErrorMessage(t.error) : null;
+        if (!errorMsg) return <span className='text-gray-400'>—</span>;
+        const isExpanded = expandedError === t.triggerName;
+        return (
+          <div>
+            <p className={`text-red-600 ${!isExpanded ? 'truncate' : ''}`}>{errorMsg}</p>
+            {errorMsg.length > 60 && (
+              <button
+                onClick={() => setExpandedError(isExpanded ? null : t.triggerName)}
+                className='text-blue-500 hover:underline mt-0.5 text-xs'
+              >
+                {isExpanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   if (!triggers.length) {
     return (
@@ -111,82 +162,17 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
       </div>
 
       {/* Table */}
-      <div className='bg-white rounded border border-gray-200 overflow-x-auto'>
-        <table className='min-w-full text-xs'>
-          <thead>
-            <tr className='bg-gray-50 border-b border-gray-200'>
-              <th className='text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap'>#</th>
-              <th className='text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap'>Trigger Name</th>
-              <th className='text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap'>Trigger Status</th>
-              <th className='text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap'>Permission Set Status</th>
-              <th className='text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap'>Error</th>
-            </tr>
-          </thead>
-          <tbody className='divide-y divide-gray-100'>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={5} className='px-4 py-8 text-center text-gray-400'>
-                  No triggers match your filter.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((trigger, idx) => {
-                const isFailed = trigger.status === 'FAILED';
-                const errorMsg = trigger.error ? parseErrorMessage(trigger.error) : null;
-                const isExpanded = expandedError === trigger.triggerName;
-
-                return (
-                  <tr key={trigger.triggerName} className={isFailed ? 'bg-red-50' : 'hover:bg-gray-50'}>
-                    <td className='px-4 py-3 text-gray-400'>{idx + 1}</td>
-                    <td className='px-4 py-3 font-mono text-gray-800'>{trigger.triggerName}</td>
-                    <td className='px-4 py-3'>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${
-                          isFailed
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isFailed ? 'bg-red-500' : 'bg-green-500'}`} />
-                        {trigger.status}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      {trigger.permissionSetStatus ? (
-                        <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700'>
-                          <span className='w-1.5 h-1.5 rounded-full bg-green-500' />
-                          {trigger.permissionSetStatus}
-                        </span>
-                      ) : (
-                        <span className='text-gray-400'>—</span>
-                      )}
-                    </td>
-                    <td className='px-4 py-3 max-w-xs'>
-                      {errorMsg ? (
-                        <div>
-                          <p className={`text-red-600 ${!isExpanded ? 'truncate' : ''}`}>
-                            {isExpanded ? errorMsg : errorMsg}
-                          </p>
-                          {errorMsg.length > 60 && (
-                            <button
-                              onClick={() => setExpandedError(isExpanded ? null : trigger.triggerName)}
-                              className='text-blue-500 hover:underline mt-0.5'
-                            >
-                              {isExpanded ? 'Show less' : 'Show more'}
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className='text-gray-400'>—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table<TriggerRecord>
+        columns={columns}
+        rows={filtered}
+        getRowKey={(t) => t.triggerName}
+        showSerialNumber
+        headerVariant='uppercase'
+        cellPaddingClassName='px-4 py-3'
+        getRowClassName={(t) => t.status === 'FAILED' ? 'bg-red-50' : 'hover:bg-gray-50'}
+        emptyState='No triggers match your filter.'
+        tableClassName='min-w-full text-xs'
+      />
     </div>
   );
 }
