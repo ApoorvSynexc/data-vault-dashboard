@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useState } from 'react';
+
+// ── Column definition ─────────────────────────────────────────────────────────
 
 export type TableColumn<TRow> = {
   key: string;
@@ -10,6 +12,8 @@ export type TableColumn<TRow> = {
   width?: string;
 };
 
+// ── Selection props ───────────────────────────────────────────────────────────
+
 export type SelectableTableProps<TRow> = {
   showCheckbox?: boolean;
   selectedIds?: Set<string>;
@@ -19,56 +23,118 @@ export type SelectableTableProps<TRow> = {
   getRowClassName?: (row: TRow, isSelected: boolean) => string;
 };
 
-type TablePaginationConfig = {
+// ── Pagination configs ────────────────────────────────────────────────────────
+
+/** Standard page-number pagination (legacy + new) */
+type PagePaginationConfig = {
+  type?: 'page';
   currentPage: number;
   pageSize: number;
   totalRecords: number;
   onPageChange: (nextPage: number) => void;
 };
 
+/** Cursor-based pagination (prev / next only) */
+export type CursorPaginationConfig = {
+  type: 'cursor';
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+  /** e.g. "Showing 1–20 of 143" — computed by caller */
+  label?: string;
+};
+
+type PaginationConfig = PagePaginationConfig | CursorPaginationConfig;
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+type SkeletonConfig = {
+  /** Number of skeleton rows to show. Default: 5 */
+  rows?: number;
+  /** Column widths for skeleton cells, e.g. ['w-32','w-20','w-24']. Cycles if fewer than columns. */
+  colWidths?: string[];
+};
+
+// ── Header variants ───────────────────────────────────────────────────────────
+
+type HeaderVariant = 'default' | 'uppercase';
+
+// ── Main props ────────────────────────────────────────────────────────────────
+
 type TableProps<TRow> = {
   columns: TableColumn<TRow>[];
   rows: TRow[];
   getRowKey: (row: TRow, index: number) => string;
+
+  /** Static class applied to every body row */
   rowClassName?: string | ((row: TRow, isSelected?: boolean) => string);
+  /** Inline style per body row */
+  getRowStyle?: (row: TRow, isSelected: boolean) => CSSProperties;
+  /** Click handler for a body row */
+  onRowClick?: (row: TRow) => void;
+
   emptyState?: ReactNode;
   minWidthClassName?: string;
   maxHeightClassName?: string;
-  /** Minimum height of the table container (e.g., 'min-h-96', 'min-h-[500px]') */
   minHeightClassName?: string;
+
   /** Remove outer border/bg so table blends into a parent Panel */
   borderless?: boolean;
-  /** Legacy pagination prop for backward compatibility */
-  pagination?: TablePaginationConfig;
-  /** New pagination control: true to show pagination, false for inner scroll */
+
+  /** Extra className applied to the <table> element */
+  tableClassName?: string;
+
+  /** Header style variant. 'default' = medium gray, 'uppercase' = semibold uppercase tracking */
+  headerVariant?: HeaderVariant;
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  /** Show loading skeleton instead of rows */
+  loading?: boolean;
+  skeletonConfig?: SkeletonConfig;
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  /** Legacy page pagination — kept for backwards compatibility */
+  pagination?: PagePaginationConfig;
+  /** New unified pagination (page or cursor) */
+  paginationConfig?: PaginationConfig;
+  /** true = show internal page pagination, false = inner scroll */
   showPagination?: boolean;
-  /** Height of the table container (e.g., 'h-96', '600px'). Only used when showPagination is false */
+  /** Height of scroll container when showPagination is false */
   height?: string;
   /** Items per page for internal pagination. Default: 10 */
   itemsPerPage?: number;
-  /** Show numbered pagination buttons. Default: true */
   showPageNumbers?: boolean;
-  /** Custom styling for pagination container */
   paginationClassName?: string;
-  /** Show serial number column. Default: false */
+
+  // ── Serial number ──────────────────────────────────────────────────────────
   showSerialNumber?: boolean;
-  /** Starting number for serial number column. Default: 1. Useful for external pagination */
   serialNumberStart?: number;
-  /** Override cell padding. Default: 'px-4 py-3' */
+
+  // ── Cell padding ───────────────────────────────────────────────────────────
   cellPaddingClassName?: string;
 } & SelectableTableProps<TRow>;
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Table<TRow>({
   columns,
   rows,
   getRowKey,
   rowClassName = 'border-b border-gray-200 hover:bg-gray-50',
+  getRowStyle,
+  onRowClick,
   emptyState,
   minWidthClassName = 'min-w-full',
   maxHeightClassName,
   minHeightClassName,
   borderless = false,
+  tableClassName = '',
+  headerVariant = 'default',
+  loading = false,
+  skeletonConfig,
   pagination,
+  paginationConfig,
   showPagination = false,
   height = 'h-96',
   itemsPerPage = 10,
@@ -86,38 +152,64 @@ export default function Table<TRow>({
 }: TableProps<TRow>) {
   const [internalPage, setInternalPage] = useState(1);
 
-  // Handle both old and new pagination APIs
+  // ── Pagination logic ───────────────────────────────────────────────────────
+
+  const isCursorPagination = paginationConfig?.type === 'cursor';
   const isLegacyPagination = !!pagination && !showPagination;
-  const usePagination = !!pagination || showPagination;
+  const usePagination = !!pagination || showPagination || (paginationConfig && !isCursorPagination);
+  const showFooter = usePagination || isCursorPagination;
 
-  // Calculate pagination
-  const totalRecords = pagination?.totalRecords || rows.length;
-  const pageSize = pagination?.pageSize || itemsPerPage;
-  const safePageSize = pageSize && pageSize > 0 ? pageSize : 1;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / safePageSize));
-  const activePage = pagination?.currentPage || internalPage;
+  const totalRecords = pagination?.totalRecords ?? rows.length;
+  const pageSize     = pagination?.pageSize ?? itemsPerPage;
+  const safePageSize = pageSize > 0 ? pageSize : 1;
+  const totalPages   = Math.max(1, Math.ceil(totalRecords / safePageSize));
+  const activePage   = pagination?.currentPage ?? internalPage;
 
-  // Get paginated rows
-  const startIndex = (activePage - 1) * safePageSize;
-  const endIndex = startIndex + safePageSize;
-  const paginatedRows = usePagination ? rows.slice(startIndex, endIndex) : rows;
+  const startIndex   = (activePage - 1) * safePageSize;
+  const endIndex     = startIndex + safePageSize;
+  const paginatedRows = (usePagination && !isCursorPagination) ? rows.slice(startIndex, endIndex) : rows;
 
   const handlePageChange = (nextPage: number) => {
-    const newPage = Math.max(1, Math.min(totalPages, nextPage));
-    if (pagination?.onPageChange) {
-      pagination.onPageChange(newPage);
-    } else {
-      setInternalPage(newPage);
-    }
+    const clamped = Math.max(1, Math.min(totalPages, nextPage));
+    if (pagination?.onPageChange) pagination.onPageChange(clamped);
+    else setInternalPage(clamped);
   };
 
-  const scrollContainerHeight = height === 'h-96' ? 'max-h-96' : height.startsWith('h-') ? `max-${height}` : height;
+  const scrollContainerHeight =
+    height === 'h-96' ? 'max-h-96' : height.startsWith('h-') ? `max-${height}` : height;
+
+  // ── Column count (for colSpan) ─────────────────────────────────────────────
+
+  const colCount =
+    columns.length +
+    (showSerialNumber ? 1 : 0) +
+    (showCheckbox ? 1 : 0);
+
+  // ── Skeleton rows ──────────────────────────────────────────────────────────
+
+  const skeletonRows  = skeletonConfig?.rows ?? 5;
+  const skeletonWidths = skeletonConfig?.colWidths ?? ['w-32', 'w-20', 'w-24', 'w-16', 'w-28'];
+
+  // ── Header cell class ──────────────────────────────────────────────────────
+
+  const headerCellClass =
+    headerVariant === 'uppercase'
+      ? `${cellPaddingClassName} text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap`
+      : `${cellPaddingClassName} text-left text-sm font-medium text-gray-600 whitespace-nowrap`;
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`flex flex-col flex-1 min-h-0 ${borderless ? '' : 'bg-white rounded border border-gray-200'} ${minHeightClassName || ''}`}>
+    <div
+      className={[
+        'flex flex-col flex-1 min-h-0',
+        borderless ? '' : 'bg-white rounded border border-gray-200',
+        minHeightClassName ?? '',
+      ].join(' ')}
+    >
       {/* Horizontal scroll wrapper */}
       <div className='overflow-x-auto flex-1 min-h-0'>
-        {/* Vertical scroll wrapper - only when not using legacy pagination */}
+        {/* Vertical scroll wrapper */}
         <div
           className={
             !isLegacyPagination && !pagination?.onPageChange
@@ -127,116 +219,128 @@ export default function Table<TRow>({
                 : 'h-full relative'
           }
         >
-          <table className={`w-full ${minWidthClassName}`}>
+          <table className={`w-full ${minWidthClassName} ${tableClassName}`}>
+
+            {/* ── Head ── */}
             <thead className='sticky top-0 z-20 bg-white'>
               <tr className='border-b border-gray-200 shadow-sm'>
                 {showSerialNumber && (
-                  <th className={`${cellPaddingClassName} text-left text-sm font-medium text-gray-600 whitespace-nowrap`}>
-                    #
-                  </th>
+                  <th className={headerCellClass}>#</th>
                 )}
                 {showCheckbox && (
                   <th className={`${cellPaddingClassName} text-left`}>
                     <input
                       type='checkbox'
                       checked={(() => {
-                        const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
+                        const selectable = paginatedRows.filter((r) => isRowSelectable?.(r) !== false);
                         return (
-                          selectableRows.length > 0 &&
-                          selectableRows.every((row) => {
-                            const id = getRowId?.(row) || getRowKey(row, 0);
-                            return selectedIds?.has(id);
-                          })
+                          selectable.length > 0 &&
+                          selectable.every((r) => selectedIds?.has(getRowId?.(r) ?? getRowKey(r, 0)))
                         );
                       })()}
-                      ref={(input) => {
-                        if (input) {
-                          const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
-                          const selectedCount = selectableRows.filter((row) => {
-                            const id = getRowId?.(row) || getRowKey(row, 0);
-                            return selectedIds?.has(id);
-                          }).length;
-                          input.indeterminate = selectedCount > 0 && selectedCount < selectableRows.length;
-                        }
+                      ref={(el) => {
+                        if (!el) return;
+                        const selectable = paginatedRows.filter((r) => isRowSelectable?.(r) !== false);
+                        const n = selectable.filter((r) => selectedIds?.has(getRowId?.(r) ?? getRowKey(r, 0))).length;
+                        el.indeterminate = n > 0 && n < selectable.length;
                       }}
                       onChange={() => {
-                        const selectableRows = paginatedRows.filter((row) => isRowSelectable?.(row) !== false);
-                        const allSelected = selectableRows.every((row) => {
-                          const id = getRowId?.(row) || getRowKey(row, 0);
-                          return selectedIds?.has(id);
+                        const selectable = paginatedRows.filter((r) => isRowSelectable?.(r) !== false);
+                        const allSelected = selectable.every((r) => selectedIds?.has(getRowId?.(r) ?? getRowKey(r, 0)));
+                        const next = new Set(selectedIds ?? []);
+                        selectable.forEach((r) => {
+                          const id = getRowId?.(r) ?? getRowKey(r, 0);
+                          allSelected ? next.delete(id) : next.add(id);
                         });
-
-                        const newSelected = new Set(selectedIds || []);
-                        if (allSelected) {
-                          selectableRows.forEach((row) => {
-                            const id = getRowId?.(row) || getRowKey(row, 0);
-                            newSelected.delete(id);
-                          });
-                        } else {
-                          selectableRows.forEach((row) => {
-                            const id = getRowId?.(row) || getRowKey(row, 0);
-                            newSelected.add(id);
-                          });
-                        }
-                        onSelectionChange?.(newSelected);
+                        onSelectionChange?.(next);
                       }}
                       className='w-5 h-5 rounded accent-blue-600 cursor-pointer'
                     />
                   </th>
                 )}
-                {columns.map((column) => (
+                {columns.map((col) => (
                   <th
-                    key={column.key}
-                    className={[
-                      `${cellPaddingClassName} text-left text-sm font-medium text-gray-600 whitespace-nowrap`,
-                      column.headerClassName ?? '',
-                    ].join(' ')}
-                    style={column.width ? { width: column.width } : undefined}
+                    key={col.key}
+                    className={[headerCellClass, col.headerClassName ?? ''].join(' ')}
+                    style={col.width ? { width: col.width } : undefined}
                   >
-                    {column.header}
+                    {col.header}
                   </th>
                 ))}
               </tr>
             </thead>
 
+            {/* ── Body ── */}
             <tbody>
-              {paginatedRows.length > 0 ? (
+              {loading ? (
+                /* Skeleton */
+                Array.from({ length: skeletonRows }).map((_, ri) => (
+                  <tr key={`skel-${ri}`} className='border-b border-gray-100'>
+                    {showSerialNumber && (
+                      <td className={cellPaddingClassName}>
+                        <div className='h-3 w-6 rounded bg-gray-100 animate-pulse' />
+                      </td>
+                    )}
+                    {showCheckbox && (
+                      <td className={cellPaddingClassName}>
+                        <div className='h-4 w-4 rounded bg-gray-100 animate-pulse' />
+                      </td>
+                    )}
+                    {columns.map((col, ci) => (
+                      <td key={col.key} className={cellPaddingClassName}>
+                        <div
+                          className={`h-3 rounded bg-gray-100 animate-pulse ${
+                            skeletonWidths[ci % skeletonWidths.length]
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : paginatedRows.length > 0 ? (
                 paginatedRows.map((row, index) => {
-                  const isSelected = selectedIds?.has(getRowId?.(row) || getRowKey(row, index));
-                  const computedRowClassName = getRowClassName?.(row, isSelected || false) || (typeof rowClassName === 'function' ? rowClassName(row, isSelected) : rowClassName);
-                  const serialNumber = serialNumberStart + index;
+                  const rowId   = getRowId?.(row) ?? getRowKey(row, index);
+                  const isSel   = selectedIds?.has(rowId) ?? false;
+                  const rowCls  = getRowClassName?.(row, isSel) ??
+                    (typeof rowClassName === 'function' ? rowClassName(row, isSel) : rowClassName);
+                  const rowStyle = getRowStyle?.(row, isSel);
+                  const serial  = serialNumberStart + index;
                   return (
-                    <tr key={getRowKey(row, index)} className={computedRowClassName}>
+                    <tr
+                      key={getRowKey(row, index)}
+                      className={[rowCls, onRowClick ? 'cursor-pointer' : ''].join(' ')}
+                      style={rowStyle}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    >
                       {showSerialNumber && (
-                        <td className={`${cellPaddingClassName} text-sm text-gray-600`}>{serialNumber}</td>
+                        <td className={`${cellPaddingClassName} text-sm text-gray-600`}>{serial}</td>
                       )}
                       {showCheckbox && (
-                        <td className={cellPaddingClassName}>
+                        <td
+                          className={cellPaddingClassName}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type='checkbox'
-                            checked={isSelected || false}
+                            checked={isSel}
                             onChange={() => {
-                              const id = getRowId?.(row) || getRowKey(row, index);
-                              const newSelected = new Set(selectedIds || []);
-                              if (newSelected.has(id)) {
-                                newSelected.delete(id);
-                              } else {
-                                newSelected.add(id);
-                              }
-                              onSelectionChange?.(newSelected);
+                              const next = new Set(selectedIds ?? []);
+                              next.has(rowId) ? next.delete(rowId) : next.add(rowId);
+                              onSelectionChange?.(next);
                             }}
                             disabled={isRowSelectable ? !isRowSelectable(row) : false}
                             className='w-5 h-5 rounded accent-blue-600 cursor-pointer disabled:cursor-not-allowed'
                           />
                         </td>
                       )}
-                      {columns.map((column) => (
+                      {columns.map((col) => (
                         <td
-                          key={column.key}
-                          className={[cellPaddingClassName, column.className ?? ''].join(' ')}
-                          style={column.width ? { width: column.width } : undefined}
+                          key={col.key}
+                          className={[cellPaddingClassName, col.className ?? ''].join(' ')}
+                          style={col.width ? { width: col.width } : undefined}
+                          onClick={col.key === 'action' ? (e) => e.stopPropagation() : undefined}
                         >
-                          {column.render(row, index)}
+                          {col.render(row, index)}
                         </td>
                       ))}
                     </tr>
@@ -244,7 +348,7 @@ export default function Table<TRow>({
                 })
               ) : (
                 <tr>
-                  <td colSpan={columns.length + (showSerialNumber ? 1 : 0) + (showCheckbox ? 1 : 0)} className='px-4 py-10 text-center text-sm text-gray-500'>
+                  <td colSpan={colCount} className='px-4 py-10 text-center text-sm text-gray-500'>
                     {emptyState ?? 'No records found.'}
                   </td>
                 </tr>
@@ -254,92 +358,115 @@ export default function Table<TRow>({
         </div>
       </div>
 
-      {/* Pagination Footer */}
-      {usePagination && (
-        <div className={`flex flex-shrink-0 items-center justify-between border-t border-gray-200 ${paginationClassName || 'px-4 py-3'}`}>
-          <p className='text-sm text-gray-600'>
-            Showing {(activePage - 1) * safePageSize + 1} to {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
-          </p>
-
-          <div className='flex items-center gap-4'>
-            {/* Pagination Controls */}
-            <div className='flex items-center gap-2'>
-              {/* Previous Button */}
-              <button
-                type='button'
-                onClick={() => handlePageChange(activePage - 1)}
-                disabled={activePage <= 1}
-                className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-              >
-                &lt;
-              </button>
-
-              {/* Page Numbers */}
-              {showPageNumbers && (
-                <div className='flex items-center gap-1'>
-                  {(() => {
-                    const pages: (number | string)[] = [];
-                    const maxVisiblePages = 5;
-                    const halfVisible = Math.floor(maxVisiblePages / 2);
-
-                    if (totalPages <= maxVisiblePages) {
-                      for (let i = 1; i <= totalPages; i++) {
-                        pages.push(i);
-                      }
-                    } else {
-                      pages.push(1);
-                      if (activePage > halfVisible + 1) pages.push('...');
-
-                      const start = Math.max(2, activePage - halfVisible);
-                      const end = Math.min(totalPages - 1, activePage + halfVisible);
-
-                      for (let i = start; i <= end; i++) {
-                        if (!pages.includes(i)) pages.push(i);
-                      }
-
-                      if (activePage < totalPages - halfVisible - 1) pages.push('...');
-                      if (!pages.includes(totalPages)) pages.push(totalPages);
-                    }
-
-                    return pages.map((page, idx) => {
-                      if (page === '...') {
-                        return (
-                          <span key={`dots-${idx}`} className='px-2 text-gray-400'>
-                            ...
-                          </span>
-                        );
-                      }
-                      const pageNum = page as number;
-                      return (
-                        <button
-                          key={pageNum}
-                          type='button'
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                            activePage === pageNum
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    });
-                  })()}
+      {/* ── Pagination Footer ── */}
+      {showFooter && (
+        <div
+          className={[
+            'flex flex-shrink-0 items-center justify-between border-t border-gray-200',
+            paginationClassName ?? 'px-4 py-3',
+          ].join(' ')}
+        >
+          {/* ── Cursor pagination ── */}
+          {isCursorPagination && (() => {
+            const cp = paginationConfig as CursorPaginationConfig;
+            return (
+              <>
+                <p className='text-sm text-gray-600'>{cp.label ?? ''}</p>
+                <div className='flex items-center gap-2'>
+                  <button
+                    type='button'
+                    onClick={cp.onPrev}
+                    disabled={!cp.hasPrev}
+                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    type='button'
+                    onClick={cp.onNext}
+                    disabled={!cp.hasNext}
+                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900 transition'
+                  >
+                    Next →
+                  </button>
                 </div>
-              )}
+              </>
+            );
+          })()}
 
-              {/* Next Button */}
-              <button
-                type='button'
-                onClick={() => handlePageChange(activePage + 1)}
-                disabled={activePage >= totalPages}
-                className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
+          {/* ── Page pagination ── */}
+          {!isCursorPagination && usePagination && (
+            <>
+              <p className='text-sm text-gray-600'>
+                Showing {(activePage - 1) * safePageSize + 1} to{' '}
+                {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
+              </p>
+              <div className='flex items-center gap-4'>
+                <div className='flex items-center gap-2'>
+                  <button
+                    type='button'
+                    onClick={() => handlePageChange(activePage - 1)}
+                    disabled={activePage <= 1}
+                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                  >
+                    &lt;
+                  </button>
+
+                  {showPageNumbers && (
+                    <div className='flex items-center gap-1'>
+                      {(() => {
+                        const pages: (number | string)[] = [];
+                        const maxVis  = 5;
+                        const halfVis = Math.floor(maxVis / 2);
+
+                        if (totalPages <= maxVis) {
+                          for (let i = 1; i <= totalPages; i++) pages.push(i);
+                        } else {
+                          pages.push(1);
+                          if (activePage > halfVis + 1) pages.push('...');
+                          const start = Math.max(2, activePage - halfVis);
+                          const end   = Math.min(totalPages - 1, activePage + halfVis);
+                          for (let i = start; i <= end; i++) {
+                            if (!pages.includes(i)) pages.push(i);
+                          }
+                          if (activePage < totalPages - halfVis - 1) pages.push('...');
+                          if (!pages.includes(totalPages)) pages.push(totalPages);
+                        }
+
+                        return pages.map((p, idx) =>
+                          p === '...' ? (
+                            <span key={`dots-${idx}`} className='px-2 text-gray-400'>...</span>
+                          ) : (
+                            <button
+                              key={p as number}
+                              type='button'
+                              onClick={() => handlePageChange(p as number)}
+                              className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                                activePage === p
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          )
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <button
+                    type='button'
+                    onClick={() => handlePageChange(activePage + 1)}
+                    disabled={activePage >= totalPages}
+                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
