@@ -11,6 +11,7 @@ export const ARCHIVAL_ENDPOINTS = {
   delete: '/v1/archival-config',
   stats: '/v1/archival-config/stats',
   dryRun: '/v1/archival-config/dry-run',
+  validateSoql: '/v1/archival-config/validate-soql',
 } as const;
 
 export type ObjectScheduleConfig = {
@@ -141,5 +142,7 @@ export function useArchivalService() {
     },
     runDryRun: (payload: { crmId: string; objects: unknown[] }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.dryRun, payload),
+    validateSoql: (payload: { object: unknown; isParent: boolean }): Promise<any> =>
+      http.post(ARCHIVAL_ENDPOINTS.validateSoql, payload),
   };
 }
