@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatBytes, computeArchiveJobStats } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
+import Table from '../../../components/Table';
+import type { TableColumn } from '../../../components/Table';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -118,20 +120,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
   if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED');
   if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-  const startIdx = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filtered.slice(startIdx, startIdx + itemsPerPage);
 
-  const pageNums: number[] = [];
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) pageNums.push(i);
-  } else if (currentPage <= 3) {
-    pageNums.push(1, 2, 3, 4, 5);
-  } else if (currentPage >= totalPages - 2) {
-    for (let i = totalPages - 4; i <= totalPages; i++) pageNums.push(i);
-  } else {
-    for (let i = currentPage - 2; i <= currentPage + 2; i++) pageNums.push(i);
-  }
 
   const levelColorMap: Record<number, string> = { 0: '#155DFC', 1: '#7C3AED', 2: '#A16207', 3: '#008020', 4: '#0891B2' };
 
@@ -233,139 +222,109 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
         </div>
 
         {/* ── Table ── */}
-        <div className='flex-1 overflow-auto mx-7 rounded-xl relative' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
-          {(isLoading || isRefreshing) && (
-            <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-white/80 backdrop-blur-sm'>
-              <svg className='w-8 h-8 animate-spin text-blue-600' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
-              </svg>
-              <p className='text-sm font-medium text-gray-500'>Loading data...</p>
-            </div>
-          )}
-          {error && !isLoading && (
-            <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
-              <p className='text-sm font-semibold text-gray-700'>Failed to load job details</p>
-              <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
-            </div>
-          )}
-          <table className='w-full' style={{ borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '20%' }}>Object</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '9%' }}>Depth</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '12%' }}>Status</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Uploaded</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Deleted</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Records Failed</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>Data Size</th>
-                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151' }}>API Calls</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedData.length === 0 && !isLoading ? (
-                <tr>
-                  <td colSpan={8} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
-                    No objects found.
-                  </td>
-                </tr>
-              ) : paginatedData.map(({ obj, depth }, idx) => {
-                const st = getStatusStyle(obj.status ?? '');
+        {(() => {
+          type FlatRow = { obj: ArchiveJobObject; depth: number };
+          const jobColumns: TableColumn<FlatRow>[] = [
+            {
+              key: 'name',
+              header: 'Object',
+              render: ({ obj, depth }) => (
+                <span className='flex items-center gap-1 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 14 }}>
+                  {depth > 0 && <span style={{ color: '#CBD5E1' }}>↳</span>}
+                  {obj.name}
+                </span>
+              ),
+            },
+            {
+              key: 'depth',
+              header: 'Depth',
+              render: ({ depth }) => {
                 const levelColor = levelColorMap[depth] ?? '#E11D48';
-                const deletedFailed = obj.deletedfailedRecordCount ?? 0;
                 return (
-                  <tr
-                    key={obj.id ?? idx}
-                    style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
-                    className='hover:bg-gray-50 transition-colors'
-                  >
-                    {/* Object Name */}
-                    <td className='px-5 py-3.5'>
-                      <span className='flex items-center gap-1 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 14 }}>
-                        {depth > 0 && <span style={{ color: '#CBD5E1' }}>↳</span>}
-                        {obj.name}
-                      </span>
-                    </td>
-                    {/* Depth */}
-                    <td className='px-5 py-3.5'>
-                      <span
-                        className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold'
-                        style={{ background: `${levelColor}18`, color: levelColor, whiteSpace: 'pre' }}
-                      >
-                        Level {depth + 1}
-                      </span>
-                    </td>
-                    {/* Status */}
-                    <td className='px-5 py-3.5'>
-                      {obj.status ? (
-                        <span
-                          className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap'
-                          style={{ background: st.bg, color: st.color }}
-                        >
-                          {getStatusLabel(obj.status)}
-                        </span>
-                      ) : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>}
-                    </td>
-                    {/* Records Uploaded */}
-                    <td className='px-5 py-3.5'>
-                      <span className='text-sm font-semibold' style={{ color: '#008020' }}>
-                        {(obj.insertCount ?? 0).toLocaleString()}
-                      </span>
-                    </td>
-                    {/* Records Deleted */}
-                    <td className='px-5 py-3.5'>
-                      <span className='text-sm font-semibold' style={{ color: '#155DFC' }}>
-                        {(obj.deletedSuccessRecordCount ?? 0).toLocaleString()}
-                      </span>
-                    </td>
-                    {/* Records Failed */}
-                    <td className='px-5 py-3.5'>
-                      {deletedFailed > 0 ? (
-                        <span className='inline-flex items-center gap-1 text-sm font-semibold' style={{ color: '#F24400' }}>
-                          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                            <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                          </svg>
-                          {deletedFailed.toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className='text-sm font-semibold' style={{ color: '#94A3B8' }}>0</span>
-                      )}
-                    </td>
-                    {/* Data Size */}
-                    <td className='px-5 py-3.5'>
-                      <span className='text-sm' style={{ color: '#374151' }}>{formatBytes(obj.sizeInBytes)}</span>
-                    </td>
-                    {/* API Calls */}
-                    <td className='px-5 py-3.5'>
-                      <span className='text-sm' style={{ color: '#374151' }}>{obj.salesforceApiCount ?? '--'}</span>
-                    </td>
-                  </tr>
+                  <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold'
+                    style={{ background: `${levelColor}18`, color: levelColor, whiteSpace: 'pre' }}>
+                    Level {depth + 1}
+                  </span>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              },
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              render: ({ obj }) => {
+                const st = getStatusStyle(obj.status ?? '');
+                return obj.status
+                  ? <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap' style={{ background: st.bg, color: st.color }}>{getStatusLabel(obj.status)}</span>
+                  : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>;
+              },
+            },
+            {
+              key: 'insertCount',
+              header: 'Records Uploaded',
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? 0).toLocaleString()}</span>,
+            },
+            {
+              key: 'deletedSuccess',
+              header: 'Records Deleted',
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#155DFC' }}>{(obj.deletedSuccessRecordCount ?? 0).toLocaleString()}</span>,
+            },
+            {
+              key: 'deletedFailed',
+              header: 'Records Failed',
+              render: ({ obj }) => {
+                const n = obj.deletedfailedRecordCount ?? 0;
+                return n > 0
+                  ? <span className='inline-flex items-center gap-1 text-sm font-semibold' style={{ color: '#F24400' }}>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                      </svg>
+                      {n.toLocaleString()}
+                    </span>
+                  : <span className='text-sm font-semibold' style={{ color: '#94A3B8' }}>0</span>;
+              },
+            },
+            {
+              key: 'sizeInBytes',
+              header: 'Data Size',
+              render: ({ obj }) => <span className='text-sm' style={{ color: '#374151' }}>{formatBytes(obj.sizeInBytes)}</span>,
+            },
+            {
+              key: 'apiCalls',
+              header: 'API Calls',
+              render: ({ obj }) => <span className='text-sm' style={{ color: '#374151' }}>{obj.salesforceApiCount ?? '--'}</span>,
+            },
+          ];
 
-        {/* ── Pagination ── */}
-        <div className='flex items-center justify-between px-7 py-4 flex-shrink-0'>
-          <p className='text-sm font-medium' style={{ color: '#155DFC' }}>
-            Showing {filtered.length === 0 ? 0 : Math.min(startIdx + itemsPerPage, filtered.length)} of {filtered.length} Object{filtered.length !== 1 ? 's' : ''}
-          </p>
-          <div className='flex items-center gap-1'>
-            {pageNums.map(n => (
-              <button
-                key={n}
-                onClick={() => setCurrentPage(n)}
-                className='w-7 h-7 rounded-md text-xs font-medium transition flex items-center justify-center'
-                style={currentPage === n
-                  ? { background: '#155DFC', color: '#fff' }
-                  : { background: '#F3F4F6', color: '#374151' }
-                }
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
+          return (
+            <div className='flex-1 mx-7 rounded-xl relative overflow-hidden' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+              {error && !isLoading && (
+                <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
+                  <p className='text-sm font-semibold text-gray-700'>Failed to load job details</p>
+                  <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
+                </div>
+              )}
+              <Table<FlatRow>
+                columns={jobColumns}
+                rows={filtered}
+                getRowKey={({ obj }, idx) => obj.id ?? String(idx)}
+                loading={isLoading || isRefreshing}
+                skeletonConfig={{ rows: 5, colWidths: ['w-32', 'w-16', 'w-20', 'w-24', 'w-24', 'w-20', 'w-16', 'w-16'] }}
+                headerVariant='uppercase'
+                borderless
+                cellPaddingClassName='px-5 py-3.5'
+                rowClassName='hover:bg-gray-50 transition-colors'
+                getRowStyle={() => ({ borderBottom: '1px solid #F1F5F9' })}
+                emptyState='No objects found.'
+                pagination={{
+                  currentPage,
+                  pageSize: itemsPerPage,
+                  totalRecords: filtered.length,
+                  onPageChange: setCurrentPage,
+                }}
+              />
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
