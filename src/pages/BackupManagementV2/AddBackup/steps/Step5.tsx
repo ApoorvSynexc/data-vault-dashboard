@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
+import Table from '../../../../components/Table';
+import type { TableColumn } from '../../../../components/Table';
 
 type SelectedObject = {
   id: string;
@@ -196,135 +198,78 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         </div>
 
         {/* Table */}
-        <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
-          <div className='flex-1 min-h-0 overflow-y-auto'>
-            {isLoading ? (
-              <div className='flex items-center justify-center py-16'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
-              </div>
-            ) : error ? (
-              <div className='mx-5 my-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3'>
-                <p className='text-sm font-semibold text-red-700'>Failed to load objects</p>
-                <p className='text-sm text-red-600'>{(error as any)?.message || 'Something went wrong.'}</p>
-              </div>
-            ) : (
-              <table className='w-full border-collapse table-fixed'>
-                <colgroup>
-                  <col style={{ width: 44 }} />
-                  <col style={{ width: 52 }} />
-                  <col />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 150 }} />
-                </colgroup>
-                <thead className='sticky top-0 z-20 bg-white'>
-                  <tr className='border-b border-gray-100'>
-                    <th className='px-3 py-2.5 text-left'>
-                      <input
-                        type='checkbox'
-                        checked={filteredObjects.length > 0 && filteredObjects.every(o => selectedObjects.has(o.id))}
-                        ref={(input) => {
-                          if (input) {
-                            const sel = filteredObjects.filter(o => selectedObjects.has(o.id)).length;
-                            input.indeterminate = sel > 0 && sel < filteredObjects.length;
-                          }
-                        }}
-                        onChange={() => {
-                          const allSel = filteredObjects.every(o => selectedObjects.has(o.id));
-                          const next = new Set(selectedObjects);
-                          filteredObjects.forEach(o => allSel ? next.delete(o.id) : next.add(o.id));
-                          setSelectedObjects(next);
-                        }}
-                        className='w-4 h-4 rounded accent-blue-600 cursor-pointer'
-                      />
-                    </th>
-                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>#</th>
-                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Object</th>
-                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Type</th>
-                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Records</th>
-                    <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'>Estimated Data Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredObjects.length > 0 ? filteredObjects.map((obj, idx) => {
-                    const isSelected = selectedObjects.has(obj.id);
-                    const recordCount = obj.recordCount;
-                    const dataSize = (() => {
-                      if (!recordCount) return '--';
-                      const kb = recordCount * 2;
-                      if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
-                      if (kb >= 1024) return `${(kb / 1024).toFixed(2)} MB`;
-                      return `${kb} KB`;
-                    })();
-                    return (
-                      <tr key={obj.id}
-                        onClick={() => { const next = new Set(selectedObjects); isSelected ? next.delete(obj.id) : next.add(obj.id); setSelectedObjects(next); }}
-                        className={`border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}>
-                        <td className='px-3 py-2.5' onClick={e => e.stopPropagation()}>
-                          <input type='checkbox' checked={isSelected}
-                            onChange={() => { const next = new Set(selectedObjects); isSelected ? next.delete(obj.id) : next.add(obj.id); setSelectedObjects(next); }}
-                            className='w-4 h-4 rounded accent-blue-600 cursor-pointer'
-                          />
-                        </td>
-                        <td className='px-3 py-2.5 text-sm text-gray-400'>{currentPage * ITEMS_PER_PAGE + idx + 1}</td>
-                        <td className='px-3 py-2.5 text-sm font-medium text-gray-800'>{obj.name}</td>
-                        <td className='px-3 py-2.5'>
-                          <span className='text-xs font-medium text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</span>
-                        </td>
-                        <td className='px-3 py-2.5 text-sm text-gray-600'>{recordCount?.toLocaleString() ?? '--'}</td>
-                        <td className='px-3 py-2.5 text-sm text-gray-600'>{dataSize}</td>
-                      </tr>
-                    );
-                  }) : (
-                    <tr><td colSpan={6} className='px-4 py-12 text-center text-sm text-gray-400'>No objects found matching your search.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
+        {(() => {
+          const columns: TableColumn<BackupObject>[] = [
+            {
+              key: 'name',
+              header: 'Object',
+              render: (obj) => <span className='text-sm font-medium text-gray-800'>{obj.name}</span>,
+            },
+            {
+              key: 'type',
+              header: 'Type',
+              render: (obj) => <span className='text-xs font-medium text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</span>,
+            },
+            {
+              key: 'records',
+              header: 'Records',
+              render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount?.toLocaleString() ?? '--'}</span>,
+            },
+            {
+              key: 'dataSize',
+              header: 'Estimated Data Size',
+              render: (obj) => {
+                const rc = obj.recordCount;
+                if (!rc) return <span className='text-sm text-gray-600'>--</span>;
+                const kb = rc * 2;
+                const size = kb >= 1024 * 1024
+                  ? `${(kb / (1024 * 1024)).toFixed(2)} GB`
+                  : kb >= 1024
+                  ? `${(kb / 1024).toFixed(2)} MB`
+                  : `${kb} KB`;
+                return <span className='text-sm text-gray-600'>{size}</span>;
+              },
+            },
+          ];
 
-          {/* Pagination */}
-          {!isLoading && !error && (
-            <div className='flex items-center justify-between border-t border-gray-100 px-5 py-3 flex-shrink-0'>
-              <p className='text-sm text-gray-500'>
-                Showing {filteredObjects.length > 0 ? currentPage * ITEMS_PER_PAGE + 1 : 0} to {Math.min((currentPage + 1) * ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
-              </p>
-              <div className='flex items-center gap-2'>
-                <button onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))} disabled={currentPage === 0}
-                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'>
-                  &lt;
-                </button>
-                {(() => {
-                  const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
-                  const pages: (number | string)[] = [];
-                  const half = 2;
-                  if (totalPages <= 5) {
-                    for (let i = 0; i < totalPages; i++) pages.push(i);
-                  } else {
-                    pages.push(0);
-                    if (currentPage > half + 1) pages.push('...');
-                    const start = Math.max(1, currentPage - half);
-                    const end = Math.min(totalPages - 2, currentPage + half);
-                    for (let i = start; i <= end; i++) if (!pages.includes(i)) pages.push(i);
-                    if (currentPage < totalPages - half - 2) pages.push('...');
-                    if (!pages.includes(totalPages - 1)) pages.push(totalPages - 1);
+          return (
+            <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+              {error ? (
+                <div className='mx-5 my-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3'>
+                  <p className='text-sm font-semibold text-red-700'>Failed to load objects</p>
+                  <p className='text-sm text-red-600'>{(error as any)?.message || 'Something went wrong.'}</p>
+                </div>
+              ) : (
+                <Table<BackupObject>
+                  columns={columns}
+                  rows={filteredObjects}
+                  getRowKey={(obj) => obj.id}
+                  loading={isLoading}
+                  skeletonConfig={{ rows: 8, colWidths: ['w-40', 'w-16', 'w-20', 'w-24'] }}
+                  headerVariant='uppercase'
+                  borderless
+                  cellPaddingClassName='px-3 py-2.5'
+                  showSerialNumber
+                  serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
+                  showCheckbox
+                  selectedIds={selectedObjects}
+                  getRowId={(obj) => obj.id}
+                  onSelectionChange={setSelectedObjects}
+                  getRowClassName={(obj, isSelected) =>
+                    `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
                   }
-                  return pages.map((page, i) => page === '...'
-                    ? <span key={`d${i}`} className='px-2 text-gray-400'>...</span>
-                    : <button key={page} onClick={() => setCurrentPage(page as number)}
-                        className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'}`}>
-                        {(page as number) + 1}
-                      </button>
-                  );
-                })()}
-                <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE) - 1}
-                  className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'>
-                  &gt;
-                </button>
-              </div>
+                  emptyState='No objects found matching your search.'
+                  pagination={{
+                    currentPage: currentPage + 1,
+                    pageSize: ITEMS_PER_PAGE,
+                    totalRecords,
+                    onPageChange: (p) => setCurrentPage(p - 1),
+                  }}
+                />
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
 
       {/* Action Buttons */}
