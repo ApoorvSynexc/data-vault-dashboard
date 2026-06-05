@@ -930,6 +930,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           registerChildFieldApiName={registerChildFieldApiName}
                           registerChildParent={registerChildParent}
                           objectFilters={objectFilters}
+                          objectSoqlQueries={objectSoqlQueries}
                           includeChild={includeChild}
                           setIncludeChild={setIncludeChild}
                           setFilterPopup={setFilterPopup}
