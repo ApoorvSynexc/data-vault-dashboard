@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
@@ -104,8 +103,7 @@ interface Step3DryRunProps {
   onBack: () => void;
 }
 
-export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
-  const backupConfigService = useBackupConfigService();
+export default function Step3DryRun({ crmId: _crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
   const navigate = useNavigate();
   const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
@@ -123,32 +121,19 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
     setDryRunState('loading');
     const start = Date.now();
     try {
-      if (crmId && objectIds.length > 0) {
-        const items = selectedObjects.map((o) => {
-          const fields = o.archivalPayload?.field ?? [];
-          const filters = fields
-            .filter((f) => f.name && f.filter?.value)
-            .map((f) => `${f.name} ${f.filter.operator} '${f.filter.value}'`);
-          return filters.length > 0 ? { apiName: o.id, filters } : { apiName: o.id };
-        });
-        const response = await backupConfigService.getArchivalObjectCountList(crmId, items);
-        const map: Record<string, number> = {};
-        const results = (response?.data as any)?.results;
-        if (Array.isArray(results)) {
-          results.forEach((obj: any) => {
-            const key = obj.apiName ?? obj.objectApiName;
-            if (key && obj.recordCount !== undefined) map[key] = obj.recordCount;
-          });
-        }
-        setObjectCountMap(map);
-      } else {
-        // Simulate with dummy counts
-        const map: Record<string, number> = {};
-        selectedObjects.forEach((o, i) => { map[o.id] = [3420, 4210, 1495, 890, 1204][i % 5]; });
-        setObjectCountMap(map);
-      }
+      const objects = (archivalPayload?.objects as any[]) ?? [];
+      const response = await archivalService.runDryRun({ objects });
+      const data = (response as any)?.data ?? response;
+      const map: Record<string, number> = {};
+      const results: any[] = data?.results ?? data?.objects ?? (Array.isArray(data) ? data : []);
+      results.forEach((obj: any) => {
+        const key = obj.name ?? obj.apiName ?? obj.objectApiName ?? obj.objectName;
+        const count = obj.recordCount ?? obj.totalRecords ?? obj.count ?? 0;
+        if (key) map[key] = count;
+      });
+      setObjectCountMap(map);
     } catch {
-      // fallback dummy
+      // fallback dummy on error
       const map: Record<string, number> = {};
       selectedObjects.forEach((o, i) => { map[o.id] = [3420, 4210, 1495, 890, 1204][i % 5]; });
       setObjectCountMap(map);

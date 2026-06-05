@@ -10,6 +10,7 @@ export const ARCHIVAL_ENDPOINTS = {
   update: '/v1/archival-config',
   delete: '/v1/archival-config',
   stats: '/v1/archival-config/stats',
+  dryRun: '/v1/archival-config/dry-run',
 } as const;
 
 export type ObjectScheduleConfig = {
@@ -138,5 +139,7 @@ export function useArchivalService() {
       if (status) query.status = status.toUpperCase();
       return http.get<ArchivalJobListApiResponse>(ARCHIVAL_ENDPOINTS.jobs, { query });
     },
+    runDryRun: (payload: { objects: unknown[] }): Promise<any> =>
+      http.post(ARCHIVAL_ENDPOINTS.dryRun, payload),
   };
 }
