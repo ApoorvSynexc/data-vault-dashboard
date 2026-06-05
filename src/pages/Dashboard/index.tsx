@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../utils';
 import JobDetailsModal from '../BackupManagementV2/BackupDetails/BackupHistory/JobDetailsModal';
+import Table from '../../components/Table';
+import type { TableColumn } from '../../components/Table';
 import dayjs from 'dayjs';
 
 // Dashboard floating frame icons
@@ -146,6 +148,92 @@ export default function Dashboard() {
   const kpiRunning          = overview?.activeJobs?.running ?? 0;
 
 
+  /* ── Recent Jobs columns ── */
+  const recentJobColumns: TableColumn<any>[] = [
+    {
+      key: 'jobName',
+      header: 'Job Name',
+      width: '180px',
+      render: (job) => {
+        const bulkObjects: any[] = job.object || [];
+        const jobName = job.backupConfig?.name
+          ? job.backupConfig.name
+          : job.objectApiName
+            ? job.objectApiName
+            : bulkObjects.length > 0
+              ? bulkObjects.length === 1
+                ? bulkObjects[0].name
+                : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
+              : 'Backup Job';
+        const initials = jobName[0]?.toUpperCase() ?? 'B';
+        return (
+          <div className='flex items-center gap-2 overflow-hidden'>
+            <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
+              {initials}
+            </div>
+            <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>{jobName}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      render: (job) => (
+        <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
+          {job.backupConfig?.schedule === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (job) => {
+        const st = getJobStatus(job.status, job.object);
+        return (
+          <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap' style={{ background: st.bg, color: st.color }}>
+            {st.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'dateTime',
+      header: 'Date & Time',
+      render: (job) => {
+        const startMs = job.startedAt ? dayjs(job.startedAt) : null;
+        return (
+          <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
+            {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'duration',
+      header: 'Duration',
+      render: (job) => {
+        const startMs = job.startedAt ? dayjs(job.startedAt) : null;
+        const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
+        const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
+        const duration = diffMs !== null
+          ? diffMs < 60000
+            ? `${Math.floor(diffMs / 1000)}s`
+            : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
+          : '--';
+        return <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{duration}</span>;
+      },
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      render: (job) => {
+        const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0) || (job.sizeInBytes || 0);
+        return <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</span>;
+      },
+    },
+  ];
+
   /* ── loading state ── */
   if (isLoading) {
     return (
@@ -269,71 +357,20 @@ export default function Dashboard() {
           <div className='flex items-center px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
             <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
           </div>
-
-          <div className='overflow-auto' style={{ maxHeight: '420px' }}>
-            <table className='w-full' style={{ borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
-                <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
-                  {['Job Name', 'Type', 'Status', 'Date & Time', 'Duration', 'Data Size'].map(h => (
-                    <th key={h} className='px-5 py-2.5 text-left text-sm font-medium whitespace-nowrap' style={{ color: '#33363F' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {recentJobs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className='px-5 py-10 text-center text-sm' style={{ color: '#64748B' }}>No recent jobs found.</td>
-                  </tr>
-                ) : recentJobs.slice(0, 10).map((job: any) => {
-                  const st = getJobStatus(job.status, job.object);
-                  const startMs = job.startedAt ? dayjs(job.startedAt) : null;
-                  const endMs   = job.completedAt ? dayjs(job.completedAt) : null;
-                  const diffMs  = startMs && endMs ? endMs.diff(startMs, 'ms') : null;
-                  const duration = diffMs !== null
-                    ? diffMs < 60000 ? `${Math.floor(diffMs / 1000)}s`
-                    : `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
-                    : '--';
-                  const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0) || (job.sizeInBytes || 0);
-                  const bulkObjects: any[] = job.object || [];
-                  const jobName = job.backupConfig?.name
-                    ? job.backupConfig.name
-                    : job.objectApiName
-                      ? job.objectApiName
-                      : bulkObjects.length > 0
-                        ? bulkObjects.length === 1
-                          ? bulkObjects[0].name
-                          : `${bulkObjects[0].name} +${bulkObjects.length - 1} more`
-                        : 'Backup Job';
-                  const initials = jobName[0]?.toUpperCase() ?? 'B';
-                  return (
-                    <tr key={job.backupJobId} onClick={() => setSelectedJob(job)} className='cursor-pointer hover:bg-blue-50 transition-colors' style={{ borderBottom: '1px solid #EBEBEB' }}>
-                      <td className='px-5 py-3' style={{ maxWidth: '180px' }}>
-                        <div className='flex items-center gap-2 overflow-hidden'>
-                          <div className='w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0' style={{ background: '#155DFC' }}>
-                            {initials}
-                          </div>
-                          <span className='text-sm font-light truncate' style={{ color: '#0A0A0A' }}>{jobName}</span>
-                        </div>
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
-                        {job.backupConfig?.schedule === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
-                      </td>
-                      <td className='px-5 py-3'>
-                        <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap' style={{ background: st.bg, color: st.color }}>
-                          {st.label}
-                        </span>
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
-                        {startMs ? startMs.format('MMM D, YYYY h:mm A') : '--'}
-                      </td>
-                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{duration}</td>
-                      <td className='px-5 py-3 text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table<any>
+            borderless
+            loading={isLoading}
+            skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-20', 'w-24', 'w-32', 'w-16', 'w-20'] }}
+            rows={recentJobs.slice(0, 10)}
+            getRowKey={(job) => job.backupJobId}
+            onRowClick={(job) => setSelectedJob(job)}
+            rowClassName='hover:bg-blue-50 transition-colors'
+            getRowStyle={() => ({ borderBottom: '1px solid #EBEBEB' })}
+            cellPaddingClassName='px-5 py-3'
+            maxHeightClassName='max-h-[420px]'
+            emptyState={<span style={{ color: '#64748B' }}>No recent jobs found.</span>}
+            columns={recentJobColumns}
+          />
         </div>
 
         {/* Right column */}
