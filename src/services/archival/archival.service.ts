@@ -139,7 +139,7 @@ export function useArchivalService() {
       if (status) query.status = status.toUpperCase();
       return http.get<ArchivalJobListApiResponse>(ARCHIVAL_ENDPOINTS.jobs, { query });
     },
-    runDryRun: (payload: { objects: unknown[] }): Promise<any> =>
+    runDryRun: (payload: { crmId: string; objects: unknown[] }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.dryRun, payload),
   };
 }
