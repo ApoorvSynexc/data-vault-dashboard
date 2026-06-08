@@ -296,7 +296,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
           ];
 
           return (
-            <div className='flex-1 mx-7 rounded-xl relative overflow-hidden' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
+            <div className='flex flex-col flex-1 mx-7 rounded-xl relative overflow-hidden' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
               {error && !isLoading && (
                 <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
                   <p className='text-sm font-semibold text-gray-700'>Failed to load job details</p>
