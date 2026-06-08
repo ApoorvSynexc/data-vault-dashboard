@@ -118,7 +118,7 @@ export default function FinalStep({
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
         return { name: objId, type: objType, condition: { type: 'AND' }, field: [] };
       }),
-      backupStatus,
+      status: backupStatus,
     };
     if (!isRealTime && scheduleConfig) payload.scheduleConfig = scheduleConfig;
     createBackupMutation.mutate(payload);

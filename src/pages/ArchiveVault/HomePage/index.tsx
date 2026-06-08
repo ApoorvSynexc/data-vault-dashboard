@@ -220,7 +220,6 @@ export default function ArchiveVaultHomePage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
-  const [scheduleFilter, setScheduleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
@@ -230,7 +229,7 @@ export default function ArchiveVaultHomePage() {
 
   const activateMutation = useMutation({
     mutationFn: (backupConfigId: string) =>
-      archivalService.updateConfig(backupConfigId, { backupStatus: 'ACTIVE' }),
+      archivalService.updateConfig(backupConfigId, { status: 'ACTIVE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setConfirmActivate(null);
@@ -239,7 +238,7 @@ export default function ArchiveVaultHomePage() {
 
   const runNowMutation = useMutation({
     mutationFn: (backupConfigId: string) =>
-      archivalService.updateConfig(backupConfigId, { backupStatus: 'RUNNING' }),
+      archivalService.updateConfig(backupConfigId, { status: 'RUNNING' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setConfirmRunNow(null);
@@ -248,7 +247,7 @@ export default function ArchiveVaultHomePage() {
 
   const pauseMutation = useMutation({
     mutationFn: ({ backupConfigId, isPaused }: { backupConfigId: string; isPaused: boolean }) =>
-      archivalService.updateConfig(backupConfigId, { backupStatus: isPaused ? 'RESUMED' : 'PAUSED' }),
+      archivalService.updateConfig(backupConfigId, { status: isPaused ? 'RESUMED' : 'PAUSED' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setConfirmPause(null);
@@ -305,11 +304,6 @@ export default function ArchiveVaultHomePage() {
     displayDate: formatDate(item.createdAt),
   }));
 
-  // Stats
-  const total = rawList.length;
-  const totalSizeInBytes = rawList.reduce((sum, i) => sum + (i.sizeInBytes ?? 0), 0);
-  const uniquePlatforms = new Set(rawList.map((i) => i.crmId)).size;
-
   // Filters
   const filtered = enriched.filter((r) => {
     if (search && !r.displayName.toLowerCase().includes(search.toLowerCase())) return false;
@@ -319,9 +313,6 @@ export default function ArchiveVaultHomePage() {
     }
     return true;
   });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const pad = (n: number) => String(n).padStart(2, '0');
 

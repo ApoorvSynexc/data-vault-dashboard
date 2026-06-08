@@ -65,7 +65,7 @@ const [confirmError, setConfirmError] = useState(false);
   const scheduleDisplay = `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`;
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    await archivalService.applyConfig({ ...archivalPayload, backupStatus } as any);
+    await archivalService.applyConfig({ ...archivalPayload, status: backupStatus } as any);
   };
 
   const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmError(false); setShowConfirm(true); };

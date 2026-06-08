@@ -40,11 +40,12 @@ type BackupRow = {
   source: string;
   destination: string;
   status: BackupStatus;
+  configStatus: string;
   backupType: BackupType;
   scheduleFrequency: string;
   lastRun: string;
   dataSize: string;
-  backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED';
+  backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
 };
 
 function Panel({
@@ -181,7 +182,7 @@ function MetricCard({
       <Typography variant='metricLabel' color={labelColor[tone]}>
         {label}
       </Typography>
-      <Typography className='mt-0.5 truncate' variant='metricValue' color={valueColor[tone]} style={{ fontSize: '1.25rem', lineHeight: '1.6rem' }}>
+      <Typography className='mt-0.5 truncate !text-xl !leading-7' variant='metricValue' color={valueColor[tone]}>
         {value}
       </Typography>
       {withBar ? (
@@ -338,6 +339,29 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
   );
 }
 
+function ConfigStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    'ACTIVE':   'bg-green-100 text-green-700',
+    'INACTIVE': 'bg-gray-100 text-gray-600',
+    'PAUSED':   'bg-gray-100 text-gray-600',
+    'ERROR':    'bg-red-100 text-red-700',
+    'DRAFT':    'bg-yellow-100 text-yellow-700',
+  };
+  const labels: Record<string, string> = {
+    'ACTIVE':   'Active',
+    'INACTIVE': 'Inactive',
+    'PAUSED':   'Paused',
+    'ERROR':    'Error',
+    'DRAFT':    'Draft',
+  };
+  const key = status?.toUpperCase() ?? '';
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[key] ?? 'bg-gray-100 text-gray-600'}`}>
+      {labels[key] ?? status}
+    </span>
+  );
+}
+
 type DropdownMenuItem = {
   label: string;
   danger?: boolean;
@@ -402,35 +426,9 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
 
 type FilterState = {
   backupType: BackupType | 'All';
-  status: BackupStatus | 'All';
+  status: BackupStatus | 'All' | 'REALTIME' | 'SCHEDULED';
   search: string;
 };
-
-function FilterBar({
-  filters,
-  onChange,
-}: {
-  filters: FilterState;
-  onChange: (next: FilterState) => void;
-}) {
-  return (
-    <div className='border-b border-gray-100 px-5 py-2 flex-shrink-0'>
-      <div className='relative'>
-        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-          <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
-        </svg>
-        <input
-          type='text'
-          value={filters.search}
-          onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          placeholder='Search by name...'
-          aria-label='Search backups by name'
-          className='h-9 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
-        />
-      </div>
-    </div>
-  );
-}
 
 export default function BackupManagementV2() {
   const navigate = useNavigate();
@@ -467,7 +465,7 @@ export default function BackupManagementV2() {
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'ACTIVE' | 'PAUSED' | 'RESUMED' }) =>
-      backupConfigService.updateBackupConfig(backupConfigId, { backupStatus }),
+      backupConfigService.updateBackupConfig(backupConfigId, { status: backupStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
@@ -540,11 +538,12 @@ export default function BackupManagementV2() {
       source,
       destination,
       status: (item.backupStatus as BackupStatus) || 'PENDING',
+      configStatus: item.status ?? 'INACTIVE',
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: formatDateTime(item.lastBackupAt),
       dataSize: formatBytes(item.sizeInBytes),
-      backupStatus: (item.backupStatus as BackupStatus) || 'PENDING',
+      backupStatus: (item.backupStatus as BackupStatus) || '' as any,
     };
   });
 
@@ -553,8 +552,13 @@ export default function BackupManagementV2() {
     if (filters.status !== 'All') {
       if (filters.status === 'REALTIME' && row.backupType !== 'Realtime') return false;
       else if (filters.status === 'SCHEDULED' && row.backupType !== 'Schedule') return false;
-      else if (filters.status === 'RUNNING' && row.status !== 'RUNNING' && row.status !== 'PENDING') return false;
-      else if (filters.status !== 'REALTIME' && filters.status !== 'SCHEDULED' && filters.status !== 'RUNNING' && row.status !== filters.status) return false;
+      else if (filters.status === 'RUNNING') {
+        if (row.backupStatus !== 'RUNNING' && row.backupStatus !== 'PENDING') return false;
+      } else if (filters.status === 'SUCCESS' || filters.status === 'FAILED') {
+        if (row.backupStatus !== filters.status) return false;
+      } else if (filters.status !== 'REALTIME' && filters.status !== 'SCHEDULED') {
+        if (row.configStatus !== filters.status) return false;
+      }
     }
     if (filters.search && !row.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
@@ -598,9 +602,14 @@ export default function BackupManagementV2() {
       render: (row) => row.backupType === 'Schedule' ? <ScheduleFrequencyBadge frequency={row.scheduleFrequency} /> : <span className='text-gray-400 text-[10px]'>N/A</span>,
     },
     {
+      key: 'configStatus',
+      header: 'Status',
+      render: (row) => <ConfigStatusBadge status={row.configStatus} />,
+    },
+    {
       key: 'backupStatus',
-      header: 'Backup Status',
-      render: (row) => <BackupStatusBadge backupStatus={row.backupStatus} />,
+      header: 'Last Job Status',
+      render: (row) => row.backupStatus ? <BackupStatusBadge backupStatus={row.backupStatus} /> : <span className='text-gray-400 text-xs'>--</span>,
     },
     {
       key: 'lastRun',
@@ -628,7 +637,7 @@ export default function BackupManagementV2() {
           <ActionDropdown
             key={row.id}
             items={[
-              ...(row.backupStatus === 'DRAFT' ? [{
+              ...(row.configStatus === 'DRAFT' ? [{
                 label: 'Activate',
                 onClick: () => {
                   setActivateAcceptText('');
@@ -636,11 +645,11 @@ export default function BackupManagementV2() {
                   setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
                 },
               }] : []),
-              ...(row.backupStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
-              ...(row.backupStatus !== 'DRAFT' ? [{
-                label: row.backupStatus === 'PAUSED' ? 'Resume' : 'Pause',
+              ...(row.configStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
+              ...(row.configStatus !== 'DRAFT' ? [{
+                label: row.configStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
-                  if (row.backupStatus === 'PAUSED') {
+                  if (row.configStatus === 'PAUSED') {
                     updateStatusMutation.mutate({ backupConfigId: row.id, backupStatus: 'RESUMED' });
                   } else {
                     setPauseTarget({ id: row.id, name: row.name });
