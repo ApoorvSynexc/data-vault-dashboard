@@ -25,12 +25,12 @@ export default function LoginV2() {
   }, []);
 
   const socialLoginMutation = useMutation({
-    mutationFn: (authProvider: string) => authService.initiateSocialLogin(authProvider),
+    mutationFn: ({ environment }: { environment?: string }) =>
+      authService.initiateSocialLogin('salesforce', undefined, environment),
   });
 
   const handleSalesforceLogin = (env: 'production' | 'sandbox') => {
-    const authProvider = env === 'sandbox' ? 'salesforce-sandbox' : 'salesforce';
-    socialLoginMutation.mutate(authProvider, {
+    socialLoginMutation.mutate({ environment: env }, {
       onSuccess: (data) => {
         if (data?.authorizationUrl) {
           const url = new URL(data.authorizationUrl);
