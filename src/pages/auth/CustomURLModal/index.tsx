@@ -36,7 +36,7 @@ export default function CustomURLModal({ isOpen, onClose }: CustomURLModalProps)
 
     setIsLoading(true);
     try {
-      const data = await authService.initiateSocialLogin('salesforce', trimmed);
+      const data = await authService.initiateSocialLogin('salesforce', trimmed, 'custom');
       if (data?.authorizationUrl) {
         window.location.href = data.authorizationUrl;
       } else {
