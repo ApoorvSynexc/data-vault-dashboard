@@ -142,7 +142,7 @@ export function useArchivalService() {
     },
     runDryRun: (payload: { crmId: string; objects: unknown[] }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.dryRun, payload),
-    validateSoql: (payload: { object: unknown; isParent: boolean }): Promise<any> =>
+    validateSoql: (payload: { object: unknown; isParent: boolean; crmId: string }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.validateSoql, payload),
   };
 }
