@@ -155,7 +155,7 @@ export default function FilterPopup({
         condition: { type: 'SOQL', soqlQuery: soqlClause.trim() },
         field: [],
       };
-      return archivalService.validateSoql({ object, isParent: isParentVal });
+      return archivalService.validateSoql({ object, isParent: isParentVal, crmId: crmId ?? '' });
     },
     onSuccess: (data: any) => {
       const msg = data?.data?.message ?? data?.message ?? 'Query is valid.';
