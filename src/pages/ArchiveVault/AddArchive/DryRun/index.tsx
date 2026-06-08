@@ -168,7 +168,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
     setIsSavingDraft(true);
     setDraftError(null);
     try {
-      await archivalService.applyConfig({ ...archivalPayload, backupStatus: 'DRAFT' } as any);
+      await archivalService.applyConfig({ ...archivalPayload, status: 'DRAFT' } as any);
       navigate('/archive-vault');
     } catch (err: any) {
       setDraftError(err?.message ?? 'Failed to save draft. Please try again.');
