@@ -143,3 +143,37 @@ export function calculateNextRun(
     return '--';
   }
 }
+
+const SF_ERROR_MESSAGES: Record<string, string> = {
+  REQUEST_LIMIT_EXCEEDED: 'Your Salesforce API request limit has been reached. Please wait a few minutes and try again, or contact your Salesforce admin to increase the limit.',
+  QUERY_TIMEOUT: 'The Salesforce query timed out. Please try again.',
+  INVALID_SESSION_ID: 'Your Salesforce session has expired. Please reconnect your platform.',
+  INSUFFICIENT_ACCESS: 'You do not have sufficient permissions in Salesforce to perform this action.',
+  FIELD_INTEGRITY_EXCEPTION: 'A field integrity error occurred in Salesforce. Please check your filter values.',
+};
+
+export function parseSalesforceError(err: unknown): { title: string; detail: string } {
+  const raw: string = (err as any)?.message ?? (err as any)?.response?.data?.message ?? String(err ?? '');
+
+  // Try to extract JSON array from the error string e.g. HTTP Error 403: [{"errorCode":"...","message":"..."}]
+  try {
+    const match = raw.match(/\[(\{.+\})\]/s);
+    if (match) {
+      const parsed = JSON.parse(`[${match[1]}]`);
+      const first = Array.isArray(parsed) ? parsed[0] : parsed;
+      const code: string = first?.errorCode ?? first?.error_code ?? '';
+      const msg: string = first?.message ?? '';
+      if (code && SF_ERROR_MESSAGES[code]) {
+        return { title: 'Salesforce API Limit Reached', detail: SF_ERROR_MESSAGES[code] };
+      }
+      if (msg) return { title: 'Salesforce Error', detail: msg };
+    }
+  } catch { /* fall through */ }
+
+  // Plain string match on known codes
+  for (const [code, friendly] of Object.entries(SF_ERROR_MESSAGES)) {
+    if (raw.includes(code)) return { title: 'Salesforce API Limit Reached', detail: friendly };
+  }
+
+  return { title: 'Failed to load objects', detail: raw || 'Something went wrong. Please try again.' };
+}
