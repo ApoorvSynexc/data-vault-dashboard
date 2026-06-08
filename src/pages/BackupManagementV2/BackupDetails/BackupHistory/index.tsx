@@ -112,7 +112,7 @@ const calculateJobDataSize = (job: any) => {
   return job.sizeInBytes || 0;
 };
 
-export default function BackupHistory(_: BackupHistoryProps) {
+export default function BackupHistory({ backup }: BackupHistoryProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
@@ -235,7 +235,17 @@ export default function BackupHistory(_: BackupHistoryProps) {
     {
       key: 'jobType',
       header: 'Backup Type',
-      render: (job) => job.jobType === 'BULK' ? 'Scheduled' : 'Realtime',
+      render: (job) => {
+        if (job.jobType === 'BULK' && backup?.schedule?.toUpperCase() === 'REALTIME') {
+          return (
+            <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700'>
+              Initial Backup
+            </span>
+          );
+        }
+        if (job.jobType === 'BULK') return 'Scheduled';
+        return 'Realtime';
+      },
     },
     {
       key: 'errorMessage',

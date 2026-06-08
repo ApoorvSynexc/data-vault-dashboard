@@ -362,7 +362,7 @@ export default function Table<TRow>({
       {showFooter && (
         <div
           className={[
-            'flex flex-shrink-0 items-center justify-between border-t border-gray-200',
+            'flex flex-shrink-0 items-center justify-between border-t border-gray-200 mt-auto',
             paginationClassName ?? 'px-4 py-3',
           ].join(' ')}
         >
