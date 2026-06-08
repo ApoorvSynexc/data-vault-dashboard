@@ -5,6 +5,7 @@ import { useBackupConfigService } from '../../../../services/backup-config/backu
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
+import { parseSalesforceError } from '../../../../utils';
 
 type SelectedObject = {
   id: string;
@@ -235,9 +236,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           return (
             <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
               {error ? (
-                <div className='mx-5 my-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3'>
-                  <p className='text-sm font-semibold text-red-700'>Failed to load objects</p>
-                  <p className='text-sm text-red-600'>{(error as any)?.message || 'Something went wrong.'}</p>
+                <div className='mx-5 my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-4 flex items-start gap-3'>
+                  <svg className='h-5 w-5 shrink-0 text-red-500 mt-0.5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                  <div>
+                    <p className='text-sm font-semibold text-red-700'>{parseSalesforceError(error).title}</p>
+                    <p className='text-sm text-red-600 mt-0.5'>{parseSalesforceError(error).detail}</p>
+                  </div>
                 </div>
               ) : (
                 <Table<BackupObject>
