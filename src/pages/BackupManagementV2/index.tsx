@@ -656,6 +656,7 @@ export default function BackupManagementV2() {
                   }
                 },
               }] : []),
+              { label: 'Edit Policy', onClick: () => navigate(`/backup-management/add?edit=${row.slug}`) },
               { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
             ]}
           />
