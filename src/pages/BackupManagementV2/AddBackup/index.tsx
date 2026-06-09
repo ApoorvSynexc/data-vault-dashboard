@@ -195,6 +195,7 @@ export default function AddBackup() {
             setScheduleConfig(schedule);
             returnToFinalStep();
           } : undefined}
+          hideOnce={isScheduledNonDraft}
         />
       )}
       {currentStep === 6 && selectedStrategy === 'realtime' && (
