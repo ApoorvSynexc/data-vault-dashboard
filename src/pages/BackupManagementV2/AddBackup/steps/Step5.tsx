@@ -51,12 +51,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const mode = strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE';
 
   const { data: allObjectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
-    queryKey: ['backup-objects-all', crmId, mode],
-    queryFn: async () => {
-      const response = await backupConfigService.getObjectList(crmId ?? '', mode);
-      return response;
-    },
+    queryKey: ['backup-objects-all-v3', crmId, mode],
+    queryFn: () => backupConfigService.getObjectList(crmId ?? '', mode),
     enabled: !!crmId,
+    staleTime: Infinity,
   });
 
   const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
@@ -64,7 +62,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // Filter + paginate from raw allObjects first (no counts yet)
   const allFilteredObjects = useMemo(() => {
     return allObjects.filter((obj) => {
-      const matchesSearch = obj.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const matchesSearch = (obj.name ?? '').toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       if (selectedFilter === 'Standard') return matchesSearch && !obj.isCustom;
       if (selectedFilter === 'Custom') return matchesSearch && obj.isCustom;
       return matchesSearch;
@@ -78,7 +76,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // Fetch counts only for the objects visible on the current page
   const currentPageIds = currentPageObjects.map((o) => o.id);
 
-  const { data: countResponse, isLoading: isLoadingCount } = useQuery({
+  const { data: countResponse } = useQuery({
     queryKey: ['backup-objects-count', crmId, currentPageIds],
     queryFn: async () => {
       if (currentPageIds.length === 0) return { objectCounts: {} };
@@ -112,7 +110,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   }, [currentPageObjects, countResponse?.objectCounts]);
 
 
-  const isLoading = isLoadingObjects || isLoadingCount;
+  const isLoading = isLoadingObjects;
   const error = objectsError;
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
@@ -267,7 +265,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   }
                   emptyState='No objects found matching your search.'
                   pagination={{
-                    currentPage: currentPage + 1,
+                    currentPage: 1,
+                    displayPage: currentPage + 1,
                     pageSize: ITEMS_PER_PAGE,
                     totalRecords,
                     onPageChange: (p) => setCurrentPage(p - 1),
