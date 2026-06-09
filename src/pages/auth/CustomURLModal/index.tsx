@@ -38,7 +38,18 @@ export default function CustomURLModal({ isOpen, onClose }: CustomURLModalProps)
     try {
       const data = await authService.initiateSocialLogin('salesforce', trimmed, 'custom');
       if (data?.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
+        const url = new URL(data.authorizationUrl);
+        url.searchParams.set('prompt', 'login');
+        const width = 500;
+        const height = 650;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        window.open(
+          url.toString(),
+          'SalesforceLogin',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+        handleClose();
       } else {
         setError('No redirect URL received from server.');
       }
