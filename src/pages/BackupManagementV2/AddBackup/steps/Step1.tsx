@@ -177,9 +177,18 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                             )}
                           </div>
                           <div className='flex-1 min-w-0'>
-                            <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
-                              {connection.name}
-                            </p>
+                            <div className='flex items-center gap-2'>
+                              <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
+                                {connection.name}
+                              </p>
+                              {connection.environment && (
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
+                                  connection.environment === 'production' ? 'bg-green-50 text-green-700'
+                                  : connection.environment === 'sandbox' ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-blue-50 text-blue-700'
+                                }`}>{connection.environment}</span>
+                              )}
+                            </div>
                             <p className='text-xs text-gray-500 truncate'>Org ID : {connection.crmProfile?.organizationId}</p>
                             <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
                           </div>
