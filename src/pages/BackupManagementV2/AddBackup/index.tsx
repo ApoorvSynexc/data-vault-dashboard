@@ -113,11 +113,13 @@ export default function AddBackup() {
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
 
   const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
-  const isScheduledNonDraft = !!editConfigId && !isDraft && selectedStrategy === 'scheduled';
+  const isNonDraftEdit = !!editConfigId && !isDraft;
+  const isScheduledNonDraft = isNonDraftEdit && selectedStrategy === 'scheduled';
+  const isRealtimeNonDraft = isNonDraftEdit && selectedStrategy === 'realtime';
 
-  // When editing a non-draft scheduled backup, after editing step 3 or 6,
+  // When editing a non-draft backup, after editing an allowed step,
   // jump straight back to FinalStep instead of continuing the normal flow.
-  const returnToFinalStep = () => setCurrentStep(7);
+  const returnToFinalStep = () => setCurrentStep(isRealtimeNonDraft ? 6 : 7);
 
   return (
     <div className='flex-1 min-h-0 flex flex-col'>
@@ -155,7 +157,7 @@ export default function AddBackup() {
             handleNextStep();
           }}
           onBack={handlePrevStep}
-          onDone={isScheduledNonDraft ? (name, desc) => {
+          onDone={isNonDraftEdit ? (name, desc) => {
             setPolicyName(name);
             setDescription(desc);
             returnToFinalStep();
