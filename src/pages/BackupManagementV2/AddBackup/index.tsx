@@ -90,6 +90,9 @@ export default function AddBackup() {
   };
 
   const handleStrategySelected = (strategy: BackupStrategy, entireDataset: boolean) => {
+    if (entireDatasetSelected && !entireDataset) {
+      setSelectedObjects([]);
+    }
     setSelectedStrategy(strategy);
     setEntireDatasetSelected(entireDataset);
     handleNextStep();
