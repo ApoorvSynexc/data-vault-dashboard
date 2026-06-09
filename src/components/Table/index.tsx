@@ -32,6 +32,8 @@ type PagePaginationConfig = {
   pageSize: number;
   totalRecords: number;
   onPageChange: (nextPage: number) => void;
+  /** When set, this page number is used for footer display/highlight while currentPage controls internal slicing. */
+  displayPage?: number;
 };
 
 /** Cursor-based pagination (prev / next only) */
@@ -164,6 +166,7 @@ export default function Table<TRow>({
   const safePageSize = pageSize > 0 ? pageSize : 1;
   const totalPages   = Math.max(1, Math.ceil(totalRecords / safePageSize));
   const activePage   = pagination?.currentPage ?? internalPage;
+  const displayPage  = (pagination as PagePaginationConfig)?.displayPage ?? activePage;
 
   const startIndex   = (activePage - 1) * safePageSize;
   const endIndex     = startIndex + safePageSize;
@@ -398,15 +401,15 @@ export default function Table<TRow>({
           {!isCursorPagination && usePagination && (
             <>
               <p className='text-sm text-gray-600'>
-                Showing {(activePage - 1) * safePageSize + 1} to{' '}
-                {Math.min(activePage * safePageSize, totalRecords)} of {totalRecords}
+                Showing {(displayPage - 1) * safePageSize + 1} to{' '}
+                {Math.min(displayPage * safePageSize, totalRecords)} of {totalRecords}
               </p>
               <div className='flex items-center gap-4'>
                 <div className='flex items-center gap-2'>
                   <button
                     type='button'
-                    onClick={() => handlePageChange(activePage - 1)}
-                    disabled={activePage <= 1}
+                    onClick={() => handlePageChange(displayPage - 1)}
+                    disabled={displayPage <= 1}
                     className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
                   >
                     &lt;
@@ -423,13 +426,13 @@ export default function Table<TRow>({
                           for (let i = 1; i <= totalPages; i++) pages.push(i);
                         } else {
                           pages.push(1);
-                          if (activePage > halfVis + 1) pages.push('...');
-                          const start = Math.max(2, activePage - halfVis);
-                          const end   = Math.min(totalPages - 1, activePage + halfVis);
+                          if (displayPage > halfVis + 1) pages.push('...');
+                          const start = Math.max(2, displayPage - halfVis);
+                          const end   = Math.min(totalPages - 1, displayPage + halfVis);
                           for (let i = start; i <= end; i++) {
                             if (!pages.includes(i)) pages.push(i);
                           }
-                          if (activePage < totalPages - halfVis - 1) pages.push('...');
+                          if (displayPage < totalPages - halfVis - 1) pages.push('...');
                           if (!pages.includes(totalPages)) pages.push(totalPages);
                         }
 
@@ -442,7 +445,7 @@ export default function Table<TRow>({
                               type='button'
                               onClick={() => handlePageChange(p as number)}
                               className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                                activePage === p
+                                displayPage === p
                                   ? 'bg-blue-600 text-white'
                                   : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
                               }`}
@@ -457,8 +460,8 @@ export default function Table<TRow>({
 
                   <button
                     type='button'
-                    onClick={() => handlePageChange(activePage + 1)}
-                    disabled={activePage >= totalPages}
+                    onClick={() => handlePageChange(displayPage + 1)}
+                    disabled={displayPage >= totalPages}
                     className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
                   >
                     &gt;
