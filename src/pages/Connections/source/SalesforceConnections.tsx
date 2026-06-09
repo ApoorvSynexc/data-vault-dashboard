@@ -253,7 +253,20 @@ export default function SalesforceConnections() {
                         </svg>
                       </div>
                       <div>
-                        <p className='font-medium text-gray-900'>{org.name}</p>
+                        <div className='flex items-center gap-2'>
+                          <p className='font-medium text-gray-900'>{org.name}</p>
+                          {org.environment && (
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                              org.environment === 'production'
+                                ? 'bg-green-50 text-green-700'
+                                : org.environment === 'sandbox'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-blue-50 text-blue-700'
+                            }`}>
+                              {org.environment}
+                            </span>
+                          )}
+                        </div>
                         <p className='text-xs text-gray-500'>{org.crmProfile.name}</p>
                         <p className='text-xs text-gray-500'>{org.crmProfile.email}</p>
                       </div>
