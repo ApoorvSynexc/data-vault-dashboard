@@ -23,6 +23,7 @@ type Step6Props = {
   onBack: () => void;
   initialScheduleConfig?: ScheduleConfig | null;
   onDone?: (scheduleConfig: ScheduleConfig) => void;
+  hideOnce?: boolean;
 };
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
@@ -72,7 +73,7 @@ const mapBackendMonthsToFrontend = (months?: string[]): string[] => {
   return months.map(m => monthMap[m] || m);
 };
 
-export default function Step6({ onNext, onBack, initialScheduleConfig, onDone }: Step6Props) {
+export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, hideOnce = false }: Step6Props) {
   const navigate = useNavigate();
 
   const initializeState = () => {
@@ -172,7 +173,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone }:
         {/* Frequency Buttons */}
         <div className='mb-8'>
           <div className='flex gap-2 flex-wrap'>
-            {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
+            {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).filter((freq) => !(hideOnce && freq === 'One Time')).map((freq) => (
               <button
                 key={freq}
                 onClick={() => setFrequency(freq)}
