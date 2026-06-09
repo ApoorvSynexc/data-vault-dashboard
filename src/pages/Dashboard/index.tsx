@@ -344,8 +344,8 @@ export default function Dashboard() {
         <KpiCard
           icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
           label='Active Jobs'
-          value={String(kpiActiveJobs)}
-          sub={kpiRunning > 0 ? `${kpiRunning} Running` : 'active jobs'}
+          value={String(kpiRunning)}
+          sub={overview?.activeJobs?.period ?? 'Running'}
         />
       </div>
 
