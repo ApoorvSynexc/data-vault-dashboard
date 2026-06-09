@@ -58,7 +58,9 @@ export default function FinalStep({
   editConfigStatus = null,
 }: FinalStepProps) {
   const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
-  const isScheduledNonDraft = !!editConfigId && !isDraft && strategy === 'scheduled';
+  const isNonDraftEdit = !!editConfigId && !isDraft;
+  const isScheduledNonDraft = isNonDraftEdit && strategy === 'scheduled';
+  const isRealtimeNonDraft = isNonDraftEdit && strategy === 'realtime';
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const platformService = usePlatformService();
@@ -209,13 +211,15 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>{editConfigId ? 'Review & Edit' : 'Review & Create'}</h1>
           <p className='text-gray-600 mt-2'>
-            {isScheduledNonDraft
+            {isRealtimeNonDraft
+              ? 'You can only edit the backup policy name.'
+              : isScheduledNonDraft
               ? 'You can edit the backup policy name and schedule configuration.'
               : 'Review your backup policy configuration before initiating backup.'}
           </p>
         </div>
         <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>
-          {isScheduledNonDraft ? 'Edit Schedule' : editConfigId ? 'Edit Draft' : 'Final Step'}
+          {isRealtimeNonDraft ? 'Edit Policy' : isScheduledNonDraft ? 'Edit Schedule' : editConfigId ? 'Edit Draft' : 'Final Step'}
         </span>
       </div>
 
