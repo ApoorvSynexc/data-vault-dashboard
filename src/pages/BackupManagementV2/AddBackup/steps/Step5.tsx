@@ -214,14 +214,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             {
               key: 'records',
               header: 'Records',
-              render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount?.toLocaleString() ?? '--'}</span>,
+              render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount !== undefined ? obj.recordCount.toLocaleString() : '--'}</span>,
             },
             {
               key: 'dataSize',
               header: 'Estimated Data Size',
               render: (obj) => {
                 const rc = obj.recordCount;
-                if (!rc) return <span className='text-sm text-gray-600'>--</span>;
+                if (rc === undefined) return <span className='text-sm text-gray-600'>--</span>;
+                if (rc === 0) return <span className='text-sm text-gray-600'>0 KB</span>;
                 const kb = rc * 2;
                 const size = kb >= 1024 * 1024
                   ? `${(kb / (1024 * 1024)).toFixed(2)} GB`
@@ -261,7 +262,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   selectedIds={selectedObjects}
                   getRowId={(obj) => obj.id}
                   onSelectionChange={setSelectedObjects}
-                  getRowClassName={(obj, isSelected) =>
+                  getRowClassName={(_obj, isSelected) =>
                     `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
                   }
                   emptyState='No objects found matching your search.'
