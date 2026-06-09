@@ -300,7 +300,8 @@ export default function ArchiveVaultHomePage() {
     ...item,
     displayName: item.name ?? item.slug ?? '--',
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
-    displayStatus: normalizeStatus(item.backupStatus ?? item.status),
+    displayStatus: normalizeStatus(item.status),
+    lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
     displayDate: formatDate(item.createdAt),
   }));
 
@@ -444,6 +445,13 @@ export default function ArchiveVaultHomePage() {
               render: (policy) => <StatusBadge status={policy.displayStatus} />,
             },
             {
+              key: 'lastJobStatus',
+              header: 'Last Job Status',
+              render: (policy) => policy.lastJobStatus
+                ? <StatusBadge status={policy.lastJobStatus} />
+                : <span className='text-xs text-gray-400'>--</span>,
+            },
+            {
               key: 'displayDate',
               header: 'Created On',
               render: (policy) => <span className='text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</span>,
@@ -490,7 +498,7 @@ export default function ArchiveVaultHomePage() {
               rows={filtered}
               getRowKey={(p) => p.backupConfigId}
               loading={isLoading}
-              skeletonConfig={{ rows: 4, colWidths: ['w-40', 'w-24', 'w-20', 'w-28', 'w-20', 'w-20', 'w-10'] }}
+              skeletonConfig={{ rows: 4, colWidths: ['w-40', 'w-24', 'w-20', 'w-20', 'w-28', 'w-20', 'w-20', 'w-10'] }}
               headerVariant='uppercase'
               rowClassName='hover:bg-gray-50/60 transition-colors'
               cellPaddingClassName='px-5 py-3.5'
