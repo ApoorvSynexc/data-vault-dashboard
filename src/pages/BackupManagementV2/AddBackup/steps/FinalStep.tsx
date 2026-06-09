@@ -37,6 +37,7 @@ type FinalStepProps = {
   environment?: string;
   scheduleConfig?: ScheduleConfig | null;
   destinationId?: string | null;
+  editConfigId?: string | null;
 };
 
 
@@ -52,6 +53,7 @@ export default function FinalStep({
   environment = 'Production',
   scheduleConfig = null,
   destinationId = null,
+  editConfigId = null,
 }: FinalStepProps) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
@@ -89,17 +91,27 @@ export default function FinalStep({
   };
   const isExpanded = (section: string) => expandedSections.has(section);
 
+  const onMutationSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+    setIsLoading(false);
+    setIsSuccess(true);
+  };
+
+  const onMutationError = (error: any) => {
+    setIsLoading(false);
+    setApiError(error?.message || 'Failed to save backup. Please try again.');
+  };
+
   const createBackupMutation = useMutation({
     mutationFn: async (payload: any) => backupConfigService.createBackupConfig(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
-      setSuccessType('run');
-      setIsSuccess(true);
-    },
-    onError: (error: any) => {
-      setIsLoading(false);
-      setApiError(error?.message || 'Failed to create backup. Please try again.');
-    },
+    onSuccess: onMutationSuccess,
+    onError: onMutationError,
+  });
+
+  const updateBackupMutation = useMutation({
+    mutationFn: async (payload: any) => backupConfigService.updateBackupConfig(editConfigId!, payload),
+    onSuccess: onMutationSuccess,
+    onError: onMutationError,
   });
 
   const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
@@ -121,7 +133,11 @@ export default function FinalStep({
       status: backupStatus,
     };
     if (!isRealTime && scheduleConfig) payload.scheduleConfig = scheduleConfig;
-    createBackupMutation.mutate(payload);
+    if (editConfigId) {
+      updateBackupMutation.mutate(payload);
+    } else {
+      createBackupMutation.mutate(payload);
+    }
   };
 
   const handleSaveDraft = () => { setSuccessType('save'); createBackupWithStatus('DRAFT'); };
@@ -187,10 +203,10 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
       {/* Header */}
       <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Review & Create</h1>
+          <h1 className='text-3xl font-bold text-gray-900'>{editConfigId ? 'Review & Edit' : 'Review & Create'}</h1>
           <p className='text-gray-600 mt-2'>Review your backup policy configuration before initiating backup.</p>
         </div>
-        <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>Final Step</span>
+        <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>{editConfigId ? 'Edit Draft' : 'Final Step'}</span>
       </div>
 
       {/* Sections */}
@@ -248,11 +264,11 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
         <button onClick={() => navigate('/backup-management')} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
         <div className='flex gap-4'>
           <button onClick={onBack} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>← Back</button>
-          <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-            {isLoading || createBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
+          <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
           </button>
-          <button onClick={handleRunBackup} disabled={isLoading || createBackupMutation.isPending} className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-            {isLoading || createBackupMutation.isPending ? 'Creating...' : 'Run Backup'}
+          <button onClick={handleRunBackup} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Creating...' : 'Run Backup'}
           </button>
         </div>
       </div>
@@ -289,8 +305,8 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             </div>
             <div className='flex justify-end gap-3 px-6 pb-6'>
               <button onClick={() => setShowRunConfirmation(false)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={handleConfirmRun} disabled={isLoading || createBackupMutation.isPending} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                {isLoading || createBackupMutation.isPending ? 'Creating...' : 'Yes, Create Backup'}
+              <button onClick={handleConfirmRun} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : editConfigId ? 'Yes, Update Backup' : 'Yes, Create Backup'}
               </button>
             </div>
           </div>
