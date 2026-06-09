@@ -26,7 +26,7 @@ export type SelectedArchiveObject = {
     name: string;
     condition: ArchivalCondition;
     field: { name: string; filter: { value: string; operator: string } }[];
-    children?: { id: string; name: string; type: 'STANDARD' | 'CUSTOM'; condition: ArchivalCondition; field: { name: string; filter: { value: string; operator: string } }[] }[];
+    children?: any[];
   };
 };
 
@@ -73,14 +73,11 @@ interface ChildRowsProps {
   registerChildApiName: (uuid: string, apiName: string) => void;
   registerChildFieldApiName: (uuid: string, fieldApiName: string) => void;
   registerChildParent: (childUuid: string, parentUuid: string) => void;
-  objectFilters: Record<string, import('./FilterPopup').FilterCondition[]>;
-  objectSoqlQueries: Record<string, string>;
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  setFilterPopup: React.Dispatch<React.SetStateAction<{ objectId: string; objectName: string; recordCount?: number } | null>>;
 }
 
-function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildFieldApiName, registerChildParent, objectFilters, objectSoqlQueries, includeChild, setIncludeChild, setFilterPopup }: ChildRowsProps) {
+function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects, toggleChildObject, registerChildApiName, registerChildFieldApiName, registerChildParent, includeChild, setIncludeChild }: ChildRowsProps) {
   const archivalService = useArchivalService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -251,32 +248,7 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                 </span>
               </td>
               {/* Actions */}
-              <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
-                <div className='flex items-center justify-center'>
-                  {(() => {
-                    const hasFilter = isChildSelected && ((objectFilters[childKey]?.some((c) => c.field) ?? false) || !!objectSoqlQueries[childKey]);
-                    return (
-                      <button
-                        disabled={!isChildSelected}
-                        className='flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap'
-                        style={{
-                          border: `1px solid ${!isChildSelected ? '#E2E8F0' : hasFilter ? '#155DFC' : accentColor + '40'}`,
-                          color: !isChildSelected ? '#CBD5E1' : hasFilter ? '#fff' : accentColor,
-                          background: !isChildSelected ? 'white' : hasFilter ? '#155DFC' : `${accentColor}08`,
-                          cursor: isChildSelected ? 'pointer' : 'not-allowed',
-                          opacity: isChildSelected ? 1 : 0.5,
-                        }}
-                        onClick={(e) => { e.stopPropagation(); if (isChildSelected) setFilterPopup({ objectId: childKey, objectName: row.apiName as string, recordCount: undefined, isParent: false }); }}
-                      >
-                        <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                          <polygon points='22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3' />
-                        </svg>
-                        {hasFilter ? 'Filter Applied' : 'Add Filter'}
-                      </button>
-                    );
-                  })()}
-                </div>
-              </td>
+              <td className='px-3 py-2' />
             </tr>
             {/* Recursive children */}
             {isChildExpanded && (
@@ -290,11 +262,8 @@ function ChildRows({ crmId, objectName, parentUuid, depth, selectedChildObjects,
                 registerChildApiName={registerChildApiName}
                 registerChildFieldApiName={registerChildFieldApiName}
                 registerChildParent={registerChildParent}
-                objectFilters={objectFilters}
-                objectSoqlQueries={objectSoqlQueries}
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
-                setFilterPopup={setFilterPopup}
               />
             )}
           </React.Fragment>
@@ -378,17 +347,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       }));
 
     const filters: Record<string, FilterCondition[]> = {};
-    const walk = (children: any[], parentKey: string) => {
-      children?.forEach((child) => {
-        const key = child.id ?? parentKey;
-        if (child.field?.length) filters[key] = toConditions(child.field);
-        if (child.children?.length) walk(child.children, key);
-      });
-    };
     initialSelectedObjects.forEach((o) => {
       const key = o.uuid ?? o.id;
       if (o.archivalPayload?.field?.length) filters[key] = toConditions(o.archivalPayload.field);
-      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children, key);
     });
     return filters;
   });
@@ -405,16 +366,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   const [objectMatchModes, setObjectMatchModes] = useState<Record<string, ArchivalCondition>>(() => {
     const modes: Record<string, ArchivalCondition> = {};
-    const walk = (children: any[]) => {
-      children?.forEach((child) => {
-        if (child.id) modes[child.id] = child.condition ?? { type: 'AND' };
-        if (child.children?.length) walk(child.children);
-      });
-    };
     initialSelectedObjects.forEach((o) => {
       const key = o.uuid ?? o.id;
       modes[key] = o.archivalPayload?.condition ?? { type: 'AND' };
-      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children);
     });
     return modes;
   });
@@ -486,20 +440,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     const fieldApiNames: Record<string, string> = {};
     const parents: Record<string, string> = {};
     const childInclude: Record<string, boolean> = {};
-    const walk = (children: any[], parentUuid: string) => {
-      children?.forEach((child) => {
-        if (!child.id) return;
-        selectedUuids.add(child.id);
-        if (child.name) apiNames[child.id] = child.name;
-        if (child.fieldApiName) fieldApiNames[child.id] = child.fieldApiName;
-        parents[child.id] = parentUuid;
-        childInclude[child.id] = true;
-        if (child.children?.length) walk(child.children, child.id);
-      });
-    };
-    initialSelectedObjects.forEach((o) => {
-      if (o.archivalPayload?.children?.length) walk(o.archivalPayload.children, o.uuid ?? o.id);
-    });
+    initialSelectedObjects.forEach((_o) => { /* no children to restore */ });
     return { selectedUuids, apiNames, fieldApiNames, parents, childInclude };
   })()).current;
 
@@ -562,10 +503,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           name: childApiNames[uuid] ?? uuid,
           fieldApiName: childFieldApiNames[uuid] ?? undefined,
           type: 'STANDARD' as const,
-          condition: objectMatchModes[uuid] ?? { type: 'AND' as const },
-          field: (objectFilters[uuid] ?? [])
-            .filter((c) => c.field)
-            .map((c) => ({ name: c.field, filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator } })),
+          condition: { type: 'AND' as const },
+          field: [],
           ...(nestedChildren.length > 0 ? { children: nestedChildren } : {}),
         };
       });
@@ -599,7 +538,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               name: c.field,
               filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
             })),
-          ...(children.length > 0 ? { children } : {}),
+          children,
         },
       };
     });
@@ -936,11 +875,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                           registerChildApiName={registerChildApiName}
                           registerChildFieldApiName={registerChildFieldApiName}
                           registerChildParent={registerChildParent}
-                          objectFilters={objectFilters}
-                          objectSoqlQueries={objectSoqlQueries}
                           includeChild={includeChild}
                           setIncludeChild={setIncludeChild}
-                          setFilterPopup={setFilterPopup}
                         />
                       )}
                       </React.Fragment>
@@ -964,18 +900,45 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 Showing {totalRecords > 0 ? offset + 1 : 0}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
               </span>
               <div className='flex items-center gap-1'>
-                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
-                  <button key={page} onClick={() => setCurrentPage(page - 1)}
-                    className='w-7 h-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
-                    style={{
-                      background: currentPage === page - 1 ? '#155DFC' : 'white',
-                      color: currentPage === page - 1 ? 'white' : '#64748B',
-                      border: currentPage === page - 1 ? 'none' : '1px solid #E2E8F0',
-                    }}>
-                    {page}
-                  </button>
-                ))}
-                {totalPages > 5 && <span className='text-gray-400 text-xs px-1'>...</span>}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>‹</button>
+                {(() => {
+                  const maxVis = 5;
+                  const halfVis = Math.floor(maxVis / 2);
+                  const pages: (number | string)[] = [];
+                  if (totalPages <= maxVis) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    if (currentPage + 1 > halfVis + 1) pages.push('...');
+                    const start = Math.max(2, currentPage + 1 - halfVis);
+                    const end = Math.min(totalPages - 1, currentPage + 1 + halfVis);
+                    for (let i = start; i <= end; i++) pages.push(i);
+                    if (currentPage + 1 < totalPages - halfVis - 1) pages.push('...');
+                    if (!pages.includes(totalPages)) pages.push(totalPages);
+                  }
+                  return pages.map((p, idx) =>
+                    p === '...' ? (
+                      <span key={`dots-${idx}`} className='px-1 text-gray-400 text-xs'>...</span>
+                    ) : (
+                      <button key={p as number} onClick={() => setCurrentPage((p as number) - 1)}
+                        className='w-7 h-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
+                        style={{
+                          background: currentPage === (p as number) - 1 ? '#155DFC' : 'white',
+                          color: currentPage === (p as number) - 1 ? 'white' : '#64748B',
+                          border: currentPage === (p as number) - 1 ? 'none' : '1px solid #E2E8F0',
+                        }}>
+                        {p}
+                      </button>
+                    )
+                  );
+                })()}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>›</button>
               </div>
             </div>
           )}
