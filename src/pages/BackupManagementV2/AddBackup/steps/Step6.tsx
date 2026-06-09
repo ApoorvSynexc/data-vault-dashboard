@@ -22,6 +22,7 @@ type Step6Props = {
   onNext: (scheduleConfig: ScheduleConfig) => void;
   onBack: () => void;
   initialScheduleConfig?: ScheduleConfig | null;
+  onDone?: (scheduleConfig: ScheduleConfig) => void;
 };
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
@@ -71,7 +72,7 @@ const mapBackendMonthsToFrontend = (months?: string[]): string[] => {
   return months.map(m => monthMap[m] || m);
 };
 
-export default function Step6({ onNext, onBack, initialScheduleConfig }: Step6Props) {
+export default function Step6({ onNext, onBack, initialScheduleConfig, onDone }: Step6Props) {
   const navigate = useNavigate();
 
   const initializeState = () => {
@@ -651,11 +652,15 @@ export default function Step6({ onNext, onBack, initialScheduleConfig }: Step6Pr
                 type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
                 scheduling,
               };
-              onNext(scheduleConfig);
+              if (onDone) {
+                onDone(scheduleConfig);
+              } else {
+                onNext(scheduleConfig);
+              }
             }}
             className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
           >
-            Next Step →
+            {onDone ? 'Save & Return →' : 'Next Step →'}
           </button>
         </div>
       </div>

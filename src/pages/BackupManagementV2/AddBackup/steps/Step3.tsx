@@ -7,9 +7,10 @@ type Step3Props = {
   strategy?: 'realtime' | 'scheduled';
   policyName?: string;
   description?: string;
+  onDone?: (policyName: string, description: string) => void;
 };
 
-export default function Step3({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = '', description: initialDescription = '' }: Step3Props) {
+export default function Step3({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = '', description: initialDescription = '', onDone }: Step3Props) {
   const navigate = useNavigate();
   const [policyName, setPolicyName] = useState(initialPolicyName);
   const [description, setDescription] = useState(initialDescription);
@@ -27,7 +28,11 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
       return;
     }
     setPolicyNameError(false);
-    onNext(policyName, description);
+    if (onDone) {
+      onDone(policyName, description);
+    } else {
+      onNext(policyName, description);
+    }
   };
 
   return (
@@ -141,7 +146,7 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            Next Step →
+            {onDone ? 'Save & Return →' : 'Next Step →'}
           </button>
         </div>
       </div>

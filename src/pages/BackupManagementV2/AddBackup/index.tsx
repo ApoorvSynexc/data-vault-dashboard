@@ -34,6 +34,7 @@ export default function AddBackup() {
   const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>([]);
   const [destinationId, setDestinationId] = useState<string | null>(null);
   const [editConfigId, setEditConfigId] = useState<string | null>(null);
+  const [editConfigStatus, setEditConfigStatus] = useState<string | null>(null);
   const [prefilled, setPrefilled] = useState(false);
 
   const backupConfigService = useBackupConfigService();
@@ -50,6 +51,7 @@ export default function AddBackup() {
     if (!item) return;
 
     setEditConfigId(item.backupConfigId ?? null);
+    setEditConfigStatus(item.status ?? item.backupStatus ?? null);
     setSelectedPlatformId(item.crmId ?? null);
     setDestinationId(item.destinationId ?? null);
     setPolicyName(item.name ?? '');
@@ -110,6 +112,13 @@ export default function AddBackup() {
 
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(null);
 
+  const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
+  const isScheduledNonDraft = !!editConfigId && !isDraft && selectedStrategy === 'scheduled';
+
+  // When editing a non-draft scheduled backup, after editing step 3 or 6,
+  // jump straight back to FinalStep instead of continuing the normal flow.
+  const returnToFinalStep = () => setCurrentStep(7);
+
   return (
     <div className='flex-1 min-h-0 flex flex-col'>
       {currentStep === 1 && (
@@ -146,6 +155,11 @@ export default function AddBackup() {
             handleNextStep();
           }}
           onBack={handlePrevStep}
+          onDone={isScheduledNonDraft ? (name, desc) => {
+            setPolicyName(name);
+            setDescription(desc);
+            returnToFinalStep();
+          } : undefined}
         />
       )}
       {currentStep === 4 && (
@@ -177,6 +191,10 @@ export default function AddBackup() {
             handleNextStep();
           }}
           onBack={handlePrevStep}
+          onDone={isScheduledNonDraft ? (schedule) => {
+            setScheduleConfig(schedule);
+            returnToFinalStep();
+          } : undefined}
         />
       )}
       {currentStep === 6 && selectedStrategy === 'realtime' && (
@@ -195,6 +213,7 @@ export default function AddBackup() {
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
           editConfigId={editConfigId}
+          editConfigStatus={editConfigStatus}
         />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
@@ -213,6 +232,7 @@ export default function AddBackup() {
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
           editConfigId={editConfigId}
+          editConfigStatus={editConfigStatus}
         />
       )}
     </div>

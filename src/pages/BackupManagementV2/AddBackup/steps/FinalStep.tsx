@@ -38,6 +38,7 @@ type FinalStepProps = {
   scheduleConfig?: ScheduleConfig | null;
   destinationId?: string | null;
   editConfigId?: string | null;
+  editConfigStatus?: string | null;
 };
 
 
@@ -54,7 +55,10 @@ export default function FinalStep({
   scheduleConfig = null,
   destinationId = null,
   editConfigId = null,
+  editConfigStatus = null,
 }: FinalStepProps) {
+  const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
+  const isScheduledNonDraft = !!editConfigId && !isDraft && strategy === 'scheduled';
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const platformService = usePlatformService();
@@ -204,14 +208,20 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
       <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>{editConfigId ? 'Review & Edit' : 'Review & Create'}</h1>
-          <p className='text-gray-600 mt-2'>Review your backup policy configuration before initiating backup.</p>
+          <p className='text-gray-600 mt-2'>
+            {isScheduledNonDraft
+              ? 'You can edit the backup policy name and schedule configuration.'
+              : 'Review your backup policy configuration before initiating backup.'}
+          </p>
         </div>
-        <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>{editConfigId ? 'Edit Draft' : 'Final Step'}</span>
+        <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>
+          {isScheduledNonDraft ? 'Edit Schedule' : editConfigId ? 'Edit Draft' : 'Final Step'}
+        </span>
       </div>
 
       {/* Sections */}
       <div className='flex-grow overflow-y-auto min-h-0 space-y-3'>
-        <SectionBox title='Source & Destination' sectionKey='source' onEdit={() => onEditStep(1)}>
+        <SectionBox title='Source & Destination' sectionKey='source' onEdit={isDraft ? () => onEditStep(1) : undefined}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) : 'Salesforce'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.provider ?? '--'}</p></div>
@@ -220,7 +230,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           </div>
         </SectionBox>
 
-        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={() => onEditStep(4)}>
+        <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={isDraft ? () => onEditStep(4) : undefined}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{strategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>Custom Selection</p></div>
@@ -263,7 +273,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
       <div className='flex justify-between gap-4 flex-shrink-0 mt-4'>
         <button onClick={() => navigate('/backup-management')} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
         <div className='flex gap-4'>
-          <button onClick={onBack} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>← Back</button>
+          {!editConfigId && <button onClick={onBack} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>← Back</button>}
           <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
           </button>
