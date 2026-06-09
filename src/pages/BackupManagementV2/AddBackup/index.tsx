@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Step1 from './steps/Step1';
 import Step2 from './steps/Step2';
 import Step3 from './steps/Step3';
@@ -7,6 +8,7 @@ import Step4 from './steps/Step4';
 import Step5 from './steps/Step5';
 import Step6 from './steps/Step6';
 import FinalStep from './steps/FinalStep';
+import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
@@ -18,6 +20,9 @@ type SelectedObject = {
 
 export default function AddBackup() {
   const [searchParams] = useSearchParams();
+  const editSlug = searchParams.get('edit') ?? null;
+  const isEditMode = !!editSlug;
+
   const initialStep = Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step;
   const [currentStep, setCurrentStep] = useState<Step>(initialStep);
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
@@ -28,6 +33,42 @@ export default function AddBackup() {
   const environment = 'Production';
   const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>([]);
   const [destinationId, setDestinationId] = useState<string | null>(null);
+  const [editConfigId, setEditConfigId] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
+
+  const backupConfigService = useBackupConfigService();
+
+  const { data: editData } = useQuery({
+    queryKey: ['backup-config-edit', editSlug],
+    queryFn: () => backupConfigService.getBackupConfig(editSlug!),
+    enabled: isEditMode,
+  });
+
+  useEffect(() => {
+    if (!editData || prefilled) return;
+    const item = (editData as any)?.data?.data ?? (editData as any)?.data ?? (editData as any);
+    if (!item) return;
+
+    setEditConfigId(item.backupConfigId ?? null);
+    setSelectedPlatformId(item.crmId ?? null);
+    setDestinationId(item.destinationId ?? null);
+    setPolicyName(item.name ?? '');
+    setDescription(item.description ?? '');
+    const strat: BackupStrategy = item.schedule === 'REALTIME' ? 'realtime' : 'scheduled';
+    setSelectedStrategy(strat);
+
+    const objs: SelectedObject[] = (item.objects ?? []).map((o: any) => ({
+      id: o.name ?? o.id,
+      type: (o.type === 'CUSTOM' ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
+    }));
+    setSelectedObjects(objs);
+
+    if (item.scheduleConfig) setScheduleConfig(item.scheduleConfig);
+
+    // Jump directly to FinalStep
+    setCurrentStep(strat === 'realtime' ? 6 : 7);
+    setPrefilled(true);
+  }, [editData, prefilled]);
 
   const getMaxSteps = () => {
     return selectedStrategy === 'realtime' ? 6 : 7;
@@ -143,7 +184,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            // If editing source (step 1), clear selected objects so Step5 starts fresh
             if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
@@ -154,6 +194,7 @@ export default function AddBackup() {
           selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
+          editConfigId={editConfigId}
         />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
@@ -161,7 +202,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            // If editing source (step 1), clear selected objects so Step5 starts fresh
             if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
@@ -172,6 +212,7 @@ export default function AddBackup() {
           selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           destinationId={destinationId}
+          editConfigId={editConfigId}
         />
       )}
     </div>
