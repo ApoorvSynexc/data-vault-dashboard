@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useArchivalService } from '../../../../services/archival/archival.service';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
 import Table from '../../../../components/Table';
@@ -26,26 +27,6 @@ function now(): string {
     ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// ─── Sample record generator ──────────────────────────────────────────────────
-
-function genSampleRows(obj: SelectedArchiveObject) {
-  const NAMES = [
-    ['Accenture HQ', 'Jan 12, 2019', 'Customer', '$2.4B'],
-    ['Accenture EMEA', 'Mar 5, 2019', 'Customer', '$890M'],
-    ['Accenture APAC', 'Jul 22, 2020', 'Partner', '$1.1B'],
-    ['Beta Corp', 'Sep 14, 2018', 'Prospect', '$45M'],
-    ['Global Ventures', 'Feb 28, 2020', 'Customer', '$3.2B'],
-  ];
-  const prefix = obj.id.slice(0, 3).toUpperCase();
-  return NAMES.map((row, i) => ({
-    id: `${prefix}${String(i + 1).padStart(5, '0')}`,
-    name: row[0],
-    createdDate: row[1],
-    status: row[2],
-    revenue: row[3],
-    willArchive: i !== 3,
-  }));
-}
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -62,6 +43,7 @@ interface Step3DryRunProps {
 
 export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
+  const backupConfigService = useBackupConfigService();
   const navigate = useNavigate();
   const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -71,6 +53,40 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [duration, setDuration] = useState<string>('');
   const [apiCallsUsed, setApiCallsUsed] = useState<string>('');
   const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
+
+  // Preview Records state
+  type FieldOption = { apiName: string; label: string };
+  const [showFieldPicker, setShowFieldPicker] = useState(false);
+  const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [fieldsLoading, setFieldsLoading] = useState(false);
+  const [fieldsError, setFieldsError] = useState<string | null>(null);
+  const [showRecordsTable, setShowRecordsTable] = useState(false);
+
+  async function handlePreviewRecords() {
+    const objId = selectedPreviewObject || selectedObjects[0]?.id;
+    if (!objId || !crmId) return;
+    setFieldsLoading(true);
+    setFieldsError(null);
+    setShowFieldPicker(true);
+    setShowRecordsTable(false);
+    try {
+      const fields = await backupConfigService.getObjectFields(crmId, objId);
+      setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label })));
+    } catch {
+      setFieldsError('Failed to load fields. Please try again.');
+    } finally {
+      setFieldsLoading(false);
+    }
+  }
+
+  function toggleField(apiName: string) {
+    setSelectedFields((prev) =>
+      prev.includes(apiName)
+        ? prev.filter((f) => f !== apiName)
+        : prev.length < 5 ? [...prev, apiName] : prev
+    );
+  }
 
   const objectIds = useMemo(() => selectedObjects.map((o) => o.id), [selectedObjects]);
 
@@ -109,8 +125,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   );
   const totalDataSize = useMemo(() => calcDataSize(totalRecords), [totalRecords]);
 
-  const previewObj = selectedObjects.find((o) => o.id === selectedPreviewObject) ?? selectedObjects[0];
-  const sampleRows = previewObj ? genSampleRows(previewObj) : [];
 
   async function handleSaveDraft() {
     if (!archivalPayload) return;
@@ -303,59 +317,158 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
             })()}
 
 
-            {/* Sample Records Preview */}
+            {/* Preview Records */}
             <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
               style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
               <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3'>
-                <h2 className='text-sm font-semibold text-gray-800 flex-shrink-0'>Sample Records Preview (first 5)</h2>
+                <h2 className='text-sm font-semibold text-gray-800 flex-shrink-0'>Sample Records Preview</h2>
                 <div className='flex items-center gap-2 ml-auto'>
                   {selectedObjects.length > 0 && (
                     <select
                       value={selectedPreviewObject}
-                      onChange={(e) => setSelectedPreviewObject(e.target.value)}
+                      onChange={(e) => { setSelectedPreviewObject(e.target.value); setShowFieldPicker(false); setSelectedFields([]); setAvailableFields([]); setShowRecordsTable(false); }}
                       className='text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'>
                       {selectedObjects.map((o) => (
                         <option key={o.id} value={o.id}>{o.name}</option>
                       ))}
                     </select>
                   )}
-                  <button className='flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 border border-gray-200 transition-colors'>
-                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
+                  <button
+                    onClick={handlePreviewRecords}
+                    className='flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
+                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
                     </svg>
-                    Export CSV
+                    Preview Records
                   </button>
                 </div>
               </div>
-              {(() => {
-                type SampleRow = ReturnType<typeof genSampleRows>[number];
-                const sampleColumns: TableColumn<SampleRow>[] = [
-                  { key: 'id', header: 'Record ID', render: (r) => <span className='text-xs text-gray-400 font-mono'>{r.id}</span> },
-                  { key: 'name', header: 'Name', render: (r) => <span className='font-semibold text-gray-900 text-sm'>{r.name}</span> },
-                  { key: 'createdDate', header: 'Created Date', render: (r) => <span className='text-gray-600 text-sm'>{r.createdDate}</span> },
-                  { key: 'status', header: 'Status / Stage', render: (r) => <span className='text-gray-600 text-sm'>{r.status}</span> },
-                  { key: 'revenue', header: 'Annual Revenue', render: (r) => <span className='text-gray-600 text-sm'>{r.revenue}</span> },
-                  {
-                    key: 'willArchive',
-                    header: 'Will Be Archived',
-                    render: (r) => r.willArchive
-                      ? <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}>Yes</span>
-                      : <span className='inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.08)', color: '#059669' }}>No — filtered out</span>,
-                  },
-                ];
-                return (
-                  <Table<SampleRow>
-                    columns={sampleColumns}
-                    rows={sampleRows}
-                    getRowKey={(r) => r.id}
-                    headerVariant='uppercase'
-                    borderless
-                    cellPaddingClassName='px-4 py-3'
-                    rowClassName='hover:bg-gray-50 transition-colors'
-                    getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
-                  />
-                );
-              })()}
+
+              {!showFieldPicker && (
+                <div className='flex flex-col items-center justify-center py-10 gap-3 text-center'>
+                  <div className='w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center'>
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
+                    </svg>
+                  </div>
+                  <p className='text-sm text-gray-500'>Click <span className='font-semibold text-gray-700'>Preview Records</span> to select fields and preview sample data</p>
+                </div>
+              )}
+
+              {showRecordsTable && selectedFields.length > 0 && (
+                <div className='border-t border-gray-100'>
+                  <div className='px-5 py-3 flex items-center justify-between border-b border-gray-50'>
+                    <p className='text-xs font-semibold text-gray-700'>
+                      Preview — {selectedObjects.find(o => o.id === (selectedPreviewObject || selectedObjects[0]?.id))?.name ?? selectedPreviewObject}
+                      <span className='ml-2 font-normal text-gray-400'>first 5 records</span>
+                    </p>
+                    <div className='flex flex-wrap gap-1.5'>
+                      {selectedFields.map((apiName) => {
+                        const field = availableFields.find(f => f.apiName === apiName);
+                        return (
+                          <span key={apiName} className='text-[10px] font-semibold px-2 py-0.5 rounded-full'
+                            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
+                            {field?.label ?? apiName}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className='overflow-x-auto'>
+                    <table className='w-full border-collapse'>
+                      <thead>
+                        <tr className='bg-gray-50'>
+                          {selectedFields.map((apiName) => {
+                            const field = availableFields.find(f => f.apiName === apiName);
+                            return (
+                              <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
+                                {field?.label ?? apiName}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                            {selectedFields.map((apiName) => (
+                              <td key={apiName} className='px-4 py-3'>
+                                <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className='text-center text-xs text-gray-400 py-3'>Connect to live data source to view actual records</p>
+                  </div>
+                </div>
+              )}
+
+              {showFieldPicker && !showRecordsTable && (
+                <div className='p-5'>
+                  {fieldsLoading && (
+                    <div className='flex items-center gap-2 text-sm text-gray-500'>
+                      <div className='w-4 h-4 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin' />
+                      Loading fields…
+                    </div>
+                  )}
+                  {fieldsError && <p className='text-sm text-red-500'>{fieldsError}</p>}
+                  {!fieldsLoading && !fieldsError && (
+                    <div className='flex flex-col gap-3'>
+                      <div className='flex items-center justify-between'>
+                        <p className='text-xs font-semibold text-gray-700'>
+                          Select up to 5 fields to preview
+                          <span className='ml-2 text-gray-400 font-normal'>({selectedFields.length}/5 selected)</span>
+                        </p>
+                        <div className='flex items-center gap-3'>
+                          {selectedFields.length > 0 && (
+                            <button onClick={() => { setSelectedFields([]); setShowRecordsTable(false); }} className='text-xs text-gray-400 hover:text-red-500 transition-colors'>Clear all</button>
+                          )}
+                          {selectedFields.length > 0 && (
+                            <button
+                              onClick={() => setShowRecordsTable(true)}
+                              className='flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+                            >
+                              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                <polyline points='9 18 15 12 9 6' />
+                              </svg>
+                              Show Preview
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className='flex flex-wrap gap-2 max-h-48 overflow-y-auto'>
+                        {availableFields.map((f) => {
+                          const isSelected = selectedFields.includes(f.apiName);
+                          const isDisabled = !isSelected && selectedFields.length >= 5;
+                          return (
+                            <button
+                              key={f.apiName}
+                              onClick={() => { toggleField(f.apiName); setShowRecordsTable(false); }}
+                              disabled={isDisabled}
+                              className='flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all'
+                              style={isSelected
+                                ? { background: '#EFF6FF', borderColor: '#155DFC', color: '#155DFC' }
+                                : isDisabled
+                                ? { background: '#F9FAFB', borderColor: '#E5E7EB', color: '#D1D5DB', cursor: 'not-allowed' }
+                                : { background: '#fff', borderColor: '#E5E7EB', color: '#374151' }
+                              }
+                            >
+                              {isSelected && (
+                                <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
+                                  <polyline points='20 6 9 17 4 12' />
+                                </svg>
+                              )}
+                              {f.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Dry run meta */}
