@@ -282,7 +282,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
           </button>
           <button onClick={handleRunBackup} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Creating...' : 'Run Backup'}
+            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
           </button>
         </div>
       </div>
