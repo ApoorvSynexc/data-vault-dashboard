@@ -49,6 +49,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>({});
+  const [failedObjects, setFailedObjects] = useState<{ name: string; error: string }[]>([]);
   const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [runTime, setRunTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
@@ -125,10 +126,17 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
       const data = (response as any)?.data ?? response;
       const results: any[] = data?.objects ?? [];
       const map: Record<string, number> = {};
-      results.forEach((obj: any) => {
-        if (obj.name) map[obj.name] = obj.count ?? 0;
-      });
+      const failed: { name: string; error: string }[] = [];
+      const flattenResults = (items: any[]) => {
+        items.forEach((obj: any) => {
+          if (obj.name) map[obj.name] = obj.count ?? 0;
+          if (obj.success === false && obj.name) failed.push({ name: obj.name, error: obj.error ?? 'Unknown error' });
+          if (obj.children?.length) flattenResults(obj.children);
+        });
+      };
+      flattenResults(results);
       setObjectCountMap(map);
+      setFailedObjects(failed);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       setRunTime(now());
       setDuration(`${elapsed} seconds`);
@@ -263,7 +271,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 { label: 'Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
                 { label: 'Objects Affected', value: String(selectedObjects.length), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
                 { label: 'Estimated Size', value: totalDataSize, color: '#7C3AED', bg: 'rgba(124,58,237,0.06)', border: 'rgba(124,58,237,0.12)' },
-                { label: 'Errors', value: '0', color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.12)' },
+                { label: 'Errors', value: String(failedObjects.length), color: failedObjects.length > 0 ? '#F24400' : '#059669', bg: failedObjects.length > 0 ? 'rgba(242,68,0,0.06)' : 'rgba(5,150,105,0.06)', border: failedObjects.length > 0 ? 'rgba(242,68,0,0.12)' : 'rgba(5,150,105,0.12)' },
               ].map((card) => (
                 <div key={card.label} className='bg-white rounded-xl px-4 py-4 text-center'
                   style={{ border: `1px solid ${card.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
@@ -272,6 +280,26 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 </div>
               ))}
             </div>
+
+            {/* Failed objects detail */}
+            {failedObjects.length > 0 && (
+              <div className='rounded-xl flex-shrink-0' style={{ border: '1px solid rgba(242,68,0,0.2)', background: 'rgba(242,68,0,0.03)' }}>
+                <div className='flex items-center gap-2 px-5 py-3 border-b' style={{ borderColor: 'rgba(242,68,0,0.1)' }}>
+                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                  <p className='text-sm font-semibold' style={{ color: '#F24400' }}>Failed Objects ({failedObjects.length})</p>
+                </div>
+                <div className='divide-y' style={{ borderColor: 'rgba(242,68,0,0.08)' }}>
+                  {failedObjects.map((f, i) => (
+                    <div key={i} className='flex items-start gap-3 px-5 py-3'>
+                      <span className='text-xs font-semibold text-gray-800 w-32 flex-shrink-0'>{f.name}</span>
+                      <span className='text-xs text-red-600'>{f.error}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Per-Object Impact table */}
             {(() => {
