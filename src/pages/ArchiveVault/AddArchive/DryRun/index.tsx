@@ -49,9 +49,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>({});
+  const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [runTime, setRunTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
-  const [apiCallsUsed, setApiCallsUsed] = useState<string>('');
   const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
 
   // Preview Records state
@@ -117,31 +117,27 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
 
   async function runDryRun() {
     setDryRunState('loading');
+    setDryRunError(null);
     const start = Date.now();
     try {
       const objects = (archivalPayload?.objects as any[]) ?? [];
       const response = await archivalService.runDryRun({ crmId: crmId ?? '', objects });
       const data = (response as any)?.data ?? response;
+      const results: any[] = data?.objects ?? [];
       const map: Record<string, number> = {};
-      const results: any[] = data?.results ?? data?.objects ?? (Array.isArray(data) ? data : []);
       results.forEach((obj: any) => {
-        const key = obj.name ?? obj.apiName ?? obj.objectApiName ?? obj.objectName;
-        const count = obj.recordCount ?? obj.totalRecords ?? obj.count ?? 0;
-        if (key) map[key] = count;
+        if (obj.name) map[obj.name] = obj.count ?? 0;
       });
       setObjectCountMap(map);
-    } catch {
-      // fallback dummy on error
-      const map: Record<string, number> = {};
-      selectedObjects.forEach((o, i) => { map[o.id] = [3420, 4210, 1495, 890, 1204][i % 5]; });
-      setObjectCountMap(map);
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      setRunTime(now());
+      setDuration(`${elapsed} seconds`);
+      setDryRunState('results');
+      if (selectedObjects[0]) setSelectedPreviewObject(selectedObjects[0].id);
+    } catch (err: any) {
+      setDryRunError(err?.message ?? 'Dry run failed. Please try again.');
+      setDryRunState('idle');
     }
-    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    setRunTime(now());
-    setDuration(`${elapsed} seconds`);
-    setApiCallsUsed(`${Math.floor(objectIds.length * 14 + 80)} of 15,000`);
-    setDryRunState('results');
-    if (selectedObjects[0]) setSelectedPreviewObject(selectedObjects[0].id);
   }
 
   const totalRecords = useMemo(
@@ -216,7 +212,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
         </div>
 
         {/* ── IDLE STATE ─────────────────────────────────────────────────── */}
-        {dryRunState === 'idle' && (
+        {dryRunState === 'idle' && !dryRunError && (
           <div className='flex items-start gap-3 rounded-xl px-5 py-4 flex-shrink-0'
             style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
             <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#3B82F6' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
@@ -225,6 +221,15 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
             <p className='text-sm text-blue-800'>
               <strong>Dry Run not yet executed.</strong> Click <em>Run Dry Run</em> above to simulate the archive against your live Salesforce org. No data will be moved.
             </p>
+          </div>
+        )}
+        {dryRunState === 'idle' && dryRunError && (
+          <div className='flex items-start gap-3 rounded-xl px-5 py-4 flex-shrink-0'
+            style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.2)' }}>
+            <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+              <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+            </svg>
+            <p className='text-sm text-red-700'><strong>Dry Run Failed.</strong> {dryRunError}</p>
           </div>
         )}
 
@@ -525,7 +530,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 {[
                   { label: 'Dry Run Executed', value: runTime },
                   { label: 'Duration', value: duration },
-                  { label: 'API Calls Used', value: apiCallsUsed },
                   { label: 'Filter Validity', value: '✓ All valid', green: true },
                 ].map((item) => (
                   <div key={item.label}>
