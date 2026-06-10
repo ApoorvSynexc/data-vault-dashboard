@@ -305,16 +305,28 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
         <button onClick={() => navigate('/backup-management')} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
         <div className='flex gap-4'>
           {!editConfigId && <button onClick={onBack} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>← Back</button>}
-          <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
-          </button>
-          <button
-            onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
-            disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
-          >
-            {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
-          </button>
+          {(isScheduledNonDraft || isRealtimeNonDraft) ? (
+            <button
+              onClick={() => createBackupWithStatus((editConfigStatus?.toUpperCase() as 'ACTIVE' | 'DRAFT') ?? 'ACTIVE')}
+              disabled={isLoading || updateBackupMutation.isPending}
+              className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isLoading || updateBackupMutation.isPending ? 'Updating...' : 'Update Backup'}
+            </button>
+          ) : (
+            <>
+              <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
+              </button>
+              <button
+                onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
+                disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+                className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

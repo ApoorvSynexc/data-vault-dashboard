@@ -131,12 +131,14 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
           Cancel
         </button>
         <div className='flex gap-4'>
-          <button
-            onClick={onBack}
-            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
-          >
-            ← Back
-          </button>
+          {!onDone && (
+            <button
+              onClick={onBack}
+              className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+            >
+              ← Back
+            </button>
+          )}
           <button
             onClick={handleNext}
             disabled={!policyName.trim()}
