@@ -120,11 +120,7 @@ export default function FinalStep({
     onError: onMutationError,
   });
 
-  const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    if (!crmId) { alert('Please select a platform'); return; }
-    if (!destinationId) { alert('Please select a destination'); return; }
-    setIsLoading(true);
-    setApiError(null);
+  const buildPayload = (backupStatus: 'DRAFT' | 'ACTIVE') => {
     const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
@@ -139,10 +135,41 @@ export default function FinalStep({
       status: backupStatus,
     };
     if (!isRealTime && scheduleConfig) payload.scheduleConfig = scheduleConfig;
+    return payload;
+  };
+
+  const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
+    if (!crmId) { alert('Please select a platform'); return; }
+    if (!destinationId) { alert('Please select a destination'); return; }
+    setIsLoading(true);
+    setApiError(null);
+    const payload = buildPayload(backupStatus);
     if (editConfigId) {
       updateBackupMutation.mutate(payload);
     } else {
       createBackupMutation.mutate(payload);
+    }
+  };
+
+  const handleActivateDraft = () => { setAcceptanceText(''); setAcceptanceError(false); setShowRunConfirmation(true); };
+
+  const handleActivateDraftConfirm = async () => {
+    if (isRealTime && acceptanceText.toLowerCase() !== 'accept') { setAcceptanceError(true); return; }
+    setShowRunConfirmation(false);
+    setSuccessType('run');
+    if (!crmId) { alert('Please select a platform'); return; }
+    if (!destinationId) { alert('Please select a destination'); return; }
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      await backupConfigService.updateBackupConfig(editConfigId!, buildPayload('DRAFT'));
+      await backupConfigService.updateBackupConfig(editConfigId!, buildPayload('ACTIVE'));
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      setIsLoading(false);
+      setIsSuccess(true);
+    } catch (error: any) {
+      setIsLoading(false);
+      setApiError(error?.message || 'Failed to activate backup. Please try again.');
     }
   };
 
@@ -281,7 +308,11 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
           </button>
-          <button onClick={handleRunBackup} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+          <button
+            onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
+            disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+          >
             {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
           </button>
         </div>
@@ -319,8 +350,14 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             </div>
             <div className='flex justify-end gap-3 px-6 pb-6'>
               <button onClick={() => setShowRunConfirmation(false)} className='px-5 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-              <button onClick={handleConfirmRun} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : editConfigId ? 'Yes, Update Backup' : 'Yes, Create Backup'}
+              <button
+                onClick={isDraft && editConfigId ? handleActivateDraftConfirm : handleConfirmRun}
+                disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+                className='px-5 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending
+                  ? 'Saving...'
+                  : isDraft && editConfigId ? 'Yes, Activate Backup' : editConfigId ? 'Yes, Update Backup' : 'Yes, Create Backup'}
               </button>
             </div>
           </div>
