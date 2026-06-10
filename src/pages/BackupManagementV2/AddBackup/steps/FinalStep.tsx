@@ -307,7 +307,15 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           {!editConfigId && <button onClick={onBack} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>← Back</button>}
           {(isScheduledNonDraft || isRealtimeNonDraft) ? (
             <button
-              onClick={() => createBackupWithStatus((editConfigStatus?.toUpperCase() as 'ACTIVE' | 'DRAFT') ?? 'ACTIVE')}
+              onClick={() => {
+                if (!crmId) { alert('Please select a platform'); return; }
+                if (!destinationId) { alert('Please select a destination'); return; }
+                setIsLoading(true);
+                setApiError(null);
+                const payload = buildPayload('ACTIVE');
+                delete payload.status;
+                updateBackupMutation.mutate(payload);
+              }}
               disabled={isLoading || updateBackupMutation.isPending}
               className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
             >
