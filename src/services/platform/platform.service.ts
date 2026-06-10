@@ -30,6 +30,7 @@ export type ConnectedPlatform = {
   createdAt: string;
   updatedAt: string;
   userId: string;
+  environment?: string;
 };
 
 export type ConnectPlatformResponse = {
