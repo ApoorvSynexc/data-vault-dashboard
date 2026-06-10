@@ -47,51 +47,6 @@ function genSampleRows(obj: SelectedArchiveObject) {
   }));
 }
 
-// ─── Warning card ─────────────────────────────────────────────────────────────
-
-interface WarningCardProps {
-  code: string;
-  title: string;
-  detail: string;
-  optionA?: string;
-  optionB?: string;
-  onFix?: () => void;
-}
-
-function WarningCard({ code, title, detail, optionA, optionB }: WarningCardProps) {
-  return (
-    <div style={{ border: '1px solid #fed7aa', background: '#fffbeb', borderRadius: 8, padding: '14px 16px' }}>
-      <div className='flex items-start justify-between mb-2'>
-        <div className='flex items-center gap-2'>
-          <span className='text-xs font-bold px-2 py-0.5 rounded-full' style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A' }}>
-            {code}
-          </span>
-          <span className='text-sm font-semibold text-gray-800'>{title}</span>
-        </div>
-        <button className='flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors'>
-          Fix Filter
-        </button>
-      </div>
-      <p className='text-sm text-gray-600 mb-3' dangerouslySetInnerHTML={{ __html: detail }} />
-      {(optionA || optionB) && (
-        <div className='grid grid-cols-2 gap-2'>
-          {optionA && (
-            <div className='bg-white border border-gray-200 rounded-lg p-3 text-xs'>
-              <p className='font-semibold text-gray-800 mb-1'>Option A</p>
-              <p className='text-gray-500'>{optionA}</p>
-            </div>
-          )}
-          {optionB && (
-            <div className='bg-white border border-gray-200 rounded-lg p-3 text-xs'>
-              <p className='font-semibold text-gray-800 mb-1'>Option B</p>
-              <p className='text-gray-500'>{optionB}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -153,12 +108,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
     [objectCountMap],
   );
   const totalDataSize = useMemo(() => calcDataSize(totalRecords), [totalRecords]);
-
-  const warningObjects = useMemo(
-    () => selectedObjects.filter((_, i) => i % 2 === 0),
-    [selectedObjects],
-  );
-  const warningCount = Math.min(warningObjects.length, 2);
 
   const previewObj = selectedObjects.find((o) => o.id === selectedPreviewObject) ?? selectedObjects[0];
   const sampleRows = previewObj ? genSampleRows(previewObj) : [];
@@ -261,17 +210,15 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               <p className='text-sm text-green-800'>
                 <strong>Dry Run Passed</strong> — All filters validated.{' '}
                 <strong>{fmtNumber(totalRecords)}</strong> records eligible.
-                {warningCount > 0 && <> {warningCount} warning{warningCount !== 1 ? 's' : ''} found — review before proceeding.</>}
               </p>
             </div>
 
             {/* Impact summary cards — 5 cards */}
-            <div className='grid grid-cols-2 sm:grid-cols-5 gap-3 flex-shrink-0'>
+            <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
               {[
                 { label: 'Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
                 { label: 'Objects Affected', value: String(selectedObjects.length), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
                 { label: 'Estimated Size', value: totalDataSize, color: '#7C3AED', bg: 'rgba(124,58,237,0.06)', border: 'rgba(124,58,237,0.12)' },
-                { label: 'Warnings', value: String(warningCount), color: '#D97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.12)' },
                 { label: 'Errors', value: '0', color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.12)' },
               ].map((card) => (
                 <div key={card.label} className='bg-white rounded-xl px-4 py-4 text-center'
@@ -330,27 +277,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                     return <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>;
                   },
                 },
-                {
-                  key: 'relatedRecords',
-                  header: 'Related Records',
-                  render: (obj) => {
-                    const count = objectCountMap[obj.id] ?? 0;
-                    const isWarning = obj._idx % 2 === 0 && warningCount > 0;
-                    return isWarning
-                      ? <span className='text-xs text-amber-600'>⚠ {Math.floor(count * 0.68).toLocaleString()} related records will lose parent</span>
-                      : <span className='text-xs text-gray-400'>No orphaned references</span>;
-                  },
-                },
-                {
-                  key: 'status',
-                  header: 'Status',
-                  render: (obj) => {
-                    const isWarning = obj._idx % 2 === 0 && warningCount > 0;
-                    return isWarning
-                      ? <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706' }}>⚠ Warning</span>
-                      : <span className='inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full' style={{ background: 'rgba(5,150,105,0.1)', color: '#059669' }}>✓ Clear</span>;
-                  },
-                },
               ];
               return (
                 <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
@@ -376,38 +302,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               );
             })()}
 
-            {/* Warnings section */}
-            {warningCount > 0 && (
-              <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
-                style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
-                  <div className='flex items-center gap-2'>
-                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
-                      <line x1='12' y1='9' x2='12' y2='13' /><line x1='12' y1='17' x2='12.01' y2='17' />
-                    </svg>
-                    <h2 className='text-sm font-semibold' style={{ color: '#D97706' }}>Warnings ({warningCount})</h2>
-                  </div>
-                  <p className='text-xs text-gray-400'>Review before proceeding — archive will still run unless you fix these</p>
-                </div>
-                <div className='p-4 flex flex-col gap-3'>
-                  {warningObjects.slice(0, 2).map((obj, i) => (
-                    <WarningCard
-                      key={obj.uuid}
-                      code={`W-00${i + 1}`}
-                      title={i === 0
-                        ? `Broken Parent References — ${obj.name} → Related Object`
-                        : `Orphaned Records — ${obj.name} → Child Object`}
-                      detail={i === 0
-                        ? `Archiving <strong>${fmtNumber(objectCountMap[obj.id])}</strong> ${obj.name} records will leave related records without a parent reference. These records will still exist in Salesforce but their reference field will be null.`
-                        : `Archiving ${obj.name} records will orphan related child records linked to those records. These records will remain in Salesforce with a null reference field.`}
-                      optionA={i === 0 ? 'Add a condition to exclude records with active relationships before archiving.' : undefined}
-                      optionB={i === 0 ? 'Re-order objects so child records archive before parent to preserve referential integrity.' : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Sample Records Preview */}
             <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
