@@ -62,6 +62,31 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [fieldsLoading, setFieldsLoading] = useState(false);
   const [fieldsError, setFieldsError] = useState<string | null>(null);
   const [showRecordsTable, setShowRecordsTable] = useState(false);
+  const [previewRecords, setPreviewRecords] = useState<Record<string, any>[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  async function handleShowPreview() {
+    const objId = selectedPreviewObject || selectedObjects[0]?.id;
+    if (!objId || selectedFields.length === 0) return;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setShowRecordsTable(true);
+    try {
+      const res = await backupConfigService.getObjectRecords({
+        crmId: crmId ?? '',
+        apiName: objId,
+        fields: selectedFields,
+      });
+      const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
+      setPreviewRecords(Array.isArray(records) ? records : []);
+    } catch (err: any) {
+      setPreviewError(err?.message ?? 'Failed to load records.');
+      setPreviewRecords([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function handlePreviewRecords() {
     const objId = selectedPreviewObject || selectedObjects[0]?.id;
@@ -326,7 +351,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                   {selectedObjects.length > 0 && (
                     <select
                       value={selectedPreviewObject}
-                      onChange={(e) => { setSelectedPreviewObject(e.target.value); setShowFieldPicker(false); setSelectedFields([]); setAvailableFields([]); setShowRecordsTable(false); }}
+                      onChange={(e) => { setSelectedPreviewObject(e.target.value); setShowFieldPicker(false); setSelectedFields([]); setAvailableFields([]); setShowRecordsTable(false); setPreviewRecords([]); setPreviewError(null); }}
                       className='text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'>
                       {selectedObjects.map((o) => (
                         <option key={o.id} value={o.id}>{o.name}</option>
@@ -375,32 +400,54 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                     </div>
                   </div>
                   <div className='overflow-x-auto'>
-                    <table className='w-full border-collapse'>
-                      <thead>
-                        <tr className='bg-gray-50'>
-                          {selectedFields.map((apiName) => {
-                            const field = availableFields.find(f => f.apiName === apiName);
-                            return (
-                              <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
-                                {field?.label ?? apiName}
-                              </th>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
-                            {selectedFields.map((apiName) => (
-                              <td key={apiName} className='px-4 py-3'>
-                                <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
-                              </td>
-                            ))}
+                    {previewError && (
+                      <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
+                    )}
+                    {!previewError && (
+                      <table className='w-full border-collapse'>
+                        <thead>
+                          <tr className='bg-gray-50'>
+                            {selectedFields.map((apiName) => {
+                              const field = availableFields.find(f => f.apiName === apiName);
+                              return (
+                                <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
+                                  {field?.label ?? apiName}
+                                </th>
+                              );
+                            })}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className='text-center text-xs text-gray-400 py-3'>Connect to live data source to view actual records</p>
+                        </thead>
+                        <tbody>
+                          {previewLoading ? (
+                            [1, 2, 3, 4, 5].map((i) => (
+                              <tr key={i} className='border-b border-gray-50'>
+                                {selectedFields.map((apiName) => (
+                                  <td key={apiName} className='px-4 py-3'>
+                                    <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          ) : previewRecords.length === 0 ? (
+                            <tr>
+                              <td colSpan={selectedFields.length} className='px-4 py-8 text-center text-sm text-gray-400'>
+                                No records found
+                              </td>
+                            </tr>
+                          ) : (
+                            previewRecords.map((record, i) => (
+                              <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                                {selectedFields.map((apiName) => (
+                                  <td key={apiName} className='px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate'>
+                                    {record[apiName] != null ? String(record[apiName]) : <span className='text-gray-300'>—</span>}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               )}
@@ -427,7 +474,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                           )}
                           {selectedFields.length > 0 && (
                             <button
-                              onClick={() => setShowRecordsTable(true)}
+                              onClick={handleShowPreview}
                               className='flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
                             >
                               <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
