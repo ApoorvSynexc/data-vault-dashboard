@@ -315,9 +315,30 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                   key: 'filter',
                   header: 'Filter Applied',
                   render: (obj) => {
+                    const condition = obj.archivalPayload?.condition as any;
+                    const isSoql = condition?.type === 'SOQL';
+
+                    if (isSoql) {
+                      const clause = condition.soqlQuery ?? '';
+                      return (
+                        <div className='flex items-center gap-1.5'>
+                          <span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md'
+                            style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.18)' }}>
+                            <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                              <polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/>
+                            </svg>
+                            SOQL
+                          </span>
+                          <span className='text-xs text-gray-500 font-mono truncate max-w-[180px]' title={clause}>
+                            {clause.length > 35 ? clause.slice(0, 35) + '…' : clause || '—'}
+                          </span>
+                        </div>
+                      );
+                    }
+
                     const filterText = obj.archivalPayload?.field
-                      ?.filter((f) => f.name)
-                      .map((f) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
+                      ?.filter((f: any) => f.name)
+                      .map((f: any) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
                       .join(' AND ') ?? 'No filter';
                     const colors = [
                       { bg: 'rgba(21,93,252,0.08)', color: '#155DFC' },
