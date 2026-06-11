@@ -102,7 +102,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
     setShowRecordsTable(false);
     try {
       const fields = await backupConfigService.getObjectFields(crmId, objId);
-      setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label })));
+      setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label ?? f.name })));
     } catch {
       setFieldsError('Failed to load fields. Please try again.');
     } finally {
@@ -117,8 +117,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
         : prev.length < 5 ? [...prev, apiName] : prev
     );
   }
-
-  const objectIds = useMemo(() => selectedObjects.map((o) => o.id), [selectedObjects]);
 
   async function runDryRun() {
     setDryRunState('loading');
