@@ -145,8 +145,9 @@ export default function FilterPopup({
   const canApply = matchMode !== 'Custom' || customLogicError === null;
 
   type ValidateStatus = 'idle' | 'loading' | 'valid' | 'invalid';
-  const [validateStatus, setValidateStatus] = useState<ValidateStatus>('idle');
+  const [validateStatus, setValidateStatus] = useState<ValidateStatus>(initialSoqlQuery ? 'valid' : 'idle');
   const [validateMessage, setValidateMessage] = useState<string>('');
+  const [queryValidated, setQueryValidated] = useState(!!initialSoqlQuery);
 
   const validateMutation = useMutation({
     mutationFn: ({ isParentVal, soqlClause }: { isParentVal: boolean; soqlClause: string }) => {
@@ -158,9 +159,19 @@ export default function FilterPopup({
       return archivalService.validateSoql({ object, isParent: isParentVal, crmId: crmId ?? '' });
     },
     onSuccess: (data: any) => {
-      const msg = data?.data?.message ?? data?.message ?? 'Query is valid.';
-      setValidateStatus('valid');
-      setValidateMessage(msg);
+      const payload = data?.data ?? data;
+      const isValid = payload?.isValid !== false;
+      if (isValid) {
+        const msg = 'Query validated successfully.';
+        setValidateStatus('valid');
+        setValidateMessage(msg);
+        setQueryValidated(true);
+      } else {
+        const msg = payload?.error ?? payload?.message ?? data?.message ?? 'Invalid SOQL query.';
+        setValidateStatus('invalid');
+        setValidateMessage(msg);
+        setQueryValidated(false);
+      }
     },
     onError: (err: any) => {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Invalid SOQL query.';
@@ -245,7 +256,7 @@ export default function FilterPopup({
                   {/* Editable user clause */}
                   <textarea
                     value={soqlUserClause}
-                    onChange={(e) => setSoqlUserClause(e.target.value)}
+                    onChange={(e) => { setSoqlUserClause(e.target.value); setQueryValidated(false); setValidateStatus('idle'); setValidateMessage(''); }}
                     disabled={conditions.some((c) => c.field)}
                     placeholder="e.g. CreatedDate > 2023-01-01T00:00:00Z AND Status = 'Active'"
                     className='w-full resize-none px-4 py-3 text-sm font-mono outline-none bg-transparent text-gray-800 placeholder-gray-400 disabled:cursor-not-allowed'
@@ -495,20 +506,27 @@ export default function FilterPopup({
             className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
             Cancel
           </button>
-          <button
-            onClick={() => {
-            if (filterTab === 'SOQL') {
-              onApply(objectId, [], 'ALL conditions', '', soqlUserClause.trim() || undefined);
-              return;
-            }
-            if (!canApply) { setCustomLogicTouched(true); return; }
-            onApply(objectId, conditions, matchMode, customLogic);
-          }}
-            disabled={!canApply}
-            className='px-5 py-2 text-sm font-medium rounded-lg transition-colors'
-            style={{ background: canApply ? '#155DFC' : '#CBD5E1', color: canApply ? 'white' : '#94A3B8', cursor: canApply ? 'pointer' : 'not-allowed' }}>
-            Apply Filter
-          </button>
+          {(() => {
+            const soqlCanApply = filterTab !== 'SOQL' || (queryValidated && soqlUserClause.trim().length > 0);
+            const buttonEnabled = filterTab === 'SOQL' ? soqlCanApply : canApply;
+            return (
+              <button
+                onClick={() => {
+                  if (filterTab === 'SOQL') {
+                    onApply(objectId, [], 'ALL conditions', '', soqlUserClause.trim() || undefined);
+                    return;
+                  }
+                  if (!canApply) { setCustomLogicTouched(true); return; }
+                  onApply(objectId, conditions, matchMode, customLogic);
+                }}
+                disabled={!buttonEnabled}
+                title={filterTab === 'SOQL' && !queryValidated ? 'Validate query before applying' : undefined}
+                className='px-5 py-2 text-sm font-medium rounded-lg transition-colors'
+                style={{ background: buttonEnabled ? '#155DFC' : '#CBD5E1', color: buttonEnabled ? 'white' : '#94A3B8', cursor: buttonEnabled ? 'pointer' : 'not-allowed' }}>
+                Apply Filter
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>
