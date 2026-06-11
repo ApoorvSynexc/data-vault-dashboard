@@ -76,9 +76,12 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginV2 /> },
       { path: '/signup', element: <Signup /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
-      { path: '/login-callback/salesforce', element: <SocialLoginCallback /> },
     ],
   },
+  // Standalone — no PublicRoute/ProtectedRoute wrapper intentionally.
+  // PublicRoute redirects authenticated users to '/' which would unmount this
+  // component before its useEffect can post the success message and close the popup.
+  { path: '/login-callback/salesforce', element: <SocialLoginCallback /> },
   { path: '*', element: <NotFound /> },
 ]);
 
