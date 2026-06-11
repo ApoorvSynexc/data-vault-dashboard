@@ -56,7 +56,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
   const [impactPage, setImpactPage] = useState(0);
   const [previewPage, setPreviewPage] = useState(0);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 5;
 
   // Preview Records state
   type FieldOption = { apiName: string; label: string };
@@ -400,7 +400,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       <span className='text-xs text-gray-400'>{allImpactRows.length} object{allImpactRows.length !== 1 ? 's' : ''}</span>
                     )}
                   </div>
-                  <div style={{ minHeight: 440, overflowY: 'auto' }}>
+                  <div style={{ minHeight: 300, overflowY: 'auto' }}>
                     <Table<ImpactRow>
                       columns={impactColumns}
                       rows={impactRows}
@@ -510,7 +510,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                         })}
                       </div>
                     </div>
-                    <div className='overflow-x-auto' style={{ minHeight: 440 }}>
+                    <div className='overflow-x-auto' style={{ minHeight: 300 }}>
                       {previewError && (
                         <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
                       )}
