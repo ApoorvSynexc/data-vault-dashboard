@@ -320,18 +320,28 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
 
                     if (isSoql) {
                       const clause = condition.soqlQuery ?? '';
+                      const fullQuery = `SELECT FIELDS(ALL) FROM ${obj.name} WHERE ${clause}`;
                       return (
-                        <div className='flex items-center gap-1.5'>
-                          <span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md'
+                        <div className='flex items-center gap-1.5 group relative'>
+                          <span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0'
                             style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.18)' }}>
                             <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                               <polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/>
                             </svg>
                             SOQL
                           </span>
-                          <span className='text-xs text-gray-500 font-mono truncate max-w-[180px]' title={clause}>
+                          <span className='text-xs text-gray-500 font-mono truncate max-w-[180px] cursor-default'>
                             {clause.length > 35 ? clause.slice(0, 35) + '…' : clause || '—'}
                           </span>
+                          {/* Hover tooltip */}
+                          <div className='absolute left-0 top-full mt-1.5 z-50 hidden group-hover:block'
+                            style={{ minWidth: 260, maxWidth: 380 }}>
+                            <div className='rounded-lg px-3 py-2.5 shadow-lg'
+                              style={{ background: '#1E1E2E', border: '1px solid rgba(124,58,237,0.3)' }}>
+                              <p className='text-[10px] font-semibold mb-1.5' style={{ color: '#A78BFA' }}>Full SOQL Query</p>
+                              <p className='text-xs font-mono leading-relaxed break-all' style={{ color: '#E2E8F0' }}>{fullQuery}</p>
+                            </div>
+                          </div>
                         </div>
                       );
                     }
