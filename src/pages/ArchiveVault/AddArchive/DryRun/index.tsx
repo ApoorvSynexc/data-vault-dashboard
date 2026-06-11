@@ -54,6 +54,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [runTime, setRunTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
   const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
+  const [impactPage, setImpactPage] = useState(0);
+  const [previewPage, setPreviewPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   // Preview Records state
   type FieldOption = { apiName: string; label: string };
@@ -81,6 +84,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
       });
       const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
       setPreviewRecords(Array.isArray(records) ? records : []);
+      setPreviewPage(0);
     } catch (err: any) {
       setPreviewError(err?.message ?? 'Failed to load records.');
       setPreviewRecords([]);
@@ -141,6 +145,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
       setRunTime(now());
       setDuration(`${elapsed} seconds`);
       setDryRunState('results');
+      setImpactPage(0);
       if (selectedObjects[0]) setSelectedPreviewObject(selectedObjects[0].id);
     } catch (err: any) {
       setDryRunError(err?.message ?? 'Dry run failed. Please try again.');
@@ -304,7 +309,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
             {/* Per-Object Impact table */}
             {(() => {
               type ImpactRow = SelectedArchiveObject & { _idx: number };
-              const impactRows: ImpactRow[] = selectedObjects.map((obj, idx) => ({ ...obj, _idx: idx }));
+              const allImpactRows: ImpactRow[] = selectedObjects.map((obj, idx) => ({ ...obj, _idx: idx }));
+              const impactTotalPages = Math.ceil(allImpactRows.length / PAGE_SIZE);
+              const impactRows: ImpactRow[] = allImpactRows.slice(impactPage * PAGE_SIZE, (impactPage + 1) * PAGE_SIZE);
               const impactColumns: TableColumn<ImpactRow>[] = [
                 {
                   key: 'name',
@@ -389,18 +396,55 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
                       <p className='text-xs text-gray-400 mt-0.5'>Dry run completed · <span className='text-green-600 font-medium'>✓ All filters valid</span></p>
                     </div>
+                    {allImpactRows.length > 0 && (
+                      <span className='text-xs text-gray-400'>{allImpactRows.length} object{allImpactRows.length !== 1 ? 's' : ''}</span>
+                    )}
                   </div>
-                  <Table<ImpactRow>
-                    columns={impactColumns}
-                    rows={impactRows}
-                    getRowKey={(obj) => obj.uuid}
-                    headerVariant='uppercase'
-                    borderless
-                    cellPaddingClassName='px-4 py-3.5'
-                    rowClassName='hover:bg-gray-50 transition-colors'
-                    getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
-                    emptyState='No objects selected.'
-                  />
+                  <div style={{ minHeight: 440, overflowY: 'auto' }}>
+                    <Table<ImpactRow>
+                      columns={impactColumns}
+                      rows={impactRows}
+                      getRowKey={(obj) => obj.uuid}
+                      headerVariant='uppercase'
+                      borderless
+                      cellPaddingClassName='px-4 py-3.5'
+                      rowClassName='hover:bg-gray-50 transition-colors'
+                      getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
+                      emptyState='No objects selected.'
+                    />
+                  </div>
+                  {impactTotalPages > 1 && (
+                    <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100'>
+                      <span className='text-xs text-gray-400'>
+                        Showing {impactPage * PAGE_SIZE + 1}–{Math.min((impactPage + 1) * PAGE_SIZE, allImpactRows.length)} of {allImpactRows.length}
+                      </span>
+                      <div className='flex items-center gap-1'>
+                        <button
+                          onClick={() => setImpactPage((p) => Math.max(0, p - 1))}
+                          disabled={impactPage === 0}
+                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
+                        </button>
+                        {Array.from({ length: impactTotalPages }, (_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setImpactPage(i)}
+                            className='w-7 h-7 rounded-md text-xs font-medium transition-colors'
+                            style={impactPage === i
+                              ? { background: '#155DFC', color: 'white' }
+                              : { color: '#6B7280' }}>
+                            {i + 1}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setImpactPage((p) => Math.min(impactTotalPages - 1, p + 1))}
+                          disabled={impactPage === impactTotalPages - 1}
+                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -444,77 +488,113 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 </div>
               )}
 
-              {showRecordsTable && selectedFields.length > 0 && (
-                <div className='border-t border-gray-100'>
-                  <div className='px-5 py-3 flex items-center justify-between border-b border-gray-50'>
-                    <p className='text-xs font-semibold text-gray-700'>
-                      Preview — {selectedObjects.find(o => o.id === (selectedPreviewObject || selectedObjects[0]?.id))?.name ?? selectedPreviewObject}
-                      <span className='ml-2 font-normal text-gray-400'>first 5 records</span>
-                    </p>
-                    <div className='flex flex-wrap gap-1.5'>
-                      {selectedFields.map((apiName) => {
-                        const field = availableFields.find(f => f.apiName === apiName);
-                        return (
-                          <span key={apiName} className='text-[10px] font-semibold px-2 py-0.5 rounded-full'
-                            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
-                            {field?.label ?? apiName}
-                          </span>
-                        );
-                      })}
+              {showRecordsTable && selectedFields.length > 0 && (() => {
+                const previewTotalPages = Math.ceil(previewRecords.length / PAGE_SIZE);
+                const pagedRecords = previewRecords.slice(previewPage * PAGE_SIZE, (previewPage + 1) * PAGE_SIZE);
+                return (
+                  <div className='border-t border-gray-100'>
+                    <div className='px-5 py-3 flex items-center justify-between border-b border-gray-50'>
+                      <p className='text-xs font-semibold text-gray-700'>
+                        Preview — {selectedObjects.find(o => o.id === (selectedPreviewObject || selectedObjects[0]?.id))?.name ?? selectedPreviewObject}
+                        {previewRecords.length > 0 && <span className='ml-2 font-normal text-gray-400'>{previewRecords.length} record{previewRecords.length !== 1 ? 's' : ''}</span>}
+                      </p>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {selectedFields.map((apiName) => {
+                          const field = availableFields.find(f => f.apiName === apiName);
+                          return (
+                            <span key={apiName} className='text-[10px] font-semibold px-2 py-0.5 rounded-full'
+                              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
+                              {field?.label ?? apiName}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <div className='overflow-x-auto'>
-                    {previewError && (
-                      <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
-                    )}
-                    {!previewError && (
-                      <table className='w-full border-collapse'>
-                        <thead>
-                          <tr className='bg-gray-50'>
-                            {selectedFields.map((apiName) => {
-                              const field = availableFields.find(f => f.apiName === apiName);
-                              return (
-                                <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
-                                  {field?.label ?? apiName}
-                                </th>
-                              );
-                            })}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {previewLoading ? (
-                            [1, 2, 3, 4, 5].map((i) => (
-                              <tr key={i} className='border-b border-gray-50'>
-                                {selectedFields.map((apiName) => (
-                                  <td key={apiName} className='px-4 py-3'>
-                                    <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
-                                  </td>
-                                ))}
-                              </tr>
-                            ))
-                          ) : previewRecords.length === 0 ? (
-                            <tr>
-                              <td colSpan={selectedFields.length} className='px-4 py-8 text-center text-sm text-gray-400'>
-                                No records found
-                              </td>
+                    <div className='overflow-x-auto' style={{ minHeight: 440 }}>
+                      {previewError && (
+                        <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
+                      )}
+                      {!previewError && (
+                        <table className='w-full border-collapse'>
+                          <thead>
+                            <tr className='bg-gray-50'>
+                              {selectedFields.map((apiName) => {
+                                const field = availableFields.find(f => f.apiName === apiName);
+                                return (
+                                  <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
+                                    {field?.label ?? apiName}
+                                  </th>
+                                );
+                              })}
                             </tr>
-                          ) : (
-                            previewRecords.map((record, i) => (
-                              <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
-                                {selectedFields.map((apiName) => (
-                                  <td key={apiName} className='px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate'>
-                                    {record[apiName] != null ? String(record[apiName]) : <span className='text-gray-300'>—</span>}
-                                  </td>
-                                ))}
+                          </thead>
+                          <tbody>
+                            {previewLoading ? (
+                              Array.from({ length: PAGE_SIZE }, (_, i) => (
+                                <tr key={i} className='border-b border-gray-50'>
+                                  {selectedFields.map((apiName) => (
+                                    <td key={apiName} className='px-4 py-3'>
+                                      <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))
+                            ) : pagedRecords.length === 0 ? (
+                              <tr>
+                                <td colSpan={selectedFields.length} className='px-4 py-8 text-center text-sm text-gray-400'>
+                                  No records found
+                                </td>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
+                            ) : (
+                              pagedRecords.map((record, i) => (
+                                <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                                  {selectedFields.map((apiName) => (
+                                    <td key={apiName} className='px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate'>
+                                      {record[apiName] != null ? String(record[apiName]) : <span className='text-gray-300'>—</span>}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                    {previewTotalPages > 1 && (
+                      <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100'>
+                        <span className='text-xs text-gray-400'>
+                          Showing {previewPage * PAGE_SIZE + 1}–{Math.min((previewPage + 1) * PAGE_SIZE, previewRecords.length)} of {previewRecords.length}
+                        </span>
+                        <div className='flex items-center gap-1'>
+                          <button
+                            onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                            disabled={previewPage === 0}
+                            className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
+                          </button>
+                          {Array.from({ length: previewTotalPages }, (_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setPreviewPage(i)}
+                              className='w-7 h-7 rounded-md text-xs font-medium transition-colors'
+                              style={previewPage === i
+                                ? { background: '#155DFC', color: 'white' }
+                                : { color: '#6B7280' }}>
+                              {i + 1}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))}
+                            disabled={previewPage === previewTotalPages - 1}
+                            className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {showFieldPicker && !showRecordsTable && (
                 <div className='p-5'>
