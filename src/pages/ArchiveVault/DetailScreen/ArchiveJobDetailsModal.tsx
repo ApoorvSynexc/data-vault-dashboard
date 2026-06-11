@@ -44,16 +44,17 @@ interface ArchiveJobDetail {
 
 function getStatusStyle(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'COMPLETED' || s === 'SUCCESS' || s === 'UPLOAD_COMPLETED') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
+  if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
+  if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
   if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
-  if (s === 'RUNNING') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
+  if (s === 'RUNNING' || s === 'IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
   if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
 }
 
 function getStatusLabel(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'COMPLETED' || s === 'SUCCESS' || s === 'UPLOAD_COMPLETED') return 'Completed';
+  if (s === 'COMPLETED' || s === 'SUCCESS') return 'Completed';
   if (s === 'FAILED') return 'Failed';
   if (s === 'RUNNING') return 'In Progress';
   if (s === 'CREATED' || s === 'PENDING') return 'Pending';
