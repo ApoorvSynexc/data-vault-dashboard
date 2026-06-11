@@ -597,64 +597,134 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               })()}
 
               {showFieldPicker && !showRecordsTable && (
-                <div className='p-5'>
+                <div className='p-5 border-t border-gray-100'>
                   {fieldsLoading && (
-                    <div className='flex items-center gap-2 text-sm text-gray-500'>
+                    <div className='flex items-center gap-2 text-sm text-gray-500 py-4'>
                       <div className='w-4 h-4 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin' />
                       Loading fields…
                     </div>
                   )}
                   {fieldsError && <p className='text-sm text-red-500'>{fieldsError}</p>}
                   {!fieldsLoading && !fieldsError && (
-                    <div className='flex flex-col gap-3'>
-                      <div className='flex items-center justify-between'>
-                        <p className='text-xs font-semibold text-gray-700'>
-                          Select up to 5 fields to preview
-                          <span className='ml-2 text-gray-400 font-normal'>({selectedFields.length}/5 selected)</span>
-                        </p>
-                        <div className='flex items-center gap-3'>
-                          {selectedFields.length > 0 && (
-                            <button onClick={() => { setSelectedFields([]); setShowRecordsTable(false); }} className='text-xs text-gray-400 hover:text-red-500 transition-colors'>Clear all</button>
+                    <div className='flex gap-4' style={{ height: 300 }}>
+                      {/* Left panel — available fields */}
+                      <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
+                        <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
+                          <span className='text-xs font-semibold text-gray-600'>Available Fields</span>
+                          <span className='text-[10px] text-gray-400'>{availableFields.length} fields</span>
+                        </div>
+                        <div className='flex-1 overflow-y-auto'>
+                          {availableFields.map((f) => {
+                            const isSelected = selectedFields.includes(f.apiName);
+                            const isDisabled = !isSelected && selectedFields.length >= 5;
+                            return (
+                              <button
+                                key={f.apiName}
+                                onClick={() => { if (!isDisabled) { toggleField(f.apiName); setShowRecordsTable(false); } }}
+                                disabled={isDisabled}
+                                className='w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2.5 disabled:cursor-not-allowed'
+                                style={{
+                                  borderBottom: '1px solid #F8FAFC',
+                                  background: isSelected ? 'rgba(21,93,252,0.05)' : undefined,
+                                  color: isDisabled ? '#CBD5E1' : '#374151',
+                                }}
+                              >
+                                {/* Checkbox */}
+                                <span className='flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors'
+                                  style={{
+                                    border: isSelected ? '2px solid #155DFC' : '2px solid #D1D5DB',
+                                    background: isSelected ? '#155DFC' : 'white',
+                                  }}>
+                                  {isSelected && (
+                                    <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'>
+                                      <polyline points='20 6 9 17 4 12'/>
+                                    </svg>
+                                  )}
+                                </span>
+                                <span className={isSelected ? 'font-medium text-blue-700' : ''}>{f.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Center arrows */}
+                      <div className='flex flex-col items-center justify-center gap-2 flex-shrink-0'>
+                        <button
+                          onClick={() => {
+                            const remaining = availableFields.filter(f => !selectedFields.includes(f.apiName));
+                            const toAdd = remaining.slice(0, 5 - selectedFields.length).map(f => f.apiName);
+                            if (toAdd.length) { setSelectedFields(prev => [...prev, ...toAdd]); setShowRecordsTable(false); }
+                          }}
+                          disabled={selectedFields.length >= 5 || availableFields.filter(f => !selectedFields.includes(f.apiName)).length === 0}
+                          title='Add all'
+                          className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <polyline points='13 17 18 12 13 7'/><polyline points='6 17 11 12 6 7'/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => { setSelectedFields([]); setShowRecordsTable(false); }}
+                          disabled={selectedFields.length === 0}
+                          title='Remove all'
+                          className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <polyline points='11 17 6 12 11 7'/><polyline points='18 17 13 12 18 7'/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Right panel — selected fields */}
+                      <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
+                        <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
+                          <span className='text-xs font-semibold text-gray-600'>Selected Fields</span>
+                          <span className='text-[10px] font-semibold' style={{ color: selectedFields.length >= 5 ? '#DC2626' : '#155DFC' }}>{selectedFields.length}/5</span>
+                        </div>
+                        <div className='flex-1 overflow-y-auto'>
+                          {selectedFields.length === 0 ? (
+                            <div className='flex flex-col items-center justify-center h-full gap-1.5 px-3 text-center'>
+                              <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
+                                <polyline points='9 18 15 12 9 6'/>
+                              </svg>
+                              <p className='text-[11px] text-gray-300'>Select fields from the left</p>
+                            </div>
+                          ) : (
+                            selectedFields.map((apiName, idx) => {
+                              const field = availableFields.find(f => f.apiName === apiName);
+                              return (
+                                <div
+                                  key={apiName}
+                                  className='flex items-center justify-between px-3 py-2 group'
+                                  style={{ borderBottom: '1px solid #F8FAFC', background: 'rgba(21,93,252,0.03)' }}
+                                >
+                                  <div className='flex items-center gap-2 min-w-0'>
+                                    <span className='text-[10px] font-bold text-blue-400 w-4 flex-shrink-0'>{idx + 1}.</span>
+                                    <span className='text-xs text-gray-700 truncate'>{field?.label ?? apiName}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => { setSelectedFields(prev => prev.filter(f => f !== apiName)); setShowRecordsTable(false); }}
+                                    className='ml-2 flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100'>
+                                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                      <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+                                    </svg>
+                                  </button>
+                                </div>
+                              );
+                            })
                           )}
-                          {selectedFields.length > 0 && (
+                        </div>
+                        {selectedFields.length > 0 && (
+                          <div className='px-3 py-2.5 border-t border-gray-100 flex-shrink-0'>
                             <button
                               onClick={handleShowPreview}
-                              className='flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
-                            >
+                              className='w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
                               <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                                <polyline points='9 18 15 12 9 6' />
+                                <polyline points='9 18 15 12 9 6'/>
                               </svg>
                               Show Preview
                             </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className='flex flex-wrap gap-2 max-h-48 overflow-y-auto'>
-                        {availableFields.map((f) => {
-                          const isSelected = selectedFields.includes(f.apiName);
-                          const isDisabled = !isSelected && selectedFields.length >= 5;
-                          return (
-                            <button
-                              key={f.apiName}
-                              onClick={() => { toggleField(f.apiName); setShowRecordsTable(false); }}
-                              disabled={isDisabled}
-                              className='flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all'
-                              style={isSelected
-                                ? { background: '#EFF6FF', borderColor: '#155DFC', color: '#155DFC' }
-                                : isDisabled
-                                ? { background: '#F9FAFB', borderColor: '#E5E7EB', color: '#D1D5DB', cursor: 'not-allowed' }
-                                : { background: '#fff', borderColor: '#E5E7EB', color: '#374151' }
-                              }
-                            >
-                              {isSelected && (
-                                <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
-                                  <polyline points='20 6 9 17 4 12' />
-                                </svg>
-                              )}
-                              {f.label}
-                            </button>
-                          );
-                        })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
