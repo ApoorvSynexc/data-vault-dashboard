@@ -25,7 +25,7 @@ export type SelectedArchiveObject = {
   archivalPayload?: {
     name: string;
     condition: ArchivalCondition;
-    field: { name: string; filter: { value: string; operator: string } }[];
+    field: { name: string; dataType: string; filter: { value: string; operator: string } }[];
     children?: any[];
   };
 };
@@ -536,6 +536,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             .filter((c) => c.field)
             .map((c) => ({
               name: c.field,
+              dataType: (c.dataType ?? 'string').toUpperCase(),
               filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
             })),
           children,

@@ -143,6 +143,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
         condition: payload?.condition ?? { type: 'AND' as const },
         field: (payload?.field ?? []).map((f) => ({
           name: f.name,
+          dataType: (f.dataType ?? 'string').toUpperCase(),
           filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
         })),
         ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
