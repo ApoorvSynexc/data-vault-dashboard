@@ -696,7 +696,7 @@ export default function AddDetailsWizard({
                         registerChildParent={registerChildParent}
                         includeChild={includeChild}
                         setIncludeChild={setIncludeChild}
-                        maxDepth={Math.min(MAX_CHILD_DEPTH, 5 - (relationshipDepth ?? 0))}
+                        maxDepth={Math.max(0, MAX_CHILD_DEPTH - (relationshipDepth ?? 0))}
                       />
                     )}
                   </tbody>
