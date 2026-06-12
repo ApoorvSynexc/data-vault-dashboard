@@ -191,6 +191,15 @@ export default function ArchiveDetailScreen() {
   })();
   const objectNames = allObjectNames;
   const totalSizeBytes: number = (() => {
+    const flattenObjs = (items: any[]): any[] => items.flatMap((o) => [o, ...flattenObjs(o.children ?? [])]);
+    // Sum from latest job's objects (most accurate — backup-job/list response has real sizeInBytes)
+    const latestJob = jobRows[0];
+    if (latestJob) {
+      const all = flattenObjs((latestJob as any).object ?? []);
+      const total = all.reduce((acc, o) => acc + (o.sizeInBytes ?? 0), 0);
+      if (total > 0) return total;
+    }
+    // Fallback: config-level or config objects
     if (item?.sizeInBytes) return item.sizeInBytes;
     let total = 0;
     const sum = (items: any[]) => items?.forEach((o) => { total += o.sizeInBytes ?? 0; if (o.children?.length) sum(o.children); });
