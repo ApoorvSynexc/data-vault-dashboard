@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import type { BackupJobItem } from '../../../services/backup-config/backup-config.service';
@@ -122,6 +122,9 @@ export default function ArchiveDetailScreen() {
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [logPageIndex, setLogPageIndex] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [processError, setProcessError] = useState<string | null>(null);
+  const [processSuccess, setProcessSuccess] = useState(false);
+  const queryClient = useQueryClient();
   const [filterCollapsedIds, setFilterCollapsedIds] = useState<Set<string>>(new Set());
 
   const toggleFilterCollapse = (id: string) =>
@@ -164,6 +167,19 @@ export default function ArchiveDetailScreen() {
   });
 
   const item: any = (rawDetail as any)?.data ?? rawDetail ?? null;
+
+  const processBackupMutation = useMutation({
+    mutationFn: () => backupConfigService.processBackup(slug!),
+    onSuccess: () => {
+      setProcessSuccess(true);
+      setProcessError(null);
+      queryClient.invalidateQueries({ queryKey: ['archival-jobs', slug] });
+      setTimeout(() => setProcessSuccess(false), 3000);
+    },
+    onError: (err: any) => {
+      setProcessError(err?.response?.data?.message ?? err?.message ?? 'Failed to process backup.');
+    },
+  });
 
   useEffect(() => {
     const objects: any[] = item?.objects ?? [];
@@ -259,7 +275,7 @@ export default function ArchiveDetailScreen() {
 
       {/* Header Card */}
       <div className='rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
-        <div className='flex items-start justify-between gap-4'>
+        <div className='relative flex items-start justify-between gap-4'>
           <div className='flex items-start gap-3'>
             <button
               type='button'
@@ -297,12 +313,35 @@ export default function ArchiveDetailScreen() {
               </p>
             </div>
           </div>
-          <button
-            type='button'
-            className='flex-shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'
-          >
-            Full Restore
-          </button>
+          <div className='flex items-center gap-2 flex-shrink-0'>
+            <button
+              type='button'
+              disabled={processBackupMutation.isPending}
+              onClick={() => { setProcessError(null); processBackupMutation.mutate(); }}
+              className='flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {processBackupMutation.isPending ? (
+                <>
+                  <span className='h-3 w-3 rounded-full border-2 border-blue-300 border-t-blue-600 animate-spin' />
+                  Processing…
+                </>
+              ) : processSuccess ? (
+                <>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>
+                  Done!
+                </>
+              ) : 'Process Backup'}
+            </button>
+            <button
+              type='button'
+              className='flex-shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'
+            >
+              Full Restore
+            </button>
+          </div>
+          {processError && (
+            <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>{processError}</p>
+          )}
         </div>
       </div>
 
