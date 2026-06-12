@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 
@@ -74,10 +74,7 @@ export function ChildRows({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent]);
 
-  const rows = useMemo(() => [
-    ...rawRows.filter((r: any) => selectedChildObjects.has(r.uuid as string)),
-    ...rawRows.filter((r: any) => !selectedChildObjects.has(r.uuid as string)),
-  ], [rawRows, selectedChildObjects]);
+  const rows = rawRows;
 
   useEffect(() => { setPage(0); }, [objectName]);
 
