@@ -181,13 +181,27 @@ export default function AddDetailsWizard({
         setValidateStatus('valid');
         setValidateMessage('Query validated successfully.');
         setSoqlValidated(true);
-        setRelationshipDepth(typeof payload?.relationshipDepth === 'number' ? payload.relationshipDepth : null);
+        const newDepth = typeof payload?.relationshipDepth === 'number' ? payload.relationshipDepth : null;
+        setRelationshipDepth((prev) => {
+          if (prev !== newDepth) {
+            // depth constraint changed — reset child selections to avoid stale blocked entries
+            setSelectedChildObjects(new Set());
+            setIncludeChild({});
+          }
+          return newDepth;
+        });
       } else {
         const msg = payload?.error ?? payload?.message ?? 'Invalid SOQL query.';
         setValidateStatus('invalid');
         setValidateMessage(msg);
         setSoqlValidated(false);
-        setRelationshipDepth(null);
+        setRelationshipDepth((prev) => {
+          if (prev !== null) {
+            setSelectedChildObjects(new Set());
+            setIncludeChild({});
+          }
+          return null;
+        });
       }
     },
     onError: (err: any) => {

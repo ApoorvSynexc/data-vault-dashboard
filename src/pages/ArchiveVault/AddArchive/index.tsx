@@ -84,7 +84,10 @@ export default function AddArchive() {
             setArchivalPayload(payload);
             goNext();
           }}
-          onBack={goBack}
+          onBack={() => {
+            setSelectedObjects([]);
+            goBack();
+          }}
         />
       )}
       {currentStep === 5 && (
