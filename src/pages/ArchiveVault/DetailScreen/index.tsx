@@ -177,16 +177,32 @@ export default function ArchiveDetailScreen() {
   }, [item?.objects]);
 
   // ── Mapped fields from API ─────────────────────────────────────────────────
-  const platformName   = item?.crmDetail?.name ?? item?.crmDetail?.crmName ?? 'Salesforce';
-  const crmName        = item?.crmDetail?.crmName ?? 'Salesforce';
-  const environment    = item?.crmDetail?.environment ?? 'production';
-  const objectNames: string[] = item?.objectNames ?? [];
-  const dataSize       = formatBytes(item?.sizeInBytes);
+  const platformName   = item?.crmDetail?.name ?? item?.crmDetail?.crmName ?? '--';
+  const crmName        = item?.crmDetail?.crmName ?? '--';
+  const environment    = item?.crmDetail?.environment ?? '--';
+  const allObjectNames: string[] = (() => {
+    const names: string[] = [];
+    const collect = (items: any[]) => items?.forEach((o) => {
+      if (o.name) names.push(o.name);
+      if (o.children?.length) collect(o.children);
+    });
+    collect(item?.objects ?? []);
+    return names.length ? names : (item?.objectNames ?? []);
+  })();
+  const objectNames = allObjectNames;
+  const totalSizeBytes: number = (() => {
+    if (item?.sizeInBytes) return item.sizeInBytes;
+    let total = 0;
+    const sum = (items: any[]) => items?.forEach((o) => { total += o.sizeInBytes ?? 0; if (o.children?.length) sum(o.children); });
+    sum(item?.objects ?? []);
+    return total;
+  })();
+  const dataSize = formatBytes(totalSizeBytes || undefined);
   const status         = item?.backupStatus ?? item?.status ?? 'ACTIVE';
 
   const sc             = item?.scheduleConfig;
-  const freq           = sc?.scheduling?.frequency ?? 'HOURLY';
-  const startTime      = sc?.scheduling?.startTime ?? '12:00';
+  const freq           = sc?.scheduling?.frequency ?? '--';
+  const startTime      = sc?.scheduling?.startTime ?? '--';
 
   const destName       = item?.destinationDetail?.destinationName ?? '--';
   const destType       = item?.destinationDetail?.type ?? '--';
@@ -250,12 +266,25 @@ export default function ArchiveDetailScreen() {
                 <h1 className='text-base font-bold text-gray-900'>{item?.name ?? slug}</h1>
                 <StatusDot status={status} />
               </div>
-              <p className='mt-1 text-xs text-gray-400'>
-                {objectNames.length > 0 ? objectNames.join(', ') : '--'}
-                {' · '}
-                {dataSize}
-                {' · '}
-                {environment}
+              <p className='mt-1 text-xs text-gray-400 flex items-center gap-1.5 flex-wrap'>
+                {(() => {
+                  const rootNames: string[] = item?.objects?.map((o: any) => o.name).filter(Boolean) ?? item?.objectNames ?? [];
+                  const extra = objectNames.length - rootNames.length;
+                  return (
+                    <>
+                      <span>{rootNames.length > 0 ? rootNames.join(', ') : '--'}</span>
+                      {extra > 0 && (
+                        <span className='rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500'>
+                          +{extra} more
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
+                <span>·</span>
+                <span>{dataSize}</span>
+                <span>·</span>
+                <span>{environment}</span>
               </p>
             </div>
           </div>
@@ -698,12 +727,13 @@ export default function ArchiveDetailScreen() {
                       const statusColor: Record<string, string> = {
                         SUCCESS: 'border-green-200 bg-green-50 text-green-700',
                         COMPLETED: 'border-green-200 bg-green-50 text-green-700',
+                        UPLOAD_COMPLETED: 'border-cyan-200 bg-cyan-50 text-cyan-700',
                         FAILED: 'border-red-200 bg-red-50 text-red-700',
                         RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
                         PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
                       };
                       const dotColor: Record<string, string> = {
-                        SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
+                        SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500', UPLOAD_COMPLETED: 'bg-cyan-500',
                         FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
                       };
                       const flattenObjects = (items: any[]): any[] =>
