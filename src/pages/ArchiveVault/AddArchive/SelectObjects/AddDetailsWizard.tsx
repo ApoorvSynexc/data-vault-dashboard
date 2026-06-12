@@ -946,7 +946,8 @@ export default function AddDetailsWizard({
               {step < 3 && (
                 <button
                   onClick={step === 1 ? handleNextStep1 : () => setStep((s) => (s + 1) as 2 | 3)}
-                  className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700'>
+                  disabled={step === 1 && !canProceedFromStep1}
+                  className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
                   Next →
                 </button>
               )}
