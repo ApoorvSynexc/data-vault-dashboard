@@ -648,9 +648,16 @@ export default function ArchiveDetailScreen() {
                         SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
                         FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
                       };
-                      const recordsUploaded = job.object?.reduce((acc, o) => acc + (o.completedRecordCount ?? 0), 0) ?? (job.recordCount ?? 0);
-                      const recordsDeleted  = job.object?.reduce((acc, o) => acc + ((o as any).deletedSuccessRecordCount ?? 0), 0) ?? 0;
-                      const totalSizeBytes  = job.object?.reduce((acc, o) => acc + (o.sizeInBytes ?? 0), 0) ?? (job.sizeInBytes ?? 0);
+                      const flattenObjects = (items: any[]): any[] =>
+                        items.flatMap((o) => [o, ...flattenObjects(o.children ?? [])]);
+                      const allObjects = flattenObjects(job.object ?? []);
+                      const recordsUploaded = allObjects.length > 0
+                        ? allObjects.reduce((acc, o) => acc + (o.insertCount ?? o.completedRecordCount ?? o.totalRecordCount ?? 0), 0)
+                        : (job.recordCount ?? 0);
+                      const recordsDeleted  = allObjects.reduce((acc, o) => acc + ((o as any).deletedSuccessRecordCount ?? 0), 0);
+                      const totalSizeBytes  = allObjects.length > 0
+                        ? allObjects.reduce((acc, o) => acc + (o.sizeInBytes ?? 0), 0)
+                        : (job.sizeInBytes ?? 0);
                       return (
                         <tr key={job.backupJobId ?? i} className='border-b border-gray-50 hover:bg-blue-50/30 transition-colors group'>
                           <td className='py-3 pr-4 whitespace-nowrap'>
