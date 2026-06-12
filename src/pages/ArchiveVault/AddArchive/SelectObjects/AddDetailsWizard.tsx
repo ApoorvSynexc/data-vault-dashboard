@@ -278,11 +278,20 @@ export default function AddDetailsWizard({
     setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
   }, []);
 
-  const buildChildTree = (parentUuid: string): BuiltChildNode[] =>
-    Array.from(selectedChildObjects)
+  const buildChildTree = (parentUuid: string, visited = new Set<string>()): BuiltChildNode[] => {
+    if (visited.has(parentUuid)) return [];
+    visited.add(parentUuid);
+    const seenNames = new Set<string>();
+    return Array.from(selectedChildObjects)
       .filter((uuid) => childParents[uuid] === parentUuid)
+      .filter((uuid) => {
+        const name = childApiNames[uuid] ?? uuid;
+        if (seenNames.has(name)) return false;
+        seenNames.add(name);
+        return true;
+      })
       .map((uuid) => {
-        const nested = buildChildTree(uuid);
+        const nested = buildChildTree(uuid, visited);
         return {
           id: uuid,
           name: childApiNames[uuid] ?? uuid,
@@ -293,6 +302,7 @@ export default function AddDetailsWizard({
           ...(nested.length > 0 ? { children: nested } : {}),
         };
       });
+  };
 
   // ── step 3: schedule ───────────────────────────────────────────────────────
   const schedInit = initSchedule(initialConfig?.schedule);

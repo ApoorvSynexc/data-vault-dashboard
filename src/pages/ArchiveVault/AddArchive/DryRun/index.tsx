@@ -4,8 +4,6 @@ import { useArchivalService } from '../../../../services/archival/archival.servi
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
-import Table from '../../../../components/Table';
-import type { TableColumn } from '../../../../components/Table';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -157,6 +155,36 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   );
   const totalDataSize = useMemo(() => calcDataSize(totalRecords), [totalRecords]);
 
+  // Tree grid state for Per-Object Impact — empty set means all collapsed by default
+  const [expandedImpactIds, setExpandedImpactIds] = useState<Set<string>>(new Set());
+  const toggleImpactCollapse = (id: string) =>
+    setExpandedImpactIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  type ImpactTreeRow = { name: string; rowKey: string; id: string; depth: number; hasChildren: boolean; condition?: any; fields?: any[] };
+
+  const impactTreeRows = useMemo((): ImpactTreeRow[] => {
+    const rows: ImpactTreeRow[] = [];
+    const rawObjects: any[] = (archivalPayload?.objects as any[]) ?? [];
+    const dedup = (items: any[]): any[] => {
+      const seen = new Set<string>();
+      return items.filter((o) => { const k = o.name ?? o.id; if (seen.has(k)) return false; seen.add(k); return true; });
+    };
+    const walk = (items: any[], depth: number, parentKey: string) => {
+      dedup(items).forEach((obj, idx) => {
+        const id = obj.id ?? obj.name;
+        const rowKey = `${parentKey}-${idx}-${obj.name}`;
+        const children = dedup(obj.children ?? []);
+        const hasChildren = children.length > 0;
+        rows.push({ name: obj.name, rowKey, id, depth, hasChildren, condition: obj.condition, fields: obj.field ?? [] });
+        if (hasChildren && expandedImpactIds.has(rowKey)) {
+          walk(children, depth + 1, rowKey);
+        }
+      });
+    };
+    walk(rawObjects, 0, 'root');
+    return rows;
+  }, [archivalPayload, expandedImpactIds]);
+
 
   async function handleSaveDraft() {
     if (!archivalPayload) return;
@@ -304,140 +332,127 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               </div>
             )}
 
-            {/* Per-Object Impact table */}
+            {/* Per-Object Impact — tree grid */}
             {(() => {
-              type ImpactRow = SelectedArchiveObject & { _idx: number };
-              const allImpactRows: ImpactRow[] = selectedObjects.map((obj, idx) => ({ ...obj, _idx: idx }));
-              const impactTotalPages = Math.ceil(allImpactRows.length / PAGE_SIZE);
-              const impactRows: ImpactRow[] = allImpactRows.slice(impactPage * PAGE_SIZE, (impactPage + 1) * PAGE_SIZE);
-              const impactColumns: TableColumn<ImpactRow>[] = [
-                {
-                  key: 'name',
-                  header: 'Object',
-                  render: (obj) => <span className='font-semibold text-gray-900 text-sm'>{obj.name}</span>,
-                },
-                {
-                  key: 'filter',
-                  header: 'Filter Applied',
-                  render: (obj) => {
-                    const condition = obj.archivalPayload?.condition as any;
-                    const isSoql = condition?.type === 'SOQL';
-
-                    if (isSoql) {
-                      const clause = condition.soqlQuery ?? '';
-                      const fullQuery = `SELECT FIELDS(ALL) FROM ${obj.name} WHERE ${clause}`;
-                      return (
-                        <div className='flex items-center gap-1.5 group relative'>
-                          <span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0'
-                            style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.18)' }}>
-                            <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                              <polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/>
-                            </svg>
-                            SOQL
-                          </span>
-                          <span className='text-xs text-gray-500 font-mono truncate max-w-[180px] cursor-default'>
-                            {clause.length > 35 ? clause.slice(0, 35) + '…' : clause || '—'}
-                          </span>
-                          {/* Hover tooltip */}
-                          <div className='absolute left-0 top-full mt-1.5 z-50 hidden group-hover:block'
-                            style={{ minWidth: 260, maxWidth: 380 }}>
-                            <div className='rounded-lg px-3 py-2.5 shadow-lg'
-                              style={{ background: '#1E1E2E', border: '1px solid rgba(124,58,237,0.3)' }}>
-                              <p className='text-[10px] font-semibold mb-1.5' style={{ color: '#A78BFA' }}>Full SOQL Query</p>
-                              <p className='text-xs font-mono leading-relaxed break-all' style={{ color: '#E2E8F0' }}>{fullQuery}</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    const filterText = obj.archivalPayload?.field
-                      ?.filter((f: any) => f.name)
-                      .map((f: any) => `${f.name} ${f.filter.operator} "${f.filter.value}"`)
-                      .join(' AND ') ?? 'No filter';
-                    const colors = [
-                      { bg: 'rgba(21,93,252,0.08)', color: '#155DFC' },
-                      { bg: 'rgba(217,119,6,0.08)', color: '#D97706' },
-                      { bg: 'rgba(5,150,105,0.08)', color: '#059669' },
-                    ];
-                    const c = colors[obj._idx % colors.length];
-                    return (
-                      <span className='text-xs font-medium px-2 py-0.5 rounded-md max-w-xs truncate block'
-                        style={{ background: c.bg, color: c.color }}>
-                        {filterText.length > 40 ? filterText.slice(0, 40) + '…' : filterText}
-                      </span>
-                    );
-                  },
-                },
-                {
-                  key: 'matchingRecords',
-                  header: 'Matching Records',
-                  render: (obj) => {
-                    const count = objectCountMap[obj.id] ?? 0;
-                    return <span className='font-semibold text-gray-900 tabular-nums text-sm'>{fmtNumber(count)}</span>;
-                  },
-                },
-                {
-                  key: 'estSize',
-                  header: 'Est. Size',
-                  render: (obj) => {
-                    const count = objectCountMap[obj.id] ?? 0;
-                    return <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>;
-                  },
-                },
-              ];
+              const allObjects: any[] = (archivalPayload?.objects as any[]) ?? [];
+              const totalObjectCount = (() => { let n = 0; const count = (items: any[]) => items.forEach((o) => { n++; if (o.children?.length) count(o.children); }); count(allObjects); return n; })();
+              const pagedRows = impactTreeRows.slice(impactPage * PAGE_SIZE, (impactPage + 1) * PAGE_SIZE);
+              const impactTotalPages = Math.ceil(impactTreeRows.length / PAGE_SIZE);
               return (
                 <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
                   style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  {/* Header */}
                   <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
                     <div>
                       <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
                       <p className='text-xs text-gray-400 mt-0.5'>Dry run completed · <span className='text-green-600 font-medium'>✓ All filters valid</span></p>
                     </div>
-                    {allImpactRows.length > 0 && (
-                      <span className='text-xs text-gray-400'>{allImpactRows.length} object{allImpactRows.length !== 1 ? 's' : ''}</span>
-                    )}
+                    <span className='text-xs text-gray-400'>{totalObjectCount} object{totalObjectCount !== 1 ? 's' : ''}</span>
                   </div>
-                  <div style={{ minHeight: 300, overflowY: 'auto' }}>
-                    <Table<ImpactRow>
-                      columns={impactColumns}
-                      rows={impactRows}
-                      getRowKey={(obj) => obj.uuid}
-                      headerVariant='uppercase'
-                      borderless
-                      cellPaddingClassName='px-4 py-3.5'
-                      rowClassName='hover:bg-gray-50 transition-colors'
-                      getRowStyle={() => ({ borderBottom: '1px solid #F8FAFC' })}
-                      emptyState='No objects selected.'
-                    />
+                  {/* Column headers */}
+                  <div className='grid px-4 py-2.5 bg-gray-50 border-b border-gray-100'
+                    style={{ gridTemplateColumns: '280px 1fr 160px 120px' }}>
+                    {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE'].map((h) => (
+                      <span key={h} className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>{h}</span>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  <div style={{ minHeight: 260, overflowY: 'auto' }}>
+                    {pagedRows.length === 0 ? (
+                      <div className='flex items-center justify-center py-12 text-sm text-gray-400'>No objects selected.</div>
+                    ) : pagedRows.map((row) => {
+                      const isParent = row.depth === 0;
+                      const count = objectCountMap[row.name] ?? 0;
+                      const isSoql = row.condition?.type === 'SOQL';
+                      const clause = row.condition?.soqlQuery ?? '';
+                      const fields: any[] = row.fields ?? [];
+                      return (
+                        <div key={row.rowKey}
+                          className='grid border-b border-gray-50 hover:bg-gray-50/60 transition-colors items-center'
+                          style={{ gridTemplateColumns: '280px 1fr 160px 120px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
+                          {/* Object column */}
+                          <div className='flex items-center gap-1 py-3 pr-3' style={{ paddingLeft: 16 + row.depth * 20 }}>
+                            {row.hasChildren ? (
+                              <button
+                                onClick={() => toggleImpactCollapse(row.rowKey)}
+                                className='flex-shrink-0 w-5 h-5 rounded flex items-center justify-center mr-1 hover:bg-gray-100 transition-colors'
+                                style={{ border: '1px solid #E2E8F0' }}>
+                                <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                                  style={{ transform: expandedImpactIds.has(row.rowKey) ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}>
+                                  <polyline points='6 9 12 15 18 9' />
+                                </svg>
+                              </button>
+                            ) : (
+                              <span className='flex-shrink-0 w-5 mr-1' />
+                            )}
+                            <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-md mr-2'
+                              style={{ background: isParent ? 'rgba(21,93,252,0.08)' : 'rgba(99,102,241,0.08)' }}>
+                              <svg viewBox='0 0 24 24' fill='none' stroke={isParent ? '#155DFC' : '#6366f1'} strokeWidth='2' className='h-3 w-3'>
+                                <path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>
+                              </svg>
+                            </div>
+                            <span className='text-xs font-semibold text-gray-800 truncate'>{row.name}</span>
+                          </div>
+                          {/* Filter Applied column */}
+                          <div className='py-3 px-3'>
+                            {isSoql ? (
+                              <div className='flex items-center gap-1.5 group relative'>
+                                <span className='flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0'
+                                  style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.18)' }}>
+                                  <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                    <polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/>
+                                  </svg>
+                                  SOQL
+                                </span>
+                                <span className='text-xs text-gray-500 font-mono truncate max-w-[180px]'>
+                                  {clause.length > 35 ? clause.slice(0, 35) + '…' : clause || '—'}
+                                </span>
+                                <div className='absolute left-0 top-full mt-1.5 z-50 hidden group-hover:block' style={{ minWidth: 260, maxWidth: 380 }}>
+                                  <div className='rounded-lg px-3 py-2.5 shadow-lg' style={{ background: '#1E1E2E', border: '1px solid rgba(124,58,237,0.3)' }}>
+                                    <p className='text-[10px] font-semibold mb-1.5' style={{ color: '#A78BFA' }}>Full SOQL Query</p>
+                                    <p className='text-xs font-mono leading-relaxed break-all' style={{ color: '#E2E8F0' }}>{`SELECT FIELDS(ALL) FROM ${row.name} WHERE ${clause}`}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : fields.length > 0 ? (
+                              <span className='text-xs text-gray-600 truncate block max-w-xs'>
+                                {fields.map((f: any) => `${f.name} ${f.filter?.operator} "${f.filter?.value}"`).join(' AND ').slice(0, 50) + (fields.map((f: any) => `${f.name} ${f.filter?.operator} "${f.filter?.value}"`).join(' AND ').length > 50 ? '…' : '')}
+                              </span>
+                            ) : (
+                              <span className='text-xs text-gray-300 italic'>—</span>
+                            )}
+                          </div>
+                          {/* Matching Records */}
+                          <div className='py-3 px-3'>
+                            <span className='font-semibold text-gray-900 tabular-nums text-sm'>{fmtNumber(count)}</span>
+                          </div>
+                          {/* Est. Size */}
+                          <div className='py-3 px-3'>
+                            <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   {impactTotalPages > 1 && (
                     <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100'>
                       <span className='text-xs text-gray-400'>
-                        Showing {impactPage * PAGE_SIZE + 1}–{Math.min((impactPage + 1) * PAGE_SIZE, allImpactRows.length)} of {allImpactRows.length}
+                        Showing {impactPage * PAGE_SIZE + 1}–{Math.min((impactPage + 1) * PAGE_SIZE, impactTreeRows.length)} of {impactTreeRows.length}
                       </span>
                       <div className='flex items-center gap-1'>
-                        <button
-                          onClick={() => setImpactPage((p) => Math.max(0, p - 1))}
-                          disabled={impactPage === 0}
-                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                        <button onClick={() => setImpactPage((p) => Math.max(0, p - 1))} disabled={impactPage === 0}
+                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors'>
                           <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
                         </button>
                         {Array.from({ length: impactTotalPages }, (_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setImpactPage(i)}
+                          <button key={i} onClick={() => setImpactPage(i)}
                             className='w-7 h-7 rounded-md text-xs font-medium transition-colors'
-                            style={impactPage === i
-                              ? { background: '#155DFC', color: 'white' }
-                              : { color: '#6B7280' }}>
+                            style={impactPage === i ? { background: '#155DFC', color: 'white' } : { color: '#6B7280' }}>
                             {i + 1}
                           </button>
                         ))}
-                        <button
-                          onClick={() => setImpactPage((p) => Math.min(impactTotalPages - 1, p + 1))}
-                          disabled={impactPage === impactTotalPages - 1}
-                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                        <button onClick={() => setImpactPage((p) => Math.min(impactTotalPages - 1, p + 1))} disabled={impactPage >= impactTotalPages - 1}
+                          className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition-colors'>
                           <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
                         </button>
                       </div>
