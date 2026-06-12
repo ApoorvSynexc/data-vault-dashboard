@@ -1,3 +1,17 @@
+// Add Archive Wizard — orchestrates the 6-step flow for creating a new archive policy.
+//
+// State is lifted here and passed down as props to each step component.
+// Steps are conditionally rendered (unmount/remount on navigation), so each
+// step's local state resets when navigating away and back.
+//
+// Step flow:
+//   1. SourceDestination — pick Salesforce org + AWS S3 destination
+//   2. DefineArchive     — name and describe the policy
+//   3. SelectObjects     — choose objects and configure per-object filters/children/schedule
+//   4. Schedule          — set the global run schedule (frequency, timezone, time)
+//   5. DryRun            — simulate the archive and preview record counts
+//   6. Review            — final summary + "ARCHIVE" confirmation before creation
+
 import { useState } from 'react';
 import type { ConnectedPlatform } from '../../../services/platform/platform.service';
 import type { Destination } from '../../../services/destination/destination.service';
@@ -23,10 +37,10 @@ export default function AddArchive() {
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
 
-  // Step 3 — select objects
+  // Step 3 — selected objects with their per-object filter/child/schedule configs
   const [selectedObjects, setSelectedObjects] = useState<SelectedArchiveObject[]>([]);
 
-  // Step 5 — schedule (was step 4)
+  // Step 4 — global schedule + the fully-built archival payload sent to the API
   const [scheduleConfig, setScheduleConfig] = useState<ArchiveScheduleConfig | null>(null);
   const [archivalPayload, setArchivalPayload] = useState<Record<string, unknown> | null>(null);
 
@@ -85,6 +99,9 @@ export default function AddArchive() {
             goNext();
           }}
           onBack={() => {
+            // Clear selectedObjects so Step 3 remounts with a clean slate.
+            // Without this, going back and changing the query would leave stale
+            // child selections and filter configs from the previous pass.
             setSelectedObjects([]);
             goBack();
           }}

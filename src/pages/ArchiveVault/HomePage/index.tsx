@@ -1,3 +1,21 @@
+// Archive Vault HomePage — list view of all archive policies with actions.
+//
+// Data sources:
+//   GET /v1/archival-config/list   → all archive policies (queryKey: archival-config-list)
+//   GET /v1/archival-config/stats  → aggregate stats for the metric cards
+//   GET /v1/connected-platforms    → platform names resolved by crmId
+//
+// Actions per row (dropdown):
+//   Activate  → PUT /v1/archival-config?backupConfigId= { backupStatus: "ACTIVE" }
+//   Run Now   → PUT /v1/archival-config?backupConfigId= { backupStatus: "RUNNING" }
+//   Pause     → PUT /v1/archival-config?backupConfigId= { backupStatus: "PAUSED" }
+//   Resume    → PUT /v1/archival-config?backupConfigId= { backupStatus: "ACTIVE" }
+//   Edit Policy → navigates to /archive-vault/:slug/edit
+//   Delete    → DELETE /v1/archival-config?backupConfigId= (requires confirmation dialog)
+//
+// Filtering: status filter buttons (All / Active / Running / Paused / Draft / etc.)
+// are applied client-side on the full list. Search is also client-side with debounce.
+// Pagination: 10 items per page, client-side slice.
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

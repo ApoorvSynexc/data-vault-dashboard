@@ -1,3 +1,23 @@
+// ArchiveJobDetailsModal — modal overlay showing the per-object breakdown of
+// a single archive job run.
+//
+// Opens when the user clicks a row in the Activity Logs tab of the Detail Screen.
+// Props: backupJobId (the specific job to show), configSlug (to fetch the job list),
+//        onClose (dismiss callback).
+//
+// Data fetching: calls GET /v1/backup-job/list?slug=&limit=20, then finds the
+// matching job by backupJobId client-side. The shared backup-job endpoint is used
+// because archive jobs are stored in the same job collection.
+//
+// Tree structure: job.object[] is a nested array (parent → children[]).
+// buildTreeRows() flattens it into a {obj, depth, parentId}[] for table rendering.
+// Parents are collapsed by default; clicking the chevron expands children.
+//
+// Stats bar derives: status, started at, duration, data size, object count
+// from the job payload using computeArchiveJobStats() utility.
+//
+// Filters: All / Completed / Failed / Pending — applied client-side on the visible rows.
+// Refresh: re-invalidates the React Query cache key to re-fetch the latest job state.
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
