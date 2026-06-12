@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatBytes, computeArchiveJobStats } from '../../../utils';
@@ -73,6 +73,17 @@ type Props = {
 
 type FilterType = 'All' | 'Completed' | 'Failed' | 'Pending';
 
+// ── Tree row type ─────────────────────────────────────────────────────────────
+
+type TreeRow = { obj: ArchiveJobObject; depth: number; parentId: string | null };
+
+function buildTreeRows(items: ArchiveJobObject[], depth = 0, parentId: string | null = null): TreeRow[] {
+  return items.flatMap((obj) => [
+    { obj, depth, parentId },
+    ...buildTreeRows(obj.children ?? [], depth + 1, obj.id),
+  ]);
+}
+
 export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClose }: Props) {
   const archivalService = useBackupConfigService();
   const queryClient = useQueryClient();
@@ -80,6 +91,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const itemsPerPage = 10;
 
   const queryKey = ['archival-job-detail', backupJobId];
@@ -96,14 +108,60 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
 
   const job: ArchiveJobDetail | null = data ?? null;
 
+  // Collapse all parents by default once data loads
+  useEffect(() => {
+    if (!job?.object) return;
+    const parentIds = new Set<string>();
+    const collect = (items: ArchiveJobObject[]) => {
+      items.forEach((obj) => {
+        if (obj.children?.length) { parentIds.add(obj.id); collect(obj.children); }
+      });
+    };
+    collect(job.object);
+    setCollapsedIds(parentIds);
+  }, [job?.object]);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try { await queryClient.invalidateQueries({ queryKey }); }
     finally { setIsRefreshing(false); }
   };
 
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const allTreeRows = buildTreeRows(job?.object ?? []);
   const { flatRows, totalInserted, totalApiCalls, completedObjects, failedObjects } = computeArchiveJobStats(job?.object ?? []);
   const startedAt = job?.startedAt ? new Date(job.startedAt) : null;
+
+  // Build visible rows respecting collapsed state
+  const visibleRows: TreeRow[] = (() => {
+    const collapsedSet = collapsedIds;
+    const result: TreeRow[] = [];
+    const isAncestorCollapsed = (parentId: string | null): boolean => {
+      if (!parentId) return false;
+      if (collapsedSet.has(parentId)) return true;
+      const parentRow = allTreeRows.find((r) => r.obj.id === parentId);
+      return isAncestorCollapsed(parentRow?.parentId ?? null);
+    };
+    for (const row of allTreeRows) {
+      if (!isAncestorCollapsed(row.parentId)) result.push(row);
+    }
+    return result;
+  })();
+
+  // Apply search + filter on visible rows
+  let filtered = visibleRows.filter(({ obj }) =>
+    obj.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['COMPLETED', 'SUCCESS', 'UPLOAD_COMPLETED'].includes(obj.status?.toUpperCase() ?? ''));
+  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED');
+  if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
 
   const statCards = [
     { value: flatRows.length,   label: 'Objects Archived',    color: '#008020', icon: <IconBox color='#008020' /> },
@@ -112,16 +170,6 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     { value: failedObjects,     label: 'Failed Objects',      color: '#F24400', icon: <IconTrash color='#F24400' /> },
     { value: completedObjects,  label: 'Objects Synced',      color: '#155DFC', icon: <IconDone color='#155DFC' /> },
   ];
-
-  // Filter + search
-  let filtered = flatRows.filter(({ obj }) =>
-    obj.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['COMPLETED', 'SUCCESS'].includes(obj.status?.toUpperCase() ?? ''));
-  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED');
-  if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
-
-
 
   const levelColorMap: Record<number, string> = { 0: '#155DFC', 1: '#7C3AED', 2: '#A16207', 3: '#008020', 4: '#0891B2' };
 
@@ -224,17 +272,36 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
 
         {/* ── Table ── */}
         {(() => {
-          type FlatRow = { obj: ArchiveJobObject; depth: number };
-          const jobColumns: TableColumn<FlatRow>[] = [
+          const jobColumns: TableColumn<TreeRow>[] = [
             {
               key: 'name',
               header: 'Object',
-              render: ({ obj, depth }) => (
-                <span className='flex items-center gap-1 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 14 }}>
-                  {depth > 0 && <span style={{ color: '#CBD5E1' }}>↳</span>}
-                  {obj.name}
-                </span>
-              ),
+              render: ({ obj, depth }) => {
+                const hasChildren = (obj.children?.length ?? 0) > 0;
+                const isCollapsed = collapsedIds.has(obj.id);
+                return (
+                  <span className='flex items-center gap-1.5 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 20 }}>
+                    {depth > 0 && (
+                      <span className='flex-shrink-0 text-gray-300' style={{ fontSize: 10 }}>↳</span>
+                    )}
+                    {hasChildren ? (
+                      <button
+                        onClick={() => toggleCollapse(obj.id)}
+                        className='flex-shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-gray-100'
+                        style={{ border: '1px solid #E2E8F0' }}
+                      >
+                        <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                          style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+                          <polyline points='6 9 12 15 18 9' />
+                        </svg>
+                      </button>
+                    ) : (
+                      <span className='flex-shrink-0 w-5' />
+                    )}
+                    {obj.name}
+                  </span>
+                );
+              },
             },
             {
               key: 'depth',
@@ -304,7 +371,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                   <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
                 </div>
               )}
-              <Table<FlatRow>
+              <Table<TreeRow>
                 columns={jobColumns}
                 rows={filtered}
                 getRowKey={({ obj }, idx) => obj.id ?? String(idx)}
@@ -314,7 +381,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                 borderless
                 cellPaddingClassName='px-5 py-3.5'
                 rowClassName='hover:bg-gray-50 transition-colors'
-                getRowStyle={() => ({ borderBottom: '1px solid #F1F5F9' })}
+                getRowStyle={({ depth }) => ({
+                  borderBottom: '1px solid #F1F5F9',
+                  background: depth > 0 ? `rgba(0,0,0,${depth * 0.012})` : undefined,
+                })}
                 emptyState='No objects found.'
                 pagination={{
                   currentPage,
