@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
@@ -122,6 +122,10 @@ export default function ArchiveDetailScreen() {
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [logPageIndex, setLogPageIndex] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [filterCollapsedIds, setFilterCollapsedIds] = useState<Set<string>>(new Set());
+
+  const toggleFilterCollapse = (id: string) =>
+    setFilterCollapsedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const { data: jobsResponse, isLoading: jobsLoading } = useQuery({
     queryKey: ['archival-jobs', slug, logCursor],
@@ -160,6 +164,17 @@ export default function ArchiveDetailScreen() {
   });
 
   const item: any = (rawDetail as any)?.data ?? rawDetail ?? null;
+
+  useEffect(() => {
+    const objects: any[] = item?.objects ?? [];
+    if (!objects.length) return;
+    const ids = new Set<string>();
+    const collect = (items: any[]) => items.forEach((o) => {
+      if (o.children?.length) { ids.add(o.id); collect(o.children); }
+    });
+    collect(objects);
+    setFilterCollapsedIds(ids);
+  }, [item?.objects]);
 
   // ── Mapped fields from API ─────────────────────────────────────────────────
   const platformName   = item?.crmDetail?.name ?? item?.crmDetail?.crmName ?? 'Salesforce';
@@ -350,21 +365,34 @@ export default function ArchiveDetailScreen() {
             const objects: any[] = item?.objects ?? [];
             const rootSc = item?.scheduleConfig ?? null;
 
-            // Flatten tree preserving last-child info for tree lines
-            type TreeRow = { obj: any; depth: number; isLastAtDepth: boolean[] };
+            // Flatten tree respecting collapsed state
+            type TreeRow = { obj: any; depth: number; isLastAtDepth: boolean[]; parentId: string | null };
             const treeRows: TreeRow[] = [];
-            const walk = (items: any[], depth: number, parentIsLast: boolean[]) => {
+            const walk = (items: any[], depth: number, parentIsLast: boolean[], parentId: string | null) => {
               items.forEach((o, i) => {
                 const isLast = i === items.length - 1;
-                treeRows.push({ obj: o, depth, isLastAtDepth: [...parentIsLast, isLast] });
-                if (o.children?.length) walk(o.children, depth + 1, [...parentIsLast, isLast]);
+                treeRows.push({ obj: o, depth, isLastAtDepth: [...parentIsLast, isLast], parentId });
+                if (o.children?.length && !filterCollapsedIds.has(o.id)) {
+                  walk(o.children, depth + 1, [...parentIsLast, isLast], o.id);
+                }
               });
             };
-            walk(objects, 0, []);
+            walk(objects, 0, [], null);
+
+            // Count all objects for stats (full tree, not filtered)
+            const allTreeRows: { obj: any; depth: number }[] = [];
+            const walkAll = (items: any[], depth: number) => items.forEach((o) => {
+              allTreeRows.push({ obj: o, depth });
+              if (o.children?.length) walkAll(o.children, depth + 1);
+            });
+            walkAll(objects, 0);
 
             const parentCount = objects.length;
-            const childCount  = treeRows.length - parentCount;
-            const totalFilters = treeRows.reduce((acc, { obj }) => acc + (obj.field?.length ?? 0), 0);
+            const childCount  = allTreeRows.length - parentCount;
+            const totalFilters = allTreeRows.reduce((acc, { obj }) => {
+              const hasSoql = obj.condition?.type === 'SOQL' && obj.condition?.soqlQuery;
+              return acc + (obj.field?.length ?? 0) + (hasSoql ? 1 : 0);
+            }, 0);
 
             return (
               <div className='flex flex-col gap-4'>
@@ -443,6 +471,21 @@ export default function ArchiveDetailScreen() {
                         >
                           {/* Object column */}
                           <div className='flex items-center gap-0 py-3 pr-3' style={{ paddingLeft: '16px' }}>
+                            {/* Collapse toggle for any row with children */}
+                            {hasChildren ? (
+                              <button
+                                onClick={() => toggleFilterCollapse(obj.id)}
+                                className='flex-shrink-0 w-5 h-5 rounded flex items-center justify-center mr-1 transition-colors hover:bg-gray-100'
+                                style={{ border: '1px solid #E2E8F0', flexShrink: 0 }}
+                              >
+                                <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                                  style={{ transform: filterCollapsedIds.has(obj.id) ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+                                  <polyline points='6 9 12 15 18 9' />
+                                </svg>
+                              </button>
+                            ) : (
+                              <span className='flex-shrink-0 w-5 mr-1' />
+                            )}
                             {/* Tree lines — border-based, reliable in any row height */}
                             {Array.from({ length: depth }).map((_, di) => {
                               const isCurrentLevel = di === depth - 1;
@@ -519,7 +562,22 @@ export default function ArchiveDetailScreen() {
 
                           {/* Filters column */}
                           <div className='px-4 py-3 flex flex-col gap-1.5 justify-center border-l border-gray-100'>
-                            {fields.length === 0 ? (
+                            {conditionType === 'SOQL' ? (
+                              <div className='flex items-start gap-1.5 group relative'>
+                                <span className='flex items-center gap-1 flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md'
+                                  style={{ background: 'rgba(124,58,237,0.08)', color: '#7C3AED', border: '1px solid rgba(124,58,237,0.18)' }}>
+                                  <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                    <polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/>
+                                  </svg>
+                                  SOQL
+                                </span>
+                                <span className='text-[11px] text-gray-500 font-mono truncate max-w-[220px]' title={`SELECT FIELDS(ALL) FROM ${obj.name} WHERE ${obj.condition?.soqlQuery ?? ''}`}>
+                                  {(obj.condition?.soqlQuery ?? '').length > 40
+                                    ? (obj.condition?.soqlQuery ?? '').slice(0, 40) + '…'
+                                    : (obj.condition?.soqlQuery ?? '—')}
+                                </span>
+                              </div>
+                            ) : fields.length === 0 ? (
                               <span className='text-[11px] text-gray-300 italic'>—</span>
                             ) : (
                               <>
