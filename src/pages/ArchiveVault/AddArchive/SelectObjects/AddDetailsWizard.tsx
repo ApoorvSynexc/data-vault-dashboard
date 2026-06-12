@@ -292,6 +292,13 @@ export default function AddDetailsWizard({
     setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
   }, []);
 
+  // Recursively builds the nested children array for the archival payload.
+  // Only includes children that are checked (in selectedChildObjects) AND
+  // whose registered parent matches the given parentUuid.
+  //
+  // visited guards against circular references (e.g. A → B → A).
+  // seenNames deduplicates siblings with the same API name, which can happen
+  // when the same child object is registered under multiple parent contexts.
   const buildChildTree = (parentUuid: string, visited = new Set<string>()): BuiltChildNode[] => {
     if (visited.has(parentUuid)) return [];
     visited.add(parentUuid);

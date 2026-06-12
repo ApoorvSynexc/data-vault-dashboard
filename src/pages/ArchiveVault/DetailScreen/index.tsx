@@ -1,3 +1,24 @@
+// Archive Vault Detail Screen — shows full detail of a single archive policy.
+//
+// URL param: :slug — the unique slug of the archive config (e.g. "closed-cases-archive")
+//
+// Data sources:
+//   GET /v1/archival-config?slug=          → policy config (objects, filters, schedule)
+//   GET /v1/backup-job/list?slug=          → job run history for activity logs + latest job stats
+//   GET /v1/backup-config/initalize-payload-transform?slug= → Process Backup button
+//
+// Three tabs:
+//   1. Archive Details  — metric cards (objects archived, last run, storage, platform)
+//                        + sample archived records table (currently uses dummy data)
+//   2. Filters & Schedule — hierarchical object tree with SOQL/field filters + schedule info
+//   3. Activity Logs   — paginated job history; cursor-based pagination with prev/next cursors
+//
+// Metric derivation:
+//   - objectCount: recursive walk of item.objects[] counting all nodes
+//   - dataSize: recursive sum of sizeInBytes from the latest job's object array
+//   - platformName: resolved from connected-platforms list by crmId
+//
+// Clicking a job row in Activity Logs opens ArchiveJobDetailsModal for per-object breakdown.
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

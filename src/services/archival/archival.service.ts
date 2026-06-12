@@ -1,5 +1,9 @@
+// Archival Service — all API calls specific to the Archive Vault feature.
+// Uses the shared HTTP client (useHttpRequest) which handles auth tokens,
+// 401 refresh retries, and response envelope unwrapping automatically.
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
+// All archival endpoint paths in one place so URL changes only need to happen here
 export const ARCHIVAL_ENDPOINTS = {
   fields: '/v1/archival-config/fields',
   objectChilds: '/v1/archival-config/object-childs',
@@ -14,21 +18,23 @@ export const ARCHIVAL_ENDPOINTS = {
   validateSoql: '/v1/archival-config/validate-soql',
 } as const;
 
+// Schedule config shape stored inside an archival config object
 export type ObjectScheduleConfig = {
   timeZone: string;
   type: string;
   scheduling: {
-    frequency: string;
+    frequency: string;  // ONCE | HOURLY | DAILY | WEEKLY | MONTHLY | CUSTOM
     interval: number;
     startDate?: string;
     startTime?: string;
-    weekDays?: string[];
-    monthDate?: number;
+    weekDays?: string[];     // for WEEKLY — e.g. ["MON","WED","FRI"]
+    monthDate?: number;      // for MONTHLY — day of month (1–31)
     selectedMonths?: string[];
-    endDate?: string;
+    endDate?: string;        // for CUSTOM frequency
   };
 };
 
+// A child object nested under a parent in the archival payload
 export type ArchivalConfigChild = {
   name: string;
   type: 'STANDARD' | 'CUSTOM';
@@ -36,6 +42,7 @@ export type ArchivalConfigChild = {
   field: { name: string; filter: { value: string; operator: string } }[];
 };
 
+// A top-level object in the archival payload (can have nested children)
 export type ArchivalConfigObject = {
   name: string;
   type: 'STANDARD' | 'CUSTOM';
@@ -45,15 +52,16 @@ export type ArchivalConfigObject = {
   children?: ArchivalConfigChild[];
 };
 
+// The full request body for POST /v1/archival-config (create/draft)
 export type CreateArchivalConfigPayload = {
   crmId: string;
   name: string;
   description: string;
   destinationId: string;
-  objectNames: string[];
-  schedule: string;
+  objectNames: string[];   // flat list of object API names for quick reference
+  schedule: string;        // always "SCHEDULE"
   objects: ArchivalConfigObject[];
-  backupStatus: string;
+  backupStatus: string;    // "ACTIVE" for live, "DRAFT" for draft save
 };
 
 export type ArchivalField = {
@@ -68,15 +76,17 @@ export type ArchivalObjectFilter = {
   field: { name: string; filter: { value: string; operator: string } }[];
 };
 
+// Shape of each child relationship row returned by GET /v1/archival-config/object-childs
 export type ArchivalChildObject = {
-  uuid: string;
+  uuid: string;            // generated client-side (crypto.randomUUID) for React key usage
   apiName: string;
   label: string;
-  relationshipType?: string;
+  relationshipType?: string;  // "MasterDetail" | "Lookup"
   objectType?: string;
   [key: string]: unknown;
 };
 
+// A single archive job run record
 export type ArchivalJobItem = {
   archivalJobId: string;
   archivalConfigId?: string;
@@ -92,27 +102,36 @@ export type ArchivalJobItem = {
   [key: string]: unknown;
 };
 
+// Paginated response from GET /v1/archival-job/list
 export type ArchivalJobListApiResponse = {
   success: boolean;
   message: string;
   data: ArchivalJobItem[];
   meta: {
     limit: number;
-    nextCursor: string | null;
+    nextCursor: string | null;   // pass as ?cursor= on next page request
     totalRecords: number;
     totalPages: number;
   };
 };
 
+// React hook that returns all archival API methods bound to the current HTTP client instance
 export function useArchivalService() {
   const http = useHttpRequest();
 
   return {
+    // GET /v1/archival-config/fields?crmId=&objectName=
+    // Returns all fields on a Salesforce object for building filter conditions
     getFields: (crmId: string, objectName: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName } }),
+
+    // GET /v1/archival-config/object-childs?crmId=&objectName=
+    // Returns child relationship objects. UUIDs are generated client-side because
+    // the API doesn't return stable IDs for child relationships.
     getObjectChilds: async (crmId: string, objectName: string): Promise<ArchivalChildObject[]> => {
       const result = await http.get<any>(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName } });
       const payload = result?.data ?? result;
+      // API may return children under different keys depending on version
       const arr: any[] = payload?.childs ?? payload?.children ?? payload?.childObjects ?? payload ?? [];
       if (!Array.isArray(arr)) return [];
       return arr.map((row: any) => ({
@@ -122,26 +141,49 @@ export function useArchivalService() {
         label: row.label ?? row.name ?? row.apiName ?? '',
       }));
     },
+
+    // POST /v1/archival-config — creates a new archive policy or saves a draft
     applyConfig: (payload: CreateArchivalConfigPayload): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.config, payload),
+
+    // GET /v1/archival-config/list — all archive policies for this workspace
     getList: (): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.list),
+
+    // GET /v1/archival-config?slug= — full detail of one policy including object tree
     getDetail: (slug: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.detail, { query: { slug } }),
+
+    // PUT /v1/archival-config?backupConfigId= — update status (ACTIVE, PAUSED, etc.)
     updateConfig: (backupConfigId: string, payload: Record<string, unknown>): Promise<any> =>
       http.put(ARCHIVAL_ENDPOINTS.update, payload, { query: { backupConfigId } }),
+
+    // DELETE /v1/archival-config?backupConfigId= — permanently remove a policy
     deleteConfig: (backupConfigId: string): Promise<any> =>
       http.delete(ARCHIVAL_ENDPOINTS.delete, { query: { backupConfigId } }),
+
+    // GET /v1/archival-config/stats — aggregate counts (total configs, size, records)
     getStats: (): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.stats),
+
+    // GET /v1/archival-job/list — paginated archive job run history
+    // Supports cursor-based pagination: pass the nextCursor from the previous response
     listJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
       const query: any = { slug, pagination, limit };
       if (cursor) query.cursor = cursor;
       if (status) query.status = status.toUpperCase();
       return http.get<ArchivalJobListApiResponse>(ARCHIVAL_ENDPOINTS.jobs, { query });
     },
+
+    // POST /v1/archival-config/dry-run
+    // Simulates the archive against live Salesforce data — counts matching records
+    // per object without moving or deleting anything
     runDryRun: (payload: { crmId: string; objects: unknown[] }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.dryRun, payload),
+
+    // POST /v1/archival-config/validate-soql
+    // Validates a user-entered SOQL WHERE clause. Returns isValid and relationshipDepth.
+    // relationshipDepth controls how many child levels can be added (MAX_CHILD_DEPTH - depth)
     validateSoql: (payload: { object: unknown; isParent: boolean; crmId: string }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.validateSoql, payload),
   };

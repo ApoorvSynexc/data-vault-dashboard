@@ -1,8 +1,24 @@
+// ChildRows — recursive component that renders child relationship objects
+// under a parent Salesforce object in the Add Archive "Add Children" step.
+//
+// Recursion: when a child row is expanded, a new <ChildRows> instance renders
+// beneath it with depth+1, fetching that child's own children from the API.
+//
+// Depth control: maxDepth = MAX_CHILD_DEPTH - relationshipDepth (from SOQL validation).
+// At the depth limit, the "include child" toggle is disabled and expansion is blocked.
+//
+// Auto-selection: MasterDetail children are automatically checked on load because
+// Salesforce cascades deletes through MasterDetail relationships, so they must be included.
+//
+// State registration: each child calls registerChildApiName/registerChildParent so
+// the parent wizard can build the correct nested payload tree via buildChildTree().
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 
+// Maximum nesting depth for child objects (reduced by SOQL relationshipDepth)
 export const MAX_CHILD_DEPTH = 4;
+// Number of child rows shown per page within this component
 export const CHILD_PAGE_SIZE = 5;
 
 export function ToggleSwitch({ on, disabled, onChange }: { on: boolean; disabled: boolean; onChange: (e: React.MouseEvent) => void }) {
@@ -47,6 +63,8 @@ export function ChildRows({
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
+  // GET /v1/archival-config/object-childs — fetch children of this parent object.
+  // Keyed on parentUuid so different expanded parents don't share the same cache entry.
   const { data, isLoading } = useQuery({
     queryKey: ['archival-object-childs', crmId, parentUuid, objectName],
     queryFn: () => archivalService.getObjectChilds(crmId, objectName),
@@ -56,14 +74,19 @@ export function ChildRows({
 
   const rawRows: any[] = data ?? [];
 
+  // autoSelectedRef prevents double-toggling MasterDetail rows on re-renders.
+  // Without it, strict-mode double-invocation would check then immediately uncheck them.
   const autoSelectedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!data || rawRows.length === 0) return;
+    // Register metadata for every row so buildChildTree() in AddDetailsWizard
+    // can reconstruct the correct nested payload when the user hits Save
     rawRows.forEach((r: any) => {
       registerChildApiName(r.uuid as string, r.apiName as string);
       registerChildFieldApiName(r.uuid as string, r.fieldApiName as string);
       registerChildParent(r.uuid as string, parentUuid);
     });
+    // Auto-select MasterDetail children — Salesforce enforces cascade delete on them
     const toSelect = rawRows
       .filter((r: any) => r.relationshipType === 'MasterDetail')
       .map((r: any) => r.uuid as string)

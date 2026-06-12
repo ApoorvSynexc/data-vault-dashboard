@@ -1,3 +1,19 @@
+// DryRun — Step 5 of the Add Archive wizard.
+// Simulates the archive against live Salesforce data without moving any records.
+//
+// Flow:
+//   idle    → user clicks "Run Dry Run"
+//   loading → POST /v1/archival-config/dry-run — API counts matching records per object
+//   results → shows Per-Object Impact table + Sample Records Preview
+//
+// Per-Object Impact tree: built from archivalPayload.objects (the fully built payload
+// from Step 4). Rendered as a collapsible tree grid — collapsed by default.
+// Deduplication is applied at each level to guard against duplicate entries in the payload.
+//
+// Sample Records Preview: user picks up to 5 fields, then POST /v1/archival-config/object-records
+// fetches actual Salesforce records matching the archive filter for a chosen object.
+//
+// Save as Draft: calls POST /v1/archival-config with status "DRAFT" — saves without scheduling.
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useArchivalService } from '../../../../services/archival/archival.service';
@@ -7,6 +23,7 @@ import ProgressBar from '../ProgressBar';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+// Rough estimated size: assumes ~2 KB per Salesforce record on average
 function calcDataSize(records: number): string {
   const kb = records * 2;
   if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
