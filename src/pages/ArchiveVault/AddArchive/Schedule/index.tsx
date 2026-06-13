@@ -132,10 +132,10 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     destinationId: destinationId ?? '',
     objectNames: objects.map((o) => o.id),
     schedule: 'SCHEDULE',
-    ...(globalSchedule ? { scheduleConfig: globalSchedule } : {}),
     objects: objects.map((obj) => {
       const payload = obj.archivalPayload;
-      const perObjectSchedule = obj.scheduleConfig ?? null;
+      // Use per-object schedule if set, otherwise fall back to the global schedule
+      const effectiveSchedule = obj.scheduleConfig ?? globalSchedule ?? null;
       return {
         id: obj.uuid,
         name: obj.id,
@@ -146,7 +146,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
           dataType: (f.dataType ?? 'string').toUpperCase(),
           filter: { value: f.filter.value, operator: OPERATOR_MAP[f.filter.operator] ?? f.filter.operator },
         })),
-        ...(perObjectSchedule ? { scheduleConfig: perObjectSchedule } : {}),
+        ...(effectiveSchedule ? { scheduleConfig: effectiveSchedule } : {}),
         ...(payload?.children && payload.children.length > 0 ? { children: payload.children } : {}),
       };
     }),
