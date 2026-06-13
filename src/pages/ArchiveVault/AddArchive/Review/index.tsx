@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import type { ArchiveScheduleConfig } from '../Schedule';
+import type { DryRunSummary } from '../DryRun';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import ProgressBar from '../ProgressBar';
 
 interface Step5Props {
   archivalPayload?: Record<string, unknown> | null;
+  dryRunSummary?: DryRunSummary | null;
   crmName?: string;
   crmConnectionName?: string;
   destinationProvider?: string;
@@ -27,6 +29,7 @@ const freqLabel: Record<string, string> = {
 
 export default function Step5({
   archivalPayload = null,
+  dryRunSummary = null,
   crmName = 'Salesforce Production',
   destinationProvider = 'AWS S3',
   destinationName = 'Hot tier, Standard-hot-tier bucket',
@@ -52,10 +55,14 @@ const [confirmError, setConfirmError] = useState(false);
     { id: 'Opportunity', type: 'CUSTOM' as const, archivalPayload: { name: 'Opportunity', condition: { type: 'AND' as const }, field: [{ name: 'Status', filter: { value: 'Closed', operator: '=' } }] } },
   ];
 
-  const totalRecords = 9125;
-  const totalDataSize = '4.2 GB';
+  const totalRecords = dryRunSummary?.totalRecords ?? null;
+  const totalDataSize = dryRunSummary?.totalDataSize ?? null;
   const objectNames = dummyObjects.map((o) => o.id).join(', ');
-  const totalFilters = dummyObjects.reduce((sum, o) => sum + ((o as any).archivalPayload?.field?.length ?? 0), 0);
+  const totalFilters = dummyObjects.reduce((sum, o) => {
+    const p = (o as any).archivalPayload;
+    if (p?.condition?.type === 'SOQL') return sum + 1;
+    return sum + (p?.field?.length ?? 0);
+  }, 0);
 
   const schedFreq = scheduleConfig
     ? (freqLabel[scheduleConfig.scheduling.frequency] ?? scheduleConfig.scheduling.frequency)
@@ -182,8 +189,15 @@ const [confirmError, setConfirmError] = useState(false);
             {/* Red card */}
             <div className='rounded-xl px-5 py-4' style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
               <p className='text-xs font-semibold tracking-wide mb-2' style={{ color: '#EF4444' }}>WILL BE REMOVED FROM SALESFORCE</p>
-              <p className='text-2xl font-bold mb-1' style={{ color: '#DC2626' }}>{totalRecords.toLocaleString()} Records</p>
-              <p className='text-sm' style={{ color: '#EF4444' }}>{totalDataSize} • {objectNames}</p>
+              {totalRecords !== null ? (
+                <p className='text-2xl font-bold mb-1' style={{ color: '#DC2626' }}>{totalRecords.toLocaleString()} Records</p>
+              ) : (
+                <p className='text-sm font-medium mb-1 flex items-center gap-1.5' style={{ color: '#DC2626' }}>
+                  <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                  Run Dry Run to see estimated record count
+                </p>
+              )}
+              <p className='text-sm' style={{ color: '#EF4444' }}>{totalDataSize ?? 'Size unknown — run Dry Run'} • {objectNames}</p>
             </div>
             {/* Green card */}
             <div className='rounded-xl px-5 py-4' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
@@ -203,36 +217,64 @@ const [confirmError, setConfirmError] = useState(false);
           </ReviewRow>
 
           <ReviewRow label='Records'>
-            <span>{totalRecords.toLocaleString()}</span>
+            {totalRecords !== null ? (
+              <span>{totalRecords.toLocaleString()}</span>
+            ) : (
+              <span className='flex items-center gap-1.5 text-gray-400 italic text-xs'>
+                <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                Run Dry Run to see record count
+              </span>
+            )}
           </ReviewRow>
 
           <ReviewRow label='Filters'>
-            <span>{totalFilters} Filter{totalFilters !== 1 ? 's' : ''} | All Condition Match</span>
+            <span>
+              {totalFilters} Filter{totalFilters !== 1 ? 's' : ''} |{' '}
+              {dummyObjects.some((o) => (o as any).archivalPayload?.condition?.type === 'SOQL') ? 'SOQL' : 'All Condition Match'}
+            </span>
           </ReviewRow>
 
           {/* Per-object filter rows */}
           {dummyObjects.map((obj, idx) => {
-            const fields: any[] = (obj as any).archivalPayload?.field ?? [];
-            if (fields.length === 0) return null;
+            const p = (obj as any).archivalPayload;
+            const soqlQuery: string | undefined = p?.condition?.type === 'SOQL' ? p.condition.soqlQuery : undefined;
+            const fields: any[] = p?.field ?? [];
+            if (!soqlQuery && fields.length === 0) return null;
             return (
-              <ReviewRow key={obj.id} label={`${obj.id} Object Filter`} onEdit={() => onEditStep(3)}
+              <ReviewRow key={obj.id} label={`${obj.id} Object Filter`}
                 noBorder={idx === dummyObjects.length - 1 && !scheduleConfig}>
-                <div className='flex items-center gap-2 flex-wrap'>
-                  {fields.map((f: any, fi: number) => (
-                    <span key={fi} className='flex items-center gap-1.5 flex-wrap'>
-                      <FilterPill text={`${f.name} ${f.filter.operator === '=' ? '=' : f.filter.operator === '<' ? 'Before' : f.filter.operator} "${f.filter.value}"`} highlight />
-                      {fi < fields.length - 1 && (
-                        <FilterPill text={(obj as any).archivalPayload?.condition?.type ?? 'AND'} />
-                      )}
-                    </span>
-                  ))}
-                </div>
+                {soqlQuery ? (
+                  <div className='flex flex-col gap-1'>
+                    <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#6366F1' }}>SOQL</span>
+                    <code className='text-xs rounded px-2 py-1.5 break-all' style={{ background: '#F1F5F9', color: '#1E293B' }}>
+                      SELECT FIELDS(ALL) FROM {obj.id} WHERE {soqlQuery}
+                    </code>
+                  </div>
+                ) : (
+                  <div className='flex items-center gap-2 flex-wrap'>
+                    {fields.map((f: any, fi: number) => (
+                      <span key={fi} className='flex items-center gap-1.5 flex-wrap'>
+                        <FilterPill text={`${f.name} ${f.filter.operator === '=' ? '=' : f.filter.operator === '<' ? 'Before' : f.filter.operator} "${f.filter.value}"`} highlight />
+                        {fi < fields.length - 1 && (
+                          <FilterPill text={p?.condition?.type ?? 'AND'} />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </ReviewRow>
             );
           })}
 
           <ReviewRow label='Data Size'>
-            <span>{totalDataSize}</span>
+            {totalDataSize !== null ? (
+              <span>{totalDataSize}</span>
+            ) : (
+              <span className='flex items-center gap-1.5 text-gray-400 italic text-xs'>
+                <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                Run Dry Run to see data size
+              </span>
+            )}
           </ReviewRow>
 
           <ReviewRow label='Scheduled' onEdit={() => onEditStep(5)} noBorder>
@@ -310,16 +352,17 @@ const [confirmError, setConfirmError] = useState(false);
             <div className='px-5 sm:px-7 pb-5 sm:pb-6 flex flex-col gap-4'>
               {/* Info banner */}
               <div className='rounded-lg px-4 py-3 text-sm text-center leading-relaxed' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                Estimated{' '}
-                <span className='font-bold text-gray-900'>{totalRecords.toLocaleString()}</span>{' '}
-                and will be moved to this archive from your{' '}
-                <span className='font-semibold text-gray-800'>{crmName}</span> org.
+                {totalRecords !== null ? (
+                  <>Estimated <span className='font-bold text-gray-900'>{totalRecords.toLocaleString()}</span> records will be moved to this archive from your <span className='font-semibold text-gray-800'>{crmName}</span> org.</>
+                ) : (
+                  <>Records will be moved to this archive from your <span className='font-semibold text-gray-800'>{crmName}</span> org. <span className='text-blue-500 font-medium'>Go back and run Dry Run to see the estimated count before proceeding.</span></>
+                )}
               </div>
 
               {/* Warning text */}
               <p className='text-sm text-center leading-relaxed' style={{ color: '#D97706' }}>
                 This will permanently remove the matched records from{' '}
-                <span className='font-semibold'>{crmName} (na12)</span>{' '}
+                <span className='font-semibold'>{crmName}</span>{' '}
                 and move them to{' '}
                 <span className='font-semibold'>{destinationProvider} hot storage</span>.{' '}
                 This action cannot be undone from the source.

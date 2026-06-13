@@ -48,11 +48,13 @@ function now(): string {
 
 type DryRunState = 'idle' | 'loading' | 'results';
 
+export type DryRunSummary = { totalRecords: number; totalDataSize: string };
+
 interface Step3DryRunProps {
   crmId?: string | null;
   selectedObjects: SelectedArchiveObject[];
   archivalPayload?: Record<string, unknown> | null;
-  onNext: () => void;
+  onNext: (summary?: DryRunSummary) => void;
   onBack: () => void;
 }
 
@@ -814,7 +816,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               {isSavingDraft ? 'Saving…' : 'Save as Draft'}
             </button>
             <button
-              onClick={onNext}
+              onClick={() => onNext(dryRunState === 'results' ? { totalRecords, totalDataSize } : undefined)}
               className='px-5 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
               {dryRunState === 'results' ? 'Review & Confirm →' : 'Skip & Next →'}
             </button>
