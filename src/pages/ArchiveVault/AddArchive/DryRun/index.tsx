@@ -311,14 +311,14 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               </svg>
               <p className='text-sm text-green-800'>
                 <strong>Dry Run Passed</strong> — All filters validated.{' '}
-                <strong>{fmtNumber(totalRecords)}</strong> records eligible.
+                <strong>{fmtNumber(totalRecords)}</strong> estimated records eligible.
               </p>
             </div>
 
             {/* Impact summary cards — 5 cards */}
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
               {[
-                { label: 'Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
+                { label: 'Estimated Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
                 { label: 'Objects Affected', value: String(selectedObjects.length), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
                 { label: 'Estimated Size', value: totalDataSize, color: '#7C3AED', bg: 'rgba(124,58,237,0.06)', border: 'rgba(124,58,237,0.12)' },
                 { label: 'Errors', value: String(failedObjects.length), color: failedObjects.length > 0 ? '#F24400' : '#059669', bg: failedObjects.length > 0 ? 'rgba(242,68,0,0.06)' : 'rgba(5,150,105,0.06)', border: failedObjects.length > 0 ? 'rgba(242,68,0,0.12)' : 'rgba(5,150,105,0.12)' },
@@ -370,9 +370,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                   </div>
                   {/* Column headers */}
                   <div className='grid px-4 py-2.5 bg-gray-50 border-b border-gray-100'
-                    style={{ gridTemplateColumns: '280px 1fr 160px 120px' }}>
-                    {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE'].map((h) => (
-                      <span key={h} className='text-[11px] font-semibold text-gray-400 uppercase tracking-wide'>{h}</span>
+                    style={{ gridTemplateColumns: '200px 1fr 150px 110px' }}>
+                    {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE'].map((h, i) => (
+                      <span key={h} className={`text-[11px] font-semibold text-gray-400 uppercase tracking-wide ${i >= 2 ? 'text-right' : ''}`}>{h}</span>
                     ))}
                   </div>
                   {/* Rows */}
@@ -388,7 +388,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       return (
                         <div key={row.rowKey}
                           className='grid border-b border-gray-50 hover:bg-gray-50/60 transition-colors items-center'
-                          style={{ gridTemplateColumns: '280px 1fr 160px 120px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
+                          style={{ gridTemplateColumns: '200px 1fr 150px 110px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
                           {/* Object column */}
                           <div className='flex items-center gap-1 py-3 pr-3' style={{ paddingLeft: 16 + row.depth * 20 }}>
                             {row.hasChildren ? (
@@ -442,11 +442,11 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                             )}
                           </div>
                           {/* Matching Records */}
-                          <div className='py-3 px-3'>
+                          <div className='py-3 px-3 text-right'>
                             <span className='font-semibold text-gray-900 tabular-nums text-sm'>{fmtNumber(count)}</span>
                           </div>
                           {/* Est. Size */}
-                          <div className='py-3 px-3'>
+                          <div className='py-3 px-3 text-right'>
                             <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>
                           </div>
                         </div>
