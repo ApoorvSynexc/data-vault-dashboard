@@ -17,6 +17,7 @@ import type { ConnectedPlatform } from '../../../services/platform/platform.serv
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SelectedArchiveObject } from './SelectObjects';
 import type { ArchiveScheduleConfig } from './Schedule';
+import type { DryRunSummary } from './DryRun';
 import Step1 from './SourceDestination';
 import Step2 from './DefineArchive';
 import Step3 from './SelectObjects';
@@ -43,6 +44,9 @@ export default function AddArchive() {
   // Step 4 — global schedule + the fully-built archival payload sent to the API
   const [scheduleConfig, setScheduleConfig] = useState<ArchiveScheduleConfig | null>(null);
   const [archivalPayload, setArchivalPayload] = useState<Record<string, unknown> | null>(null);
+
+  // Step 5 — dry run summary (null when user skips dry run)
+  const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 6) as Step);
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -112,13 +116,14 @@ export default function AddArchive() {
           crmId={selectedConnection?.crmId ?? null}
           selectedObjects={selectedObjects}
           archivalPayload={archivalPayload}
-          onNext={goNext}
+          onNext={(summary) => { if (summary) setDryRunSummary(summary); goNext(); }}
           onBack={goBack}
         />
       )}
       {currentStep === 6 && (
         <Step5
           archivalPayload={archivalPayload}
+          dryRunSummary={dryRunSummary}
           crmName={selectedConnection?.crmProfile?.name ?? selectedConnection?.name ?? 'Salesforce Production'}
           crmConnectionName={selectedConnection?.name ?? 'Salesforce Org'}
           destinationProvider={selectedDestConnection?.provider ?? 'AWS S3'}

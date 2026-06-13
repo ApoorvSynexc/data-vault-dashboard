@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 
 // Maximum nesting depth for child objects (reduced by SOQL relationshipDepth)
-export const MAX_CHILD_DEPTH = 4;
+export const MAX_CHILD_DEPTH = 5;
 // Number of child rows shown per page within this component
 export const CHILD_PAGE_SIZE = 5;
 
