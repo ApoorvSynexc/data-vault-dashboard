@@ -120,16 +120,16 @@ export function useArchivalService() {
   const http = useHttpRequest();
 
   return {
-    // GET /v1/archival-config/fields?crmId=&objectName=
+    // GET /v1/archival-config/fields?crmId=&objectName=&mode=ARCHIVAL
     // Returns all fields on a Salesforce object for building filter conditions
     getFields: (crmId: string, objectName: string): Promise<any> =>
-      http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName } }),
+      http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName, mode: 'ARCHIVAL' } }),
 
-    // GET /v1/archival-config/object-childs?crmId=&objectName=
+    // GET /v1/archival-config/object-childs?crmId=&objectName=&mode=ARCHIVAL
     // Returns child relationship objects. UUIDs are generated client-side because
     // the API doesn't return stable IDs for child relationships.
     getObjectChilds: async (crmId: string, objectName: string): Promise<ArchivalChildObject[]> => {
-      const result = await http.get<any>(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName } });
+      const result = await http.get<any>(ARCHIVAL_ENDPOINTS.objectChilds, { query: { crmId, objectName, mode: 'ARCHIVAL' } });
       const payload = result?.data ?? result;
       // API may return children under different keys depending on version
       const arr: any[] = payload?.childs ?? payload?.children ?? payload?.childObjects ?? payload ?? [];
@@ -186,5 +186,13 @@ export function useArchivalService() {
     // relationshipDepth controls how many child levels can be added (MAX_CHILD_DEPTH - depth)
     validateSoql: (payload: { object: unknown; isParent: boolean; crmId: string }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.validateSoql, payload),
+
+    // GET /v1/archival-config/record-errors?backupJobId=&objectId=&page=
+    // Returns a page of per-record delete errors stored in S3 (10 records per page).
+    // Each batch file in S3 holds 200 records; page→file mapping is deterministic.
+    getRecordErrors: (backupJobId: string, objectId: string, page: number): Promise<{
+      data: { records: { recordId: string; error: string }[]; totalRecords: number; totalPages: number; page: number };
+    }> =>
+      http.get('/v1/archival-config/record-errors', { query: { backupJobId, objectId, page } }),
   };
 }

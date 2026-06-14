@@ -312,7 +312,7 @@ export function useBackupConfigService() {
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
     syncSchema: (slug: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: { slug } }),
-    getObjectRecords: (payload: { crmId: string; apiName: string; fields: string[]; whereClause?: string }) =>
+    getObjectRecords: (payload: { crmId: string; apiName: string; fields: string[]; whereClause?: string; objectConfig?: Record<string, unknown> }) =>
       api.post<any>('/v1/archival-config/object-records', payload),
   };
 }

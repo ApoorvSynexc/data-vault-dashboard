@@ -18,13 +18,25 @@
 //
 // Filters: All / Completed / Failed / Pending — applied client-side on the visible rows.
 // Refresh: re-invalidates the React Query cache key to re-fetch the latest job state.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatBytes, computeArchiveJobStats } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
+import { useArchivalService } from '../../../services/archival/archival.service';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
+// Table/TableColumn kept for potential future use; main object table is rendered manually
+// to support colSpan inline-error rows.
+
+function IconRetry({ spinning }: { spinning?: boolean }) {
+  return (
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
+      className={`h-3.5 w-3.5 ${spinning ? 'animate-spin' : ''}`}>
+      <path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' /><path d='M3 3v5h5' />
+    </svg>
+  );
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -40,6 +52,7 @@ interface ArchiveJobObject {
   insertCount?: number;
   deletedSuccessRecordCount?: number;
   deletedfailedRecordCount?: number;
+  recordErrorsS3Prefix?: string;
   errorMessage?: string;
   bulkJobId?: string;
   condition?: { type: string };
@@ -67,6 +80,7 @@ function getStatusStyle(status: string) {
   if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
   if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
   if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
+  if (s === 'PARTIAL_FAILURE') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
   if (s === 'RUNNING' || s === 'IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
   if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
@@ -76,12 +90,11 @@ function getStatusLabel(status: string) {
   const s = status?.toUpperCase();
   if (s === 'COMPLETED' || s === 'SUCCESS') return 'Completed';
   if (s === 'FAILED') return 'Failed';
+  if (s === 'PARTIAL_FAILURE') return 'Partial Failure';
   if (s === 'RUNNING') return 'In Progress';
   if (s === 'CREATED' || s === 'PENDING') return 'Pending';
   return status || 'Unknown';
 }
-
-
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 
@@ -106,13 +119,51 @@ function buildTreeRows(items: ArchiveJobObject[], depth = 0, parentId: string | 
 
 export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClose }: Props) {
   const archivalService = useBackupConfigService();
+  const archivalApi = useArchivalService();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [expandedInlineErrors, setExpandedInlineErrors] = useState<Set<string>>(new Set());
+  const toggleInlineError = (id: string) =>
+    setExpandedInlineErrors(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const itemsPerPage = 10;
+
+  // ── Error panel state (S3-paginated per-record errors) ──
+  const [errorPanel, setErrorPanel] = useState<{ obj: ArchiveJobObject; page: number } | null>(null);
+  const [errorRecords, setErrorRecords] = useState<{ recordId: string; error: string }[]>([]);
+  const [errorTotalPages, setErrorTotalPages] = useState(0);
+  const [errorTotalRecords, setErrorTotalRecords] = useState(0);
+  const [errorLoading, setErrorLoading] = useState(false);
+
+  const fetchErrorPage = useCallback(async (obj: ArchiveJobObject, page: number) => {
+    setErrorLoading(true);
+    try {
+      const res = await archivalApi.getRecordErrors(backupJobId, obj.id, page);
+      const d = (res as any)?.data ?? res;
+      setErrorRecords(d.records ?? []);
+      setErrorTotalPages(d.totalPages ?? 0);
+      setErrorTotalRecords(d.totalRecords ?? 0);
+      setErrorPanel({ obj, page });
+    } catch {
+      // leave existing records visible
+    } finally {
+      setErrorLoading(false);
+    }
+  }, [archivalApi, backupJobId]);
+
+  // Open the panel immediately so the spinner is visible during the first fetch.
+  const openErrorPanel = (obj: ArchiveJobObject) => {
+    setErrorPanel({ obj, page: 1 });
+    setErrorRecords([]);
+    setErrorTotalPages(0);
+    setErrorTotalRecords(0);
+    fetchErrorPage(obj, 1);
+  };
+  const closeErrorPanel = () => { setErrorPanel(null); setErrorRecords([]); setErrorTotalPages(0); setErrorTotalRecords(0); };
 
   const queryKey = ['archival-job-detail', backupJobId];
 
@@ -145,6 +196,20 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     setIsRefreshing(true);
     try { await queryClient.invalidateQueries({ queryKey }); }
     finally { setIsRefreshing(false); }
+  };
+
+  const handleRetryJob = async () => {
+    setIsRetrying(true);
+    closeErrorPanel();
+    setExpandedInlineErrors(new Set());
+    try {
+      await archivalService.resumeBackupJob(backupJobId);
+      await queryClient.invalidateQueries({ queryKey });
+    } catch {
+      // silently fail
+    } finally {
+      setIsRetrying(false);
+    }
   };
 
   const toggleCollapse = (id: string) => {
@@ -211,6 +276,23 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
             <p className='text-sm mt-1' style={{ color: '#64748B' }}>Archive job details →</p>
           </div>
           <div className='flex items-center gap-2 mt-0.5'>
+            {(() => {
+              const jobSt = job?.status?.toUpperCase() ?? '';
+              const showRetry = jobSt === 'FAILED' || jobSt === 'PARTIAL_FAILURE' ||
+                (job?.object ?? []).some((o: ArchiveJobObject) => o.status?.toUpperCase() === 'FAILED');
+              return showRetry ? (
+                <button
+                  onClick={handleRetryJob}
+                  disabled={isRetrying}
+                  title='Retry failed job'
+                  className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50'
+                  style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706', border: '1px solid rgba(217,119,6,0.2)' }}
+                >
+                  <IconRetry spinning={isRetrying} />
+                  {isRetrying ? 'Retrying…' : 'Retry Job'}
+                </button>
+              ) : null;
+            })()}
             <button
               onClick={onClose}
               className='p-1.5 rounded-lg hover:bg-gray-100 transition'
@@ -289,6 +371,113 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
           </button>
         </div>
 
+        {/* ── Error Details Panel (S3-paginated per-record errors) ── */}
+        {errorPanel && (
+          <div
+            className='fixed inset-0 z-[70] flex items-center justify-center p-4'
+            style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}
+            onClick={closeErrorPanel}
+          >
+            <div
+              className='bg-white rounded-2xl w-full flex flex-col'
+              style={{ maxWidth: '600px', maxHeight: '72vh', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Panel header */}
+              <div className='flex items-center justify-between px-6 pt-5 pb-3 flex-shrink-0' style={{ borderBottom: '1px solid #F1F5F9' }}>
+                <div>
+                  <h3 className='font-bold text-base' style={{ color: '#111827' }}>Record Errors — {errorPanel.obj.name}</h3>
+                  <p className='text-xs mt-0.5' style={{ color: '#64748B' }}>
+                    {errorLoading && errorTotalRecords === 0
+                      ? 'Loading…'
+                      : errorTotalRecords > 0
+                      ? `${errorTotalRecords.toLocaleString()} failed record${errorTotalRecords !== 1 ? 's' : ''}`
+                      : '—'}
+                  </p>
+                </div>
+                <button onClick={closeErrorPanel} className='p-1.5 rounded-lg hover:bg-gray-100 transition' style={{ color: '#6B7280' }}>
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M18 6L6 18M6 6l12 12' />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Job-level error (if any) */}
+              {errorPanel.obj.errorMessage && (
+                <div className='mx-6 mt-4 rounded-lg p-3 flex-shrink-0' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.15)' }}>
+                  <p className='text-xs font-semibold mb-1' style={{ color: '#F24400' }}>Job Error</p>
+                  <p className='text-sm font-mono break-all' style={{ color: '#374151' }}>{errorPanel.obj.errorMessage}</p>
+                </div>
+              )}
+
+              {/* Records table */}
+              <div className='overflow-y-auto flex-1 relative' style={{ fontSize: '13px' }}>
+                {errorLoading && (
+                  <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 z-10' style={{ background: 'rgba(255,255,255,0.85)' }}>
+                    <svg className='animate-spin' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M21 12a9 9 0 11-6.219-8.56' />
+                    </svg>
+                    <span className='text-xs font-medium' style={{ color: '#64748B' }}>Loading errors…</span>
+                  </div>
+                )}
+                <table className='w-full' style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 1 }}>
+                      <th className='px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#64748B', width: '38%', background: '#F8FAFC' }}>Record ID</th>
+                      <th className='px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#64748B', background: '#F8FAFC' }}>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!errorLoading && errorRecords.length === 0
+                      ? <tr><td colSpan={2} className='px-5 py-8 text-center text-sm' style={{ color: '#94A3B8' }}>No records found.</td></tr>
+                      : errorRecords.map((r, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
+                            <td className='px-5 py-2.5 font-mono text-xs align-top' style={{ color: '#155DFC', verticalAlign: 'top' }}>{r.recordId}</td>
+                            <td className='px-5 py-2.5 text-sm' style={{ color: '#374151', verticalAlign: 'top' }}>{r.error}</td>
+                          </tr>
+                        ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer: pagination + retry */}
+              <div className='flex items-center justify-between px-6 py-3 flex-shrink-0' style={{ borderTop: '1px solid #F1F5F9' }}>
+                <button
+                  onClick={handleRetryJob}
+                  disabled={isRetrying}
+                  title='Retry failed deletions for this object'
+                  className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50'
+                  style={{ background: 'rgba(217,119,6,0.08)', color: '#D97706', border: '1px solid rgba(217,119,6,0.18)' }}
+                >
+                  <IconRetry spinning={isRetrying} />
+                  {isRetrying ? 'Retrying…' : 'Retry Failed Deletions'}
+                </button>
+                {errorTotalPages > 1 && (
+                  <div className='flex items-center gap-1'>
+                    <span className='text-xs mr-2' style={{ color: '#64748B' }}>
+                      {((errorPanel.page - 1) * 10) + 1}–{Math.min(errorPanel.page * 10, errorTotalRecords)} of {errorTotalRecords.toLocaleString()}
+                    </span>
+                    <button
+                      onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page - 1)}
+                      disabled={errorPanel.page <= 1 || errorLoading}
+                      className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition'
+                      style={{ color: '#374151' }}
+                    >Prev</button>
+                    <span className='text-xs px-2' style={{ color: '#374151' }}>{errorPanel.page} / {errorTotalPages}</span>
+                    <button
+                      onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page + 1)}
+                      disabled={errorPanel.page >= errorTotalPages || errorLoading}
+                      className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition'
+                      style={{ color: '#374151' }}
+                    >Next</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Table ── */}
         {(() => {
           const jobColumns: TableColumn<TreeRow>[] = [
@@ -298,6 +487,8 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               render: ({ obj, depth }) => {
                 const hasChildren = (obj.children?.length ?? 0) > 0;
                 const isCollapsed = collapsedIds.has(obj.id);
+                const hasJobError = !!obj.errorMessage && !obj.recordErrorsS3Prefix;
+                const isErrorOpen = expandedInlineErrors.has(obj.id);
                 return (
                   <span className='flex items-center gap-1.5 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 20 }}>
                     {depth > 0 && (
@@ -318,6 +509,20 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                       <span className='flex-shrink-0 w-5' />
                     )}
                     {obj.name}
+                    {/* Error disclosure arrow — only on the specific failed object */}
+                    {hasJobError && (
+                      <button
+                        onClick={() => toggleInlineError(obj.id)}
+                        title={isErrorOpen ? 'Hide error' : 'Show error'}
+                        className='flex-shrink-0 ml-1 rounded transition-colors hover:bg-red-50'
+                        style={{ color: '#F24400', lineHeight: 0, padding: '2px' }}
+                      >
+                        <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
+                          style={{ transform: isErrorOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}>
+                          <polyline points='6 9 12 15 18 9' />
+                        </svg>
+                      </button>
+                    )}
                   </span>
                 );
               },
@@ -339,9 +544,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               key: 'status',
               header: 'Status',
               render: ({ obj }) => {
-                const st = getStatusStyle(obj.status ?? '');
-                return obj.status
-                  ? <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap' style={{ background: st.bg, color: st.color }}>{getStatusLabel(obj.status)}</span>
+                const rawStatus = obj.status?.toUpperCase() ?? '';
+                const st = getStatusStyle(rawStatus);
+                return rawStatus
+                  ? <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap' style={{ background: st.bg, color: st.color }}>{getStatusLabel(rawStatus)}</span>
                   : <span className='text-xs' style={{ color: '#94A3B8' }}>--</span>;
               },
             },
@@ -360,14 +566,29 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               header: 'Records Failed',
               render: ({ obj }) => {
                 const n = obj.deletedfailedRecordCount ?? 0;
-                return n > 0
-                  ? <span className='inline-flex items-center gap-1 text-sm font-semibold' style={{ color: '#F24400' }}>
-                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                        <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                      </svg>
-                      {n.toLocaleString()}
-                    </span>
-                  : <span className='text-sm font-semibold' style={{ color: '#94A3B8' }}>0</span>;
+                const hasPerRecord = !!obj.recordErrorsS3Prefix;
+                return (
+                  <span className='inline-flex items-center gap-2'>
+                    {n > 0
+                      ? <span className='inline-flex items-center gap-1 text-sm font-semibold' style={{ color: '#F24400' }}>
+                          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                          </svg>
+                          {n.toLocaleString()}
+                        </span>
+                      : <span className='text-sm font-semibold' style={{ color: '#94A3B8' }}>0</span>
+                    }
+                    {hasPerRecord && (
+                      <button
+                        onClick={() => openErrorPanel(obj)}
+                        className='inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition hover:opacity-80'
+                        style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
+                      >
+                        View Errors
+                      </button>
+                    )}
+                  </span>
+                );
               },
             },
             {
@@ -382,36 +603,116 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
             },
           ];
 
+          const paginatedRows = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+          const totalPages = Math.ceil(filtered.length / itemsPerPage);
+          const colHeaders = ['Object', 'Depth', 'Status', 'Records Uploaded', 'Records Deleted', 'Records Failed', 'Data Size', 'API Calls'];
+
           return (
             <div className='flex flex-col flex-1 mx-7 rounded-xl relative overflow-hidden' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
-              {error && !isLoading && (
+              {error && !isLoading ? (
                 <div className='flex flex-col items-center justify-center h-full gap-3 text-center'>
                   <p className='text-sm font-semibold text-gray-700'>Failed to load job details</p>
                   <button type='button' onClick={handleRefresh} className='text-xs text-blue-600 hover:underline'>Try again</button>
                 </div>
+              ) : (
+                <>
+                  <div className='overflow-auto flex-1'>
+                    <table className='w-full' style={{ borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 1 }}>
+                          {colHeaders.map(h => (
+                            <th key={h} className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#64748B', whiteSpace: 'nowrap', background: '#F8FAFC' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {isLoading || isRefreshing
+                          ? Array.from({ length: 5 }).map((_, i) => (
+                              <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                {colHeaders.map((_, j) => (
+                                  <td key={j} className='px-5 py-3.5'><div className='h-4 rounded animate-pulse' style={{ background: '#E2E8F0', width: j === 0 ? 120 : 60 }} /></td>
+                                ))}
+                              </tr>
+                            ))
+                          : paginatedRows.length === 0
+                          ? <tr><td colSpan={colHeaders.length} className='px-5 py-8 text-center text-sm' style={{ color: '#94A3B8' }}>No objects found.</td></tr>
+                          : paginatedRows.map(({ obj, depth }, idx) => {
+                              const hasJobErrorOnly = !!obj.errorMessage && !obj.recordErrorsS3Prefix;
+                              const isInlineOpen = expandedInlineErrors.has(obj.id);
+                              return (
+                                <>
+                                  <tr
+                                    key={obj.id ?? idx}
+                                    className='hover:bg-gray-50 transition-colors'
+                                    style={{ borderBottom: '1px solid #F1F5F9', background: depth > 0 ? `rgba(0,0,0,${depth * 0.012})` : undefined }}
+                                  >
+                                    {/* Object */}
+                                    <td className='px-5 py-3.5'>{jobColumns[0].render({ obj, depth, parentId: null })}</td>
+                                    {/* Depth */}
+                                    <td className='px-5 py-3.5'>{jobColumns[1].render({ obj, depth, parentId: null })}</td>
+                                    {/* Status */}
+                                    <td className='px-5 py-3.5'>{jobColumns[2].render({ obj, depth, parentId: null })}</td>
+                                    {/* Records Uploaded */}
+                                    <td className='px-5 py-3.5'>{jobColumns[3].render({ obj, depth, parentId: null })}</td>
+                                    {/* Records Deleted */}
+                                    <td className='px-5 py-3.5'>{jobColumns[4].render({ obj, depth, parentId: null })}</td>
+                                    {/* Records Failed */}
+                                    <td className='px-5 py-3.5'>{jobColumns[5].render({ obj, depth, parentId: null })}</td>
+                                    {/* Data Size */}
+                                    <td className='px-5 py-3.5'>{jobColumns[6].render({ obj, depth, parentId: null })}</td>
+                                    {/* API Calls */}
+                                    <td className='px-5 py-3.5'>{jobColumns[7].render({ obj, depth, parentId: null })}</td>
+                                  </tr>
+                                  {/* Inline error row — only for job-level errorMessage (no per-record errors) */}
+                                  {hasJobErrorOnly && isInlineOpen && (
+                                    <tr style={{ background: 'rgba(242,68,0,0.02)', borderBottom: '1px solid rgba(242,68,0,0.1)' }}>
+                                      <td colSpan={colHeaders.length} style={{ paddingLeft: depth * 20 + 20, paddingRight: 20, paddingTop: 8, paddingBottom: 12 }}>
+                                        <div className='flex items-start gap-2.5 rounded-lg px-4 py-3' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.15)' }}>
+                                          <svg className='flex-shrink-0 mt-0.5' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                            <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                                          </svg>
+                                          <div className='flex-1 min-w-0'>
+                                            <p className='text-xs font-semibold mb-0.5' style={{ color: '#F24400' }}>Job Error</p>
+                                            <p className='text-sm font-mono break-all' style={{ color: '#374151' }}>{obj.errorMessage}</p>
+                                          </div>
+                                          <button
+                                            onClick={handleRetryJob}
+                                            disabled={isRetrying}
+                                            title='Retry this object'
+                                            className='flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50'
+                                            style={{ background: 'rgba(217,119,6,0.1)', color: '#D97706', border: '1px solid rgba(217,119,6,0.2)' }}
+                                          >
+                                            <IconRetry spinning={isRetrying} />
+                                            {isRetrying ? 'Retrying…' : 'Retry'}
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </>
+                              );
+                            })
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className='flex items-center justify-between px-5 py-3 flex-shrink-0' style={{ borderTop: '1px solid #F1F5F9' }}>
+                      <span className='text-xs' style={{ color: '#64748B' }}>
+                        {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
+                      </span>
+                      <div className='flex items-center gap-1'>
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                          className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition' style={{ color: '#374151' }}>Prev</button>
+                        <span className='text-xs px-2' style={{ color: '#374151' }}>{currentPage} / {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                          className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition' style={{ color: '#374151' }}>Next</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
-              <Table<TreeRow>
-                columns={jobColumns}
-                rows={filtered}
-                getRowKey={({ obj }, idx) => obj.id ?? String(idx)}
-                loading={isLoading || isRefreshing}
-                skeletonConfig={{ rows: 5, colWidths: ['w-32', 'w-16', 'w-20', 'w-24', 'w-24', 'w-20', 'w-16', 'w-16'] }}
-                headerVariant='uppercase'
-                borderless
-                cellPaddingClassName='px-5 py-3.5'
-                rowClassName='hover:bg-gray-50 transition-colors'
-                getRowStyle={({ depth }) => ({
-                  borderBottom: '1px solid #F1F5F9',
-                  background: depth > 0 ? `rgba(0,0,0,${depth * 0.012})` : undefined,
-                })}
-                emptyState='No objects found.'
-                pagination={{
-                  currentPage,
-                  pageSize: itemsPerPage,
-                  totalRecords: filtered.length,
-                  onPageChange: setCurrentPage,
-                }}
-              />
             </div>
           );
         })()}

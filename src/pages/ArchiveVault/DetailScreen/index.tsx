@@ -147,6 +147,7 @@ export default function ArchiveDetailScreen() {
   const [processSuccess, setProcessSuccess] = useState(false);
   const queryClient = useQueryClient();
   const [filterCollapsedIds, setFilterCollapsedIds] = useState<Set<string>>(new Set());
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
 
   const toggleFilterCollapse = (id: string) =>
     setFilterCollapsedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -201,6 +202,18 @@ export default function ArchiveDetailScreen() {
       setProcessError(err?.response?.data?.message ?? err?.message ?? 'Failed to process backup.');
     },
   });
+
+  const handleRetryJob = async (backupJobId: string) => {
+    setRetryingJobId(backupJobId);
+    try {
+      await backupConfigService.resumeBackupJob(backupJobId);
+      await queryClient.invalidateQueries({ queryKey: ['archival-jobs', slug] });
+    } catch {
+      // silently fail — user can retry again
+    } finally {
+      setRetryingJobId(null);
+    }
+  };
 
   useEffect(() => {
     const objects: any[] = item?.objects ?? [];
@@ -797,6 +810,7 @@ export default function ArchiveDetailScreen() {
                         SUCCESS: 'border-green-200 bg-green-50 text-green-700',
                         COMPLETED: 'border-green-200 bg-green-50 text-green-700',
                         UPLOAD_COMPLETED: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+                        PARTIAL_FAILURE: 'border-amber-200 bg-amber-50 text-amber-700',
                         FAILED: 'border-red-200 bg-red-50 text-red-700',
                         RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
                         PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
@@ -804,7 +818,11 @@ export default function ArchiveDetailScreen() {
                       const dotColor: Record<string, string> = {
                         SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500', UPLOAD_COMPLETED: 'bg-cyan-500',
                         FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
+                        PARTIAL_FAILURE: 'bg-amber-400',
                       };
+                      const statusLabel: Record<string, string> = { PARTIAL_FAILURE: 'Partial Failure' };
+                      const canRetry = jobStatus === 'FAILED' || jobStatus === 'PARTIAL_FAILURE';
+                      const isRetrying = retryingJobId === job.backupJobId;
                       const flattenObjects = (items: any[]): any[] =>
                         items.flatMap((o) => [o, ...flattenObjects(o.children ?? [])]);
                       const allObjects = flattenObjects(job.object ?? []);
@@ -823,7 +841,7 @@ export default function ArchiveDetailScreen() {
                           <td className='py-3 pr-4'>
                             <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusColor[jobStatus] ?? 'border-gray-200 bg-gray-50 text-gray-600'}`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${dotColor[jobStatus] ?? 'bg-gray-400'}`} />
-                              {job.status ?? '--'}
+                              {statusLabel[jobStatus] ?? job.status ?? '--'}
                             </span>
                           </td>
                           <td className='py-3 pr-4'>
@@ -841,11 +859,23 @@ export default function ArchiveDetailScreen() {
                           <td className='py-3'>
                             <div className='flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity'>
                               <button type='button' onClick={() => setSelectedJobId(job.backupJobId ?? null)}
-                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'>
+                                className='flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
+                                title='View details'>
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3.5 w-3.5'>
                                   <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
                                 </svg>
                               </button>
+                              {canRetry && (
+                                <button type='button'
+                                  onClick={() => handleRetryJob(job.backupJobId!)}
+                                  disabled={isRetrying}
+                                  title='Retry job'
+                                  className='flex h-7 w-7 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-600 shadow-sm transition hover:border-amber-400 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed'>
+                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`}>
+                                    <path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' /><path d='M3 3v5h5' />
+                                  </svg>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
