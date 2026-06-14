@@ -149,7 +149,24 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const clearAll = () => setSelectedObjects(new Set());
 
   const handleNext = () => {
+    // Collect all object IDs already covered as built children of another selected object.
+    // Those don't need their own independent config entry.
+    const builtChildIds = new Set<string>();
+    const collectBuiltChildIds = (node: any) => {
+      if (node?.id) builtChildIds.add(node.id);
+      for (const grandchild of node?.children ?? []) collectBuiltChildIds(grandchild);
+    };
+    for (const uuid of selectedObjects) {
+      for (const child of objectConfigs[uuid]?.builtChildren ?? []) {
+        collectBuiltChildIds(child);
+      }
+    }
+
     const missingConfig = Array.from(selectedObjects).find((uuid) => {
+      // Skip objects that are already included as built children of a parent config.
+      const obj = allObjects.find((o) => o.uuid === uuid);
+      if (obj && (builtChildIds.has(obj.id) || builtChildIds.has(obj.uuid))) return false;
+
       const config = objectConfigs[uuid];
       return !config?.soqlQuery && !(config?.conditions?.some((c) => c.field));
     });

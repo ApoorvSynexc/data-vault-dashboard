@@ -79,8 +79,8 @@ function getStatusStyle(status: string) {
   const s = status?.toUpperCase();
   if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
   if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
-  if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
-  if (s === 'PARTIAL_FAILURE') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
+  if (s === 'FAILED' || s === 'DELETION_JOB_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
+  if (s === 'PARTIAL_FAILURE' || s === 'DELETION_RECORDS_FAILED') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
   if (s === 'RUNNING' || s === 'IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
   if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
@@ -90,6 +90,8 @@ function getStatusLabel(status: string) {
   const s = status?.toUpperCase();
   if (s === 'COMPLETED' || s === 'SUCCESS') return 'Completed';
   if (s === 'FAILED') return 'Failed';
+  if (s === 'DELETION_JOB_FAILED') return 'Deletion Failed';
+  if (s === 'DELETION_RECORDS_FAILED') return 'Records Failed';
   if (s === 'PARTIAL_FAILURE') return 'Partial Failure';
   if (s === 'RUNNING') return 'In Progress';
   if (s === 'CREATED' || s === 'PENDING') return 'Pending';
@@ -165,19 +167,26 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
   };
   const closeErrorPanel = () => { setErrorPanel(null); setErrorRecords([]); setErrorTotalPages(0); setErrorTotalRecords(0); };
 
-  const queryKey = ['archival-job-detail', backupJobId];
+  // Re-use the parent screen's job-list cache (keyed by ['archival-jobs', configSlug, null])
+  // so object statuses update automatically whenever the parent polls — no duplicate fetch.
+  const queryKey = ['archival-jobs', configSlug, null];
 
   const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      const res = await archivalService.listBackupJobs(configSlug, true, undefined, 20);
-      const jobs: ArchiveJobDetail[] = (res as any)?.data ?? [];
-      return jobs.find((j) => j.backupJobId === backupJobId) ?? null;
+      return archivalService.listBackupJobs(configSlug, true, undefined, 20);
     },
     staleTime: 0,
+    refetchInterval: (query) => {
+      const jobs: ArchiveJobDetail[] = (query.state.data as any)?.data ?? [];
+      const job = Array.isArray(jobs) ? jobs.find((j) => j.backupJobId === backupJobId) : null;
+      const s = job?.status?.toUpperCase() ?? '';
+      return s === 'RUNNING' || s === 'PENDING' ? 3_000 : false;
+    },
   });
 
-  const job: ArchiveJobDetail | null = data ?? null;
+  const jobs: ArchiveJobDetail[] = (data as any)?.data ?? [];
+  const job: ArchiveJobDetail | null = jobs.find((j) => j.backupJobId === backupJobId) ?? null;
 
   // Collapse all parents by default once data loads
   useEffect(() => {
@@ -204,9 +213,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     setExpandedInlineErrors(new Set());
     try {
       await archivalService.resumeBackupJob(backupJobId);
+      // Invalidate the shared cache — parent screen and modal both update.
       await queryClient.invalidateQueries({ queryKey });
     } catch {
-      // silently fail
+      // silently fail — status badge and refresh button let user retry again
     } finally {
       setIsRetrying(false);
     }
@@ -245,7 +255,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     obj.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['COMPLETED', 'SUCCESS', 'UPLOAD_COMPLETED'].includes(obj.status?.toUpperCase() ?? ''));
-  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => obj.status?.toUpperCase() === 'FAILED');
+  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => ['FAILED', 'DELETION_JOB_FAILED', 'DELETION_RECORDS_FAILED'].includes(obj.status?.toUpperCase() ?? ''));
   if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
 
   const statCards = [
@@ -278,8 +288,10 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
           <div className='flex items-center gap-2 mt-0.5'>
             {(() => {
               const jobSt = job?.status?.toUpperCase() ?? '';
-              const showRetry = jobSt === 'FAILED' || jobSt === 'PARTIAL_FAILURE' ||
-                (job?.object ?? []).some((o: ArchiveJobObject) => o.status?.toUpperCase() === 'FAILED');
+              const RETRYABLE_JOB_STATUSES = new Set(['FAILED', 'PARTIAL_FAILURE']);
+              const RETRYABLE_OBJ_STATUSES = new Set(['FAILED', 'DELETION_JOB_FAILED', 'DELETION_RECORDS_FAILED']);
+              const showRetry = RETRYABLE_JOB_STATUSES.has(jobSt) ||
+                (job?.object ?? []).some((o: ArchiveJobObject) => RETRYABLE_OBJ_STATUSES.has(o.status?.toUpperCase() ?? ''));
               return showRetry ? (
                 <button
                   onClick={handleRetryJob}
@@ -441,19 +453,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                 </table>
               </div>
 
-              {/* Footer: pagination + retry */}
-              <div className='flex items-center justify-between px-6 py-3 flex-shrink-0' style={{ borderTop: '1px solid #F1F5F9' }}>
-                <button
-                  onClick={handleRetryJob}
-                  disabled={isRetrying}
-                  title='Retry failed deletions for this object'
-                  className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50'
-                  style={{ background: 'rgba(217,119,6,0.08)', color: '#D97706', border: '1px solid rgba(217,119,6,0.18)' }}
-                >
-                  <IconRetry spinning={isRetrying} />
-                  {isRetrying ? 'Retrying…' : 'Retry Failed Deletions'}
-                </button>
-                {errorTotalPages > 1 && (
+              {/* Footer: pagination only */}
+              {errorTotalPages > 1 && (
+                <div className='flex items-center justify-end px-6 py-3 flex-shrink-0' style={{ borderTop: '1px solid #F1F5F9' }}>
                   <div className='flex items-center gap-1'>
                     <span className='text-xs mr-2' style={{ color: '#64748B' }}>
                       {((errorPanel.page - 1) * 10) + 1}–{Math.min(errorPanel.page * 10, errorTotalRecords)} of {errorTotalRecords.toLocaleString()}
@@ -472,8 +474,8 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                       style={{ color: '#374151' }}
                     >Next</button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -487,7 +489,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               render: ({ obj, depth }) => {
                 const hasChildren = (obj.children?.length ?? 0) > 0;
                 const isCollapsed = collapsedIds.has(obj.id);
-                const hasJobError = !!obj.errorMessage && !obj.recordErrorsS3Prefix;
+                const FAILURE_STATUSES_WITH_MSG = new Set(['FAILED', 'DELETION_JOB_FAILED']);
+                const hasJobError = !!obj.errorMessage ||
+                  FAILURE_STATUSES_WITH_MSG.has(obj.status?.toUpperCase() ?? '');
                 const isErrorOpen = expandedInlineErrors.has(obj.id);
                 return (
                   <span className='flex items-center gap-1.5 text-sm font-medium' style={{ color: '#111827', paddingLeft: depth * 20 }}>
@@ -566,7 +570,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               header: 'Records Failed',
               render: ({ obj }) => {
                 const n = obj.deletedfailedRecordCount ?? 0;
-                const hasPerRecord = !!obj.recordErrorsS3Prefix;
+                const ACTIVE_STATUSES = new Set(['DELETION_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS', 'BULK_QUERY_COMPLETED', 'TRANSFER_IN_PROGRESS', 'UPLOAD_COMPLETED', 'RUNNING', 'PENDING', 'CREATED']);
+                const jobIsActive = job?.status?.toUpperCase() === 'RUNNING' || job?.status?.toUpperCase() === 'PENDING';
+                const hasPerRecord = !!obj.recordErrorsS3Prefix && !ACTIVE_STATUSES.has(obj.status?.toUpperCase() ?? '') && !jobIsActive;
                 return (
                   <span className='inline-flex items-center gap-2'>
                     {n > 0
@@ -637,7 +643,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                           : paginatedRows.length === 0
                           ? <tr><td colSpan={colHeaders.length} className='px-5 py-8 text-center text-sm' style={{ color: '#94A3B8' }}>No objects found.</td></tr>
                           : paginatedRows.map(({ obj, depth }, idx) => {
-                              const hasJobErrorOnly = !!obj.errorMessage && !obj.recordErrorsS3Prefix;
+                              const FAILURE_STATUSES_WITH_MSG = new Set(['FAILED', 'DELETION_JOB_FAILED']);
+                              const hasJobErrorOnly = !!obj.errorMessage ||
+                                FAILURE_STATUSES_WITH_MSG.has(obj.status?.toUpperCase() ?? '');
                               const isInlineOpen = expandedInlineErrors.has(obj.id);
                               return (
                                 <>
@@ -673,7 +681,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                                           </svg>
                                           <div className='flex-1 min-w-0'>
                                             <p className='text-xs font-semibold mb-0.5' style={{ color: '#F24400' }}>Job Error</p>
-                                            <p className='text-sm font-mono break-all' style={{ color: '#374151' }}>{obj.errorMessage}</p>
+                                            <p className='text-sm font-mono break-all' style={{ color: '#374151' }}>{obj.errorMessage || 'Object failed — no additional error details available.'}</p>
                                           </div>
                                           <button
                                             onClick={handleRetryJob}

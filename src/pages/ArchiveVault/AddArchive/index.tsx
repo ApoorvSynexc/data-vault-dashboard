@@ -102,13 +102,7 @@ export default function AddArchive() {
             setArchivalPayload(payload);
             goNext();
           }}
-          onBack={() => {
-            // Clear selectedObjects so Step 3 remounts with a clean slate.
-            // Without this, going back and changing the query would leave stale
-            // child selections and filter configs from the previous pass.
-            setSelectedObjects([]);
-            goBack();
-          }}
+          onBack={goBack}
         />
       )}
       {currentStep === 5 && (

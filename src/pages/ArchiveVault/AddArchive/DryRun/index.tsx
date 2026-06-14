@@ -155,7 +155,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
       const failed: { name: string; error: string }[] = [];
       const flattenResults = (items: any[]) => {
         items.forEach((obj: any) => {
-          if (obj.name) map[obj.name] = obj.count ?? 0;
+          if (obj.id) map[obj.id] = obj.count ?? 0;
           if (obj.success === false && obj.name) failed.push({ name: obj.name, error: obj.error ?? 'Unknown error' });
           if (obj.children?.length) flattenResults(obj.children);
         });
@@ -181,6 +181,8 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   );
   const totalDataSize = useMemo(() => calcDataSize(totalRecords), [totalRecords]);
 
+  const hasMultipleObjects = selectedObjects.length > 1;
+
   // Tree grid state for Per-Object Impact — empty set means all collapsed by default
   const [expandedImpactIds, setExpandedImpactIds] = useState<Set<string>>(new Set());
   const toggleImpactCollapse = (id: string) =>
@@ -191,15 +193,11 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const impactTreeRows = useMemo((): ImpactTreeRow[] => {
     const rows: ImpactTreeRow[] = [];
     const rawObjects: any[] = (archivalPayload?.objects as any[]) ?? [];
-    const dedup = (items: any[]): any[] => {
-      const seen = new Set<string>();
-      return items.filter((o) => { const k = o.name ?? o.id; if (seen.has(k)) return false; seen.add(k); return true; });
-    };
     const walk = (items: any[], depth: number, parentKey: string) => {
-      dedup(items).forEach((obj, idx) => {
+      items.forEach((obj, idx) => {
         const id = obj.id ?? obj.name;
-        const rowKey = `${parentKey}-${idx}-${obj.name}`;
-        const children = dedup(obj.children ?? []);
+        const rowKey = `${parentKey}-${idx}-${id}`;
+        const children: any[] = obj.children ?? [];
         const hasChildren = children.length > 0;
         rows.push({ name: obj.name, rowKey, id, depth, hasChildren, condition: obj.condition, fields: obj.field ?? [] });
         if (hasChildren && expandedImpactIds.has(rowKey)) {
@@ -322,7 +320,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               </p>
             </div>
 
-            {/* Impact summary cards — 5 cards */}
+            {/* Impact summary cards — 4 cards */}
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
               {[
                 { label: 'Estimated Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
@@ -337,6 +335,17 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 </div>
               ))}
             </div>
+            {hasMultipleObjects && (
+              <div className='flex items-start gap-2.5 rounded-lg px-4 py-3 flex-shrink-0'
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#B45309' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+                  <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+                </svg>
+                <p className='text-xs' style={{ color: '#92400E' }}>
+                  <strong>Note:</strong> The Total Estimated Record Count above may be higher than the actual number of unique records archived. Records related to multiple selected objects may be counted more than once across parent and child relationships.
+                </p>
+              </div>
+            )}
 
             {/* Failed objects detail */}
             {failedObjects.length > 0 && (
@@ -388,7 +397,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       <div className='flex items-center justify-center py-12 text-sm text-gray-400'>No objects selected.</div>
                     ) : pagedRows.map((row) => {
                       const isParent = row.depth === 0;
-                      const count = objectCountMap[row.name] ?? 0;
+                      const count = objectCountMap[row.id] ?? 0;
                       const isSoql = row.condition?.type === 'SOQL';
                       const clause = row.condition?.soqlQuery ?? '';
                       const fields: any[] = row.fields ?? [];
