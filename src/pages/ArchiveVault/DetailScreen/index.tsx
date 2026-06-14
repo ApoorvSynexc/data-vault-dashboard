@@ -157,6 +157,11 @@ export default function ArchiveDetailScreen() {
     queryFn: () => backupConfigService.listBackupJobs(slug!, true, logCursor ?? undefined, 20),
     staleTime: 30_000,
     enabled: !!slug,
+    refetchInterval: (query) => {
+      const rows: BackupJobItem[] = (query.state.data as any)?.data ?? [];
+      const hasRunning = rows.some((j) => j.status?.toUpperCase() === 'RUNNING' || j.status?.toUpperCase() === 'PENDING');
+      return hasRunning ? 5_000 : false;
+    },
   });
 
   const jobRows: BackupJobItem[] = (jobsResponse as any)?.data ?? [];
