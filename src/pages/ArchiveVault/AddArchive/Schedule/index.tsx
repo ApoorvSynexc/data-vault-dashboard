@@ -31,6 +31,8 @@ interface Step4Props {
   initialScheduleConfig?: ArchiveScheduleConfig | null;
   onNext: (scheduleConfig: ArchiveScheduleConfig, payload: Record<string, unknown>) => void;
   onBack: () => void;
+  // In edit mode, "One Time" is not allowed — the archive already exists and runs on a schedule
+  editMode?: boolean;
 }
 
 const dayMap: Record<string, string> = { Mon: 'MON', Tue: 'TUE', Wed: 'WED', Thu: 'THU', Fri: 'FRI', Sat: 'SAT', Sun: 'SUN' };
@@ -50,7 +52,7 @@ const OPERATOR_MAP: Record<string, string> = {
   'in': 'IN',
 };
 
-export default function Step4({ crmId, destinationId, policyName = '', description = '', selectedObjects = [], initialScheduleConfig, onNext, onBack }: Step4Props) {
+export default function Step4({ crmId, destinationId, policyName = '', description = '', selectedObjects = [], initialScheduleConfig, onNext, onBack, editMode = false }: Step4Props) {
   const navigate = useNavigate();
 
   const scheduledObjects = selectedObjects.filter((o) => !!o.scheduleConfig);
@@ -60,8 +62,10 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const init = () => {
     if (initialScheduleConfig?.scheduling) {
       const s = initialScheduleConfig.scheduling;
+      const mappedFreq = freqBackMap[s.frequency] ?? 'Daily' as FrequencyType;
       return {
-        frequency: freqBackMap[s.frequency] ?? 'Daily' as FrequencyType,
+        // In edit mode, never default to "One Time" — fall back to Daily
+        frequency: (editMode && mappedFreq === 'One Time') ? 'Daily' as FrequencyType : mappedFreq,
         runMode: (!s.startDate && !s.startTime) ? 'runNow' as const : 'scheduleRun' as const,
         selectedDays: s.weekDays ? s.weekDays.map((d) => backDayMap[d] || d) : ['Mon'],
         selectedMonths: s.selectedMonths ? s.selectedMonths.map((m) => backMonthMap[m] || m) : ['Jan'],
@@ -254,7 +258,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
 
               {/* Frequency tabs */}
               <div className='flex gap-2 flex-wrap'>
-                {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
+                {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).filter((f) => !(editMode && f === 'One Time')).map((freq) => (
                   <button key={freq} onClick={() => setFrequency(freq)}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
                     {freq}

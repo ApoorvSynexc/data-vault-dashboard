@@ -23,6 +23,7 @@ import ConnectAWSBucket from '../pages/Connections/destination/ConnectAWSBucket'
 import EditAWSBucket from '../pages/Connections/destination/EditAWSBucket';
 import ArchiveVault from '../pages/ArchiveVault';
 import AddArchive from '../pages/ArchiveVault/AddArchive';
+import EditArchive from '../pages/ArchiveVault/EditArchive';
 import ArchiveDetailScreen from '../pages/ArchiveVault/DetailScreen';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
           { path: '/connections/aws/edit/:destinationId', element: <EditAWSBucket /> },
           { path: '/archive-vault', element: <ArchiveVault /> },
           { path: '/archive-vault/new', element: <AddArchive /> },
+          { path: '/archive-vault/edit/:slug', element: <EditArchive /> },
           { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },

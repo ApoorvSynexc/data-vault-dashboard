@@ -187,7 +187,7 @@ function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfir
 
 type PolicyRow = { backupConfigId: string; name: string; slug: string; displayStatus: string };
 
-type DropdownMenuItem = { label: string; danger?: boolean; onClick?: () => void };
+type DropdownMenuItem = { label: string; danger?: boolean; disabled?: boolean; title?: string; onClick?: () => void };
 
 function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   const [open, setOpen] = useState(false);
@@ -216,8 +216,10 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
         <div className='absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'>
           {items.map((item) => (
             <button key={item.label} type='button'
-              onClick={() => { setOpen(false); item.onClick?.(); }}
-              className={`flex w-full items-center px-3 py-2 text-left text-xs font-medium transition ${item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'}`}>
+              disabled={item.disabled}
+              title={item.title}
+              onClick={() => { if (!item.disabled) { setOpen(false); item.onClick?.(); } }}
+              className={`flex w-full items-center px-3 py-2 text-left text-xs font-medium transition ${item.disabled ? 'cursor-not-allowed opacity-40' : item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'}`}>
               {item.label}
             </button>
           ))}
@@ -501,7 +503,14 @@ export default function ArchiveVaultHomePage() {
                       ...(policy.displayStatus === 'DRAFT' ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
                       ...(policy.displayStatus !== 'DRAFT' ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
                       ...(policy.displayStatus !== 'DRAFT' ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
-                      { label: 'Edit Policy', onClick: () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`) },
+                      {
+                        label: 'Edit Policy',
+                        disabled: policy.scheduleConfig?.scheduling?.frequency === 'ONCE',
+                        title: policy.scheduleConfig?.scheduling?.frequency === 'ONCE' ? 'One-time archives cannot be edited' : undefined,
+                        onClick: policy.scheduleConfig?.scheduling?.frequency === 'ONCE'
+                          ? undefined
+                          : () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`),
+                      },
                       { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
                     ]}
                   />

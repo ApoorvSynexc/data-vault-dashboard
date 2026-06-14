@@ -93,11 +93,18 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
     setPreviewLoading(true);
     setPreviewError(null);
     setShowRecordsTable(true);
+
+    // Find the matching object config from the archival payload so the backend
+    // can build the WHERE clause from its condition/field filters.
+    const objects = (archivalPayload?.objects as any[]) ?? [];
+    const objectConfig = objects.find((o: any) => o.name === objId) ?? undefined;
+
     try {
       const res = await backupConfigService.getObjectRecords({
         crmId: crmId ?? '',
         apiName: objId,
         fields: selectedFields,
+        objectConfig,
       });
       const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
       setPreviewRecords(Array.isArray(records) ? records : []);

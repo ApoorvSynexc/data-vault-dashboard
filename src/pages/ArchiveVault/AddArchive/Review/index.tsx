@@ -19,6 +19,9 @@ interface Step5Props {
   scheduleConfig?: ArchiveScheduleConfig | null;
   onBack: () => void;
   onEditStep: (step: number) => void;
+  // Edit mode — when set, calls updateConfig (PUT) instead of applyConfig (POST)
+  editMode?: boolean;
+  backupConfigId?: string;
 }
 
 
@@ -38,6 +41,8 @@ export default function Step5({
   scheduleConfig = null,
   onBack,
   onEditStep,
+  editMode = false,
+  backupConfigId = '',
 }: Step5Props) {
   const navigate = useNavigate();
   const archivalService = useArchivalService();
@@ -72,10 +77,27 @@ const [confirmError, setConfirmError] = useState(false);
   const scheduleDisplay = `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`;
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    await archivalService.applyConfig({ ...archivalPayload, status: backupStatus } as any);
+    if (editMode && backupConfigId) {
+      await archivalService.updateConfig(backupConfigId, { ...archivalPayload, backupStatus } as any);
+    } else {
+      await archivalService.applyConfig({ ...archivalPayload, status: backupStatus } as any);
+    }
   };
 
   const handleRunArchive = () => { setApiError(null); setConfirmText(''); setConfirmError(false); setShowConfirm(true); };
+
+  const handleSaveChanges = async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      await fireApi('ACTIVE');
+      setIsSuccess(true);
+    } catch (err: any) {
+      setApiError(err?.message ?? 'Failed to save changes. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSaveDraft = async () => {
     setIsLoading(true);
@@ -124,7 +146,7 @@ const [confirmError, setConfirmError] = useState(false);
             </svg>
           </div>
         </div>
-        <h1 className='text-3xl font-bold text-green-600'>Archive Started Successfully</h1>
+        <h1 className='text-3xl font-bold text-green-600'>{editMode ? 'Changes Saved Successfully' : 'Archive Started Successfully'}</h1>
         <p className='text-gray-500'>Redirecting to Archive Vault in 2s…</p>
       </div>
     );
@@ -165,7 +187,7 @@ const [confirmError, setConfirmError] = useState(false);
           <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
             <polyline points='9 18 15 12 9 6' />
           </svg>
-          <span className='text-sm font-normal' style={{ color: '#155DFC' }}>New Archive</span>
+          <span className='text-sm font-normal' style={{ color: '#155DFC' }}>{editMode ? 'Edit Archive' : 'New Archive'}</span>
         </div>
 
         {/* Progress bar */}
@@ -306,19 +328,21 @@ const [confirmError, setConfirmError] = useState(false);
             className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
             ←Back
           </button>
-          <button onClick={handleSaveDraft} disabled={isLoading}
-            className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
-            style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
-            Save As Draft
-          </button>
-          <button onClick={handleRunArchive} disabled={isLoading}
+          {!editMode && (
+            <button onClick={handleSaveDraft} disabled={isLoading}
+              className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
+              style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
+              Save As Draft
+            </button>
+          )}
+          <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading}
             className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
             style={{ background: '#155DFC' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
             onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
-            {isLoading ? 'Creating…' : 'Start Archive'}
+            {isLoading ? (editMode ? 'Saving…' : 'Creating…') : (editMode ? 'Save Changes' : 'Start Archive')}
           </button>
         </div>
       </div>
