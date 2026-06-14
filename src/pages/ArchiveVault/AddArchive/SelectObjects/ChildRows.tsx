@@ -97,7 +97,11 @@ export function ChildRows({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent]);
 
-  const rows = rawRows;
+  const rows = [...rawRows].sort((a, b) => {
+    const amd = a.relationshipType === 'MasterDetail' ? 0 : 1;
+    const bmd = b.relationshipType === 'MasterDetail' ? 0 : 1;
+    return amd - bmd;
+  });
 
   useEffect(() => { setPage(0); }, [objectName]);
 
@@ -131,18 +135,23 @@ export function ChildRows({
           e.stopPropagation();
           if (!isChildSelected || atDepthLimit) return;
           setIncludeChild((p) => {
-            const next: Record<string, boolean> = { ...p, [childKey]: !p[childKey] };
-            if (!next[childKey]) setExpandedChild((c) => c === childKey ? null : c);
+            const turningOn = !p[childKey];
+            const next: Record<string, boolean> = { ...p, [childKey]: turningOn };
+            if (turningOn) {
+              setExpandedChild(childKey);
+            } else {
+              setExpandedChild((c) => c === childKey ? null : c);
+            }
             return next;
           });
         };
 
+        const isMasterDetail = row.relationshipType === 'MasterDetail';
+
         const handleCheckbox = () => {
+          if (isMasterDetail) return;
           toggleChildObject(childKey);
-          if (!isChildSelected) {
-            // only auto-enable the "include child" toggle if there are deeper levels available
-            if (!atDepthLimit) setIncludeChild((p) => ({ ...p, [childKey]: true }));
-          } else {
+          if (isChildSelected) {
             setIncludeChild((p) => { const n = { ...p }; delete n[childKey]; return n; });
             setExpandedChild((c) => c === childKey ? null : c);
           }
@@ -166,7 +175,9 @@ export function ChildRows({
               <td className='px-3 py-2' onClick={(e) => e.stopPropagation()}>
                 <div style={{ paddingLeft: depth * 20 }}>
                   <input type='checkbox' checked={isChildSelected} onChange={handleCheckbox}
-                    className='w-4 h-4 accent-blue-600 cursor-pointer' />
+                    disabled={isMasterDetail}
+                    className='w-4 h-4 accent-blue-600'
+                    style={{ cursor: isMasterDetail ? 'not-allowed' : 'pointer', opacity: isMasterDetail ? 0.6 : 1 }} />
                 </div>
               </td>
               <td className='px-3 py-2'>

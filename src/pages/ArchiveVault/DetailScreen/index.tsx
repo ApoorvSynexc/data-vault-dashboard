@@ -817,15 +817,22 @@ export default function ArchiveDetailScreen() {
                         UPLOAD_COMPLETED: 'border-cyan-200 bg-cyan-50 text-cyan-700',
                         PARTIAL_FAILURE: 'border-amber-200 bg-amber-50 text-amber-700',
                         FAILED: 'border-red-200 bg-red-50 text-red-700',
+                        DELETION_JOB_FAILED: 'border-red-200 bg-red-50 text-red-700',
+                        DELETION_RECORDS_FAILED: 'border-amber-200 bg-amber-50 text-amber-700',
                         RUNNING: 'border-blue-200 bg-blue-50 text-blue-700',
                         PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
                       };
                       const dotColor: Record<string, string> = {
                         SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500', UPLOAD_COMPLETED: 'bg-cyan-500',
-                        FAILED: 'bg-red-500', RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
-                        PARTIAL_FAILURE: 'bg-amber-400',
+                        FAILED: 'bg-red-500', DELETION_JOB_FAILED: 'bg-red-500',
+                        RUNNING: 'bg-blue-500', PENDING: 'bg-yellow-400',
+                        PARTIAL_FAILURE: 'bg-amber-400', DELETION_RECORDS_FAILED: 'bg-amber-400',
                       };
-                      const statusLabel: Record<string, string> = { PARTIAL_FAILURE: 'Partial Failure' };
+                      const statusLabel: Record<string, string> = {
+                        PARTIAL_FAILURE: 'Partial Failure',
+                        DELETION_JOB_FAILED: 'Deletion Failed',
+                        DELETION_RECORDS_FAILED: 'Records Failed',
+                      };
                       const canRetry = jobStatus === 'FAILED' || jobStatus === 'PARTIAL_FAILURE';
                       const isRetrying = retryingJobId === job.backupJobId;
                       const flattenObjects = (items: any[]): any[] =>
