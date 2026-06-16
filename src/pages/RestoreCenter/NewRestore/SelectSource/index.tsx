@@ -103,7 +103,7 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Selection', 'Destination', 'Conflict', 'Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Automation', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -300,8 +300,6 @@ interface Props { onNext: () => void; onBack: () => void; }
 
 export default function SelectSource({ onNext, onBack }: Props) {
   const [phase, setPhase]             = useState<'cloud' | 'source'>('cloud');
-  const [jobName, setJobName]         = useState('');
-  const [tags, setTags]               = useState('');
   const [selectedProvider, setSelectedProvider]         = useState('AWS');
   const [selectedConnection, setSelectedConnection]     = useState<Destination | null>(null);
   const [sourceType, setSourceType]   = useState<SourceType>('backup');
@@ -491,50 +489,9 @@ export default function SelectSource({ onNext, onBack }: Props) {
           <span className='text-sm font-normal' style={{ color: '#155DFC' }}>New Restore</span>
         </div>
 
-        {/* Job name + tags + draft bar */}
-        <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-100'>
-            {/* Job name */}
-            <div className='px-4 pt-3 pb-2'>
-              <label className='text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1'>
-                Restore Job Name
-                <span className='relative group'>
-                  <span className='w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-600 text-[9px] font-bold flex items-center justify-center cursor-help'>i</span>
-                </span>
-              </label>
-              <input
-                value={jobName}
-                onChange={(e) => setJobName(e.target.value)}
-                placeholder='Give this restore a name (optional)'
-                className='mt-1.5 w-full text-sm text-gray-800 bg-transparent border-0 outline-none placeholder:text-gray-400 font-medium'
-              />
-            </div>
-            {/* Tags */}
-            <div className='px-4 pt-3 pb-2'>
-              <label className='text-[11px] font-bold text-gray-600 uppercase tracking-wider'>Tags (optional)</label>
-              <input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder='e.g. INC-4711, compliance'
-                className='mt-1.5 w-full text-sm text-gray-800 bg-transparent border-0 outline-none placeholder:text-gray-400'
-              />
-            </div>
-          </div>
-          {/* Draft status row */}
-          <div className='flex items-center justify-end gap-3 px-4 py-2 border-t border-gray-100 bg-gray-50'>
-            <span className='flex items-center gap-1.5 text-[11px] font-medium text-green-600'>
-              <span className='w-1.5 h-1.5 rounded-full bg-green-500 inline-block' />
-              Draft saved · just now
-            </span>
-            <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors'>
-              💾 Save as Draft
-            </button>
-          </div>
-        </div>
-
         {/* Step header + progress */}
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
-          <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 1 of 7</p>
+          <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 1 of 8</p>
           <Typography as='h1' variant='pageTitle' color='primary'>Discover &amp; Select Source</Typography>
           <Typography variant='bodySm' color='muted' className='mt-1'>
             First pick where the data lives. Then choose the exact snapshot or entry below.
@@ -849,9 +806,6 @@ export default function SelectSource({ onNext, onBack }: Props) {
           {phase === 'source' ? '← Back' : '← Cancel'}
         </button>
         <div className='flex items-center gap-2'>
-          <button className='inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
-            💾 Save as Draft
-          </button>
           {phase === 'cloud' ? (
             <button
               onClick={() => setPhase('source')}

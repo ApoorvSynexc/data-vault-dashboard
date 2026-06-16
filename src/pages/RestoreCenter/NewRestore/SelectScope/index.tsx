@@ -1,4 +1,4 @@
-// SelectScope — Step 2 of 7 in the New Restore wizard.
+// SelectScope — Step 3 of 8 in the New Restore wizard.
 //
 // Scope modes:
 //   Full Restore   — everything from source, no filtering
@@ -77,7 +77,7 @@ const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Selection', 'Destination', 'Conflict', 'Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Automation', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -327,7 +327,7 @@ export default function SelectScope({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
             <div>
-              <p className='text-xs font-semibold text-blue-600 mb-1'>Step 2 of 7</p>
+              <p className='text-xs font-semibold text-blue-600 mb-1'>Step 2 of 8</p>
               <Typography as='h1' variant='pageTitle' color='primary'>Choose Selection Scope</Typography>
               <Typography variant='bodySm' color='muted' className='mt-0.5'>
                 Pick a mode below. Only the relevant sub-UI appears — no clutter.
