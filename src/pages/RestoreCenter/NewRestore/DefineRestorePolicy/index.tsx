@@ -91,7 +91,37 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
           className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-shrink-0'
           style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
         >
-          {/* Row 1: Policy Name + Tags */}
+          {/* Row 1: Restore Source + Destination (read-only, from prior steps) */}
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium'>
+                <span className='text-red-500'>* </span>
+                <span style={{ color: '#33363F' }}>Restore Source</span>
+              </label>
+              <input
+                type='text'
+                value='Production (live CRM org)'
+                readOnly
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
+                style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
+              />
+            </div>
+            <div className='flex flex-col gap-1.5'>
+              <label className='text-sm font-medium'>
+                <span className='text-red-500'>* </span>
+                <span style={{ color: '#33363F' }}>Destination</span>
+              </label>
+              <input
+                type='text'
+                value='AWS S3 — Production Bucket'
+                readOnly
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
+                style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Policy Name + Tags */}
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
             <div className='flex flex-col gap-1.5'>
               <label className='text-sm font-medium'>
@@ -122,7 +152,7 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
             </div>
           </div>
 
-          {/* Row 2: Description (full width) */}
+          {/* Row 3: Description (full width) */}
           <div className='flex flex-col gap-1.5'>
             <label className='text-sm font-medium text-gray-700'>
               Description <span className='text-gray-400 font-normal'>(Optional)</span>
