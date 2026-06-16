@@ -101,6 +101,8 @@ export default function AuditLogs() {
   const [sevFilter,  setSev]    = useState<Severity | 'all'>('all');
   const [userFilter, setUser]   = useState('all');
   const [range,    setRange]    = useState<Range>('30d');
+  const [dateFrom, setDateFrom] = useState('2026-05-01');
+  const [dateTo,   setDateTo]   = useState('2026-05-31');
   const [sortKey,  setSortKey]  = useState<SortKey>('ts');
   const [sortDir,  setSortDir]  = useState<'asc' | 'desc'>('desc');
   const [page,     setPage]     = useState(1);
@@ -254,6 +256,25 @@ export default function AuditLogs() {
             <Chip key={r} label={r === '24h' ? 'Last 24h' : r === '7d' ? 'Last 7 days' : r === '30d' ? 'Last 30 days' : r === '90d' ? 'Last 90 days' : 'Custom'}
               active={range === r} onClick={() => { setRange(r); setPage(1); }} />
           ))}
+          {range === 'custom' && (
+            <div className='flex items-center gap-2 ml-1'>
+              <input
+                type='date'
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                className='h-7 px-2 rounded-lg text-xs outline-none bg-white'
+                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              />
+              <span className='text-gray-400 text-xs'>→</span>
+              <input
+                type='date'
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                className='h-7 px-2 rounded-lg text-xs outline-none bg-white'
+                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Event type chips */}
