@@ -103,11 +103,11 @@ function TypeBadge({ type }: { type: string }) {
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0 overflow-x-auto'>
+    <div className='flex items-center gap-0'>
       {STEPS.map((label, i) => {
         const num = i + 1;
         const isDone   = num < active;
@@ -122,10 +122,10 @@ function ProgressBar({ active }: { active: number }) {
               }`}>
                 {isDone ? '✓' : num}
               </div>
-              <span className='hidden sm:inline'>{label}</span>
+              <span className='hidden lg:inline'>{label}</span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-2' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
+              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
             )}
           </div>
         );
@@ -491,7 +491,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
         {/* Step header + progress */}
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
-          <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 1 of 8</p>
+          <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 1 of 7</p>
           <Typography as='h1' variant='pageTitle' color='primary'>Discover &amp; Select Source</Typography>
           <Typography variant='bodySm' color='muted' className='mt-1'>
             First pick where the data lives. Then choose the exact snapshot or entry below.
