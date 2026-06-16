@@ -78,7 +78,7 @@ export default function Storage() {
   const selectSty = { border: '1px solid #E2E8F0', color: '#33363F' };
 
   return (
-    <div className='flex flex-col gap-5 p-4 sm:p-6 bg-gray-50 min-h-full'>
+    <div className='flex flex-col gap-5 p-4 sm:p-6 w-full'>
 
       {/* ── Page Header ── */}
       <div className='flex items-center justify-between gap-4'>
