@@ -37,12 +37,12 @@ const mainNav = [
   { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup     },
   { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore    },
   { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive    },
-  { to: '/connections',         label: 'Connections',          Icon: Icons.connectors },
-  { to: '/storage',            label: 'Storage & Retention', Icon: Icons.storage    },
+  { to: '/connections',        label: 'Connections',         Icon: Icons.connectors },
+  { to: '/storage',            label: 'Storage',             Icon: Icons.storage    },
   { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity   },
+  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports    },
   { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports    },
-  { to: '/security',           label: 'Security & Compliance', Icon: Icons.security },
-  { to: '/settings',           label: 'Settings', Icon: Icons.settings },
+  { to: '/settings',           label: 'Settings',            Icon: Icons.settings   },
 ];
 
 export default function MainLayout() {
