@@ -169,15 +169,15 @@ function CloudSourcePicker({
   useEffect(() => { setSelectedConnection(null); }, [selectedProvider]);
 
   return (
-    <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      <div className='flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
+    <div className='flex-1 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col min-h-0'>
+      <div className='flex items-center gap-3 border-b border-gray-100 px-5 py-3 flex-shrink-0'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>Cloud Source</Typography>
         <span className='text-xs text-gray-400'>Select the storage platform and connection to restore from</span>
       </div>
-      <div className='p-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
+      <div className='flex-1 min-h-0 p-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
 
         {/* Left — Available Storage Platforms */}
-        <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col' style={{ minHeight: '200px', maxHeight: '300px' }}>
+        <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
           <p className='text-sm font-semibold text-gray-800 mb-3 flex-shrink-0'>Available Source Platform</p>
           <div className='flex-1 overflow-y-auto space-y-2 pr-1'>
             {STORAGE_PROVIDERS.map((p) => {
@@ -213,7 +213,7 @@ function CloudSourcePicker({
         </div>
 
         {/* Right — Available Connections */}
-        <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col' style={{ minHeight: '200px', maxHeight: '300px' }}>
+        <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
           <p className='text-sm font-semibold text-gray-800 mb-3 flex-shrink-0'>
             Available {selectedProvider} Connections
           </p>
@@ -299,6 +299,7 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 interface Props { onNext: () => void; onBack: () => void; }
 
 export default function SelectSource({ onNext, onBack }: Props) {
+  const [phase, setPhase]             = useState<'cloud' | 'source'>('cloud');
   const [jobName, setJobName]         = useState('');
   const [tags, setTags]               = useState('');
   const [selectedProvider, setSelectedProvider]         = useState('AWS');
@@ -477,7 +478,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0 h-full'>
 
         {/* Breadcrumb */}
         <div className='flex items-center gap-2 flex-shrink-0'>
@@ -543,13 +544,18 @@ export default function SelectSource({ onNext, onBack }: Props) {
           </div>
         </div>
 
-        {/* Cloud source platform + connection picker */}
-        <CloudSourcePicker
-          selectedProvider={selectedProvider}
-          setSelectedProvider={setSelectedProvider}
-          selectedConnection={selectedConnection}
-          setSelectedConnection={setSelectedConnection}
-        />
+        {/* Phase 1 — Cloud Source picker */}
+        {phase === 'cloud' && (
+          <CloudSourcePicker
+            selectedProvider={selectedProvider}
+            setSelectedProvider={setSelectedProvider}
+            selectedConnection={selectedConnection}
+            setSelectedConnection={setSelectedConnection}
+          />
+        )}
+
+        {/* Phase 2 — Source Type cards + sub-pickers */}
+        {phase === 'source' && <div className='contents'>
 
         {/* Source Type cards */}
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -829,28 +835,42 @@ export default function SelectSource({ onNext, onBack }: Props) {
           </div>
         )}
 
+        </div>}
+        {/* end phase === 'source' */}
+
       </div>
 
       {/* ── Footer ── */}
       <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
         <button
-          onClick={onBack}
+          onClick={phase === 'source' ? () => setPhase('cloud') : onBack}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
         >
-          ← Cancel
+          {phase === 'source' ? '← Back' : '← Cancel'}
         </button>
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
             💾 Save as Draft
           </button>
-          <button
-            onClick={onNext}
-            disabled={!canProceed}
-            className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-            style={{ background: '#155DFC' }}
-          >
-            Next: Choose Selection Scope →
-          </button>
+          {phase === 'cloud' ? (
+            <button
+              onClick={() => setPhase('source')}
+              disabled={!selectedConnection}
+              className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              style={{ background: '#155DFC' }}
+            >
+              Next: Select Source Type →
+            </button>
+          ) : (
+            <button
+              onClick={onNext}
+              disabled={!canProceed}
+              className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              style={{ background: '#155DFC' }}
+            >
+              Next: Choose Selection Scope →
+            </button>
+          )}
         </div>
       </div>
     </div>
