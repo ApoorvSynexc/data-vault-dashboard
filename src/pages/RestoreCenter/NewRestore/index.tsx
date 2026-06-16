@@ -40,9 +40,9 @@ export default function NewRestore({ onBack, onComplete }: NewRestoreProps) {
       {currentStep === 1 && <SelectSource onNext={goNext} onBack={goBack} />}
       {currentStep === 2 && <SelectScope onNext={goNext} onBack={goBack} />}
       {currentStep === 3 && <SetDestination onNext={goNext} onBack={goBack} />}
-      {currentStep === 4 && <DefineRestorePolicy onNext={() => goNext()} onBack={goBack} />}
+      {currentStep === 4 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
       {currentStep === 5 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
+      {currentStep === 6 && <PreviewValidate onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
       {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} />}
     </div>
