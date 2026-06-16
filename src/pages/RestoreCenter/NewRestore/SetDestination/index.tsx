@@ -1,4 +1,4 @@
-// SetDestination — Step 3 of 8 in the New Restore wizard.
+// SetDestination — Step 3 of 7 in the New Restore wizard.
 // Lets the user pick where the restored data should land:
 //   Same Org (Source) | Different Org | Sandbox (with Masking) | Export Only
 // The configuration panel below the type cards adapts to the selection.
@@ -8,11 +8,11 @@ import { Link } from 'react-router-dom';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0 overflow-x-auto'>
+    <div className='flex items-center gap-0'>
       {STEPS.map((label, i) => {
         const num = i + 1;
         const isDone   = num < active;
@@ -27,10 +27,10 @@ function ProgressBar({ active }: { active: number }) {
               }`}>
                 {isDone ? '✓' : num}
               </div>
-              <span className='hidden sm:inline'>{label}</span>
+              <span className='hidden lg:inline'>{label}</span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-2' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
+              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
             )}
           </div>
         );
@@ -506,12 +506,12 @@ export default function SetDestination({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 3 of 8</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 3 of 7</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Set Destination &amp; Mapping</h1>
               <p className='text-gray-500 mt-1 text-sm'>Pick a destination type — the fields below adapt to your choice.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>3</span> of 8
+              Step <span className='text-blue-600'>3</span> of 7
             </span>
           </div>
           <div className='mt-4'>
