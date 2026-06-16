@@ -24,9 +24,7 @@ import dayjs from 'dayjs';
 import { formatBytes, computeArchiveJobStats } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
 import { useArchivalService } from '../../../services/archival/archival.service';
-import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
-// Table/TableColumn kept for potential future use; main object table is rendered manually
 // to support colSpan inline-error rows.
 
 function IconRetry({ spinning }: { spinning?: boolean }) {
@@ -655,21 +653,21 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                                     style={{ borderBottom: '1px solid #F1F5F9', background: depth > 0 ? `rgba(0,0,0,${depth * 0.012})` : undefined }}
                                   >
                                     {/* Object */}
-                                    <td className='px-5 py-3.5'>{jobColumns[0].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[0].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Depth */}
-                                    <td className='px-5 py-3.5'>{jobColumns[1].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[1].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Status */}
-                                    <td className='px-5 py-3.5'>{jobColumns[2].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[2].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Records Uploaded */}
-                                    <td className='px-5 py-3.5'>{jobColumns[3].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[3].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Records Deleted */}
-                                    <td className='px-5 py-3.5'>{jobColumns[4].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[4].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Records Failed */}
-                                    <td className='px-5 py-3.5'>{jobColumns[5].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[5].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Data Size */}
-                                    <td className='px-5 py-3.5'>{jobColumns[6].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[6].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* API Calls */}
-                                    <td className='px-5 py-3.5'>{jobColumns[7].render({ obj, depth, parentId: null })}</td>
+                                    <td className='px-5 py-3.5'>{jobColumns[7].render({ obj, depth, parentId: null }, idx)}</td>
                                   </tr>
                                   {/* Inline error row — only for job-level errorMessage (no per-record errors) */}
                                   {hasJobErrorOnly && isInlineOpen && (

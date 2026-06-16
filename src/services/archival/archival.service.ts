@@ -190,9 +190,9 @@ export function useArchivalService() {
     // GET /v1/archival-config/record-errors?backupJobId=&objectId=&page=
     // Returns a page of per-record delete errors stored in S3 (10 records per page).
     // Each batch file in S3 holds 200 records; page→file mapping is deterministic.
-    getRecordErrors: (backupJobId: string, objectId: string, page: number): Promise<{
-      data: { records: { recordId: string; error: string }[]; totalRecords: number; totalPages: number; page: number };
-    }> =>
-      http.get('/v1/archival-config/record-errors', { query: { backupJobId, objectId, page } }),
+    getRecordErrors: (backupJobId: string, objectId: string, page: number) =>
+      http.get<{ records: { recordId: string; error: string }[]; totalRecords: number; totalPages: number; page: number }>(
+        '/v1/archival-config/record-errors', { query: { backupJobId, objectId, page } },
+      ),
   };
 }
