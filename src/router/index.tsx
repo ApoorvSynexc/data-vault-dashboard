@@ -31,7 +31,7 @@ import SalesforceCallback from '../pages/callback/salesforce';
 import RestoreCenter from '../pages/RestoreCenter';
 import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
-import Security from '../pages/Security';
+import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
 
 const router = createBrowserRouter([
@@ -65,8 +65,8 @@ const router = createBrowserRouter([
           { path: '/notifications', element: <Notifications /> },
           { path: '/restore-center', element: <RestoreCenter /> },
           { path: '/activity-logs', element: <ActivityLogs /> },
+          { path: '/audit-logs', element: <AuditLogs /> },
           { path: '/reports', element: <Reports /> },
-          { path: '/security', element: <Security /> },
           { path: '/settings', element: <Settings /> },
         ],
       },
