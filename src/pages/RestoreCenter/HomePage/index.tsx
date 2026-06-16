@@ -220,21 +220,17 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
-        {/* ── Header ── */}
-        <div className='flex items-center justify-between flex-shrink-0 gap-4'>
+        {/* ── Header card ── */}
+        <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex-shrink-0'>
           <div>
-            <Typography as='h1' variant='pageTitle' color='primary'>Restore Center</Typography>
-            <Typography variant='bodySm' color='muted' className='mt-1'>Recover data from backups and archives</Typography>
+            <Typography as='h2' variant='pageTitle'>Restore Center</Typography>
+            <Typography variant='bodySm' color='muted' className='mt-0.5'>Recover data from backups and archives</Typography>
           </div>
           <button
             onClick={onNewRestore}
-            className='flex-shrink-0 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:opacity-90'
-            style={{ background: '#155DFC' }}
+            className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap bg-blue-600'
           >
-            <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'>
-              <line x1='12' y1='5' x2='12' y2='19' /><line x1='5' y1='12' x2='19' y2='12' />
-            </svg>
-            New Restore
+            + New Restore
           </button>
         </div>
 
