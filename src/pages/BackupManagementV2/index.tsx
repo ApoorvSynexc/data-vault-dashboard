@@ -7,6 +7,7 @@ import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes, formatDateTime } from '../../utils';
+import BackupManagementWelcome from './Welcome';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
@@ -664,6 +665,10 @@ export default function BackupManagementV2() {
       ),
     },
   ];
+
+  if (!backupQuery.isLoading && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+    return <BackupManagementWelcome />;
+  }
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>

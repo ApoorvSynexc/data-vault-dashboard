@@ -287,29 +287,58 @@ export default function Dashboard() {
             className='mb-10'
             style={{ color: '#64748B', fontSize: 22, fontWeight: 400, lineHeight: '34px', maxWidth: 700 }}
           >
-            Currently you dont have any backup to get started with your dashboard!
+            Get started by creating your first backup or archive to protect your data.
           </p>
-          <button
-            onClick={() => navigate('/backup-management/add')}
-            style={{
-              width: 362,
-              height: 58,
-              background: '#155DFC',
-              borderRadius: 6,
-              color: '#ffffff',
-              fontSize: 16,
-              fontWeight: 400,
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.10)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            Lets Start Backup →
-          </button>
+          <div className='flex items-center gap-4 flex-wrap justify-center'>
+            <button
+              onClick={() => navigate('/backup-management/add')}
+              style={{
+                width: 280,
+                height: 58,
+                background: '#155DFC',
+                borderRadius: 6,
+                color: '#ffffff',
+                fontSize: 16,
+                fontWeight: 400,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.10)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'>
+                <polyline points='16 16 12 12 8 16'/><line x1='12' y1='12' x2='12' y2='21'/><path d='M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3'/>
+              </svg>
+              Start Backup →
+            </button>
+            <button
+              onClick={() => navigate('/archive-vault/new')}
+              style={{
+                width: 280,
+                height: 58,
+                background: '#ffffff',
+                borderRadius: 6,
+                color: '#155DFC',
+                fontSize: 16,
+                fontWeight: 400,
+                border: '2px solid #155DFC',
+                cursor: 'pointer',
+                boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <svg width='18' height='18' fill='none' stroke='#155DFC' strokeWidth='2' viewBox='0 0 24 24'>
+                <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
+              </svg>
+              Start Archive →
+            </button>
+          </div>
         </div>
       </div>
     );

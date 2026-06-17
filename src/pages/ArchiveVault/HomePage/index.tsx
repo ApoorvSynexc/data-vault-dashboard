@@ -159,15 +159,20 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
 
-function ConfirmDialog({ title, message, confirmLabel, danger, loading, onConfirm, onCancel }: {
+function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, onConfirm, onCancel }: {
   title: string; message: string; confirmLabel: string; danger?: boolean;
-  loading?: boolean; onConfirm: () => void; onCancel: () => void;
+  loading?: boolean; error?: string | null; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)' }}>
       <div className='w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6'>
         <h3 className='text-sm font-bold text-gray-900 mb-2'>{title}</h3>
-        <p className='text-xs text-gray-500 mb-6'>{message}</p>
+        <p className='text-xs text-gray-500 mb-4'>{message}</p>
+        {error && (
+          <div className='mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600'>
+            {error}
+          </div>
+        )}
         <div className='flex justify-end gap-2'>
           <button type='button' onClick={onCancel} disabled={loading}
             className='rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50'>
@@ -244,6 +249,7 @@ export default function ArchiveVaultHomePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmActivate, setConfirmActivate] = useState<PolicyRow | null>(null);
   const [confirmRunNow, setConfirmRunNow] = useState<PolicyRow | null>(null);
 
@@ -279,6 +285,11 @@ export default function ArchiveVaultHomePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setConfirmDelete(null);
+      setDeleteError(null);
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message ?? error?.message ?? 'Failed to delete archive. Please try again.';
+      setDeleteError(msg);
     },
   });
 
@@ -564,8 +575,9 @@ export default function ArchiveVaultHomePage() {
           confirmLabel='Delete'
           danger
           loading={deleteMutation.isPending}
-          onConfirm={() => deleteMutation.mutate(confirmDelete.backupConfigId)}
-          onCancel={() => setConfirmDelete(null)}
+          error={deleteError}
+          onConfirm={() => { setDeleteError(null); deleteMutation.mutate(confirmDelete.backupConfigId); }}
+          onCancel={() => { setConfirmDelete(null); setDeleteError(null); deleteMutation.reset(); }}
         />
       )}
 
