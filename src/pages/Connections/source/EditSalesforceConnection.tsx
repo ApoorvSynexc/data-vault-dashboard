@@ -31,7 +31,7 @@ export default function EditSalesforceConnection() {
     mutationFn: () => platformService.updatePlatform(crmId!, connectionName.trim()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['platforms'] });
-      navigate('/connections/salesforce');
+      navigate('/connections');
     },
     onError: (err: any) => {
       setError(err?.message || 'Failed to update connection name');
@@ -60,7 +60,7 @@ export default function EditSalesforceConnection() {
       <div className='flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 py-12 text-center'>
         <p className='text-sm font-medium text-gray-500'>Connection not found</p>
         <button
-          onClick={() => navigate('/connections/salesforce')}
+          onClick={() => navigate('/connections')}
           className='mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
         >
           Back to Connections
@@ -70,7 +70,7 @@ export default function EditSalesforceConnection() {
   }
 
   return (
-    <div className='flex w-full min-w-0 flex-col gap-6'>
+    <div className='flex w-full min-w-0 flex-col gap-5 p-4 sm:p-6 bg-gray-50 flex-1 min-h-0 overflow-y-auto'>
       {/* Breadcrumb */}
       <div className='flex items-center gap-2 text-sm'>
         <button
@@ -81,7 +81,7 @@ export default function EditSalesforceConnection() {
         </button>
         <span className='text-gray-400'>›</span>
         <button
-          onClick={() => navigate('/connections/salesforce')}
+          onClick={() => navigate('/connections')}
           className='text-gray-600 hover:text-gray-900 hover:underline'
         >
           Salesforce
@@ -95,7 +95,7 @@ export default function EditSalesforceConnection() {
         <div className='flex items-start justify-between gap-4'>
           <div className='flex items-start gap-4'>
             <button
-              onClick={() => navigate('/connections/salesforce')}
+              onClick={() => navigate('/connections')}
               className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
             >
               <svg
@@ -177,7 +177,7 @@ export default function EditSalesforceConnection() {
               {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </button>
             <button
-              onClick={() => navigate('/connections/salesforce')}
+              onClick={() => navigate('/connections')}
               disabled={updateMutation.isPending}
               className='inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60'
             >

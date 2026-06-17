@@ -18,7 +18,7 @@ function AWSLogo() {
 export default function ConnectAWSBucket() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/connections/aws';
+  const returnTo = searchParams.get('returnTo') || '/connections';
   const queryClient = useQueryClient();
   const destinationService = useDestinationService();
   const [connectName, setConnectName] = useState('');
@@ -35,7 +35,7 @@ export default function ConnectAWSBucket() {
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
       const separator = returnTo.includes('?') ? '&' : '?';
       const idParam = newDestination?.destinationId ? `&newDestinationId=${newDestination.destinationId}` : '';
-      navigate(`${returnTo}${separator}connected=true${idParam}`);
+      navigate(`${returnTo}${separator}connected=true${idParam}`, { state: { tab: 'destination' } });
     },
     onError: (error: any) => {
       console.error('Failed to create destination:', error);
@@ -64,12 +64,12 @@ export default function ConnectAWSBucket() {
   const isFormValid = connectName.trim() && accessKeyId.trim() && secretAccessKey.trim() && s3Bucket.trim();
 
   return (
-    <div className='flex w-full min-w-0 flex-col gap-6'>
+    <div className='flex w-full min-w-0 flex-col gap-5 p-4 sm:p-6 bg-gray-50 flex-1 min-h-0 overflow-y-auto'>
       {/* Header */}
       <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
         <div className='flex items-start gap-4'>
           <button
-            onClick={() => navigate(returnTo)}
+            onClick={() => navigate(returnTo, { state: { tab: 'destination' } })}
             className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
           >
             <svg

@@ -65,7 +65,7 @@ export default function EditAWSBucket() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
       queryClient.invalidateQueries({ queryKey: ['destination', destinationId] });
-      navigate('/connections/aws');
+      navigate('/connections', { state: { tab: 'destination' } });
     },
     onError: (error) => {
       console.error('Failed to update destination:', error);
@@ -95,7 +95,7 @@ export default function EditAWSBucket() {
 
   if (isLoadingDestination || isLoadingConfig) {
     return (
-      <div className='flex w-full min-w-0 flex-col gap-6'>
+      <div className='flex w-full min-w-0 flex-col gap-5 p-4 sm:p-6 bg-gray-50 flex-1 min-h-0 overflow-y-auto'>
         <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
           <div className='flex items-center gap-4'>
             <p className='text-sm text-gray-500'>Loading destination details...</p>
@@ -106,12 +106,12 @@ export default function EditAWSBucket() {
   }
 
   return (
-    <div className='flex w-full min-w-0 flex-col gap-6'>
+    <div className='flex w-full min-w-0 flex-col gap-5 p-4 sm:p-6 bg-gray-50 flex-1 min-h-0 overflow-y-auto'>
       {/* Header */}
       <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
         <div className='flex items-start gap-4'>
           <button
-            onClick={() => navigate('/connections/aws')}
+            onClick={() => navigate('/connections', { state: { tab: 'destination' } })}
             className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
           >
             <svg
@@ -283,7 +283,7 @@ export default function EditAWSBucket() {
         <div className='flex justify-center gap-4 border-t border-gray-200 pt-8'>
           <button
             type='button'
-            onClick={() => navigate('/connections/aws')}
+            onClick={() => navigate('/connections', { state: { tab: 'destination' } })}
             className='inline-flex items-center justify-center rounded-lg border border-gray-200 px-16 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50'
           >
             Cancel
