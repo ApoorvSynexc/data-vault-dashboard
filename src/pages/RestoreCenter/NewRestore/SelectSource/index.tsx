@@ -14,6 +14,7 @@ import type { TableColumn } from '../../../../components/Table';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import type { Destination } from '../../../../services/destination/destination.service';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useRestoreService } from '../../../../services/restore/restore.service';
 import { formatBytes, formatDateTime } from '../../../../utils';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
 
@@ -33,6 +34,8 @@ interface BackupSnapshot {
   backupStatus: string;
   lastRun: string;
   dataSize: string;
+  destinationId: string;
+  scheduleType: 'REALTIME' | 'SCHEDULE';
 }
 
 interface ArchiveEntry {
@@ -302,7 +305,24 @@ export default function SelectSource({ onNext, onBack }: Props) {
     backupStatus: item.backupStatus ?? '',
     lastRun: formatDateTime(item.lastBackupAt),
     dataSize: formatBytes(item.sizeInBytes),
+    destinationId: item.destinationId ?? '',
+    scheduleType: item.schedule === 'REALTIME' ? 'REALTIME' : 'SCHEDULE',
   }));
+  const restoreService = useRestoreService();
+  const [viewJobsTarget, setViewJobsTarget] = useState<{ destinationId: string; scheduleType: 'REALTIME' | 'SCHEDULE'; name: string } | null>(null);
+
+  const { data: snapshotLogsData, isLoading: isLoadingJobs } = useQuery({
+    queryKey: ['snapshot-logs', viewJobsTarget?.destinationId, viewJobsTarget?.scheduleType],
+    queryFn: () => restoreService.getSnapshotLogs({
+      snapshotType: 'BACKUP',
+      destinationId: viewJobsTarget!.destinationId,
+      scheduleType: viewJobsTarget!.scheduleType,
+    }),
+    enabled: !!viewJobsTarget,
+  });
+
+  const snapshotLogs = (snapshotLogsData as any)?.data ?? [];
+
   const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
   const [unifiedTab, setUnifiedTab]   = useState<UnifiedTab>('backup');
   const [unifiedSearch, setUnifiedSearch] = useState('');
@@ -393,7 +413,10 @@ export default function SelectSource({ onNext, onBack }: Props) {
           >
             {selectedBackup === row.id ? 'Selected' : 'Select'}
           </button>
-          <button className='text-xs font-semibold px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap'>
+          <button
+            onClick={(e) => { e.stopPropagation(); setViewJobsTarget({ destinationId: row.destinationId, scheduleType: row.scheduleType, name: row.name }); }}
+            className='text-xs font-semibold px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap'
+          >
             View Jobs
           </button>
         </div>
@@ -419,7 +442,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
     { key: 'object',       header: 'Source Object',  render: (row) => <span className='text-sm text-gray-700'>{row.object}</span> },
     { key: 'records',      header: 'Records',        render: (row) => <span className='text-sm tabular-nums text-gray-700'>{row.records}</span> },
     { key: 'size',         header: 'Size',           render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-    { key: 'tier',         header: 'Tier',           render: (row) => <TierBadge tier={row.tier} /> },
+    { key: 'tier', header: 'Tier', render: (row) => <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${row.tier === 'Cold' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{row.tier}</span> },
     { key: 'lastRefreshed',header: 'Last Refreshed', render: (row) => <span className='text-xs text-gray-500'>{row.lastRefreshed}</span> },
     {
       key: 'action',
@@ -492,19 +515,30 @@ export default function SelectSource({ onNext, onBack }: Props) {
       ),
     },
     {
-      key: 'datetime',
-      header: 'Date & Time',
+      key: 'name',
+      header: 'Backup Name',
       render: (row) => (
-        <div>
-          <p className='text-sm font-semibold text-gray-900'>{row.datetime}</p>
-          <p className='text-xs text-gray-400 mt-0.5'>{row.relative}</p>
+        <div className='flex items-center gap-2'>
+          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
+            <span className='text-[10px] font-bold text-sky-500'>S</span>
+          </div>
+          <span className='text-sm font-semibold text-gray-900'>{row.name}</span>
         </div>
       ),
     },
-    { key: 'source',    header: 'Source',    render: (row) => <span className='text-sm text-gray-700'>{row.source}</span> },
-    { key: 'size',      header: 'Size',      render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-    { key: 'integrity', header: 'Integrity', render: (row) => <IntegrityBadge v={row.integrity} /> },
-    { key: 'tier',      header: 'Tier',      render: (row) => <TierBadge tier={row.tier} /> },
+    { key: 'source',   header: 'Source',    render: (row) => <span className='text-sm text-gray-700'>{row.source}</span> },
+    { key: 'dataSize', header: 'Data Size', render: (row) => <span className='text-sm text-gray-700'>{row.dataSize}</span> },
+    { key: 'lastRun',  header: 'Last Run',  render: (row) => <span className='text-xs text-gray-600 whitespace-nowrap'>{row.lastRun}</span> },
+    {
+      key: 'configStatus',
+      header: 'Status',
+      render: (row) => {
+        const styles: Record<string, string> = { 'ACTIVE': 'bg-green-100 text-green-700', 'INACTIVE': 'bg-gray-100 text-gray-600', 'ERROR': 'bg-red-100 text-red-700' };
+        const labels: Record<string, string> = { 'ACTIVE': 'Active', 'INACTIVE': 'Inactive', 'ERROR': 'Error' };
+        const k = row.configStatus?.toUpperCase() ?? '';
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[k] ?? 'bg-gray-100 text-gray-600'}`}>{labels[k] ?? row.configStatus}</span>;
+      },
+    },
   ];
 
   const canProceed =
@@ -582,9 +616,9 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
         {/* ── Backup sub-picker ── */}
         {sourceType === 'backup' && (
-          <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
             {/* Header */}
-            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 flex-wrap gap-y-2'>
+            <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 flex-wrap gap-y-2'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>📸 Choose a Backup Snapshot</Typography>
               {/* Mode toggle */}
               <div className='flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
@@ -604,7 +638,6 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
             {backupMode === 'list' ? (
               <>
-                {/* Filters */}
                 {isLoadingBackups && (
                   <div className='flex items-center justify-center py-12'>
                     <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
@@ -616,7 +649,8 @@ export default function SelectSource({ onNext, onBack }: Props) {
                   </div>
                 )}
                 {!isLoadingBackups && apiBackups.length > 0 && <>
-                <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
+                {/* Filter bar */}
+                <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
                   <span className='text-xs font-bold text-gray-600'>Filter:</span>
                   {[
                     { value: dateFilter, onChange: setDateFilter, options: ['All dates', 'Last 7 days', 'Last 30 days', 'Last quarter'] },
@@ -638,21 +672,45 @@ export default function SelectSource({ onNext, onBack }: Props) {
                   />
                   <span className='ml-auto text-xs text-gray-400 whitespace-nowrap hidden sm:inline'>Showing 1–10 of 30 backups</span>
                 </div>
-                {/* Table */}
-                <Table
-                  columns={backupColumns}
-                  rows={apiBackups}
-                  getRowKey={(r) => r.id}
-                  borderless
-                  headerVariant='uppercase'
-                  cellPaddingClassName='px-4 py-3'
-                  rowClassName={(row) =>
-                    `border-b border-gray-50 transition-colors cursor-pointer ${selectedBackup === row.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-                  }
-                  onRowClick={(row) => setSelectedBackup(row.id)}
-                />
-                {/* Pagination */}
-                <div className='flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
+                {/* Table — grows to fill remaining height, scrollbar stays at bottom of this area */}
+                <div className='flex-1 overflow-x-auto'>
+                  <table className='w-full' style={{ minWidth: '1000px' }}>
+                    <thead>
+                      <tr className='border-b border-gray-200 bg-gray-50'>
+                        {backupColumns.map((col) => (
+                          <th
+                            key={col.key}
+                            className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'
+                            style={col.width ? { width: col.width } : undefined}
+                          >
+                            {col.header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiBackups.map((row, index) => (
+                        <tr
+                          key={row.id}
+                          onClick={() => setSelectedBackup(row.id)}
+                          className={`border-b border-gray-50 transition-colors cursor-pointer ${selectedBackup === row.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                        >
+                          {backupColumns.map((col) => (
+                            <td
+                              key={col.key}
+                              className='px-4 py-3'
+                              onClick={col.key === 'action' ? (e) => e.stopPropagation() : undefined}
+                            >
+                              {col.render(row, index)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Footer pinned to bottom */}
+                <div className='flex-shrink-0 mt-auto flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
                   <span className='ml-auto'>Showing {apiBackups.length} backups</span>
                 </div>
                 </>}
@@ -807,7 +865,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 ) : (
                   apiBackups.filter((b) => selectedMerge.has(b.id)).map((b) => (
                     <span key={b.id} className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-blue-300 text-xs font-semibold text-blue-700'>
-                      {b.relative}
+                      {b.name}
                       <button onClick={() => setSelectedMerge((p) => { const n = new Set(p); n.delete(b.id); return n; })} className='text-blue-400 hover:text-blue-600 leading-none'>×</button>
                     </span>
                   ))
@@ -845,6 +903,79 @@ export default function SelectSource({ onNext, onBack }: Props) {
         {/* end phase === 'source' */}
 
       </div>
+
+      {/* ── View Jobs Modal ── */}
+      {viewJobsTarget && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className='w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden'>
+            {/* Modal header */}
+            <div className='flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0'>
+              <div>
+                <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5'>Snapshot Logs</p>
+                <p className='text-base font-bold text-gray-900 truncate max-w-sm'>{viewJobsTarget.name}</p>
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold mt-1 ${viewJobsTarget.scheduleType === 'REALTIME' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {viewJobsTarget.scheduleType === 'REALTIME' ? 'Realtime' : 'Schedule'}
+                </span>
+              </div>
+              <button
+                onClick={() => setViewJobsTarget(null)}
+                className='rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition'
+              >
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+            {/* Modal body */}
+            <div className='flex-1 overflow-y-auto'>
+              {isLoadingJobs ? (
+                <div className='flex items-center justify-center py-16'>
+                  <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
+                </div>
+              ) : snapshotLogs.length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-16 text-center px-6'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='h-10 w-10 text-gray-300 mb-3'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
+                  </svg>
+                  <p className='text-sm font-semibold text-gray-500'>No snapshot logs found</p>
+                  <p className='text-xs text-gray-400 mt-1'>No jobs have run for this backup configuration yet.</p>
+                </div>
+              ) : (
+                <table className='w-full text-sm'>
+                  <thead>
+                    <tr className='border-b border-gray-100 bg-gray-50'>
+                      {['#', 'Date & Time', 'Config Name', 'Source', 'Data Size'].map((h) => (
+                        <th key={h} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshotLogs.map((log: any, i: number) => (
+                      <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                        <td className='px-5 py-3 text-xs text-gray-400 tabular-nums'>{i + 1}</td>
+                        <td className='px-5 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
+                        <td className='px-5 py-3 text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</td>
+                        <td className='px-5 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
+                        <td className='px-5 py-3 text-xs text-gray-600'>{log.dataSize != null ? formatBytes(log.dataSize) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {/* Modal footer */}
+            <div className='flex-shrink-0 flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50'>
+              <p className='text-xs text-gray-400'>Showing {snapshotLogs.length} entr{snapshotLogs.length !== 1 ? 'ies' : 'y'}</p>
+              <button
+                onClick={() => setViewJobsTarget(null)}
+                className='text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition'
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Footer ── */}
       <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
