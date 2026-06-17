@@ -52,18 +52,15 @@ const PINNED_TEMPLATES: PinnedTemplate[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function MetricCard({ label, sub, value, valueColor, icon }: {
-  label: string; sub: string; value: string | number; valueColor?: string; icon: ReactNode;
-}) {
+function MetricCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
     <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3 min-w-0'>
       <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(21,93,252,0.08)' }}>
         {icon}
       </div>
       <div className='min-w-0'>
-        <p className='text-xl font-bold leading-tight' style={{ color: valueColor ?? '#111827' }}>{value}</p>
+        <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
         <p className='mt-0.5 text-xs text-gray-500 leading-tight'>{label}</p>
-        <p className='text-[11px] text-gray-400 leading-tight'>{sub}</p>
       </div>
     </div>
   );
@@ -217,7 +214,8 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
   ];
 
   return (
-    <div className='flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* ── Header card ── */}
         <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex-shrink-0'>
@@ -265,49 +263,22 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
         </button>
 
         {/* ── KPI Cards ── */}
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
-          <MetricCard
-            label='Total Restores'
-            sub='+3 this week'
-            value={24}
-            icon={
-              <svg width='18' height='18' fill='none' stroke='#155DFC' strokeWidth='2' viewBox='0 0 24 24'>
-                <polyline points='23 4 23 10 17 10' /><path d='M20.49 15a9 9 0 1 1-.29-4.36' />
-              </svg>
-            }
-          />
-          <MetricCard
-            label='Running Now'
-            sub='Within SLA'
-            value={1}
-            icon={
-              <svg width='18' height='18' fill='none' stroke='#155DFC' strokeWidth='2' viewBox='0 0 24 24'>
-                <circle cx='12' cy='12' r='10' /><polyline points='12 6 12 12 16 14' />
-              </svg>
-            }
-          />
-          <MetricCard
-            label='Failed (30d)'
-            sub='Needs review'
-            value={2}
-            valueColor='#DC2626'
-            icon={
-              <svg width='18' height='18' fill='none' stroke='#DC2626' strokeWidth='2' viewBox='0 0 24 24'>
-                <circle cx='12' cy='12' r='10' /><line x1='15' y1='9' x2='9' y2='15' /><line x1='9' y1='9' x2='15' y2='15' />
-              </svg>
-            }
-          />
-          <MetricCard
-            label='Records Restored'
-            sub='All time'
-            value='1.2M'
-            valueColor='#16A34A'
-            icon={
-              <svg width='18' height='18' fill='none' stroke='#16A34A' strokeWidth='2' viewBox='0 0 24 24'>
-                <polyline points='20 6 9 17 4 12' />
-              </svg>
-            }
-          />
+        <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm flex-shrink-0'>
+          <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>Restore Status</Typography>
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
+            <MetricCard label='Total Restores' value={24}
+              icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-.29-4.36'/></svg>}
+            />
+            <MetricCard label='Running Now' value='01'
+              icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>}
+            />
+            <MetricCard label='Failed (30d)' value='02'
+              icon={<svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><circle cx='12' cy='12' r='10'/><line x1='15' y1='9' x2='9' y2='15'/><line x1='9' y1='9' x2='15' y2='15'/></svg>}
+            />
+            <MetricCard label='Records Restored' value='1.2M'
+              icon={<svg viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='20 6 9 17 4 12'/></svg>}
+            />
+          </div>
         </div>
 
         {/* ── Draft Restores Table ── */}
@@ -390,6 +361,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
 
         </div>
 
+      </div>
     </div>
   );
 }

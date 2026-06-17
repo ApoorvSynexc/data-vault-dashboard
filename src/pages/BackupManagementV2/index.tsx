@@ -666,7 +666,8 @@ export default function BackupManagementV2() {
   ];
 
   return (
-    <div className='flex flex-col gap-5 flex-1 min-h-0'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
       <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
         <div>
           <Typography as='h2' variant='pageTitle'>
@@ -892,6 +893,7 @@ export default function BackupManagementV2() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
