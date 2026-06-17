@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
@@ -18,7 +18,7 @@ function SalesforceLogo() {
   );
 }
 
-export default function SalesforceConnections() {
+export default function SalesforceConnections({ hideHeader }: { hideHeader?: boolean } = {}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const platformService = usePlatformService();
@@ -144,89 +144,133 @@ export default function SalesforceConnections() {
     }
   };
 
+  const crms: { id: string; label: string; icon: ReactNode }[] = [
+    {
+      id: 'salesforce',
+      label: 'Salesforce',
+      icon: (
+        <svg viewBox='0 0 64 64' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-5 w-auto'>
+          <ellipse cx='24' cy='22' rx='13' ry='13' fill='#00A1E0' />
+          <ellipse cx='38' cy='18' rx='11' ry='11' fill='#00A1E0' />
+          <ellipse cx='48' cy='24' rx='9' ry='9' fill='#00A1E0' />
+          <ellipse cx='14' cy='28' rx='8' ry='8' fill='#00A1E0' />
+          <ellipse cx='32' cy='30' rx='16' ry='10' fill='#00A1E0' />
+        </svg>
+      ),
+    },
+    // {
+    //   id: 'hubspot',
+    //   label: 'HubSpot',
+    //   icon: (
+    //     <svg viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-5 w-5'>
+    //       <circle cx='16' cy='16' r='16' fill='#FF7A59' />
+    //       <path d='M13 10v5.5a3 3 0 000 5 3 3 0 000-5V10h-3zm6 7a3 3 0 100 6 3 3 0 000-6z' fill='white' />
+    //     </svg>
+    //   ),
+    // },
+    // {
+    //   id: 'zoho',
+    //   label: 'Zoho CRM',
+    //   icon: (
+    //     <svg viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-5 w-5'>
+    //       <circle cx='16' cy='16' r='16' fill='#E42527' />
+    //       <text x='16' y='21' fontSize='11' fontWeight='bold' fill='white' textAnchor='middle'>Z</text>
+    //     </svg>
+    //   ),
+    // },
+  ];
+
+  const [selectedCrm, setSelectedCrm] = useState('salesforce');
+
   return (
-    <div className='flex w-full min-w-0 flex-col gap-6'>
-      {/* Breadcrumb */}
-      <div className='flex items-center gap-2 text-sm'>
-        <button
-          onClick={() => navigate('/connections')}
-          className='text-gray-600 hover:text-gray-900 hover:underline'
-        >
-          Connections
-        </button>
-        <span className='text-gray-400'>›</span>
-        <span className='font-semibold text-gray-900'>Salesforce</span>
-      </div>
+    <div className='flex w-full min-w-0 flex-col gap-0 flex-1 min-h-0 overflow-hidden'>
 
       {/* Header */}
-      <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
-        <div className='flex items-start justify-between gap-4'>
-          <div className='flex items-start gap-4'>
-            <button
-              onClick={() => navigate('/connections')}
-              className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
-            >
-              <svg
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                className='h-5 w-5'
-              >
-                <path d='M19 12H5M12 19l-7-7 7-7' strokeLinecap='round' strokeLinejoin='round' />
-              </svg>
-            </button>
-            <div className='flex items-start gap-3'>
-              <div className='mt-1'>
-                <SalesforceLogo />
-              </div>
+      {!hideHeader && <div className='flex-shrink-0 px-4 pt-4 sm:px-6 sm:pt-6'>
+        <section className='rounded-2xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
+          <div className='flex items-center justify-between gap-4'>
+            <div className='flex items-center gap-3'>
+              <SalesforceLogo />
               <div>
-                <Typography as='h1' variant='pageTitle' className='mb-1'>
-                  Salesforce
-                </Typography>
-                <Typography variant='body' color='muted'>
-                  Manage your connected Salesforce orgs
-                </Typography>
+                <Typography as='h1' variant='pageTitle' className='mb-0.5'>Salesforce</Typography>
+                <Typography variant='body' color='muted'>Manage your connected Salesforce orgs</Typography>
               </div>
             </div>
-          </div>
-
-          <div className='flex gap-3'>
-            <button
-              type='button'
-              onClick={() => navigate('/backup-management')}
-              className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50'
-            >
+            <button type='button' onClick={() => navigate('/backup-management')} className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50'>
               View Backup Jobs
             </button>
-            <button
-              onClick={() => navigate('/connections/salesforce/connect')}
-              type='button'
-              className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
-            >
-              <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                <path d='M10 4v12M4 10h12' strokeLinecap='round' />
-              </svg>
-              Connect New Org
-            </button>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>}
 
-      <div className='grid grid-cols-3 gap-6'>
+      {/* Two-panel layout — fills remaining height */}
+      <div className='flex flex-1 min-h-0 gap-5 p-4 sm:p-6'>
+
+        {/* CRM List */}
+        <aside className='w-56 shrink-0 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col overflow-hidden'>
+          <div className='border-b border-gray-200 px-4 py-3'>
+            <Typography as='h3' variant='sectionTitle'>CRM Platforms</Typography>
+          </div>
+          <div className='flex-1 overflow-y-auto p-2'>
+            {crms.map((crm) => (
+              <button
+                key={crm.id}
+                type='button'
+                onClick={() => setSelectedCrm(crm.id)}
+                className={[
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition',
+                  selectedCrm === crm.id
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-50',
+                ].join(' ')}
+              >
+                <span className='shrink-0'>{crm.icon}</span>
+                <span className='text-sm font-semibold'>{crm.label}</span>
+                {crm.id !== 'salesforce' && (
+                  <span className='ml-auto text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full'>Soon</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </aside>
+
         {/* Main Content */}
-        <section className='col-span-2 rounded-2xl border border-gray-200 bg-white shadow-sm'>
-          <div className='border-b border-gray-200 px-6 py-4'>
-            <Typography as='h2' variant='sectionTitle'>
-              All Salesforce Connections
-            </Typography>
-            <Typography variant='bodySm' color='muted' className='mt-1'>
-              Manage and monitor all your connected Salesforce orgs. Each org backed up independently.
-            </Typography>
+        <section className='flex-1 min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col overflow-hidden'>
+          <div className='border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0'>
+            <div>
+              <Typography as='h2' variant='sectionTitle'>
+                {selectedCrm === 'salesforce' ? 'All Salesforce Connections' : selectedCrm === 'hubspot' ? 'HubSpot Connections' : 'Zoho CRM Connections'}
+              </Typography>
+              <Typography variant='bodySm' color='muted' className='mt-1'>
+                {selectedCrm === 'salesforce' ? 'Manage and monitor all your connected Salesforce orgs. Each org backed up independently.' : 'Manage your connected orgs for this platform.'}
+              </Typography>
+            </div>
+            {selectedCrm === 'salesforce' && (
+              <button
+                onClick={() => navigate('/connections/salesforce/connect')}
+                type='button'
+                className='shrink-0 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
+              >
+                <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'><path d='M10 4v12M4 10h12' strokeLinecap='round' /></svg>
+                Connect New Org
+              </button>
+            )}
           </div>
 
-          <div className='px-6 py-6'>
-            {isLoading ? (
+          <div className='flex-1 overflow-y-auto px-6 py-6'>
+            {selectedCrm !== 'salesforce' ? (
+              <div className='flex h-full flex-col items-center justify-center py-16 text-center'>
+                <div className='mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='h-7 w-7 text-amber-500'>
+                    <path d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' strokeLinecap='round' strokeLinejoin='round' />
+                  </svg>
+                </div>
+                <p className='text-base font-semibold text-gray-800'>Coming Soon</p>
+                <p className='mt-1 text-sm text-gray-500'>
+                  {selectedCrm === 'hubspot' ? 'HubSpot' : 'Zoho CRM'} integration is currently under development.
+                </p>
+              </div>
+            ) : isLoading ? (
               <div className='flex items-center justify-center py-12'>
                 <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
               </div>
@@ -356,76 +400,6 @@ export default function SalesforceConnections() {
           </div>
         </section>
 
-        {/* Sidebar */}
-        <aside className='flex flex-col gap-4'>
-          {/* Summary Card */}
-          <section className='rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'>
-            <Typography as='h3' variant='sectionTitle' className='mb-4'>
-              Summary
-            </Typography>
-
-            <div className='space-y-4'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50'>
-                  <svg viewBox='0 0 24 24' fill='currentColor' className='h-5 w-5 text-blue-600'>
-                    <circle cx='12' cy='12' r='10' />
-                  </svg>
-                </div>
-                <div>
-                  <p className='text-2xl font-bold text-gray-900'>{salesforcePlatforms.length}</p>
-                  <p className='text-xs text-gray-500'>Connect Orgs</p>
-                </div>
-              </div>
-
-              <div className='border-t border-gray-100 pt-4'>
-                <div className='flex items-center justify-between'>
-                  <p className='text-sm text-gray-600'>Total Objects</p>
-                  <p className='font-semibold text-gray-900'>152</p>
-                </div>
-              </div>
-
-              <div className='border-t border-gray-100 pt-4'>
-                <div className='flex items-center justify-between'>
-                  <p className='text-sm text-gray-600'>Estimated Data Size</p>
-                  <p className='font-semibold text-gray-900'>5.2 GB</p>
-                </div>
-              </div>
-
-              <div className='border-t border-gray-100 pt-4'>
-                <div className='flex items-center justify-between'>
-                  <p className='text-sm text-gray-600'>Backup Success Rate</p>
-                  <p className='font-semibold text-gray-900'>0%</p>
-                </div>
-                <p className='mt-1 text-xs text-gray-400'>(No Backup Found)</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Platform Health Card */}
-          <section className='rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'>
-            <Typography as='h3' variant='sectionTitle' className='mb-4'>
-              Platform Health
-            </Typography>
-            <div className='flex items-center justify-center py-8'>
-              <p className='text-sm text-gray-500'>No Backups Found !</p>
-            </div>
-          </section>
-
-          {/* Secure & Compliant */}
-          <section className='rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'>
-            <div className='flex gap-3'>
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5 shrink-0 text-blue-600'>
-                <path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' strokeLinecap='round' strokeLinejoin='round' />
-              </svg>
-              <div>
-                <p className='text-sm font-semibold text-gray-900'>Secure & Compliant</p>
-                <p className='mt-1 text-xs text-gray-600'>
-                  All Salesforce connection are encrypted and follow 2.0 authentication. We never store your credentials
-                </p>
-              </div>
-            </div>
-          </section>
-        </aside>
       </div>
 
       <WarningDialog
@@ -462,3 +436,4 @@ export default function SalesforceConnections() {
     </div>
   );
 }
+

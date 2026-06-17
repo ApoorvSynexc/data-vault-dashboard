@@ -30,7 +30,7 @@ export default function ConnectSalesforceOrg() {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'SALESFORCE_CONNECT_SUCCESS') {
-        navigate('/connections/salesforce');
+        navigate('/connections');
       }
     };
     window.addEventListener('message', handler);
@@ -125,11 +125,11 @@ export default function ConnectSalesforceOrg() {
   };
 
   return (
-    <div className='flex w-full min-w-0 flex-col gap-6'>
+    <div className='flex w-full min-w-0 flex-col gap-5 p-4 sm:p-6 bg-gray-50 flex-1 min-h-0 overflow-y-auto'>
       {/* Breadcrumb */}
       <div className='flex items-center gap-2 text-sm'>
         <button
-          onClick={() => navigate('/connections/salesforce')}
+          onClick={() => navigate('/connections')}
           className='text-gray-600 hover:text-gray-900 hover:underline'
         >
           Backup Management
@@ -142,7 +142,7 @@ export default function ConnectSalesforceOrg() {
       <section className='rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-sm'>
         <div className='flex items-start gap-4'>
           <button
-            onClick={() => navigate('/connections/salesforce')}
+            onClick={() => navigate('/connections')}
             className='mt-1 rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600'
           >
             <svg
@@ -282,7 +282,7 @@ export default function ConnectSalesforceOrg() {
           <div className='flex justify-end gap-3 border-t border-gray-200 pt-6'>
             <button
               type='button'
-              onClick={() => navigate('/connections/salesforce')}
+              onClick={() => navigate('/connections')}
               disabled={isLoading}
               className='inline-flex items-center justify-center rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60'
             >
