@@ -20,15 +20,26 @@ type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | '
 
 export default function RestoreCenter() {
   const [screen, setScreen] = useState<Screen>('home');
+  const [historyFilter, setHistoryFilter] = useState<'All' | 'Drafts'>('All');
+  const [isTemplateMode, setIsTemplateMode] = useState(false);
 
   const goTo = (s: Screen) => setScreen(s);
+  const goToHistory = (filter: 'All' | 'Drafts' = 'All') => {
+    setHistoryFilter(filter);
+    setScreen('history');
+  };
+  const goToNewRestore = (templateMode = false) => {
+    setIsTemplateMode(templateMode);
+    setScreen('new-restore');
+  };
 
   return (
     <div className='flex-1 min-h-0 flex flex-col'>
       {screen === 'home' && (
         <HomePage
-          onNewRestore={() => goTo('new-restore')}
-          onViewHistory={() => goTo('history')}
+          onNewRestore={() => goToNewRestore(false)}
+          onViewHistory={() => goToHistory('All')}
+          onViewDrafts={() => goToHistory('Drafts')}
           onViewTemplates={() => goTo('templates')}
           onViewJob={() => goTo('completion')}
         />
@@ -37,6 +48,7 @@ export default function RestoreCenter() {
         <NewRestore
           onBack={() => goTo('home')}
           onComplete={() => goTo('progress')}
+          isTemplateMode={isTemplateMode}
         />
       )}
       {screen === 'progress' && (
@@ -46,10 +58,10 @@ export default function RestoreCenter() {
         <RestoreCompletion />
       )}
       {screen === 'history' && (
-        <RestoreHistory />
+        <RestoreHistory onBack={() => goTo('home')} onNewRestore={() => goTo('new-restore')} initialFilter={historyFilter} />
       )}
       {screen === 'templates' && (
-        <RestoreTemplates />
+        <RestoreTemplates onBack={() => goTo('home')} onNewTemplate={() => goToNewRestore(true)} onRun={() => goToNewRestore(false)} />
       )}
     </div>
   );

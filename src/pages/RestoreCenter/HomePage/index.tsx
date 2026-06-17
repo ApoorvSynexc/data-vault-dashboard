@@ -103,13 +103,14 @@ function Panel({ title, subtitle, action, children }: { title: string; subtitle?
 interface Props {
   onNewRestore: () => void;
   onViewHistory: () => void;
+  onViewDrafts: () => void;
   onViewTemplates: () => void;
   onViewJob: () => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onViewTemplates, onViewJob }: Props) {
+export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onViewDrafts, onViewTemplates, onViewJob }: Props) {
 
   // ── Draft table columns ───────────────────────────────────────────────────
   const draftColumns: TableColumn<DraftRestore>[] = [
@@ -287,7 +288,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
             title='Draft Restores'
             subtitle='Unfinished restore jobs you can resume'
             action={
-              <button onClick={onViewHistory} className='text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors px-2 py-1'>
+              <button onClick={onViewDrafts} className='text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors px-2 py-1'>
                 View All Drafts
               </button>
             }
