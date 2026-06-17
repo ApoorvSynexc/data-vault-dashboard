@@ -13,6 +13,8 @@ import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import type { Destination } from '../../../../services/destination/destination.service';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { formatBytes, formatDateTime } from '../../../../utils';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -23,13 +25,14 @@ type UnifiedTab = 'backup' | 'archive' | 'all';
 
 interface BackupSnapshot {
   id: string;
-  datetime: string;
-  relative: string;
+  name: string;
   source: string;
-  size: string;
-  integrity: 'Verified' | 'Failed';
-  tier: 'Hot' | 'Cold';
-  type: 'Scheduled' | 'On-Demand';
+  backupType: 'Schedule' | 'Realtime';
+  scheduleFrequency: string;
+  configStatus: string;
+  backupStatus: string;
+  lastRun: string;
+  dataSize: string;
 }
 
 interface ArchiveEntry {
@@ -51,20 +54,7 @@ interface UnifiedResult {
   date: string;
 }
 
-// ── Stub data ─────────────────────────────────────────────────────────────────
-
-const BACKUPS: BackupSnapshot[] = [
-  { id: '1', datetime: 'May 27, 2026 · 06:00 AM', relative: 'Today',       source: 'Production', size: '5.2 GB', integrity: 'Verified', tier: 'Hot',  type: 'Scheduled' },
-  { id: '2', datetime: 'May 26, 2026 · 06:00 AM', relative: 'Yesterday',   source: 'Production', size: '5.1 GB', integrity: 'Verified', tier: 'Hot',  type: 'Scheduled' },
-  { id: '3', datetime: 'May 25, 2026 · 06:00 AM', relative: '2 days ago',  source: 'Production', size: '5.1 GB', integrity: 'Verified', tier: 'Hot',  type: 'Scheduled' },
-  { id: '4', datetime: 'May 24, 2026 · 06:00 AM', relative: '3 days ago',  source: 'Production', size: '5.1 GB', integrity: 'Verified', tier: 'Hot',  type: 'On-Demand' },
-  { id: '5', datetime: 'May 23, 2026 · 06:00 AM', relative: '4 days ago',  source: 'Production', size: '5.0 GB', integrity: 'Verified', tier: 'Hot',  type: 'Scheduled' },
-  { id: '6', datetime: 'May 22, 2026 · 06:00 AM', relative: '5 days ago',  source: 'Production', size: '5.0 GB', integrity: 'Verified', tier: 'Hot',  type: 'Scheduled' },
-  { id: '7', datetime: 'May 18, 2026 · 06:00 AM', relative: '9 days ago',  source: 'Production', size: '4.9 GB', integrity: 'Verified', tier: 'Cold', type: 'Scheduled' },
-  { id: '8', datetime: 'May 14, 2026 · 06:00 AM', relative: '13 days ago', source: 'Production', size: '4.8 GB', integrity: 'Verified', tier: 'Cold', type: 'Scheduled' },
-  { id: '9', datetime: 'May 10, 2026 · 06:00 AM', relative: '17 days ago', source: 'Production', size: '4.7 GB', integrity: 'Verified', tier: 'Cold', type: 'Scheduled' },
-  { id: '10', datetime: 'May 06, 2026 · 06:00 AM', relative: '21 days ago', source: 'Production', size: '4.7 GB', integrity: 'Verified', tier: 'Cold', type: 'Scheduled' },
-];
+// BACKUPS now loaded from API in the component
 
 const ARCHIVES: ArchiveEntry[] = [
   { id: '1', name: 'Closed Cases — 18 months',   object: 'Case',        records: '1.24M', size: '62.1 GB', tier: 'Cold', lastRefreshed: 'Yesterday' },
@@ -83,23 +73,6 @@ const UNIFIED: UnifiedResult[] = [
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
-function TierBadge({ tier }: { tier: 'Hot' | 'Cold' | 'Warm' }) {
-  if (tier === 'Hot')  return <span className='flex items-center gap-1 text-xs text-orange-600 font-medium'>🔥 Hot</span>;
-  if (tier === 'Warm') return <span className='flex items-center gap-1 text-xs text-orange-400 font-medium'>🔥 Warm</span>;
-  return <span className='flex items-center gap-1 text-xs text-blue-500 font-medium'>❄ Cold</span>;
-}
-
-function IntegrityBadge({ v }: { v: 'Verified' | 'Failed' }) {
-  return v === 'Verified'
-    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700'>✓ Verified</span>
-    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700'>✗ Failed</span>;
-}
-
-function TypeBadge({ type }: { type: string }) {
-  return type === 'On-Demand'
-    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>On-Demand</span>
-    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600'>Scheduled</span>;
-}
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -304,8 +277,32 @@ export default function SelectSource({ onNext, onBack }: Props) {
   const [selectedConnection, setSelectedConnection]     = useState<Destination | null>(null);
   const [sourceType, setSourceType]   = useState<SourceType>('backup');
   const [backupMode, setBackupMode]   = useState<BackupMode>('list');
-  const [selectedBackup, setSelectedBackup] = useState<string>('1');
+  const [selectedBackup, setSelectedBackup] = useState<string>('');
   const [selectedArchive, setSelectedArchive] = useState<string>('1');
+
+  const backupConfigService = useBackupConfigService();
+  const { data: backupConfigData, isLoading: isLoadingBackups } = useQuery({
+    queryKey: ['backup-config-list'],
+    queryFn: () => backupConfigService.listBackupConfigs(true),
+  });
+
+  const getScheduleFrequency = (frequency?: string): string => {
+    if (!frequency) return '--';
+    const freqMap: Record<string, string> = { 'HOURLY': 'Hourly', 'DAILY': 'Daily', 'WEEKLY': 'Weekly', 'MONTHLY': 'Monthly', 'CUSTOM': 'Custom', 'ONCE': 'Once' };
+    return freqMap[frequency] || frequency;
+  };
+
+  const apiBackups: BackupSnapshot[] = ((backupConfigData as any)?.data ?? []).map((item: any): BackupSnapshot => ({
+    id: item.backupConfigId,
+    name: item.name ?? item.slug ?? '—',
+    source: item.crm?.name ?? item.crm?.crmName ?? item.platform ?? '—',
+    backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
+    scheduleFrequency: getScheduleFrequency(item.scheduleConfig?.scheduling?.frequency),
+    configStatus: item.status ?? 'INACTIVE',
+    backupStatus: item.backupStatus ?? '',
+    lastRun: formatDateTime(item.lastBackupAt),
+    dataSize: formatBytes(item.sizeInBytes),
+  }));
   const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
   const [unifiedTab, setUnifiedTab]   = useState<UnifiedTab>('backup');
   const [unifiedSearch, setUnifiedSearch] = useState('');
@@ -318,46 +315,88 @@ export default function SelectSource({ onNext, onBack }: Props) {
   // ── Backup table columns ──────────────────────────────────────────────────
   const backupColumns: TableColumn<BackupSnapshot>[] = [
     {
-      key: 'radio',
-      header: '',
+      key: 'index',
+      header: '#',
       width: '40px',
-      render: (row) => (
-        <input
-          type='radio' name='snap' checked={selectedBackup === row.id}
-          onChange={() => setSelectedBackup(row.id)}
-          className='w-4 h-4 accent-blue-600 cursor-pointer'
-        />
-      ),
+      render: (_row, index) => <span className='text-xs text-gray-500'>{(index ?? 0) + 1}</span>,
     },
     {
-      key: 'datetime',
-      header: 'Date & Time',
+      key: 'name',
+      header: 'Backup Name',
       render: (row) => (
-        <div>
-          <p className='text-sm font-semibold text-gray-900'>{row.datetime}</p>
-          <p className='text-xs text-gray-400 mt-0.5'>{row.relative}</p>
+        <div className='flex items-center gap-2'>
+          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
+            <span className='text-[10px] font-bold text-sky-500'>S</span>
+          </div>
+          <span className='text-sm font-semibold text-gray-900 underline'>{row.name}</span>
         </div>
       ),
     },
     { key: 'source', header: 'Source', render: (row) => <span className='text-sm text-gray-700'>{row.source}</span> },
-    { key: 'size',   header: 'Size',   render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-    { key: 'integrity', header: 'Integrity', render: (row) => <IntegrityBadge v={row.integrity} /> },
-    { key: 'tier',   header: 'Tier',   render: (row) => <TierBadge tier={row.tier} /> },
-    { key: 'type',   header: 'Type',   render: (row) => <TypeBadge type={row.type} /> },
+    {
+      key: 'backupType',
+      header: 'Backup Type',
+      render: (row) => {
+        const isRealtime = row.backupType === 'Realtime';
+        return (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+            {isRealtime
+              ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
+              : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+            }
+            {row.backupType}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'scheduleFrequency',
+      header: 'Schedule Type',
+      render: (row) => {
+        if (row.backupType === 'Realtime' || row.scheduleFrequency === '--') return <span className='text-gray-400 text-[10px]'>N/A</span>;
+        const styles: Record<string, string> = { 'Hourly': 'bg-orange-100 text-orange-700', 'Daily': 'bg-cyan-100 text-cyan-700', 'Weekly': 'bg-green-100 text-green-700', 'Monthly': 'bg-purple-100 text-purple-700', 'Custom': 'bg-indigo-100 text-indigo-700', 'Once': 'bg-gray-100 text-gray-700' };
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[row.scheduleFrequency] ?? 'bg-gray-100 text-gray-700'}`}>{row.scheduleFrequency}</span>;
+      },
+    },
+    {
+      key: 'configStatus',
+      header: 'Status',
+      render: (row) => {
+        const styles: Record<string, string> = { 'ACTIVE': 'bg-green-100 text-green-700', 'INACTIVE': 'bg-gray-100 text-gray-600', 'PAUSED': 'bg-gray-100 text-gray-600', 'ERROR': 'bg-red-100 text-red-700' };
+        const labels: Record<string, string> = { 'ACTIVE': 'Active', 'INACTIVE': 'Inactive', 'PAUSED': 'Paused', 'ERROR': 'Error' };
+        const k = row.configStatus?.toUpperCase() ?? '';
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[k] ?? 'bg-gray-100 text-gray-600'}`}>{labels[k] ?? row.configStatus}</span>;
+      },
+    },
+    {
+      key: 'backupStatus',
+      header: 'Last Job Status',
+      render: (row) => {
+        if (!row.backupStatus) return <span className='text-gray-400 text-xs'>--</span>;
+        const styles: Record<string, string> = { 'SUCCESS': 'bg-green-100 text-green-700', 'FAILED': 'bg-red-100 text-red-700', 'RUNNING': 'bg-indigo-100 text-indigo-700', 'PENDING': 'bg-indigo-100 text-indigo-700', 'PAUSED': 'bg-gray-100 text-gray-700' };
+        const labels: Record<string, string> = { 'SUCCESS': 'Success', 'FAILED': 'Failed', 'RUNNING': 'Running', 'PENDING': 'Running', 'PAUSED': 'Paused' };
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[row.backupStatus] ?? 'bg-gray-100 text-gray-600'}`}>{labels[row.backupStatus] ?? row.backupStatus}</span>;
+      },
+    },
+    { key: 'lastRun', header: 'Last Run', render: (row) => <span className='text-xs text-gray-600 whitespace-nowrap'>{row.lastRun}</span> },
+    { key: 'dataSize', header: 'Data Size', render: (row) => <span className='text-xs text-gray-600'>{row.dataSize}</span> },
     {
       key: 'action',
-      header: '',
+      header: 'Action',
       render: (row) => (
-        <button
-          onClick={() => setSelectedBackup(row.id)}
-          className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-            selectedBackup === row.id
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'border-blue-600 text-blue-600 hover:bg-blue-50'
-          }`}
-        >
-          {selectedBackup === row.id ? 'Selected' : 'Select'}
-        </button>
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={() => setSelectedBackup(row.id)}
+            className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+              selectedBackup === row.id ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-600 text-blue-600 hover:bg-blue-50'
+            }`}
+          >
+            {selectedBackup === row.id ? 'Selected' : 'Select'}
+          </button>
+          <button className='text-xs font-semibold px-3 py-1 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap'>
+            View Jobs
+          </button>
+        </div>
       ),
     },
   ];
@@ -566,6 +605,17 @@ export default function SelectSource({ onNext, onBack }: Props) {
             {backupMode === 'list' ? (
               <>
                 {/* Filters */}
+                {isLoadingBackups && (
+                  <div className='flex items-center justify-center py-12'>
+                    <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
+                  </div>
+                )}
+                {!isLoadingBackups && apiBackups.length === 0 && (
+                  <div className='flex flex-col items-center justify-center py-12 text-center'>
+                    <p className='text-sm text-gray-500'>No backups found.</p>
+                  </div>
+                )}
+                {!isLoadingBackups && apiBackups.length > 0 && <>
                 <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
                   <span className='text-xs font-bold text-gray-600'>Filter:</span>
                   {[
@@ -591,7 +641,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 {/* Table */}
                 <Table
                   columns={backupColumns}
-                  rows={BACKUPS}
+                  rows={apiBackups}
                   getRowKey={(r) => r.id}
                   borderless
                   headerVariant='uppercase'
@@ -603,10 +653,9 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 />
                 {/* Pagination */}
                 <div className='flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
-                  <button className='text-blue-600 hover:underline'>‹ Newer</button>
-                  <button className='text-blue-600 hover:underline'>Older ›</button>
-                  <span className='ml-auto'>10 per page</span>
+                  <span className='ml-auto'>Showing {apiBackups.length} backups</span>
                 </div>
+                </>}
               </>
             ) : (
               /* Point-in-time mode */
@@ -756,7 +805,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 {selectedMerge.size === 0 ? (
                   <span className='text-xs text-gray-400 italic'>No snapshots selected — pick from the table below.</span>
                 ) : (
-                  BACKUPS.filter((b) => selectedMerge.has(b.id)).map((b) => (
+                  apiBackups.filter((b) => selectedMerge.has(b.id)).map((b) => (
                     <span key={b.id} className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-blue-300 text-xs font-semibold text-blue-700'>
                       {b.relative}
                       <button onClick={() => setSelectedMerge((p) => { const n = new Set(p); n.delete(b.id); return n; })} className='text-blue-400 hover:text-blue-600 leading-none'>×</button>
@@ -766,7 +815,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
               </div>
               <Table
                 columns={mergeColumns}
-                rows={BACKUPS.slice(0, 6)}
+                rows={apiBackups.slice(0, 6)}
                 getRowKey={(r) => r.id}
                 borderless
                 headerVariant='uppercase'
