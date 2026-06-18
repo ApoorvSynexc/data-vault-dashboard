@@ -12,17 +12,28 @@ export interface SnapshotLog {
   configName: string;
   sourceName: string;
   dataSize: number;
+  backupType: string;
+  status: string;
+}
+
+export interface SnapshotLogsMeta {
+  limit: number;
+  nextCursor?: string;
 }
 
 export interface SnapshotLogsResponse {
+  success: boolean;
+  message: string;
   data: SnapshotLog[];
-  meta?: Record<string, unknown>;
+  meta: SnapshotLogsMeta;
 }
 
 export interface SnapshotLogsParams {
   snapshotType: SnapshotType;
   destinationId: string;
-  scheduleType?: ScheduleType; // only applicable when snapshotType === 'BACKUP'
+  scheduleType?: ScheduleType; // only valid when snapshotType === 'BACKUP'
+  limit?: number;
+  cursor?: string;             // omit on first page
 }
 
 export function useRestoreService() {
@@ -37,6 +48,8 @@ export function useRestoreService() {
           ...(params.snapshotType === 'BACKUP' && params.scheduleType
             ? { scheduleType: params.scheduleType }
             : {}),
+          ...(params.limit ? { limit: params.limit } : {}),
+          ...(params.cursor ? { cursor: params.cursor } : {}),
         },
       }),
   };
