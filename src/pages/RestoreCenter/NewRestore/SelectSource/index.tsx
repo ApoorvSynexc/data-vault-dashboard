@@ -636,11 +636,13 @@ export default function SelectSource({ onNext, onBack }: Props) {
                       <p className='text-sm text-gray-500'>No snapshot jobs found.</p>
                     </div>
                   ) : (
-                    <table className='w-full' style={{ minWidth: '860px' }}>
+                    <table className='w-full' style={{ minWidth: jobsFilterType === 'REALTIME' ? '1060px' : '860px' }}>
                       <thead>
                         <tr className='border-b border-gray-200 bg-gray-50'>
                           <th className='px-4 py-3 w-10'></th>
-                          {['#', 'Backup Name', 'Date & Time', 'Source', 'Backup Type', 'Status', 'Data Size', 'Actions'].map((h) => (
+                          {['#', 'Backup Name', 'Date & Time', 'Source', 'Backup Type', 'Status', 'Data Size',
+                            ...(jobsFilterType === 'REALTIME' ? ['Object', 'Operation', 'Records'] : []),
+                            'Actions'].map((h) => (
                             <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
                           ))}
                         </tr>
@@ -649,6 +651,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                         {filteredLogs.map((log: any, i: number) => {
                           const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
                           const isSelected = selectedBackup === rowKey;
+                          const isRealtime = log.backupType === 'RealTime';
                           return (
                             <tr
                               key={i}
@@ -698,6 +701,16 @@ export default function SelectSource({ onNext, onBack }: Props) {
                               <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
                                 {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
                               </td>
+                              {isRealtime && <>
+                                <td className='px-4 py-3 text-xs text-gray-600'>{log.objectApiName ?? '—'}</td>
+                                <td className='px-4 py-3'>
+                                  {log.operation ? (() => {
+                                    const opStyles: Record<string, string> = { INSERT: 'bg-green-100 text-green-700', UPDATE: 'bg-blue-100 text-blue-700', DELETE: 'bg-red-100 text-red-700', UPSERT: 'bg-orange-100 text-orange-700' };
+                                    return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${opStyles[log.operation.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>{log.operation}</span>;
+                                  })() : <span className='text-gray-400 text-xs'>—</span>}
+                                </td>
+                                <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>{log.recordCount ?? '—'}</td>
+                              </>}
                               <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
                                 <button className='text-gray-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50'>
                                   <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='w-4 h-4'>
