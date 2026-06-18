@@ -100,6 +100,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
                           )}
                         </div>
                         <p className='text-xs text-gray-500 truncate'>Org ID: {connection.crmProfile?.organizationId}</p>
+                        {connection.crmProfile?.username && <p className='text-xs text-gray-500 truncate'>@{connection.crmProfile.username}</p>}
                         <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
                       </div>
                     </div>
