@@ -256,18 +256,6 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
     title: 'Archive Vault Entry',
     desc: 'Cold/warm archived records',
   },
-  {
-    id: 'unified',
-    icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>,
-    title: 'Unified Search',
-    desc: 'Search across both Backup & Archive',
-  },
-  {
-    id: 'merge',
-    icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='2' y='3' width='20' height='14' rx='2'/><line x1='8' y1='21' x2='16' y2='21'/><line x1='12' y1='17' x2='12' y2='21'/></svg>,
-    title: 'Multi-Snapshot Merge',
-    desc: 'Combine records from 2+ snapshots',
-  },
 ];
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -280,7 +268,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
   const [selectedConnection, setSelectedConnection]     = useState<Destination | null>(null);
   const [sourceType, setSourceType]   = useState<SourceType>('backup');
   const [backupMode, setBackupMode]   = useState<BackupMode>('list');
-  const [selectedBackup, setSelectedBackup] = useState<string>('');
+  const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
   const [selectedArchive, setSelectedArchive] = useState<string>('1');
 
   const backupConfigService = useBackupConfigService();
@@ -320,6 +308,11 @@ export default function SelectSource({ onNext, onBack }: Props) {
   const [jobsNextCursor, setJobsNextCursor] = useState<string | undefined>(undefined);
 
   const jobsCurrentCursor = jobsCursorStack[jobsPageIndex];
+
+  useEffect(() => {
+    setSelectedBackup(new Set());
+    setMergeRule('');
+  }, [jobsFilterType]);
 
   const { isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery<unknown>({
     queryKey: ['snapshot-logs-inline', selectedConnection?.destinationId, jobsFilterType, jobsCurrentCursor],
@@ -372,6 +365,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
   });
 
   const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
+  const [mergeRule, setMergeRule] = useState('');
   const [unifiedTab, setUnifiedTab]   = useState<UnifiedTab>('backup');
   const [unifiedSearch, setUnifiedSearch] = useState('');
   const [pitDate, setPitDate]         = useState('2026-05-23');
@@ -495,7 +489,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
   ];
 
   const canProceed =
-    sourceType === 'backup'  ? !!selectedBackup :
+    sourceType === 'backup'  ? selectedBackup.size > 0 && (selectedBackup.size < 2 || !!mergeRule) :
     sourceType === 'archive' ? !!selectedArchive :
     sourceType === 'unified' ? true :
     selectedMerge.size >= 2;
@@ -577,7 +571,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 {(['SCHEDULE', 'REALTIME'] as const).map((t) => (
                   <button
                     key={t}
-                    onClick={() => { setJobsFilterType(t); resetJobsPagination(); }}
+                    onClick={() => { setJobsFilterType(t); resetJobsPagination(); setSelectedBackup(new Set()); setMergeRule(''); }}
                     className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
                       jobsFilterType === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                     }`}
@@ -650,19 +644,24 @@ export default function SelectSource({ onNext, onBack }: Props) {
                       <tbody>
                         {filteredLogs.map((log: any, i: number) => {
                           const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
-                          const isSelected = selectedBackup === rowKey;
+                          const isSelected = selectedBackup.has(rowKey);
                           const isRealtime = log.backupType === 'RealTime';
+                          const toggleRow = () => setSelectedBackup((prev) => {
+                            const next = new Set(prev);
+                            isSelected ? next.delete(rowKey) : next.add(rowKey);
+                            return next;
+                          });
                           return (
                             <tr
                               key={i}
-                              onClick={() => setSelectedBackup(isSelected ? '' : rowKey)}
+                              onClick={toggleRow}
                               className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                             >
                               <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type='checkbox'
                                   checked={isSelected}
-                                  onChange={() => setSelectedBackup(isSelected ? '' : rowKey)}
+                                  onChange={toggleRow}
                                   className='w-4 h-4 accent-blue-600 cursor-pointer'
                                 />
                               </td>
@@ -744,6 +743,31 @@ export default function SelectSource({ onNext, onBack }: Props) {
                   </button>
                   <span className='ml-auto text-xs text-gray-400'>Page {jobsPageIndex + 1} · {filteredLogs.length} entries</span>
                 </div>
+                {selectedBackup.size >= 2 && (
+                  <div className='flex-shrink-0 mx-4 mb-3 rounded-xl border border-yellow-200 bg-yellow-50 overflow-hidden'>
+                    <div className='flex items-center gap-2 px-4 py-2.5 border-b border-yellow-200 bg-yellow-100/60'>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4 text-yellow-600 flex-shrink-0'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/>
+                      </svg>
+                      <span className='text-xs font-semibold text-yellow-800'>Multiple snapshots selected ({selectedBackup.size})</span>
+                      <span className='text-xs text-yellow-600 ml-1'>— conflict resolution required</span>
+                    </div>
+                    <div className='flex items-center justify-between gap-4 px-4 py-3'>
+                      <p className='text-xs text-yellow-800 leading-relaxed'>When the same record exists in more than one selected snapshot, choose which version wins during restore.</p>
+                      <select
+                        value={mergeRule}
+                        onChange={(e) => setMergeRule(e.target.value)}
+                        className={`h-8 text-xs border rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-yellow-500 flex-shrink-0 min-w-[220px] ${!mergeRule ? 'border-red-300' : 'border-yellow-300'}`}
+                      >
+                        <option value=''>— Select a rule —</option>
+                        <option value='newest'>Newest LastModifiedDate wins</option>
+                        <option value='oldest'>Oldest snapshot wins</option>
+                        <option value='latest'>Latest selected snapshot wins</option>
+                        <option value='perfield'>Per-field rule (set on Conflict step)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               /* Point-in-time mode */
