@@ -82,15 +82,19 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
   if (!job) return null;
 
   const startedAt = job.startedAt ? new Date(job.startedAt) : null;
-  const completedAt = job.completedAt ? new Date(job.completedAt) : null;
+  const completedAt = (job.completedAt ?? job.lastCompletedAt) ? new Date((job.completedAt ?? job.lastCompletedAt)!) : null;
 
   let durationText = 'N/A';
   if (startedAt && completedAt) {
     const ms = completedAt.getTime() - startedAt.getTime();
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    durationText = h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    if (ms < 1000) {
+      durationText = `${(ms / 1000).toFixed(3)}s`;
+    } else {
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      durationText = h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }
   }
 
   const objectsList: any[] = job.object || [];
