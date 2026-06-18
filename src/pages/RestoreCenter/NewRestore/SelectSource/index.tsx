@@ -313,6 +313,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
   // ── Snapshot logs state (shown inline in the backup table) ────────────────
   const [jobsFilterName, setJobsFilterName] = useState('');
   const [jobsFilterType, setJobsFilterType] = useState<'ALL' | 'REALTIME' | 'SCHEDULE'>('ALL');
+  const [jobsFilterSource, setJobsFilterSource] = useState('ALL');
   const [jobsCursorStack, setJobsCursorStack] = useState<(string | undefined)[]>([undefined]);
   const [jobsPageIndex, setJobsPageIndex] = useState(0);
   const [jobsPageLogs, setJobsPageLogs] = useState<any[]>([]);
@@ -359,11 +360,14 @@ export default function SelectSource({ onNext, onBack }: Props) {
     setJobsNextCursor(undefined);
   };
 
+  const jobsSourceOptions = ['ALL', ...Array.from(new Set(jobsPageLogs.map((l: any) => l.sourceName).filter(Boolean)))];
+
   const filteredLogs = jobsPageLogs.filter((log: any) => {
     if (jobsFilterName.trim()) {
       const q = jobsFilterName.trim().toLowerCase();
       if (!(log.configName ?? '').toLowerCase().includes(q)) return false;
     }
+    if (jobsFilterSource !== 'ALL' && log.sourceName !== jobsFilterSource) return false;
     return true;
   });
 
@@ -608,9 +612,15 @@ export default function SelectSource({ onNext, onBack }: Props) {
                     <option value='SCHEDULE'>Schedule</option>
                     <option value='REALTIME'>Realtime</option>
                   </select>
-                  <span className='ml-auto text-xs text-gray-400 whitespace-nowrap hidden sm:inline'>
-                    Page {jobsPageIndex + 1} · {filteredLogs.length} entries
-                  </span>
+                  <select
+                    value={jobsFilterSource}
+                    onChange={(e) => setJobsFilterSource(e.target.value)}
+                    className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none focus:border-blue-400'
+                  >
+                    {jobsSourceOptions.map((s) => (
+                      <option key={s} value={s}>{s === 'ALL' ? 'All sources' : s}</option>
+                    ))}
+                  </select>
                 </div>
                 {/* Table */}
                 <div className='flex-1 overflow-x-auto'>
@@ -713,7 +723,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                   >
                     Next →
                   </button>
-                  <span className='ml-auto'>Page {jobsPageIndex + 1}</span>
+                  <span className='ml-auto text-xs text-gray-400'>Page {jobsPageIndex + 1} · {filteredLogs.length} entries</span>
                 </div>
               </>
             ) : (
