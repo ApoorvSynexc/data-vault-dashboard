@@ -312,7 +312,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
   // ── Snapshot logs state (shown inline in the backup table) ────────────────
   const [jobsFilterName, setJobsFilterName] = useState('');
-  const [jobsFilterType, setJobsFilterType] = useState<'ALL' | 'REALTIME' | 'SCHEDULE'>('ALL');
+  const [jobsFilterType, setJobsFilterType] = useState<'REALTIME' | 'SCHEDULE'>('SCHEDULE');
   const [jobsFilterSource, setJobsFilterSource] = useState('ALL');
   const [jobsCursorStack, setJobsCursorStack] = useState<(string | undefined)[]>([undefined]);
   const [jobsPageIndex, setJobsPageIndex] = useState(0);
@@ -327,7 +327,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
       const res = await restoreService.getSnapshotLogs({
         snapshotType: 'BACKUP',
         destinationId: selectedConnection!.destinationId,
-        ...(jobsFilterType !== 'ALL' ? { scheduleType: jobsFilterType } : {}),
+        scheduleType: jobsFilterType,
         limit: 10,
         cursor: jobsCurrentCursor,
       });
@@ -571,10 +571,44 @@ export default function SelectSource({ onNext, onBack }: Props) {
         {sourceType === 'backup' && (
           <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
             {/* Header */}
-            <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3 flex-wrap gap-y-2'>
+            <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>📸 Choose a Backup Snapshot</Typography>
-              {/* Mode toggle */}
               <div className='flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
+                {(['SCHEDULE', 'REALTIME'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setJobsFilterType(t); resetJobsPagination(); }}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                      jobsFilterType === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {t === 'ALL' ? 'All' : t === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filter bar — always visible */}
+            <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
+              {backupMode === 'list' && <>
+                <span className='text-xs font-bold text-gray-600'>Filter:</span>
+                <input
+                  value={jobsFilterName}
+                  onChange={(e) => { setJobsFilterName(e.target.value); }}
+                  placeholder='Backup name'
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
+                />
+                <select
+                  value={jobsFilterSource}
+                  onChange={(e) => setJobsFilterSource(e.target.value)}
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none focus:border-blue-400'
+                >
+                  {jobsSourceOptions.map((s) => (
+                    <option key={s} value={s}>{s === 'ALL' ? 'All sources' : s}</option>
+                  ))}
+                </select>
+              </>}
+              <div className='ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
                 {(['list', 'pit'] as BackupMode[]).map((m) => (
                   <button
                     key={m}
@@ -591,37 +625,6 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
             {backupMode === 'list' ? (
               <>
-                {/* Filter bar */}
-                <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-                  <span className='text-xs font-bold text-gray-600'>Filter:</span>
-                  <input
-                    value={jobsFilterName}
-                    onChange={(e) => { setJobsFilterName(e.target.value); }}
-                    placeholder='Backup name'
-                    className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
-                  />
-                  <select
-                    value={jobsFilterType}
-                    onChange={(e) => {
-                      setJobsFilterType(e.target.value as 'ALL' | 'REALTIME' | 'SCHEDULE');
-                      resetJobsPagination();
-                    }}
-                    className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none focus:border-blue-400'
-                  >
-                    <option value='ALL'>All types</option>
-                    <option value='SCHEDULE'>Schedule</option>
-                    <option value='REALTIME'>Realtime</option>
-                  </select>
-                  <select
-                    value={jobsFilterSource}
-                    onChange={(e) => setJobsFilterSource(e.target.value)}
-                    className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none focus:border-blue-400'
-                  >
-                    {jobsSourceOptions.map((s) => (
-                      <option key={s} value={s}>{s === 'ALL' ? 'All sources' : s}</option>
-                    ))}
-                  </select>
-                </div>
                 {/* Table */}
                 <div className='flex-1 overflow-x-auto'>
                   {isLoadingJobs || isFetchingJobs ? (
