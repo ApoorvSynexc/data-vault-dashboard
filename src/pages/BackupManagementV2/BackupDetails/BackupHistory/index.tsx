@@ -12,6 +12,7 @@ interface BackupJob {
   backupJobId: string;
   startedAt?: string;
   completedAt?: string;
+  lastCompletedAt?: string;
   status?: string;
   object?: BackupJobObject[];
   sizeInBytes?: number;
@@ -87,13 +88,13 @@ const getStatusDisplayText = (job: BackupJob) => {
   }
 };
 
-const calculateDuration = (startedAt?: string, completedAt?: string) => {
-  if (!startedAt || !completedAt) return '--';
-  const start = dayjs(startedAt);
-  const end = dayjs(completedAt);
-  const diffMs = end.diff(start, 'ms');
+const calculateDuration = (startedAt?: string, completedAt?: string, lastCompletedAt?: string) => {
+  const endTime = completedAt ?? lastCompletedAt;
+  if (!startedAt || !endTime) return '--';
+  const diffMs = dayjs(endTime).diff(dayjs(startedAt), 'ms');
 
   if (diffMs < 0) return '--';
+  if (diffMs < 1000) return `${(diffMs / 1000).toFixed(3)}s`;
 
   const minutes = Math.floor(diffMs / 60000);
   const seconds = Math.floor((diffMs % 60000) / 1000);
@@ -220,7 +221,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
     {
       key: 'duration',
       header: 'Duration',
-      render: (job) => calculateDuration(job.startedAt, job.completedAt),
+      render: (job) => calculateDuration(job.startedAt, job.completedAt, job.lastCompletedAt),
     },
     {
       key: 'dataSize',
