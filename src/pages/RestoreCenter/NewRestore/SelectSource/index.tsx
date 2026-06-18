@@ -675,15 +675,18 @@ export default function SelectSource({ onNext, onBack }: Props) {
                               <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
                               <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
                               <td className='px-4 py-3'>
-                                {log.backupType ? (
-                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${log.backupType === 'REALTIME' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {log.backupType === 'REALTIME'
-                                      ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
-                                      : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
-                                    }
-                                    {log.backupType === 'REALTIME' ? 'Realtime' : 'Schedule'}
-                                  </span>
-                                ) : <span className='text-gray-400 text-xs'>—</span>}
+                                {log.backupType ? (() => {
+                                  const isRealtime = log.backupType === 'RealTime';
+                                  return (
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                                      {isRealtime
+                                        ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
+                                        : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+                                      }
+                                      {isRealtime ? 'Realtime' : 'Schedule'}
+                                    </span>
+                                  );
+                                })() : <span className='text-gray-400 text-xs'>—</span>}
                               </td>
                               <td className='px-4 py-3'>
                                 {log.status ? (() => {
