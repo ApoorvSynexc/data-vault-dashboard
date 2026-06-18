@@ -627,30 +627,30 @@ export default function SelectSource({ onNext, onBack }: Props) {
                       <thead>
                         <tr className='border-b border-gray-200 bg-gray-50'>
                           <th className='px-4 py-3 w-10'></th>
-                          {['#', 'Date & Time', 'Backup Name', 'Source', 'Backup Type', 'Status', 'Data Size'].map((h) => (
+                          {['#', 'Backup Name', 'Date & Time', 'Source', 'Backup Type', 'Status', 'Data Size', 'Actions'].map((h) => (
                             <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {filteredLogs.map((log: any, i: number) => {
-                          const isSelected = selectedBackup === log.configName;
+                          const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
+                          const isSelected = selectedBackup === rowKey;
                           return (
                             <tr
                               key={i}
-                              onClick={() => setSelectedBackup(log.configName)}
+                              onClick={() => setSelectedBackup(isSelected ? '' : rowKey)}
                               className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                             >
                               <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
                                 <input
                                   type='checkbox'
                                   checked={isSelected}
-                                  onChange={() => setSelectedBackup(log.configName)}
+                                  onChange={() => setSelectedBackup(isSelected ? '' : rowKey)}
                                   className='w-4 h-4 accent-blue-600 cursor-pointer'
                                 />
                               </td>
                               <td className='px-4 py-3 text-xs text-gray-400 tabular-nums'>{jobsPageIndex * 10 + i + 1}</td>
-                              <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
                               <td className='px-4 py-3'>
                                 <div className='flex items-center gap-2'>
                                   <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
@@ -659,6 +659,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                                   <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
                                 </div>
                               </td>
+                              <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
                               <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
                               <td className='px-4 py-3'>
                                 {log.backupType ? (
@@ -680,6 +681,14 @@ export default function SelectSource({ onNext, onBack }: Props) {
                               </td>
                               <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
                                 {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
+                              </td>
+                              <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
+                                <button className='text-gray-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50'>
+                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='w-4 h-4'>
+                                    <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/>
+                                    <circle cx='12' cy='12' r='3'/>
+                                  </svg>
+                                </button>
                               </td>
                             </tr>
                           );
