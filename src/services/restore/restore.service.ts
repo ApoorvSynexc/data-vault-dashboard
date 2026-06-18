@@ -12,19 +12,39 @@ export interface SnapshotLog {
   configName: string;
   sourceName: string;
   dataSize: number;
+  backupType: 'Scheduled' | 'RealTime';
+  status: string;
+  // Realtime-only
+  recordCount?: number;
+  objectApiName?: string;
+  operation?: string;
+}
+
+export interface ArchivalLog {
+  dateTime: string;
+  configName: string;
+  sourceName: string;
+  dataSize: number;
   backupType: string;
   status: string;
 }
 
 export interface SnapshotLogsMeta {
   limit: number;
-  nextCursor?: string;
+  nextCursor: string | null;
 }
 
 export interface SnapshotLogsResponse {
   success: boolean;
   message: string;
   data: SnapshotLog[];
+  meta: SnapshotLogsMeta;
+}
+
+export interface ArchivalLogsResponse {
+  success: boolean;
+  message: string;
+  data: ArchivalLog[];
   meta: SnapshotLogsMeta;
 }
 

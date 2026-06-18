@@ -38,15 +38,6 @@ interface BackupSnapshot {
   scheduleType: 'REALTIME' | 'SCHEDULE';
 }
 
-interface ArchiveEntry {
-  id: string;
-  name: string;
-  object: string;
-  records: string;
-  size: string;
-  tier: 'Cold' | 'Warm';
-  lastRefreshed: string;
-}
 
 interface UnifiedResult {
   id: string;
@@ -59,12 +50,6 @@ interface UnifiedResult {
 
 // BACKUPS now loaded from API in the component
 
-const ARCHIVES: ArchiveEntry[] = [
-  { id: '1', name: 'Closed Cases — 18 months',   object: 'Case',        records: '1.24M', size: '62.1 GB', tier: 'Cold', lastRefreshed: 'Yesterday' },
-  { id: '2', name: 'Cold Leads — 90 days',        object: 'Lead',        records: '2.89M', size: '74.2 GB', tier: 'Warm', lastRefreshed: 'Today, 04:00 AM' },
-  { id: '3', name: 'Closed-Lost Opportunities',   object: 'Opportunity', records: '418K',  size: '22.4 GB', tier: 'Cold', lastRefreshed: '04 May, 03:00 AM' },
-  { id: '4', name: 'Completed Tasks — 24 months', object: 'Task',        records: '268K',  size: '23.7 GB', tier: 'Cold', lastRefreshed: '15 Apr, 11:00 PM' },
-];
 
 const UNIFIED: UnifiedResult[] = [
   { id: '1', name: 'May 27, 2026 · 06:00 AM', policy: 'Full Production Backup', kind: 'Backup', records: '123,213', date: 'Today' },
@@ -269,7 +254,6 @@ export default function SelectSource({ onNext, onBack }: Props) {
   const [sourceType, setSourceType]   = useState<SourceType>('backup');
   const [backupMode, setBackupMode]   = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
-  const [selectedArchive, setSelectedArchive] = useState<string>('1');
 
   const backupConfigService = useBackupConfigService();
   const { data: backupConfigData } = useQuery({
@@ -364,50 +348,61 @@ export default function SelectSource({ onNext, onBack }: Props) {
     return true;
   });
 
+  // ── Archive sub-picker state ──────────────────────────────────────────────
+  const [archiveFilterName, setArchiveFilterName] = useState('');
+  const [archiveCursorStack, setArchiveCursorStack] = useState<(string | undefined)[]>([undefined]);
+  const [archivePageIndex, setArchivePageIndex] = useState(0);
+  const [archivePageLogs, setArchivePageLogs] = useState<any[]>([]);
+  const [archiveNextCursor, setArchiveNextCursor] = useState<string | undefined>(undefined);
+  const [selectedArchiveKey, setSelectedArchiveKey] = useState<string>('');
+
+  const archiveCurrentCursor = archiveCursorStack[archivePageIndex];
+
+  const { isLoading: isLoadingArchive, isFetching: isFetchingArchive } = useQuery<unknown>({
+    queryKey: ['snapshot-logs-archive', selectedConnection?.destinationId, archiveCurrentCursor],
+    queryFn: async () => {
+      const res = await restoreService.getSnapshotLogs({
+        snapshotType: 'ARCHIVAL',
+        destinationId: selectedConnection!.destinationId,
+        limit: 10,
+        cursor: archiveCurrentCursor,
+      });
+      setArchivePageLogs((res as any)?.data ?? []);
+      setArchiveNextCursor((res as any)?.meta?.nextCursor);
+      return res;
+    },
+    enabled: !!selectedConnection && sourceType === 'archive' && phase === 'source',
+  });
+
+  const goArchiveNextPage = () => {
+    if (!archiveNextCursor) return;
+    setArchiveCursorStack((prev) => {
+      const next = [...prev];
+      if (next[archivePageIndex + 1] !== archiveNextCursor) next[archivePageIndex + 1] = archiveNextCursor;
+      return next;
+    });
+    setArchivePageIndex((p) => p + 1);
+  };
+
+  const goArchivePrevPage = () => {
+    if (archivePageIndex === 0) return;
+    setArchivePageIndex((p) => p - 1);
+  };
+
+  const filteredArchiveLogs = archivePageLogs.filter((log: any) => {
+    if (archiveFilterName.trim()) {
+      const q = archiveFilterName.trim().toLowerCase();
+      if (!(log.configName ?? '').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
   const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
   const [mergeRule, setMergeRule] = useState('');
   const [unifiedTab, setUnifiedTab]   = useState<UnifiedTab>('backup');
   const [unifiedSearch, setUnifiedSearch] = useState('');
   const [pitDate, setPitDate]         = useState('2026-05-23');
   const [pitTime, setPitTime]         = useState('14:23');
-
-  // ── Archive table columns ─────────────────────────────────────────────────
-  const archiveColumns: TableColumn<ArchiveEntry>[] = [
-    {
-      key: 'radio',
-      header: '',
-      width: '40px',
-      render: (row) => (
-        <input
-          type='radio' name='arch' checked={selectedArchive === row.id}
-          onChange={() => setSelectedArchive(row.id)}
-          className='w-4 h-4 accent-blue-600 cursor-pointer'
-        />
-      ),
-    },
-    { key: 'name',         header: 'Archive Set',    render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.name}</span> },
-    { key: 'object',       header: 'Source Object',  render: (row) => <span className='text-sm text-gray-700'>{row.object}</span> },
-    { key: 'records',      header: 'Records',        render: (row) => <span className='text-sm tabular-nums text-gray-700'>{row.records}</span> },
-    { key: 'size',         header: 'Size',           render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-    { key: 'tier', header: 'Tier', render: (row) => <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${row.tier === 'Cold' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{row.tier}</span> },
-    { key: 'lastRefreshed',header: 'Last Refreshed', render: (row) => <span className='text-xs text-gray-500'>{row.lastRefreshed}</span> },
-    {
-      key: 'action',
-      header: '',
-      render: (row) => (
-        <button
-          onClick={() => setSelectedArchive(row.id)}
-          className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-            selectedArchive === row.id
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'border-blue-600 text-blue-600 hover:bg-blue-50'
-          }`}
-        >
-          {selectedArchive === row.id ? 'Selected' : 'Select'}
-        </button>
-      ),
-    },
-  ];
 
   // ── Unified table columns ─────────────────────────────────────────────────
   const unifiedColumns: TableColumn<UnifiedResult>[] = [
@@ -490,7 +485,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
   const canProceed =
     sourceType === 'backup'  ? selectedBackup.size > 0 && (selectedBackup.size < 2 || !!mergeRule) :
-    sourceType === 'archive' ? !!selectedArchive :
+    sourceType === 'archive' ? !!selectedArchiveKey :
     sourceType === 'unified' ? true :
     selectedMerge.size >= 2;
 
@@ -645,7 +640,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                         {filteredLogs.map((log: any, i: number) => {
                           const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
                           const isSelected = selectedBackup.has(rowKey);
-                          const isRealtime = log.backupType === 'RealTime';
+                          const isRealtime = log.backupType === 'RealTime' || log.backupType === 'REALTIME';
                           const toggleRow = () => setSelectedBackup((prev) => {
                             const next = new Set(prev);
                             isSelected ? next.delete(rowKey) : next.add(rowKey);
@@ -677,18 +672,15 @@ export default function SelectSource({ onNext, onBack }: Props) {
                               <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
                               <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
                               <td className='px-4 py-3'>
-                                {log.backupType ? (() => {
-                                  const isRealtime = log.backupType === 'RealTime';
-                                  return (
-                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
-                                      {isRealtime
-                                        ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
-                                        : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
-                                      }
-                                      {isRealtime ? 'Realtime' : 'Schedule'}
-                                    </span>
-                                  );
-                                })() : <span className='text-gray-400 text-xs'>—</span>}
+                                {log.backupType ? (
+                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {isRealtime
+                                      ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
+                                      : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+                                    }
+                                    {isRealtime ? 'Realtime' : 'Schedule'}
+                                  </span>
+                                ) : <span className='text-gray-400 text-xs'>—</span>}
                               </td>
                               <td className='px-4 py-3'>
                                 {log.status ? (() => {
@@ -803,40 +795,106 @@ export default function SelectSource({ onNext, onBack }: Props) {
 
         {/* ── Archive sub-picker ── */}
         {sourceType === 'archive' && (
-          <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
+          <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '500px' }}>
+            {/* Header */}
+            <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>▤ Choose an Archive Vault Entry</Typography>
-              <span className='text-xs text-gray-400'>4 archive sets available</span>
             </div>
-            <div className='px-4 py-3 border-b border-gray-100'>
-              <div className='flex items-start gap-3 rounded-lg px-4 py-3 text-xs' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                <svg width='14' height='14' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-                  <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' />
-                </svg>
-                <p className='text-blue-800 leading-relaxed'>Cold-tier archives require 1–5 min hydration before restore. Warm-tier is immediate.</p>
-              </div>
-            </div>
-            {/* Filters */}
-            <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
+            {/* Filter bar */}
+            <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
               <span className='text-xs font-bold text-gray-600'>Filter:</span>
-              <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none'>
-                <option>All tiers</option><option>Cold only</option><option>Warm only</option>
-              </select>
-              <input placeholder='Search archive sets' className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none flex-1 sm:flex-none sm:w-44' />
-              <span className='ml-auto text-xs text-gray-400 hidden sm:inline'>Showing 4 of 4 sets</span>
+              <input
+                value={archiveFilterName}
+                onChange={(e) => setArchiveFilterName(e.target.value)}
+                placeholder='Config name'
+                className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
+              />
             </div>
-            <Table
-              columns={archiveColumns}
-              rows={ARCHIVES}
-              getRowKey={(r) => r.id}
-              borderless
-              headerVariant='uppercase'
-              cellPaddingClassName='px-4 py-3'
-              rowClassName={(row) =>
-                `border-b border-gray-50 transition-colors cursor-pointer ${selectedArchive === row.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-              }
-              onRowClick={(row) => setSelectedArchive(row.id)}
-            />
+            {/* Table */}
+            <div className='flex-1 overflow-x-auto'>
+              {isLoadingArchive || isFetchingArchive ? (
+                <div className='flex items-center justify-center py-12'>
+                  <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
+                </div>
+              ) : filteredArchiveLogs.length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-12 text-center'>
+                  <p className='text-sm text-gray-500'>No archive entries found.</p>
+                </div>
+              ) : (
+                <table className='w-full' style={{ minWidth: '700px' }}>
+                  <thead>
+                    <tr className='border-b border-gray-200 bg-gray-50'>
+                      <th className='px-4 py-3 w-10'></th>
+                      {['#', 'Config Name', 'Source', 'Date & Time', 'Data Size', 'Status'].map((h) => (
+                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredArchiveLogs.map((log: any, i: number) => {
+                      const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
+                      const isSelected = selectedArchiveKey === rowKey;
+                      return (
+                        <tr
+                          key={i}
+                          onClick={() => setSelectedArchiveKey(rowKey)}
+                          className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                        >
+                          <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type='radio'
+                              name='archive-row'
+                              checked={isSelected}
+                              onChange={() => setSelectedArchiveKey(rowKey)}
+                              className='w-4 h-4 accent-blue-600 cursor-pointer'
+                            />
+                          </td>
+                          <td className='px-4 py-3 text-xs text-gray-400 tabular-nums'>{archivePageIndex * 10 + i + 1}</td>
+                          <td className='px-4 py-3'>
+                            <div className='flex items-center gap-2'>
+                              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 border border-gray-100'>
+                                <span className='text-[10px] font-bold text-purple-500'>A</span>
+                              </div>
+                              <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
+                            </div>
+                          </td>
+                          <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
+                          <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
+                          <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
+                            {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
+                          </td>
+                          <td className='px-4 py-3'>
+                            {log.status ? (() => {
+                              const s = log.status.toUpperCase();
+                              const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
+                              return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
+                            })() : <span className='text-gray-400 text-xs'>—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {/* Footer */}
+            <div className='flex-shrink-0 mt-auto flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
+              <button
+                onClick={goArchivePrevPage}
+                disabled={archivePageIndex === 0 || isFetchingArchive}
+                className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
+              >
+                ← Prev
+              </button>
+              <button
+                onClick={goArchiveNextPage}
+                disabled={!archiveNextCursor || isFetchingArchive}
+                className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
+              >
+                Next →
+              </button>
+              <span className='ml-auto text-xs text-gray-400'>Page {archivePageIndex + 1} · {filteredArchiveLogs.length} entries</span>
+            </div>
           </div>
         )}
 
