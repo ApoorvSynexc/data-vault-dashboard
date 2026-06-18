@@ -313,6 +313,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                         </div>
                         <p className='text-xs text-gray-500'>{org.crmProfile.name}</p>
                         <p className='text-xs text-gray-500'>{org.crmProfile.email}</p>
+                        {org.crmProfile?.username && <p className='text-xs text-gray-500'>@{org.crmProfile.username}</p>}
                       </div>
                     </div>
 
