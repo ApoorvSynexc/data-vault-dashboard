@@ -310,18 +310,54 @@ export default function SelectSource({ onNext, onBack }: Props) {
   }));
   const restoreService = useRestoreService();
   const [viewJobsTarget, setViewJobsTarget] = useState<{ destinationId: string; scheduleType: 'REALTIME' | 'SCHEDULE'; name: string } | null>(null);
+  // cursorStack[0] = undefined (page 1), cursorStack[1] = cursor for page 2, etc.
+  const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([undefined]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageLogs, setPageLogs] = useState<any[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
 
-  const { data: snapshotLogsData, isLoading: isLoadingJobs } = useQuery({
-    queryKey: ['snapshot-logs', viewJobsTarget?.destinationId, viewJobsTarget?.scheduleType],
-    queryFn: () => restoreService.getSnapshotLogs({
-      snapshotType: 'BACKUP',
-      destinationId: viewJobsTarget!.destinationId,
-      scheduleType: viewJobsTarget!.scheduleType,
-    }),
+  const currentCursor = cursorStack[pageIndex];
+
+  const { isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery({
+    queryKey: ['snapshot-logs', viewJobsTarget?.destinationId, viewJobsTarget?.scheduleType, currentCursor],
+    queryFn: async () => {
+      const res = await restoreService.getSnapshotLogs({
+        snapshotType: 'BACKUP',
+        destinationId: viewJobsTarget!.destinationId,
+        scheduleType: viewJobsTarget!.scheduleType,
+        limit: 10,
+        cursor: currentCursor,
+      });
+      setPageLogs((res as any)?.data ?? []);
+      setNextCursor((res as any)?.meta?.nextCursor);
+      return res;
+    },
     enabled: !!viewJobsTarget,
   });
 
-  const snapshotLogs = (snapshotLogsData as any)?.data ?? [];
+  const goNextPage = () => {
+    if (!nextCursor) return;
+    setCursorStack((prev) => {
+      const next = [...prev];
+      // only push if this cursor isn't already in the stack
+      if (next[pageIndex + 1] !== nextCursor) next[pageIndex + 1] = nextCursor;
+      return next;
+    });
+    setPageIndex((p) => p + 1);
+  };
+
+  const goPrevPage = () => {
+    if (pageIndex === 0) return;
+    setPageIndex((p) => p - 1);
+  };
+
+  const resetJobsModal = () => {
+    setViewJobsTarget(null);
+    setCursorStack([undefined]);
+    setPageIndex(0);
+    setPageLogs([]);
+    setNextCursor(undefined);
+  };
 
   const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
   const [unifiedTab, setUnifiedTab]   = useState<UnifiedTab>('backup');
@@ -908,7 +944,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
       {viewJobsTarget && (
         <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.45)' }}>
           <div className='w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden'>
-            {/* Modal header */}
+            {/* Header */}
             <div className='flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0'>
               <div>
                 <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5'>Snapshot Logs</p>
@@ -918,7 +954,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 </span>
               </div>
               <button
-                onClick={() => setViewJobsTarget(null)}
+                onClick={resetJobsModal}
                 className='rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition'
               >
                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5'>
@@ -926,13 +962,13 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 </svg>
               </button>
             </div>
-            {/* Modal body */}
+            {/* Body */}
             <div className='flex-1 overflow-y-auto'>
-              {isLoadingJobs ? (
+              {isLoadingJobs || isFetchingJobs ? (
                 <div className='flex items-center justify-center py-16'>
                   <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
                 </div>
-              ) : snapshotLogs.length === 0 ? (
+              ) : pageLogs.length === 0 ? (
                 <div className='flex flex-col items-center justify-center py-16 text-center px-6'>
                   <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='h-10 w-10 text-gray-300 mb-3'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
@@ -942,36 +978,66 @@ export default function SelectSource({ onNext, onBack }: Props) {
                 </div>
               ) : (
                 <table className='w-full text-sm'>
-                  <thead>
+                  <thead className='sticky top-0'>
                     <tr className='border-b border-gray-100 bg-gray-50'>
-                      {['#', 'Date & Time', 'Config Name', 'Source', 'Data Size'].map((h) => (
+                      {['#', 'Date & Time', 'Config Name', 'Source', 'Backup Type', 'Status', 'Data Size'].map((h) => (
                         <th key={h} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {snapshotLogs.map((log: any, i: number) => (
+                    {pageLogs.map((log: any, i: number) => (
                       <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                        <td className='px-5 py-3 text-xs text-gray-400 tabular-nums'>{i + 1}</td>
+                        <td className='px-5 py-3 text-xs text-gray-400 tabular-nums'>{pageIndex * 10 + i + 1}</td>
                         <td className='px-5 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
                         <td className='px-5 py-3 text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</td>
                         <td className='px-5 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
-                        <td className='px-5 py-3 text-xs text-gray-600'>{log.dataSize != null ? formatBytes(log.dataSize) : '—'}</td>
+                        <td className='px-5 py-3'>
+                          {log.backupType
+                            ? <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${log.backupType === 'REALTIME' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>{log.backupType}</span>
+                            : <span className='text-gray-400 text-xs'>—</span>}
+                        </td>
+                        <td className='px-5 py-3'>
+                          {log.status ? (() => {
+                            const s = log.status.toUpperCase();
+                            const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
+                            return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
+                          })() : <span className='text-gray-400 text-xs'>—</span>}
+                        </td>
+                        <td className='px-5 py-3 text-xs text-gray-600 tabular-nums'>
+                          {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
-            {/* Modal footer */}
+            {/* Footer */}
             <div className='flex-shrink-0 flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50'>
-              <p className='text-xs text-gray-400'>Showing {snapshotLogs.length} entr{snapshotLogs.length !== 1 ? 'ies' : 'y'}</p>
-              <button
-                onClick={() => setViewJobsTarget(null)}
-                className='text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition'
-              >
-                Close
-              </button>
+              <p className='text-xs text-gray-400'>Page {pageIndex + 1} · {pageLogs.length} entries</p>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={goPrevPage}
+                  disabled={pageIndex === 0 || isFetchingJobs}
+                  className='inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={goNextPage}
+                  disabled={!nextCursor || isFetchingJobs}
+                  className='inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
+                >
+                  Next →
+                </button>
+                <button
+                  onClick={resetJobsModal}
+                  className='text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition'
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
