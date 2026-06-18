@@ -1,24 +1,27 @@
-// NewRestore — 7-step wizard orchestrator for creating a new restore job.
+// NewRestore — 8-step wizard orchestrator for creating a new restore job.
 //
 // Step flow:
-//   1. SelectSource        — cloud source + snapshot / archive entry
-//   2. SelectScope         — what to restore (full / object / record / field / SOQL)
-//   3. SetDestination      — target org + restore mode
-//   4. DefineRestorePolicy — name, description, tags
-//   5. ConflictConfig      — conflict rules + CRM automation controls (combined)
-//   6. PreviewValidate     — validate plan and preview record counts
-//   7. ReviewSubmit        — final review + submit
+//   1. SelectSource        — cloud source (storage platform + connection)
+//   2. SelectSourceType    — source type (backup snapshot / archive vault) + sub-picker
+//   3. SelectScope         — what to restore (full / object / record / field / SOQL)
+//   4. SetDestination      — target org + restore mode
+//   5. DefineRestorePolicy — name, description, tags
+//   6. ConflictConfig      — conflict rules + CRM automation controls (combined)
+//   7. PreviewValidate     — validate plan and preview record counts
+//   8. ReviewSubmit        — final review + submit
 
 import { useState } from 'react';
 import SelectSource from './SelectSource';
+import SelectSourceType from './SelectSourceType';
 import SelectScope from './SelectScope';
 import SetDestination from './SetDestination';
 import DefineRestorePolicy from './DefineRestorePolicy';
 import ConflictConfig from './ConflictConfig';
 import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
+import type { Destination } from '../../../services/destination/destination.service';
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 interface NewRestoreProps {
   onBack: () => void;
@@ -29,8 +32,9 @@ interface NewRestoreProps {
 export default function NewRestore({ onBack, onComplete, isTemplateMode = false }: NewRestoreProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [templateMode, setTemplateMode] = useState(isTemplateMode);
+  const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
 
-  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 7) as Step);
+  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
   const goBack = () => {
     if (currentStep === 1) { onBack(); return; }
     setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -56,13 +60,26 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           </button>
         </div>
       )}
-      {currentStep === 1 && <SelectSource onNext={goNext} onBack={goBack} />}
-      {currentStep === 2 && <SelectScope onNext={goNext} onBack={goBack} />}
-      {currentStep === 3 && <SetDestination onNext={goNext} onBack={goBack} />}
-      {currentStep === 4 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
-      {currentStep === 5 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 6 && <PreviewValidate onNext={goNext} onBack={goBack} />}
-      {currentStep === 7 && <ReviewSubmit onBack={goBack} onComplete={onComplete} />}
+      {currentStep === 1 && (
+        <SelectSource
+          onNext={goNext}
+          onBack={goBack}
+          onConnectionSelected={setSelectedConnection}
+        />
+      )}
+      {currentStep === 2 && (
+        <SelectSourceType
+          onNext={goNext}
+          onBack={goBack}
+          selectedConnection={selectedConnection}
+        />
+      )}
+      {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} />}
+      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} />}
+      {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
+      {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
+      {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} />}
     </div>
   );
 }
