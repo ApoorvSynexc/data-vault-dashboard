@@ -582,7 +582,7 @@ export default function SelectSource({ onNext, onBack }: Props) {
                       jobsFilterType === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    {t === 'ALL' ? 'All' : t === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
+                    {t === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
                   </button>
                 ))}
               </div>
