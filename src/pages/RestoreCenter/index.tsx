@@ -43,6 +43,7 @@ export default function RestoreCenter() {
           onViewDrafts={() => goToHistory('Drafts')}
           onViewTemplates={() => goTo('templates')}
           onViewJob={() => goTo('completion')}
+          onArchiveRestore={() => goTo('archive-restore')}
         />
       )}
       {screen === 'new-restore' && (
