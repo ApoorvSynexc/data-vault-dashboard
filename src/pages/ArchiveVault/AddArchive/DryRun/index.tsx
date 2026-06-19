@@ -51,36 +51,20 @@ function buildParentChain(
   const ancestorPath = findAncestorPath(nodes, targetName);
   if (!ancestorPath || ancestorPath.length === 0) return undefined;
 
-  function findNode(ns: any[], name: string): any | null {
-    for (const n of ns) {
-      if (n.name === name) return n;
-      if (n.children?.length) { const r = findNode(n.children, name); if (r) return r; }
-    }
-    return null;
-  }
-
-  const targetNode = findNode(nodes, targetName);
-
-  // ancestorPath = [root, ..., directParent]  — NO target in here
-  // We build a combined array just for referenceName lookup:
-  //   [root, ..., directParent, target]
-  // Loop only over ancestorPath (i < ancestorPath.length), using combinedPath[i+1].fieldApiName
-  // as the referenceName for ancestorPath[i].
-  const combinedPath = [...ancestorPath, targetNode].filter(Boolean);
+  // Each ancestor carries its OWN fieldApiName as referenceName (the lookup on itself to its parent).
+  // Root (i=0) has no parent → no referenceName.
+  // Target is NOT emitted. Target's fieldApiName goes at top-level in the API call (handled by caller).
 
   let chain: Record<string, unknown> | undefined = undefined;
   for (let i = 0; i < ancestorPath.length; i++) {
     const node = ancestorPath[i];
-    const childBelow = combinedPath[i + 1]; // next node (ancestor or target)
-    const entry: Record<string, unknown> = {
-      apiName: node.name,
-      referenceName: childBelow?.fieldApiName ?? null,
-      filters: buildFilters(node) ?? null,
-    };
+    const isRoot = i === 0;
+    const entry: Record<string, unknown> = { apiName: node.name };
+    if (!isRoot) entry.referenceName = node.fieldApiName ?? null;
+    entry.filters = buildFilters(node) ?? null;
     if (chain) entry.parent = chain;
     chain = entry;
   }
-  // chain: outermost = directParent, innermost = root
   return chain;
 }
 
@@ -170,8 +154,16 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
     setShowFieldPicker(false);
 
     const objects = (archivalPayload?.objects as any[]) ?? [];
-    const objectConfig = objects.find((o: any) => o.name === objectName) ?? undefined;
+    const findNodeDeep = (ns: any[], name: string): any | undefined => {
+      for (const n of ns) {
+        if (n.name === name) return n;
+        if (n.children?.length) { const r = findNodeDeep(n.children, name); if (r) return r; }
+      }
+      return undefined;
+    };
+    const objectConfig = findNodeDeep(objects, objectName);
     const parent = buildParentChain(objects, objectName);
+    const referenceName = objectConfig?.fieldApiName ?? undefined;
 
     try {
       const res = await backupConfigService.getObjectRecords({
@@ -179,6 +171,7 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
         apiName: objectName,
         fields: selectedFields,
         objectConfig,
+        ...(referenceName ? { referenceName } : {}),
         ...(parent ? { parent } : {}),
       });
       const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
