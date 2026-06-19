@@ -106,11 +106,12 @@ interface Props {
   onViewDrafts: () => void;
   onViewTemplates: () => void;
   onViewJob: () => void;
+  onArchiveRestore?: () => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onViewDrafts, onViewTemplates, onViewJob }: Props) {
+export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onViewDrafts, onViewTemplates, onViewJob, onArchiveRestore }: Props) {
 
   // ── Draft table columns ───────────────────────────────────────────────────
   const draftColumns: TableColumn<DraftRestore>[] = [
@@ -243,10 +244,11 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
           </p>
         </div>
 
-        {/* ── Quick Recover Banner ── */}
+        {/* ── Quick Actions ── */}
+        <div className='flex-shrink-0 flex gap-3'>
         <button
           onClick={onNewRestore}
-          className='flex-shrink-0 w-full flex items-center gap-4 rounded-xl px-5 py-4 text-left transition-opacity hover:opacity-90'
+          className='flex-1 flex items-center gap-4 rounded-xl px-5 py-4 text-left transition-opacity hover:opacity-90'
           style={{ background: '#155DFC' }}
         >
           <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(255,255,255,0.2)' }}>
