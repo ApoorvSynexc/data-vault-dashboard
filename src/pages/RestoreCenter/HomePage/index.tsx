@@ -264,6 +264,24 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory, onV
             <polyline points='9 18 15 12 9 6' />
           </svg>
         </button>
+        <button
+          onClick={onArchiveRestore}
+          className='flex items-center gap-4 rounded-xl px-5 py-4 text-left transition-opacity hover:opacity-90 border-2 border-dashed border-purple-300 bg-purple-50'
+        >
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100'>
+            <svg width='20' height='20' fill='none' stroke='#7C3AED' strokeWidth='2' viewBox='0 0 24 24'>
+              <path d='M5 8l4 4 4-4'/><rect x='3' y='3' width='18' height='18' rx='2'/>
+            </svg>
+          </div>
+          <div className='min-w-0'>
+            <p className='text-sm font-semibold text-purple-900 whitespace-nowrap'>Archive Restore</p>
+            <p className='text-xs text-purple-600 mt-0.5 leading-relaxed whitespace-nowrap'>Restore from vault entries</p>
+          </div>
+          <svg width='16' height='16' fill='none' stroke='#7C3AED' strokeWidth='2' viewBox='0 0 24 24' className='ml-2 flex-shrink-0'>
+            <polyline points='9 18 15 12 9 6' />
+          </svg>
+        </button>
+        </div>
 
         {/* ── KPI Cards ── */}
         <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm flex-shrink-0'>
