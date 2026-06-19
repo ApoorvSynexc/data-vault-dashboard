@@ -726,9 +726,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               const pagedRows = impactTreeRows.slice(impactPage * PAGE_SIZE, (impactPage + 1) * PAGE_SIZE);
               const impactTotalPages = Math.ceil(impactTreeRows.length / PAGE_SIZE);
               return (
-                <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
+                <div className='bg-white rounded-xl flex-shrink-0 overflow-hidden'
                   style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                  {/* Header */}
+                  {/* Header — stays full width, never scrolls */}
                   <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between'>
                     <div>
                       <h2 className='text-sm font-semibold text-gray-800'>Per-Object Impact</h2>
@@ -736,15 +736,17 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                     </div>
                     <span className='text-xs text-gray-400'>{totalObjectCount} object{totalObjectCount !== 1 ? 's' : ''}</span>
                   </div>
+                  {/* Scrollable grid — horizontal scroll only when narrower than 640px */}
+                  <div style={{ overflowX: 'auto' }}>
                   {/* Column headers */}
                   <div className='grid px-4 py-2.5 bg-gray-50 border-b border-gray-100'
-                    style={{ gridTemplateColumns: '200px 1fr 160px 120px 160px' }}>
+                    style={{ gridTemplateColumns: '25% 1fr 16% 12% 16%', minWidth: 560 }}>
                     {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE', 'ACTIONS'].map((h, i) => (
                       <span key={h} className={`text-[11px] font-semibold text-gray-400 uppercase tracking-wide ${i >= 2 && i < 4 ? 'text-right' : i === 4 ? 'text-center' : ''}`}>{h}</span>
                     ))}
                   </div>
                   {/* Rows */}
-                  <div style={{ minHeight: 260, overflowY: 'auto' }}>
+                  <div style={{ minHeight: 260 }}>
                     {pagedRows.length === 0 ? (
                       <div className='flex items-center justify-center py-12 text-sm text-gray-400'>No objects selected.</div>
                     ) : pagedRows.map((row) => {
@@ -756,7 +758,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       return (
                         <div key={row.rowKey}
                           className='grid border-b border-gray-50 hover:bg-gray-50/60 transition-colors items-center'
-                          style={{ gridTemplateColumns: '200px 1fr 160px 120px 160px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
+                          style={{ gridTemplateColumns: '25% 1fr 16% 12% 16%', background: isParent ? 'white' : 'rgba(99,102,241,0.02)', minWidth: 560 }}>
                           {/* Object column */}
                           <div className='flex items-center gap-1 py-3 pr-3' style={{ paddingLeft: 16 + row.depth * 20 }}>
                             {row.hasChildren ? (
@@ -834,6 +836,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       );
                     })}
                   </div>
+                  </div>{/* end scrollable grid area */}
                   {impactTotalPages > 1 && (
                     <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100'>
                       <span className='text-xs text-gray-400'>
