@@ -22,6 +22,96 @@ import ProgressBar from '../ProgressBar';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Walks the archival payload object tree and returns the path of ancestor nodes
+ * from the root down to (but not including) the target node.
+ * Returns null if the target is not found.
+ */
+function findAncestorPath(nodes: any[], targetName: string, path: any[] = []): any[] | null {
+  for (const node of nodes) {
+    if (node.name === targetName) return path;
+    if (node.children?.length) {
+      const result = findAncestorPath(node.children, targetName, [...path, node]);
+      if (result !== null) return result;
+    }
+  }
+  return null;
+}
+
+/**
+ * Builds the nested parent chain for getObjectRecords.
+ * Given a path [1ob, 2ob, 3ob] for target 4ob, produces:
+ * { referenceName: 3ob.fieldApiName, filters: 3ob filters, parent: { referenceName: 2ob.fieldApiName, ... } }
+ * The chain runs from immediate parent inward to root.
+ */
+function buildParentChain(
+  nodes: any[],
+  targetName: string,
+): Record<string, unknown> | undefined {
+  const ancestorPath = findAncestorPath(nodes, targetName);
+  if (!ancestorPath || ancestorPath.length === 0) return undefined;
+
+  // Find the direct child node to get fieldApiName (it's stored on the child, not the parent)
+  function findNode(ns: any[], name: string): any | null {
+    for (const n of ns) {
+      if (n.name === name) return n;
+      if (n.children?.length) { const r = findNode(n.children, name); if (r) return r; }
+    }
+    return null;
+  }
+
+  // Build from immediate parent up to root.
+  // ancestorPath[0] = root, ancestorPath[last] = direct parent of target.
+  // We need fieldApiName from the *child* side (each child stores which field links it to its parent).
+  // Walk pairs: (ancestor[i], ancestor[i+1]) then (ancestor[last], target).
+  const fullPath = [...ancestorPath, findNode(nodes, targetName)].filter(Boolean);
+
+  // fullPath = [1ob, 2ob, 3ob] for target 4ob (ancestors only, root first).
+  // targetNode holds 4ob.fieldApiName (lookup field linking 4ob → 3ob).
+  // Desired chain: outermost = 3ob (direct parent), innermost = 1ob (root).
+  //   3ob: { referenceName: 4ob.fieldApiName, parent: 2ob: { referenceName: 3ob.fieldApiName, parent: 1ob: { referenceName: 2ob.fieldApiName } } }
+  //
+  // Strategy: build from root inward (chain starts undefined), then at each step
+  // the current node wraps the previously built chain as its own .parent.
+  // referenceName for node[i] = fieldApiName of node[i+1] (the child that links to it).
+  // referenceName for the direct parent (fullPath[last]) = targetNode.fieldApiName.
+
+  const targetNode = findNode(nodes, targetName);
+
+  // fullPath = [root, ..., directParent]  (ancestors only, target excluded)
+  // We append target just to read its fieldApiName for the directParent's referenceName.
+  // The loop only emits entries for fullPath nodes (ancestors), NOT the target itself.
+  const extendedPath = [...fullPath, targetNode].filter(Boolean);
+  // extendedPath: [root, ..., directParent, target]
+  // Loop: i goes 0 … fullPath.length-1  (skips target at extendedPath[last])
+
+  let chain: Record<string, unknown> | undefined = undefined;
+  for (let i = 0; i < fullPath.length; i++) {
+    const node = extendedPath[i];          // ancestor node
+    const childBelow = extendedPath[i + 1]; // next node down (could be another ancestor or the target)
+    const entry: Record<string, unknown> = {
+      apiName: node.name,
+      referenceName: childBelow?.fieldApiName ?? null,
+      filters: buildFilters(node) ?? null,
+    };
+    if (chain) entry.parent = chain;
+    chain = entry;
+  }
+  // chain: outermost = directParent, innermost = root
+  return chain;
+}
+
+/** Extracts filters from an object node's condition/field into a simple shape. */
+function buildFilters(node: any): Record<string, unknown> | null {
+  const condition = node.condition;
+  const fields: any[] = node.field ?? [];
+  if (!condition && fields.length === 0) return null;
+  return {
+    condition: condition ?? null,
+    fields: fields.length > 0 ? fields : null,
+  };
+}
+
 function calcDataSize(records: number): string {
   const kb = records * 2;
   if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
@@ -98,6 +188,7 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
 
     const objects = (archivalPayload?.objects as any[]) ?? [];
     const objectConfig = objects.find((o: any) => o.name === objectName) ?? undefined;
+    const parent = buildParentChain(objects, objectName);
 
     try {
       const res = await backupConfigService.getObjectRecords({
@@ -105,6 +196,7 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
         apiName: objectName,
         fields: selectedFields,
         objectConfig,
+        ...(parent ? { parent } : {}),
       });
       const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
       setPreviewRecords(Array.isArray(records) ? records : []);
