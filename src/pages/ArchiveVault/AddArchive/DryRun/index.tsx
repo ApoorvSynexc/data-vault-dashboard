@@ -51,7 +51,6 @@ function buildParentChain(
   const ancestorPath = findAncestorPath(nodes, targetName);
   if (!ancestorPath || ancestorPath.length === 0) return undefined;
 
-  // Find the direct child node to get fieldApiName (it's stored on the child, not the parent)
   function findNode(ns: any[], name: string): any | null {
     for (const n of ns) {
       if (n.name === name) return n;
@@ -60,35 +59,19 @@ function buildParentChain(
     return null;
   }
 
-  // Build from immediate parent up to root.
-  // ancestorPath[0] = root, ancestorPath[last] = direct parent of target.
-  // We need fieldApiName from the *child* side (each child stores which field links it to its parent).
-  // Walk pairs: (ancestor[i], ancestor[i+1]) then (ancestor[last], target).
-  const fullPath = [...ancestorPath, findNode(nodes, targetName)].filter(Boolean);
-
-  // fullPath = [1ob, 2ob, 3ob] for target 4ob (ancestors only, root first).
-  // targetNode holds 4ob.fieldApiName (lookup field linking 4ob → 3ob).
-  // Desired chain: outermost = 3ob (direct parent), innermost = 1ob (root).
-  //   3ob: { referenceName: 4ob.fieldApiName, parent: 2ob: { referenceName: 3ob.fieldApiName, parent: 1ob: { referenceName: 2ob.fieldApiName } } }
-  //
-  // Strategy: build from root inward (chain starts undefined), then at each step
-  // the current node wraps the previously built chain as its own .parent.
-  // referenceName for node[i] = fieldApiName of node[i+1] (the child that links to it).
-  // referenceName for the direct parent (fullPath[last]) = targetNode.fieldApiName.
-
   const targetNode = findNode(nodes, targetName);
 
-  // fullPath = [root, ..., directParent]  (ancestors only, target excluded)
-  // We append target just to read its fieldApiName for the directParent's referenceName.
-  // The loop only emits entries for fullPath nodes (ancestors), NOT the target itself.
-  const extendedPath = [...fullPath, targetNode].filter(Boolean);
-  // extendedPath: [root, ..., directParent, target]
-  // Loop: i goes 0 … fullPath.length-1  (skips target at extendedPath[last])
+  // ancestorPath = [root, ..., directParent]  — NO target in here
+  // We build a combined array just for referenceName lookup:
+  //   [root, ..., directParent, target]
+  // Loop only over ancestorPath (i < ancestorPath.length), using combinedPath[i+1].fieldApiName
+  // as the referenceName for ancestorPath[i].
+  const combinedPath = [...ancestorPath, targetNode].filter(Boolean);
 
   let chain: Record<string, unknown> | undefined = undefined;
-  for (let i = 0; i < fullPath.length; i++) {
-    const node = extendedPath[i];          // ancestor node
-    const childBelow = extendedPath[i + 1]; // next node down (could be another ancestor or the target)
+  for (let i = 0; i < ancestorPath.length; i++) {
+    const node = ancestorPath[i];
+    const childBelow = combinedPath[i + 1]; // next node (ancestor or target)
     const entry: Record<string, unknown> = {
       apiName: node.name,
       referenceName: childBelow?.fieldApiName ?? null,
