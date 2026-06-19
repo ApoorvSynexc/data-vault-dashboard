@@ -4,14 +4,13 @@
 // Flow:
 //   idle    → user clicks "Run Dry Run"
 //   loading → POST /v1/archival-config/dry-run — API counts matching records per object
-//   results → shows Per-Object Impact table + Sample Records Preview
+//   results → shows Per-Object Impact table with inline "Preview Records" action per row
 //
 // Per-Object Impact tree: built from archivalPayload.objects (the fully built payload
 // from Step 4). Rendered as a collapsible tree grid — collapsed by default.
-// Deduplication is applied at each level to guard against duplicate entries in the payload.
-//
-// Sample Records Preview: user picks up to 5 fields, then POST /v1/archival-config/object-records
-// fetches actual Salesforce records matching the archive filter for a chosen object.
+// Each row (parent and child) has a "Preview Records" button in the Actions column.
+// Clicking it opens a modal: user picks up to 5 fields, then POST /v1/archival-config/object-records
+// fetches actual Salesforce records matching the archive filter for that object.
 //
 // Save as Draft: calls POST /v1/archival-config with status "DRAFT" — saves without scheduling.
 import { useState, useMemo } from 'react';
@@ -23,7 +22,6 @@ import ProgressBar from '../ProgressBar';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-// Rough estimated size: assumes ~2 KB per Salesforce record on average
 function calcDataSize(records: number): string {
   const kb = records * 2;
   if (kb >= 1024 * 1024) return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
@@ -42,7 +40,354 @@ function now(): string {
     ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+// ─── Preview Modal ────────────────────────────────────────────────────────────
 
+type FieldOption = { apiName: string; label: string };
+
+interface PreviewModalProps {
+  objectName: string;
+  crmId: string;
+  archivalPayload?: Record<string, unknown> | null;
+  onClose: () => void;
+}
+
+function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewModalProps) {
+  const backupConfigService = useBackupConfigService();
+  const PAGE_SIZE = 5;
+
+  const [showFieldPicker, setShowFieldPicker] = useState(true);
+  const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [fieldsLoading, setFieldsLoading] = useState(true);
+  const [fieldsError, setFieldsError] = useState<string | null>(null);
+  const [showRecordsTable, setShowRecordsTable] = useState(false);
+  const [previewRecords, setPreviewRecords] = useState<Record<string, any>[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewPage, setPreviewPage] = useState(0);
+
+  // Load fields on mount
+  useMemo(() => {
+    if (!crmId || !objectName) return;
+    setFieldsLoading(true);
+    setFieldsError(null);
+    backupConfigService.getObjectFields(crmId, objectName)
+      .then((fields) => {
+        setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label ?? f.name })));
+      })
+      .catch(() => {
+        setFieldsError('Failed to load fields. Please try again.');
+      })
+      .finally(() => setFieldsLoading(false));
+  }, [objectName, crmId]);
+
+  function toggleField(apiName: string) {
+    setSelectedFields((prev) =>
+      prev.includes(apiName)
+        ? prev.filter((f) => f !== apiName)
+        : prev.length < 5 ? [...prev, apiName] : prev
+    );
+  }
+
+  async function handleShowPreview() {
+    if (selectedFields.length === 0) return;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setShowRecordsTable(true);
+    setShowFieldPicker(false);
+
+    const objects = (archivalPayload?.objects as any[]) ?? [];
+    const objectConfig = objects.find((o: any) => o.name === objectName) ?? undefined;
+
+    try {
+      const res = await backupConfigService.getObjectRecords({
+        crmId,
+        apiName: objectName,
+        fields: selectedFields,
+        objectConfig,
+      });
+      const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
+      setPreviewRecords(Array.isArray(records) ? records : []);
+      setPreviewPage(0);
+    } catch (err: any) {
+      setPreviewError(err?.message ?? 'Failed to load records.');
+      setPreviewRecords([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  const previewTotalPages = Math.ceil(previewRecords.length / PAGE_SIZE);
+  const pagedRecords = previewRecords.slice(previewPage * PAGE_SIZE, (previewPage + 1) * PAGE_SIZE);
+
+  return (
+    <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className='bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden' style={{ maxHeight: '90vh' }}>
+        {/* Modal header */}
+        <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0'>
+          <div>
+            <h2 className='text-sm font-semibold text-gray-800'>Preview Records</h2>
+            <p className='text-xs text-gray-400 mt-0.5'>{objectName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className='flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors'>
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+              <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Modal body */}
+        <div className='flex-1 overflow-y-auto p-5'>
+
+          {/* Field picker */}
+          {showFieldPicker && (
+            <>
+              {fieldsLoading && (
+                <div className='flex items-center gap-2 text-sm text-gray-500 py-8 justify-center'>
+                  <div className='w-4 h-4 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin' />
+                  Loading fields…
+                </div>
+              )}
+              {fieldsError && <p className='text-sm text-red-500 py-4'>{fieldsError}</p>}
+              {!fieldsLoading && !fieldsError && (
+                <div className='flex gap-4' style={{ height: 300 }}>
+                  {/* Left panel — available fields */}
+                  <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
+                    <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
+                      <span className='text-xs font-semibold text-gray-600'>Available Fields</span>
+                      <span className='text-[10px] text-gray-400'>{availableFields.length} fields</span>
+                    </div>
+                    <div className='flex-1 overflow-y-auto'>
+                      {availableFields.map((f) => {
+                        const isSelected = selectedFields.includes(f.apiName);
+                        const isDisabled = !isSelected && selectedFields.length >= 5;
+                        return (
+                          <button
+                            key={f.apiName}
+                            onClick={() => { if (!isDisabled) toggleField(f.apiName); }}
+                            disabled={isDisabled}
+                            className='w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2.5 disabled:cursor-not-allowed'
+                            style={{
+                              borderBottom: '1px solid #F8FAFC',
+                              background: isSelected ? 'rgba(21,93,252,0.05)' : undefined,
+                              color: isDisabled ? '#CBD5E1' : '#374151',
+                            }}
+                          >
+                            <span className='flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors'
+                              style={{
+                                border: isSelected ? '2px solid #155DFC' : '2px solid #D1D5DB',
+                                background: isSelected ? '#155DFC' : 'white',
+                              }}>
+                              {isSelected && (
+                                <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'>
+                                  <polyline points='20 6 9 17 4 12'/>
+                                </svg>
+                              )}
+                            </span>
+                            <span className={isSelected ? 'font-medium text-blue-700' : ''}>{f.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Center arrows */}
+                  <div className='flex flex-col items-center justify-center gap-2 flex-shrink-0'>
+                    <button
+                      onClick={() => {
+                        const remaining = availableFields.filter(f => !selectedFields.includes(f.apiName));
+                        const toAdd = remaining.slice(0, 5 - selectedFields.length).map(f => f.apiName);
+                        if (toAdd.length) setSelectedFields(prev => [...prev, ...toAdd]);
+                      }}
+                      disabled={selectedFields.length >= 5 || availableFields.filter(f => !selectedFields.includes(f.apiName)).length === 0}
+                      title='Add all'
+                      className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='13 17 18 12 13 7'/><polyline points='6 17 11 12 6 7'/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setSelectedFields([])}
+                      disabled={selectedFields.length === 0}
+                      title='Remove all'
+                      className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='11 17 6 12 11 7'/><polyline points='18 17 13 12 18 7'/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Right panel — selected fields */}
+                  <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
+                    <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
+                      <span className='text-xs font-semibold text-gray-600'>Selected Fields</span>
+                      <span className='text-[10px] font-semibold' style={{ color: selectedFields.length >= 5 ? '#DC2626' : '#155DFC' }}>{selectedFields.length}/5</span>
+                    </div>
+                    <div className='flex-1 overflow-y-auto'>
+                      {selectedFields.length === 0 ? (
+                        <div className='flex flex-col items-center justify-center h-full gap-1.5 px-3 text-center'>
+                          <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <polyline points='9 18 15 12 9 6'/>
+                          </svg>
+                          <p className='text-[11px] text-gray-300'>Select fields from the left</p>
+                        </div>
+                      ) : (
+                        selectedFields.map((apiName, idx) => {
+                          const field = availableFields.find(f => f.apiName === apiName);
+                          return (
+                            <div
+                              key={apiName}
+                              className='flex items-center justify-between px-3 py-2 group'
+                              style={{ borderBottom: '1px solid #F8FAFC', background: 'rgba(21,93,252,0.03)' }}
+                            >
+                              <div className='flex items-center gap-2 min-w-0'>
+                                <span className='text-[10px] font-bold text-blue-400 w-4 flex-shrink-0'>{idx + 1}.</span>
+                                <span className='text-xs text-gray-700 truncate'>{field?.label ?? apiName}</span>
+                              </div>
+                              <button
+                                onClick={() => setSelectedFields(prev => prev.filter(f => f !== apiName))}
+                                className='ml-2 flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100'>
+                                <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                  <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {selectedFields.length > 0 && (
+                <button
+                  onClick={handleShowPreview}
+                  className='mt-4 w-full flex items-center justify-center gap-1.5 text-sm font-semibold py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
+                  <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
+                  </svg>
+                  Show Preview
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Records table */}
+          {showRecordsTable && (
+            <div>
+              <div className='flex items-center justify-between mb-3'>
+                <p className='text-xs font-semibold text-gray-700'>
+                  {objectName}
+                  {previewRecords.length > 0 && <span className='ml-2 font-normal text-gray-400'>{previewRecords.length} record{previewRecords.length !== 1 ? 's' : ''}</span>}
+                </p>
+                <div className='flex items-center gap-2'>
+                  <div className='flex flex-wrap gap-1'>
+                    {selectedFields.map((apiName) => {
+                      const field = availableFields.find(f => f.apiName === apiName);
+                      return (
+                        <span key={apiName} className='text-[10px] font-semibold px-2 py-0.5 rounded-full'
+                          style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
+                          {field?.label ?? apiName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => { setShowFieldPicker(true); setShowRecordsTable(false); }}
+                    className='text-xs font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap'>
+                    ← Change Fields
+                  </button>
+                </div>
+              </div>
+              <div className='overflow-x-auto rounded-lg' style={{ border: '1px solid #E2E8F0', minHeight: 200 }}>
+                {previewError && (
+                  <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
+                )}
+                {!previewError && (
+                  <table className='w-full border-collapse'>
+                    <thead>
+                      <tr className='bg-gray-50'>
+                        {selectedFields.map((apiName) => {
+                          const field = availableFields.find(f => f.apiName === apiName);
+                          return (
+                            <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
+                              {field?.label ?? apiName}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewLoading ? (
+                        Array.from({ length: 5 }, (_, i) => (
+                          <tr key={i} className='border-b border-gray-50'>
+                            {selectedFields.map((apiName) => (
+                              <td key={apiName} className='px-4 py-3'>
+                                <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : pagedRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={selectedFields.length} className='px-4 py-8 text-center text-sm text-gray-400'>
+                            No records found
+                          </td>
+                        </tr>
+                      ) : (
+                        pagedRecords.map((record, i) => (
+                          <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
+                            {selectedFields.map((apiName) => (
+                              <td key={apiName} className='px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate'>
+                                {record[apiName] != null ? String(record[apiName]) : <span className='text-gray-300'>—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className='flex items-center justify-between pt-3 px-1'>
+                <button
+                  onClick={() => { setShowFieldPicker(true); setShowRecordsTable(false); }}
+                  className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
+                  <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
+                  Back to Fields
+                </button>
+                {previewTotalPages > 1 && (
+                  <div className='flex items-center gap-1'>
+                    <button onClick={() => setPreviewPage((p) => Math.max(0, p - 1))} disabled={previewPage === 0}
+                      className='inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                      <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
+                      Prev
+                    </button>
+                    {Array.from({ length: previewTotalPages }, (_, i) => (
+                      <button key={i} onClick={() => setPreviewPage(i)}
+                        className='w-7 h-7 rounded-md text-xs font-medium transition-colors'
+                        style={previewPage === i ? { background: '#155DFC', color: 'white' } : { color: '#6B7280' }}>
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))} disabled={previewPage >= previewTotalPages - 1}
+                      className='inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                      Next
+                      <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -60,7 +405,6 @@ interface Step3DryRunProps {
 
 export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
-  const backupConfigService = useBackupConfigService();
   const navigate = useNavigate();
   const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -70,77 +414,11 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
   const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [runTime, setRunTime] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
-  const [selectedPreviewObject, setSelectedPreviewObject] = useState<string>(selectedObjects[0]?.id ?? '');
   const [impactPage, setImpactPage] = useState(0);
-  const [previewPage, setPreviewPage] = useState(0);
   const PAGE_SIZE = 5;
 
-  // Preview Records state
-  type FieldOption = { apiName: string; label: string };
-  const [showFieldPicker, setShowFieldPicker] = useState(false);
-  const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [fieldsLoading, setFieldsLoading] = useState(false);
-  const [fieldsError, setFieldsError] = useState<string | null>(null);
-  const [showRecordsTable, setShowRecordsTable] = useState(false);
-  const [previewRecords, setPreviewRecords] = useState<Record<string, any>[]>([]);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-
-  async function handleShowPreview() {
-    const objId = selectedPreviewObject || selectedObjects[0]?.id;
-    if (!objId || selectedFields.length === 0) return;
-    setPreviewLoading(true);
-    setPreviewError(null);
-    setShowRecordsTable(true);
-
-    // Find the matching object config from the archival payload so the backend
-    // can build the WHERE clause from its condition/field filters.
-    const objects = (archivalPayload?.objects as any[]) ?? [];
-    const objectConfig = objects.find((o: any) => o.name === objId) ?? undefined;
-
-    try {
-      const res = await backupConfigService.getObjectRecords({
-        crmId: crmId ?? '',
-        apiName: objId,
-        fields: selectedFields,
-        objectConfig,
-      });
-      const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
-      setPreviewRecords(Array.isArray(records) ? records : []);
-      setPreviewPage(0);
-    } catch (err: any) {
-      setPreviewError(err?.message ?? 'Failed to load records.');
-      setPreviewRecords([]);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
-  async function handlePreviewRecords() {
-    const objId = selectedPreviewObject || selectedObjects[0]?.id;
-    if (!objId || !crmId) return;
-    setFieldsLoading(true);
-    setFieldsError(null);
-    setShowFieldPicker(true);
-    setShowRecordsTable(false);
-    try {
-      const fields = await backupConfigService.getObjectFields(crmId, objId);
-      setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label ?? f.name })));
-    } catch {
-      setFieldsError('Failed to load fields. Please try again.');
-    } finally {
-      setFieldsLoading(false);
-    }
-  }
-
-  function toggleField(apiName: string) {
-    setSelectedFields((prev) =>
-      prev.includes(apiName)
-        ? prev.filter((f) => f !== apiName)
-        : prev.length < 5 ? [...prev, apiName] : prev
-    );
-  }
+  // Which object's preview modal is open (null = closed)
+  const [previewObject, setPreviewObject] = useState<string | null>(null);
 
   async function runDryRun() {
     setDryRunState('loading');
@@ -168,7 +446,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
       setDuration(`${elapsed} seconds`);
       setDryRunState('results');
       setImpactPage(0);
-      if (selectedObjects[0]) setSelectedPreviewObject(selectedObjects[0].id);
     } catch (err: any) {
       setDryRunError(err?.message ?? 'Dry run failed. Please try again.');
       setDryRunState('idle');
@@ -367,7 +644,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               </div>
             )}
 
-            {/* Per-Object Impact — tree grid */}
+            {/* Per-Object Impact — tree grid with Actions column */}
             {(() => {
               const allObjects: any[] = (archivalPayload?.objects as any[]) ?? [];
               const totalObjectCount = (() => { let n = 0; const count = (items: any[]) => items.forEach((o) => { n++; if (o.children?.length) count(o.children); }); count(allObjects); return n; })();
@@ -386,9 +663,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                   </div>
                   {/* Column headers */}
                   <div className='grid px-4 py-2.5 bg-gray-50 border-b border-gray-100'
-                    style={{ gridTemplateColumns: '200px 1fr 150px 110px' }}>
-                    {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE'].map((h, i) => (
-                      <span key={h} className={`text-[11px] font-semibold text-gray-400 uppercase tracking-wide ${i >= 2 ? 'text-right' : ''}`}>{h}</span>
+                    style={{ gridTemplateColumns: '200px 1fr 160px 120px 160px' }}>
+                    {['OBJECT', 'FILTER APPLIED', 'MATCHING RECORDS', 'EST. SIZE', 'ACTIONS'].map((h, i) => (
+                      <span key={h} className={`text-[11px] font-semibold text-gray-400 uppercase tracking-wide ${i >= 2 && i < 4 ? 'text-right' : i === 4 ? 'text-center' : ''}`}>{h}</span>
                     ))}
                   </div>
                   {/* Rows */}
@@ -404,7 +681,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                       return (
                         <div key={row.rowKey}
                           className='grid border-b border-gray-50 hover:bg-gray-50/60 transition-colors items-center'
-                          style={{ gridTemplateColumns: '200px 1fr 150px 110px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
+                          style={{ gridTemplateColumns: '200px 1fr 160px 120px 160px', background: isParent ? 'white' : 'rgba(99,102,241,0.02)' }}>
                           {/* Object column */}
                           <div className='flex items-center gap-1 py-3 pr-3' style={{ paddingLeft: 16 + row.depth * 20 }}>
                             {row.hasChildren ? (
@@ -465,6 +742,19 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                           <div className='py-3 px-3 text-right'>
                             <span className='text-gray-600 text-sm'>{calcDataSize(count)}</span>
                           </div>
+                          {/* Actions */}
+                          <div className='py-3 px-3 flex items-center justify-center'>
+                            <button
+                              onClick={() => setPreviewObject(row.name)}
+                              className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap'
+                              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.18)' }}
+                            >
+                              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                                <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
+                              </svg>
+                              Preview Records
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -496,289 +786,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
                 </div>
               );
             })()}
-
-
-            {/* Preview Records */}
-            <div className='bg-white rounded-xl overflow-hidden flex-shrink-0'
-              style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <div className='px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3'>
-                <h2 className='text-sm font-semibold text-gray-800 flex-shrink-0'>Sample Records Preview</h2>
-                <div className='flex items-center gap-2 ml-auto'>
-                  {selectedObjects.length > 0 && (
-                    <select
-                      value={selectedPreviewObject}
-                      onChange={(e) => { setSelectedPreviewObject(e.target.value); setShowFieldPicker(false); setSelectedFields([]); setAvailableFields([]); setShowRecordsTable(false); setPreviewRecords([]); setPreviewError(null); }}
-                      className='text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'>
-                      {selectedObjects.map((o) => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <button
-                    onClick={handlePreviewRecords}
-                    className='flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
-                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
-                    </svg>
-                    Preview Records
-                  </button>
-                </div>
-              </div>
-
-              {!showFieldPicker && (
-                <div className='flex flex-col items-center justify-center py-10 gap-3 text-center'>
-                  <div className='w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center'>
-                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/>
-                    </svg>
-                  </div>
-                  <p className='text-sm text-gray-500'>Click <span className='font-semibold text-gray-700'>Preview Records</span> to select fields and preview sample data</p>
-                </div>
-              )}
-
-              {showRecordsTable && selectedFields.length > 0 && (() => {
-                const previewTotalPages = Math.ceil(previewRecords.length / PAGE_SIZE);
-                const pagedRecords = previewRecords.slice(previewPage * PAGE_SIZE, (previewPage + 1) * PAGE_SIZE);
-                return (
-                  <div className='border-t border-gray-100'>
-                    <div className='px-5 py-3 flex items-center justify-between border-b border-gray-50'>
-                      <p className='text-xs font-semibold text-gray-700'>
-                        Preview — {selectedObjects.find(o => o.id === (selectedPreviewObject || selectedObjects[0]?.id))?.name ?? selectedPreviewObject}
-                        {previewRecords.length > 0 && <span className='ml-2 font-normal text-gray-400'>{previewRecords.length} record{previewRecords.length !== 1 ? 's' : ''}</span>}
-                      </p>
-                      <div className='flex flex-wrap gap-1.5'>
-                        {selectedFields.map((apiName) => {
-                          const field = availableFields.find(f => f.apiName === apiName);
-                          return (
-                            <span key={apiName} className='text-[10px] font-semibold px-2 py-0.5 rounded-full'
-                              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.15)' }}>
-                              {field?.label ?? apiName}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className='overflow-x-auto' style={{ minHeight: 300 }}>
-                      {previewError && (
-                        <p className='text-sm text-red-500 px-5 py-4'>{previewError}</p>
-                      )}
-                      {!previewError && (
-                        <table className='w-full border-collapse'>
-                          <thead>
-                            <tr className='bg-gray-50'>
-                              {selectedFields.map((apiName) => {
-                                const field = availableFields.find(f => f.apiName === apiName);
-                                return (
-                                  <th key={apiName} className='px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap border-b border-gray-100'>
-                                    {field?.label ?? apiName}
-                                  </th>
-                                );
-                              })}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {previewLoading ? (
-                              Array.from({ length: PAGE_SIZE }, (_, i) => (
-                                <tr key={i} className='border-b border-gray-50'>
-                                  {selectedFields.map((apiName) => (
-                                    <td key={apiName} className='px-4 py-3'>
-                                      <div className='h-3 bg-gray-100 rounded animate-pulse' style={{ width: `${60 + (i * apiName.length) % 40}px` }} />
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))
-                            ) : pagedRecords.length === 0 ? (
-                              <tr>
-                                <td colSpan={selectedFields.length} className='px-4 py-8 text-center text-sm text-gray-400'>
-                                  No records found
-                                </td>
-                              </tr>
-                            ) : (
-                              pagedRecords.map((record, i) => (
-                                <tr key={i} className='border-b border-gray-50 hover:bg-gray-50/60 transition-colors'>
-                                  {selectedFields.map((apiName) => (
-                                    <td key={apiName} className='px-4 py-3 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate'>
-                                      {record[apiName] != null ? String(record[apiName]) : <span className='text-gray-300'>—</span>}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                    {previewTotalPages > 1 && (
-                      <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100'>
-                        <span className='text-xs text-gray-400'>
-                          Showing {previewPage * PAGE_SIZE + 1}–{Math.min((previewPage + 1) * PAGE_SIZE, previewRecords.length)} of {previewRecords.length}
-                        </span>
-                        <div className='flex items-center gap-1'>
-                          <button
-                            onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
-                            disabled={previewPage === 0}
-                            className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
-                            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
-                          </button>
-                          {Array.from({ length: previewTotalPages }, (_, i) => (
-                            <button
-                              key={i}
-                              onClick={() => setPreviewPage(i)}
-                              className='w-7 h-7 rounded-md text-xs font-medium transition-colors'
-                              style={previewPage === i
-                                ? { background: '#155DFC', color: 'white' }
-                                : { color: '#6B7280' }}>
-                              {i + 1}
-                            </button>
-                          ))}
-                          <button
-                            onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))}
-                            disabled={previewPage === previewTotalPages - 1}
-                            className='p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
-                            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {showFieldPicker && !showRecordsTable && (
-                <div className='p-5 border-t border-gray-100'>
-                  {fieldsLoading && (
-                    <div className='flex items-center gap-2 text-sm text-gray-500 py-4'>
-                      <div className='w-4 h-4 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin' />
-                      Loading fields…
-                    </div>
-                  )}
-                  {fieldsError && <p className='text-sm text-red-500'>{fieldsError}</p>}
-                  {!fieldsLoading && !fieldsError && (
-                    <div className='flex gap-4' style={{ height: 300 }}>
-                      {/* Left panel — available fields */}
-                      <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
-                        <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
-                          <span className='text-xs font-semibold text-gray-600'>Available Fields</span>
-                          <span className='text-[10px] text-gray-400'>{availableFields.length} fields</span>
-                        </div>
-                        <div className='flex-1 overflow-y-auto'>
-                          {availableFields.map((f) => {
-                            const isSelected = selectedFields.includes(f.apiName);
-                            const isDisabled = !isSelected && selectedFields.length >= 5;
-                            return (
-                              <button
-                                key={f.apiName}
-                                onClick={() => { if (!isDisabled) { toggleField(f.apiName); setShowRecordsTable(false); } }}
-                                disabled={isDisabled}
-                                className='w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2.5 disabled:cursor-not-allowed'
-                                style={{
-                                  borderBottom: '1px solid #F8FAFC',
-                                  background: isSelected ? 'rgba(21,93,252,0.05)' : undefined,
-                                  color: isDisabled ? '#CBD5E1' : '#374151',
-                                }}
-                              >
-                                {/* Checkbox */}
-                                <span className='flex-shrink-0 w-4 h-4 rounded flex items-center justify-center transition-colors'
-                                  style={{
-                                    border: isSelected ? '2px solid #155DFC' : '2px solid #D1D5DB',
-                                    background: isSelected ? '#155DFC' : 'white',
-                                  }}>
-                                  {isSelected && (
-                                    <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'>
-                                      <polyline points='20 6 9 17 4 12'/>
-                                    </svg>
-                                  )}
-                                </span>
-                                <span className={isSelected ? 'font-medium text-blue-700' : ''}>{f.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Center arrows */}
-                      <div className='flex flex-col items-center justify-center gap-2 flex-shrink-0'>
-                        <button
-                          onClick={() => {
-                            const remaining = availableFields.filter(f => !selectedFields.includes(f.apiName));
-                            const toAdd = remaining.slice(0, 5 - selectedFields.length).map(f => f.apiName);
-                            if (toAdd.length) { setSelectedFields(prev => [...prev, ...toAdd]); setShowRecordsTable(false); }
-                          }}
-                          disabled={selectedFields.length >= 5 || availableFields.filter(f => !selectedFields.includes(f.apiName)).length === 0}
-                          title='Add all'
-                          className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
-                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                            <polyline points='13 17 18 12 13 7'/><polyline points='6 17 11 12 6 7'/>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => { setSelectedFields([]); setShowRecordsTable(false); }}
-                          disabled={selectedFields.length === 0}
-                          title='Remove all'
-                          className='p-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
-                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                            <polyline points='11 17 6 12 11 7'/><polyline points='18 17 13 12 18 7'/>
-                          </svg>
-                        </button>
-                      </div>
-
-                      {/* Right panel — selected fields */}
-                      <div className='flex flex-col flex-1 rounded-lg overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
-                        <div className='px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between flex-shrink-0'>
-                          <span className='text-xs font-semibold text-gray-600'>Selected Fields</span>
-                          <span className='text-[10px] font-semibold' style={{ color: selectedFields.length >= 5 ? '#DC2626' : '#155DFC' }}>{selectedFields.length}/5</span>
-                        </div>
-                        <div className='flex-1 overflow-y-auto'>
-                          {selectedFields.length === 0 ? (
-                            <div className='flex flex-col items-center justify-center h-full gap-1.5 px-3 text-center'>
-                              <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
-                                <polyline points='9 18 15 12 9 6'/>
-                              </svg>
-                              <p className='text-[11px] text-gray-300'>Select fields from the left</p>
-                            </div>
-                          ) : (
-                            selectedFields.map((apiName, idx) => {
-                              const field = availableFields.find(f => f.apiName === apiName);
-                              return (
-                                <div
-                                  key={apiName}
-                                  className='flex items-center justify-between px-3 py-2 group'
-                                  style={{ borderBottom: '1px solid #F8FAFC', background: 'rgba(21,93,252,0.03)' }}
-                                >
-                                  <div className='flex items-center gap-2 min-w-0'>
-                                    <span className='text-[10px] font-bold text-blue-400 w-4 flex-shrink-0'>{idx + 1}.</span>
-                                    <span className='text-xs text-gray-700 truncate'>{field?.label ?? apiName}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => { setSelectedFields(prev => prev.filter(f => f !== apiName)); setShowRecordsTable(false); }}
-                                    className='ml-2 flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100'>
-                                    <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                                      <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
-                                    </svg>
-                                  </button>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                        {selectedFields.length > 0 && (
-                          <div className='px-3 py-2.5 border-t border-gray-100 flex-shrink-0'>
-                            <button
-                              onClick={handleShowPreview}
-                              className='w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
-                              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                                <polyline points='9 18 15 12 9 6'/>
-                              </svg>
-                              Show Preview
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
 
             {/* Dry run meta */}
             <div className='bg-gray-50 rounded-xl px-5 py-4 flex-shrink-0'
@@ -839,6 +846,16 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
           </div>
         </div>
       </div>
+
+      {/* Preview Records Modal */}
+      {previewObject && (
+        <PreviewModal
+          objectName={previewObject}
+          crmId={crmId ?? ''}
+          archivalPayload={archivalPayload}
+          onClose={() => setPreviewObject(null)}
+        />
+      )}
     </div>
   );
 }
