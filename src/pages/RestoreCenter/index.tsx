@@ -15,8 +15,9 @@ import JobProgress from './JobProgress';
 import RestoreCompletion from './Completion';
 import RestoreHistory from './RestoreHistory';
 import RestoreTemplates from './Templates';
+import ArchiveRestore from './ArchiveRestore';
 
-type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | 'templates';
+type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | 'templates' | 'archive-restore';
 
 export default function RestoreCenter() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -62,6 +63,9 @@ export default function RestoreCenter() {
       )}
       {screen === 'templates' && (
         <RestoreTemplates onBack={() => goTo('home')} onNewTemplate={() => goToNewRestore(true)} onRun={() => goToNewRestore(false)} />
+      )}
+      {screen === 'archive-restore' && (
+        <ArchiveRestore onBack={() => goTo('home')} onNewRestore={() => goTo('new-restore')} />
       )}
     </div>
   );
