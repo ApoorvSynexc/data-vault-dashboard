@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { ChildRows, MAX_CHILD_DEPTH } from './ChildRows';
@@ -271,6 +271,39 @@ export default function AddDetailsWizard({
   const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
   const [childParents, setChildParents] = useState<Record<string, string>>({});
   const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
+
+  // Restore child selections after ChildRows registers fresh UUIDs.
+  // builtChildren stores stable API names — match them against the newly registered
+  // uuid→apiName map to re-select the correct rows.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    const saved = initialConfig?.builtChildren ?? [];
+    if (saved.length === 0 || Object.keys(childApiNames).length === 0) return;
+    restoredRef.current = true;
+
+    // Collect all saved API names (recursively) into a Set for O(1) lookup
+    const savedNames = new Set<string>();
+    const collectNames = (nodes: BuiltChildNode[]) => {
+      nodes.forEach((n) => { savedNames.add(n.name); if (n.children?.length) collectNames(n.children); });
+    };
+    collectNames(saved);
+
+    // Find UUIDs whose registered apiName matches a saved name
+    const uuidsToSelect: string[] = [];
+    Object.entries(childApiNames).forEach(([uuid, apiName]) => {
+      if (savedNames.has(apiName)) uuidsToSelect.push(uuid);
+    });
+
+    if (uuidsToSelect.length === 0) return;
+
+    setSelectedChildObjects(new Set(uuidsToSelect));
+    setIncludeChild((prev) => {
+      const next = { ...prev };
+      uuidsToSelect.forEach((uuid) => { next[uuid] = true; });
+      return next;
+    });
+  }, [childApiNames, initialConfig]);
 
   const toggleChildObject = useCallback((key: string) => {
     setSelectedChildObjects((prev) => {

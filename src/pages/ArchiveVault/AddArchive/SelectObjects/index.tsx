@@ -7,7 +7,7 @@ import { parseSalesforceError } from '../../../../utils';
 import AddDetailsWizard from './AddDetailsWizard';
 import type { ObjectConfig } from './AddDetailsWizard';
 import type { ScheduleConfig } from './SchedulePopup';
-import type { ArchivalCondition } from './types';
+import type { ArchivalCondition, BuiltChildNode } from './types';
 
 export type { ArchivalCondition };
 
@@ -96,7 +96,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         conditions: toConditions(o.archivalPayload?.field ?? []),
         matchMode: (cond?.type !== 'SOQL' ? cond : undefined) ?? { type: 'AND' },
         soqlQuery: cond?.type === 'SOQL' ? (cond as any).soqlQuery : undefined,
-        builtChildren: [],
+        builtChildren: (o.archivalPayload?.children as BuiltChildNode[] | undefined) ?? [],
         schedule: o.scheduleConfig,
       };
     });
