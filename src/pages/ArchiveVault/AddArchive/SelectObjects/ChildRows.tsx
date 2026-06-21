@@ -50,13 +50,14 @@ export interface ChildRowsProps {
   includeChild: Record<string, boolean>;
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   maxDepth?: number;
+  resetTick?: number;
 }
 
 export function ChildRows({
   crmId, objectName, parentUuid, depth,
   selectedChildObjects, toggleChildObject,
   registerChildApiName, registerChildFieldApiName, registerChildParent,
-  includeChild, setIncludeChild, maxDepth,
+  includeChild, setIncludeChild, maxDepth, resetTick = 0,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const archivalService = useArchivalService();
@@ -76,9 +77,20 @@ export function ChildRows({
 
   // autoSelectedRef prevents double-toggling MasterDetail rows on re-renders.
   // Without it, strict-mode double-invocation would check then immediately uncheck them.
+  // prevResetTickRef lets us detect when resetTick changed so we clear the guard
+  // and force re-auto-selection in the same effect, guaranteeing correct order.
   const autoSelectedRef = useRef<Set<string>>(new Set());
+  const prevResetTickRef = useRef(resetTick);
+
   useEffect(() => {
     if (!data || rawRows.length === 0) return;
+
+    // If resetTick changed, clear the guard so MasterDetail rows are re-selected
+    if (prevResetTickRef.current !== resetTick) {
+      prevResetTickRef.current = resetTick;
+      autoSelectedRef.current.clear();
+    }
+
     // Register metadata for every row so buildChildTree() in AddDetailsWizard
     // can reconstruct the correct nested payload when the user hits Save
     rawRows.forEach((r: any) => {
@@ -96,7 +108,7 @@ export function ChildRows({
     toSelect.forEach((k: string) => { autoSelectedRef.current.add(k); });
     toSelect.forEach((key) => toggleChildObject(key));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, parentUuid, registerChildApiName, registerChildParent]);
+  }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
 
   // At depth >= 2 (tier 2+), hide polymorphic children — they reference multiple
   // object types via a single lookup field and cannot be reliably scoped to one parent.
@@ -250,6 +262,7 @@ export function ChildRows({
                 includeChild={includeChild}
                 setIncludeChild={setIncludeChild}
                 maxDepth={effectiveMax}
+                resetTick={resetTick}
               />
             )}
           </React.Fragment>

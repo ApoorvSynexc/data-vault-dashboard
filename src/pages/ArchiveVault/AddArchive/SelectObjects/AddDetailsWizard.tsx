@@ -177,31 +177,25 @@ export default function AddDetailsWizard({
     onSuccess: (data: any) => {
       const payload = data?.data ?? data;
       const ok = payload?.isValid !== false;
+      // Always reset child selections on every validate so the children table
+      // refreshes and restores saved state against the new depth constraint.
+      setSelectedChildObjects(new Set());
+      setIncludeChild({});
+      restoredUuidsRef.current.clear();
+      setResetTick((t) => t + 1);
+
       if (ok) {
         setValidateStatus('valid');
         setValidateMessage('Query validated successfully.');
         setSoqlValidated(true);
         const newDepth = typeof payload?.relationshipDepth === 'number' ? payload.relationshipDepth : null;
-        setRelationshipDepth((prev) => {
-          if (prev !== newDepth) {
-            // depth constraint changed — reset child selections to avoid stale blocked entries
-            setSelectedChildObjects(new Set());
-            setIncludeChild({});
-          }
-          return newDepth;
-        });
+        setRelationshipDepth(newDepth);
       } else {
         const msg = payload?.error ?? payload?.message ?? 'Invalid SOQL query.';
         setValidateStatus('invalid');
         setValidateMessage(msg);
         setSoqlValidated(false);
-        setRelationshipDepth((prev) => {
-          if (prev !== null) {
-            setSelectedChildObjects(new Set());
-            setIncludeChild({});
-          }
-          return null;
-        });
+        setRelationshipDepth(null);
       }
     },
     onError: (err: any) => {
@@ -271,39 +265,71 @@ export default function AddDetailsWizard({
   const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
   const [childParents, setChildParents] = useState<Record<string, string>>({});
   const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
+  const [resetTick, setResetTick] = useState(0);
 
   // Restore child selections after ChildRows registers fresh UUIDs.
-  // builtChildren stores stable API names — match them against the newly registered
-  // uuid→apiName map to re-select the correct rows.
-  const restoredRef = useRef(false);
+  // Runs on every childApiNames/childParents change so deeper tiers (which only
+  // mount after their parent's includeChild is set) also get restored incrementally.
+  // restoredUuidsRef tracks already-processed UUIDs to avoid double-toggling.
+  //
+  // Key invariant: match by (parentApiName, childApiName) pair — not just childApiName
+  // alone — so the same object name appearing under different parents doesn't get
+  // incorrectly selected.
+  const restoredUuidsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (restoredRef.current) return;
     const saved = initialConfig?.builtChildren ?? [];
     if (saved.length === 0 || Object.keys(childApiNames).length === 0) return;
-    restoredRef.current = true;
 
-    // Collect all saved API names (recursively) into a Set for O(1) lookup
-    const savedNames = new Set<string>();
-    const collectNames = (nodes: BuiltChildNode[]) => {
-      nodes.forEach((n) => { savedNames.add(n.name); if (n.children?.length) collectNames(n.children); });
+    // Build a set of "parentApiName|childApiName" keys from the saved tree.
+    // Root-level children use objectName as their parent key.
+    // Also track which child API names had includeChild on (had nested children).
+    const savedPairs = new Set<string>();
+    const savedPairsWithChildren = new Set<string>();
+    const collectPairs = (nodes: BuiltChildNode[], parentApiName: string) => {
+      nodes.forEach((n) => {
+        const pair = `${parentApiName}|${n.name}`;
+        savedPairs.add(pair);
+        if (n.children?.length) {
+          savedPairsWithChildren.add(pair);
+          collectPairs(n.children, n.name);
+        }
+      });
     };
-    collectNames(saved);
+    collectPairs(saved, objectName);
 
-    // Find UUIDs whose registered apiName matches a saved name
-    const uuidsToSelect: string[] = [];
+    // Find newly registered UUIDs not yet restored, matched by (parent, child) pair
+    const newToSelect: string[] = [];
+    const newWithIncludeChild: string[] = [];
     Object.entries(childApiNames).forEach(([uuid, apiName]) => {
-      if (savedNames.has(apiName)) uuidsToSelect.push(uuid);
+      if (restoredUuidsRef.current.has(uuid)) return;
+      const parentUuid = childParents[uuid];
+      if (!parentUuid) return;
+      // Resolve parent's API name: if parent is the root object, use objectName
+      const parentApiName = parentUuid === objectId ? objectName : (childApiNames[parentUuid] ?? '');
+      if (!parentApiName) return;
+      const pair = `${parentApiName}|${apiName}`;
+      if (savedPairs.has(pair)) {
+        newToSelect.push(uuid);
+        restoredUuidsRef.current.add(uuid);
+        if (savedPairsWithChildren.has(pair)) newWithIncludeChild.push(uuid);
+      }
     });
 
-    if (uuidsToSelect.length === 0) return;
+    if (newToSelect.length === 0) return;
 
-    setSelectedChildObjects(new Set(uuidsToSelect));
-    setIncludeChild((prev) => {
-      const next = { ...prev };
-      uuidsToSelect.forEach((uuid) => { next[uuid] = true; });
+    setSelectedChildObjects((prev) => {
+      const next = new Set(prev);
+      newToSelect.forEach((uuid) => next.add(uuid));
       return next;
     });
-  }, [childApiNames, initialConfig]);
+    if (newWithIncludeChild.length > 0) {
+      setIncludeChild((prev) => {
+        const next = { ...prev };
+        newWithIncludeChild.forEach((uuid) => { next[uuid] = true; });
+        return next;
+      });
+    }
+  }, [childApiNames, childParents, initialConfig]);
 
   const toggleChildObject = useCallback((key: string) => {
     setSelectedChildObjects((prev) => {
@@ -761,6 +787,7 @@ export default function AddDetailsWizard({
                         includeChild={includeChild}
                         setIncludeChild={setIncludeChild}
                         maxDepth={Math.max(0, MAX_CHILD_DEPTH - (relationshipDepth ?? 0))}
+                        resetTick={resetTick}
                       />
                     )}
                   </tbody>
