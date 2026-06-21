@@ -86,9 +86,10 @@ export function ChildRows({
       registerChildFieldApiName(r.uuid as string, r.fieldApiName as string);
       registerChildParent(r.uuid as string, parentUuid);
     });
-    // Auto-select MasterDetail children — Salesforce enforces cascade delete on them
+    // Auto-select MasterDetail children — Salesforce enforces cascade delete on them.
+    // Skip polymorphic ones at depth >= 1 since they are hidden from the list.
     const toSelect = rawRows
-      .filter((r: any) => r.relationshipType === 'MasterDetail')
+      .filter((r: any) => r.relationshipType === 'MasterDetail' && !(depth >= 2 && r.isPolymorphic))
       .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !autoSelectedRef.current.has(k));
     if (toSelect.length === 0) return;
@@ -97,7 +98,14 @@ export function ChildRows({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent]);
 
-  const rows = [...rawRows].sort((a, b) => {
+  // At depth >= 2 (tier 2+), hide polymorphic children — they reference multiple
+  // object types via a single lookup field and cannot be reliably scoped to one parent.
+  // At depth 1 (tier 1, direct children of the root object), all children are shown.
+  const visibleRawRows = depth >= 2
+    ? rawRows.filter((r: any) => !r.isPolymorphic)
+    : rawRows;
+
+  const rows = [...visibleRawRows].sort((a, b) => {
     const amd = a.relationshipType === 'MasterDetail' ? 0 : 1;
     const bmd = b.relationshipType === 'MasterDetail' ? 0 : 1;
     return amd - bmd;
