@@ -28,7 +28,7 @@ import ArchiveDetailScreen from '../pages/ArchiveVault/DetailScreen';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
-import RestoreCenter from '../pages/RestoreCenter';
+import ComingSoon from '../components/ComingSoon';
 import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
 import AuditLogs from '../pages/AuditLogs';
@@ -63,7 +63,7 @@ const router = createBrowserRouter([
           { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
-          { path: '/restore-center', element: <RestoreCenter /> },
+          { path: '/restore-center', element: <ComingSoon title='Restore Center' description='Restore data from backups and archives. This feature is under active development and will be available soon.' /> },
           { path: '/activity-logs', element: <ActivityLogs /> },
           { path: '/audit-logs', element: <AuditLogs /> },
           { path: '/reports', element: <Reports /> },
