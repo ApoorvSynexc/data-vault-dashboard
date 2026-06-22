@@ -51,13 +51,14 @@ export interface ChildRowsProps {
   setIncludeChild: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   maxDepth?: number;
   resetTick?: number;
+  relationshipDepth?: number | null;
 }
 
 export function ChildRows({
   crmId, objectName, parentUuid, depth,
   selectedChildObjects, toggleChildObject,
   registerChildApiName, registerChildFieldApiName, registerChildParent,
-  includeChild, setIncludeChild, maxDepth, resetTick = 0,
+  includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const archivalService = useArchivalService();
@@ -99,9 +100,10 @@ export function ChildRows({
       registerChildParent(r.uuid as string, parentUuid);
     });
     // Auto-select MasterDetail children — Salesforce enforces cascade delete on them.
-    // Skip polymorphic ones at depth >= 1 since they are hidden from the list.
+    // Skip polymorphic ones that are hidden from the list (same condition as visibleRawRows).
+    const hidePolymorphicInEffect = depth >= 2 || (typeof relationshipDepth === 'number' && relationshipDepth >= 1);
     const toSelect = rawRows
-      .filter((r: any) => r.relationshipType === 'MasterDetail' && !(depth >= 2 && r.isPolymorphic))
+      .filter((r: any) => r.relationshipType === 'MasterDetail' && !(hidePolymorphicInEffect && r.isPolymorphic))
       .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !autoSelectedRef.current.has(k));
     if (toSelect.length === 0) return;
@@ -110,10 +112,11 @@ export function ChildRows({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
 
-  // At depth >= 2 (tier 2+), hide polymorphic children — they reference multiple
-  // object types via a single lookup field and cannot be reliably scoped to one parent.
-  // At depth 1 (tier 1, direct children of the root object), all children are shown.
-  const visibleRawRows = depth >= 2
+  // Hide polymorphic children at tier 2+ always.
+  // Also hide them at tier 1 when relationshipDepth >= 1 (SOQL query uses a relationship
+  // traversal, so polymorphic lookups cannot be reliably scoped at any tier).
+  const hidePolymorphic = depth >= 2 || (typeof relationshipDepth === 'number' && relationshipDepth >= 1);
+  const visibleRawRows = hidePolymorphic
     ? rawRows.filter((r: any) => !r.isPolymorphic)
     : rawRows;
 
@@ -263,6 +266,7 @@ export function ChildRows({
                 setIncludeChild={setIncludeChild}
                 maxDepth={effectiveMax}
                 resetTick={resetTick}
+                relationshipDepth={relationshipDepth}
               />
             )}
           </React.Fragment>
