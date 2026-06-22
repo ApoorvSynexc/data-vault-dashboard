@@ -788,6 +788,7 @@ export default function AddDetailsWizard({
                         setIncludeChild={setIncludeChild}
                         maxDepth={Math.max(0, MAX_CHILD_DEPTH - (relationshipDepth ?? 0))}
                         resetTick={resetTick}
+                        relationshipDepth={relationshipDepth}
                       />
                     )}
                   </tbody>
