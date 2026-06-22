@@ -175,12 +175,6 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
       return archivalService.listBackupJobs(configSlug, true, undefined, 20);
     },
     staleTime: 0,
-    refetchInterval: (query) => {
-      const jobs: ArchiveJobDetail[] = (query.state.data as any)?.data ?? [];
-      const job = Array.isArray(jobs) ? jobs.find((j) => j.backupJobId === backupJobId) : null;
-      const s = job?.status?.toUpperCase() ?? '';
-      return s === 'RUNNING' || s === 'PENDING' ? 3_000 : false;
-    },
   });
 
   const jobs: ArchiveJobDetail[] = (data as any)?.data ?? [];
