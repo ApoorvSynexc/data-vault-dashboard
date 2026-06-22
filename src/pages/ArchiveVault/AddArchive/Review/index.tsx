@@ -388,7 +388,7 @@ const [confirmError, setConfirmError] = useState(false);
                 This will permanently remove the matched records from{' '}
                 <span className='font-semibold'>{crmName}</span>{' '}
                 and move them to{' '}
-                <span className='font-semibold'>{destinationProvider} hot storage</span>.{' '}
+                <span className='font-semibold'>{destinationName}</span>.{' '}
                 This action cannot be undone from the source.
               </p>
 
