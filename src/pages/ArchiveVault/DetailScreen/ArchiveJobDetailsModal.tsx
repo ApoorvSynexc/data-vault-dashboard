@@ -385,92 +385,128 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
         {errorPanel && (
           <div
             className='fixed inset-0 z-[70] flex items-center justify-center p-4'
-            style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
             onClick={closeErrorPanel}
           >
             <div
-              className='bg-white rounded-2xl w-full flex flex-col'
-              style={{ maxWidth: '600px', maxHeight: '72vh', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+              className='bg-white rounded-2xl w-full flex flex-col overflow-hidden'
+              style={{ maxWidth: '660px', maxHeight: '75vh', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Panel header */}
-              <div className='flex items-center justify-between px-6 pt-5 pb-3 flex-shrink-0' style={{ borderBottom: '1px solid #F1F5F9' }}>
-                <div>
-                  <h3 className='font-bold text-base' style={{ color: '#111827' }}>Record Errors — {errorPanel.obj.name}</h3>
-                  <p className='text-xs mt-0.5' style={{ color: '#64748B' }}>
-                    {errorLoading && errorTotalRecords === 0
-                      ? 'Loading…'
-                      : errorTotalRecords > 0
-                      ? `${errorTotalRecords.toLocaleString()} failed record${errorTotalRecords !== 1 ? 's' : ''}`
-                      : '—'}
-                  </p>
+              {/* Header */}
+              <div className='flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0'
+                style={{ background: 'linear-gradient(135deg, #FFF5F5 0%, #FFF 60%)', borderBottom: '1px solid #FFE4E1' }}>
+                <div className='flex items-center gap-3'>
+                  <div className='w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0'
+                    style={{ background: 'rgba(242,68,0,0.1)' }}>
+                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className='font-bold text-sm' style={{ color: '#111827' }}>
+                      Record Errors
+                      <span className='ml-2 font-normal text-xs px-2 py-0.5 rounded-full'
+                        style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400' }}>
+                        {errorPanel.obj.name}
+                      </span>
+                    </h3>
+                    <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>
+                      {errorLoading && errorTotalRecords === 0
+                        ? 'Fetching errors…'
+                        : errorTotalRecords > 0
+                        ? `${errorTotalRecords.toLocaleString()} failed record${errorTotalRecords !== 1 ? 's' : ''}`
+                        : 'No error records found'}
+                    </p>
+                  </div>
                 </div>
-                <button onClick={closeErrorPanel} className='p-1.5 rounded-lg hover:bg-gray-100 transition' style={{ color: '#6B7280' }}>
-                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+                <button onClick={closeErrorPanel}
+                  className='w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition'
+                  style={{ color: '#94A3B8' }}>
+                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                     <path d='M18 6L6 18M6 6l12 12' />
                   </svg>
                 </button>
               </div>
 
-              {/* Job-level error (if any) */}
+              {/* Job-level error banner */}
               {errorPanel.obj.errorMessage && (
-                <div className='mx-6 mt-4 rounded-lg p-3 flex-shrink-0' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.15)' }}>
-                  <p className='text-xs font-semibold mb-1' style={{ color: '#F24400' }}>Job Error</p>
-                  <p className='text-sm font-mono break-all' style={{ color: '#374151' }}>{errorPanel.obj.errorMessage}</p>
+                <div className='mx-5 mt-4 rounded-xl p-3.5 flex items-start gap-3 flex-shrink-0'
+                  style={{ background: 'rgba(242,68,0,0.05)', border: '1px solid rgba(242,68,0,0.18)' }}>
+                  <svg className='flex-shrink-0 mt-0.5' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+                  </svg>
+                  <div className='min-w-0'>
+                    <p className='text-xs font-semibold mb-0.5' style={{ color: '#F24400' }}>Job-level Error</p>
+                    <p className='text-xs font-mono break-all leading-relaxed' style={{ color: '#374151' }}>{errorPanel.obj.errorMessage}</p>
+                  </div>
                 </div>
               )}
 
-              {/* Records table */}
-              <div className='overflow-y-auto flex-1 relative' style={{ fontSize: '13px' }}>
+              {/* Records list */}
+              <div className='overflow-y-auto flex-1 relative px-5 py-3'>
                 {errorLoading && (
-                  <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 z-10' style={{ background: 'rgba(255,255,255,0.85)' }}>
-                    <svg className='animate-spin' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M21 12a9 9 0 11-6.219-8.56' />
-                    </svg>
-                    <span className='text-xs font-medium' style={{ color: '#64748B' }}>Loading errors…</span>
+                  <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 z-10' style={{ background: 'rgba(255,255,255,0.9)' }}>
+                    <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: 'rgba(242,68,0,0.08)' }}>
+                      <svg className='animate-spin' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <path d='M21 12a9 9 0 11-6.219-8.56' />
+                      </svg>
+                    </div>
+                    <span className='text-xs font-medium' style={{ color: '#94A3B8' }}>Loading error records…</span>
                   </div>
                 )}
-                <table className='w-full' style={{ borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 1 }}>
-                      <th className='px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#64748B', width: '38%', background: '#F8FAFC' }}>Record ID</th>
-                      <th className='px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#64748B', background: '#F8FAFC' }}>Error</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!errorLoading && errorRecords.length === 0
-                      ? <tr><td colSpan={2} className='px-5 py-8 text-center text-sm' style={{ color: '#94A3B8' }}>No records found.</td></tr>
-                      : errorRecords.map((r, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                            <td className='px-5 py-2.5 font-mono text-xs align-top' style={{ color: '#155DFC', verticalAlign: 'top' }}>{r.recordId}</td>
-                            <td className='px-5 py-2.5 text-sm' style={{ color: '#374151', verticalAlign: 'top' }}>{r.error}</td>
-                          </tr>
-                        ))
-                    }
-                  </tbody>
-                </table>
+
+                {!errorLoading && errorRecords.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                    <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
+                      <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='10'/><polyline points='20 6 9 17 4 12'/>
+                      </svg>
+                    </div>
+                    <p className='text-sm font-medium' style={{ color: '#64748B' }}>No error records found</p>
+                  </div>
+                ) : (
+                  <div className='flex flex-col gap-2'>
+                    {errorRecords.map((r, i) => (
+                      <div key={i} className='rounded-xl p-4'
+                        style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
+                        <div className='flex items-center gap-2 mb-2'>
+                          <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Record ID</span>
+                          <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
+                            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+                            {r.recordId}
+                          </span>
+                        </div>
+                        <p className='text-xs leading-relaxed' style={{ color: '#374151' }}>{r.error}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Footer: pagination only */}
+              {/* Pagination footer */}
               {errorTotalPages > 1 && (
-                <div className='flex items-center justify-end px-6 py-3 flex-shrink-0' style={{ borderTop: '1px solid #F1F5F9' }}>
+                <div className='flex items-center justify-between px-6 py-3 flex-shrink-0'
+                  style={{ borderTop: '1px solid #F1F5F9', background: '#FAFAFA' }}>
+                  <span className='text-xs' style={{ color: '#94A3B8' }}>
+                    {((errorPanel.page - 1) * 10) + 1}–{Math.min(errorPanel.page * 10, errorTotalRecords)} of {errorTotalRecords.toLocaleString()} records
+                  </span>
                   <div className='flex items-center gap-1'>
-                    <span className='text-xs mr-2' style={{ color: '#64748B' }}>
-                      {((errorPanel.page - 1) * 10) + 1}–{Math.min(errorPanel.page * 10, errorTotalRecords)} of {errorTotalRecords.toLocaleString()}
-                    </span>
                     <button
                       onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page - 1)}
                       disabled={errorPanel.page <= 1 || errorLoading}
-                      className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition'
-                      style={{ color: '#374151' }}
-                    >Prev</button>
-                    <span className='text-xs px-2' style={{ color: '#374151' }}>{errorPanel.page} / {errorTotalPages}</span>
+                      className='w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100 transition'
+                      style={{ color: '#374151', border: '1px solid #E2E8F0' }}>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
+                    </button>
+                    <span className='text-xs px-2 font-medium' style={{ color: '#374151' }}>{errorPanel.page} / {errorTotalPages}</span>
                     <button
                       onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page + 1)}
                       disabled={errorPanel.page >= errorTotalPages || errorLoading}
-                      className='px-3 py-1 rounded text-xs font-medium disabled:opacity-40 hover:bg-gray-100 transition'
-                      style={{ color: '#374151' }}
-                    >Next</button>
+                      className='w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100 transition'
+                      style={{ color: '#374151', border: '1px solid #E2E8F0' }}>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
+                    </button>
                   </div>
                 </div>
               )}
