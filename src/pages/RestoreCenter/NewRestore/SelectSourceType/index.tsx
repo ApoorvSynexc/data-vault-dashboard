@@ -2,9 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
-import Table from '../../../../components/Table';
-import type { TableColumn } from '../../../../components/Table';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import { formatBytes, formatDateTime } from '../../../../utils';
 import type { Destination } from '../../../../services/destination/destination.service';
@@ -13,20 +10,6 @@ import type { Destination } from '../../../../services/destination/destination.s
 
 type SourceType = 'backup' | 'archive';
 type BackupMode = 'list' | 'pit';
-
-interface BackupSnapshot {
-  id: string;
-  name: string;
-  source: string;
-  backupType: 'Schedule' | 'Realtime';
-  scheduleFrequency: string;
-  configStatus: string;
-  backupStatus: string;
-  lastRun: string;
-  dataSize: string;
-  destinationId: string;
-  scheduleType: 'REALTIME' | 'SCHEDULE';
-}
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -91,32 +74,6 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
   const [mergeRule, setMergeRule] = useState('');
-
-  const backupConfigService = useBackupConfigService();
-  const { data: backupConfigData } = useQuery({
-    queryKey: ['backup-config-list'],
-    queryFn: () => backupConfigService.listBackupConfigs(true),
-  });
-
-  const getScheduleFrequency = (frequency?: string): string => {
-    if (!frequency) return '--';
-    const freqMap: Record<string, string> = { 'HOURLY': 'Hourly', 'DAILY': 'Daily', 'WEEKLY': 'Weekly', 'MONTHLY': 'Monthly', 'CUSTOM': 'Custom', 'ONCE': 'Once' };
-    return freqMap[frequency] || frequency;
-  };
-
-  const apiBackups: BackupSnapshot[] = ((backupConfigData as any)?.data ?? []).map((item: any): BackupSnapshot => ({
-    id: item.backupConfigId,
-    name: item.name ?? item.slug ?? '—',
-    source: item.crm?.name ?? item.crm?.crmName ?? item.platform ?? '—',
-    backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
-    scheduleFrequency: getScheduleFrequency(item.scheduleConfig?.scheduling?.frequency),
-    configStatus: item.status ?? 'INACTIVE',
-    backupStatus: item.backupStatus ?? '',
-    lastRun: formatDateTime(item.lastBackupAt),
-    dataSize: formatBytes(item.sizeInBytes),
-    destinationId: item.destinationId ?? '',
-    scheduleType: item.schedule === 'REALTIME' ? 'REALTIME' : 'SCHEDULE',
-  }));
 
   const restoreService = useRestoreService();
 
@@ -235,60 +192,11 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     return true;
   });
 
-  // ── Merge state ───────────────────────────────────────────────────────────
-  const [selectedMerge, setSelectedMerge] = useState<Set<string>>(new Set());
+
 
   // ── Point-in-time state ───────────────────────────────────────────────────
   const [pitDate, setPitDate] = useState('2026-05-23');
   const [pitTime, setPitTime] = useState('14:23');
-
-  // ── Merge table columns ───────────────────────────────────────────────────
-  const mergeColumns: TableColumn<BackupSnapshot>[] = [
-    {
-      key: 'check',
-      header: '',
-      width: '40px',
-      render: (row) => (
-        <input
-          type='checkbox'
-          checked={selectedMerge.has(row.id)}
-          onChange={() => {
-            setSelectedMerge((prev) => {
-              const next = new Set(prev);
-              next.has(row.id) ? next.delete(row.id) : next.add(row.id);
-              return next;
-            });
-          }}
-          className='w-4 h-4 accent-blue-600 cursor-pointer'
-        />
-      ),
-    },
-    {
-      key: 'name',
-      header: 'Backup Name',
-      render: (row) => (
-        <div className='flex items-center gap-2'>
-          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
-            <span className='text-[10px] font-bold text-sky-500'>S</span>
-          </div>
-          <span className='text-sm font-semibold text-gray-900'>{row.name}</span>
-        </div>
-      ),
-    },
-    { key: 'source',   header: 'Source',    render: (row) => <span className='text-sm text-gray-700'>{row.source}</span> },
-    { key: 'dataSize', header: 'Data Size', render: (row) => <span className='text-sm text-gray-700'>{row.dataSize}</span> },
-    { key: 'lastRun',  header: 'Last Run',  render: (row) => <span className='text-xs text-gray-600 whitespace-nowrap'>{row.lastRun}</span> },
-    {
-      key: 'configStatus',
-      header: 'Status',
-      render: (row) => {
-        const styles: Record<string, string> = { 'ACTIVE': 'bg-green-100 text-green-700', 'INACTIVE': 'bg-gray-100 text-gray-600', 'ERROR': 'bg-red-100 text-red-700' };
-        const labels: Record<string, string> = { 'ACTIVE': 'Active', 'INACTIVE': 'Inactive', 'ERROR': 'Error' };
-        const k = row.configStatus?.toUpperCase() ?? '';
-        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[k] ?? 'bg-gray-100 text-gray-600'}`}>{labels[k] ?? row.configStatus}</span>;
-      },
-    },
-  ];
 
   const canProceed =
     sourceType === 'backup'  ? selectedBackup.size > 0 && (selectedBackup.size < 2 || !!mergeRule) :
@@ -618,18 +526,18 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                   <thead>
                     <tr className='border-b border-gray-200 bg-gray-50'>
                       <th className='px-4 py-3 w-10'></th>
-                      {['#', 'Config Name', 'Source', 'Date & Time', 'Data Size', 'Status'].map((h) => (
+                      {['#', 'Config Name', 'Source', 'Last Job Run', 'Objects', 'Data Size'].map((h) => (
                         <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredArchiveLogs.map((log: any, i: number) => {
-                      const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
+                      const rowKey = log.backupConfigId ?? `${i}`;
                       const isSelected = selectedArchiveKey === rowKey;
                       return (
                         <tr
-                          key={i}
+                          key={rowKey}
                           onClick={() => setSelectedArchiveKey(rowKey)}
                           className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                         >
@@ -652,16 +560,10 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                             </div>
                           </td>
                           <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
-                          <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
+                          <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.lastJobRunTime ? formatDateTime(log.lastJobRunTime) : '—'}</td>
+                          <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>{log.selectedObjectCount != null ? log.selectedObjectCount : '—'}</td>
                           <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
-                            {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
-                          </td>
-                          <td className='px-4 py-3'>
-                            {log.status ? (() => {
-                              const s = log.status.toUpperCase();
-                              const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
-                              return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
-                            })() : <span className='text-gray-400 text-xs'>—</span>}
+                            {log.dataSize != null ? formatBytes(log.dataSize) : '—'}
                           </td>
                         </tr>
                       );
