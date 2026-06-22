@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
+import Table from '../../../../components/Table';
+import type { TableColumn } from '../../../../components/Table';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import { formatBytes, formatDateTime } from '../../../../utils';
 import type { Destination } from '../../../../services/destination/destination.service';
@@ -194,6 +196,136 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
 
 
 
+  // ── Backup table columns ──────────────────────────────────────────────────
+  const backupColumns: TableColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Backup Name',
+      render: (log) => (
+        <div className='flex items-center gap-2'>
+          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
+            <span className='text-[10px] font-bold text-sky-500'>S</span>
+          </div>
+          <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'dateTime',
+      header: 'Date & Time',
+      render: (log) => <span className='text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</span>,
+    },
+    {
+      key: 'sourceName',
+      header: 'Source',
+      render: (log) => <span className='text-xs text-gray-600'>{log.sourceName ?? '—'}</span>,
+    },
+    {
+      key: 'backupType',
+      header: 'Backup Type',
+      render: (log) => {
+        const isRealtime = log.backupType === 'RealTime' || log.backupType === 'REALTIME';
+        if (!log.backupType) return <span className='text-gray-400 text-xs'>—</span>;
+        return (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+            {isRealtime
+              ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
+              : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+            }
+            {isRealtime ? 'Realtime' : 'Schedule'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (log) => {
+        if (!log.status) return <span className='text-gray-400 text-xs'>—</span>;
+        const s = log.status.toUpperCase();
+        const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
+      },
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}</span>,
+    },
+    ...(jobsFilterType === 'REALTIME' ? [
+      {
+        key: 'objectApiName',
+        header: 'Object',
+        render: (log: any) => <span className='text-xs text-gray-600'>{log.objectApiName ?? '—'}</span>,
+      },
+      {
+        key: 'operation',
+        header: 'Operation',
+        render: (log: any) => {
+          if (!log.operation) return <span className='text-gray-400 text-xs'>—</span>;
+          const opStyles: Record<string, string> = { INSERT: 'bg-green-100 text-green-700', UPDATE: 'bg-blue-100 text-blue-700', DELETE: 'bg-red-100 text-red-700', UPSERT: 'bg-orange-100 text-orange-700' };
+          return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${opStyles[log.operation.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>{log.operation}</span>;
+        },
+      },
+      {
+        key: 'recordCount',
+        header: 'Records',
+        render: (log: any) => <span className='text-xs text-gray-600 tabular-nums'>{log.recordCount ?? '—'}</span>,
+      },
+    ] as TableColumn<any>[] : []),
+  ];
+
+  // ── Archive table columns ─────────────────────────────────────────────────
+  const archiveColumns: TableColumn<any>[] = [
+    {
+      key: 'radio',
+      header: '',
+      width: '40px',
+      render: (log) => (
+        <input
+          type='radio'
+          name='archive-row'
+          checked={selectedArchiveKey === (log.backupConfigId ?? '')}
+          onChange={() => setSelectedArchiveKey(log.backupConfigId ?? '')}
+          onClick={(e) => e.stopPropagation()}
+          className='w-4 h-4 accent-blue-600 cursor-pointer'
+        />
+      ),
+    },
+    {
+      key: 'configName',
+      header: 'Config Name',
+      render: (log) => (
+        <div className='flex items-center gap-2'>
+          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 border border-gray-100'>
+            <span className='text-[10px] font-bold text-purple-500'>A</span>
+          </div>
+          <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'sourceName',
+      header: 'Source',
+      render: (log) => <span className='text-xs text-gray-600'>{log.sourceName ?? '—'}</span>,
+    },
+    {
+      key: 'lastJobRunTime',
+      header: 'Last Job Run',
+      render: (log) => <span className='text-xs text-gray-600 whitespace-nowrap'>{log.lastJobRunTime ? formatDateTime(log.lastJobRunTime) : '—'}</span>,
+    },
+    {
+      key: 'selectedObjectCount',
+      header: 'Objects',
+      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.selectedObjectCount != null ? log.selectedObjectCount : '—'}</span>,
+    },
+    {
+      key: 'dataSize',
+      header: 'Data Size',
+      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.dataSize != null ? formatBytes(log.dataSize) : '—'}</span>,
+    },
+  ];
+
   // ── Point-in-time state ───────────────────────────────────────────────────
   const [pitDate, setPitDate] = useState('2026-05-23');
   const [pitTime, setPitTime] = useState('14:23');
@@ -315,127 +447,31 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
 
             {backupMode === 'list' ? (
               <>
-                {/* Table */}
-                <div className='flex-1 overflow-x-auto'>
-                  {isLoadingJobs || isFetchingJobs ? (
-                    <div className='flex items-center justify-center py-12'>
-                      <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
-                    </div>
-                  ) : filteredLogs.length === 0 ? (
-                    <div className='flex flex-col items-center justify-center py-12 text-center'>
-                      <p className='text-sm text-gray-500'>No snapshot jobs found.</p>
-                    </div>
-                  ) : (
-                    <table className='w-full' style={{ minWidth: jobsFilterType === 'REALTIME' ? '1060px' : '860px' }}>
-                      <thead>
-                        <tr className='border-b border-gray-200 bg-gray-50'>
-                          <th className='px-4 py-3 w-10'></th>
-                          {['#', 'Backup Name', 'Date & Time', 'Source', 'Backup Type', 'Status', 'Data Size',
-                            ...(jobsFilterType === 'REALTIME' ? ['Object', 'Operation', 'Records'] : []),
-                            'Actions'].map((h) => (
-                            <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredLogs.map((log: any, i: number) => {
-                          const rowKey = `${log.dateTime ?? i}__${log.configName ?? i}`;
-                          const isSelected = selectedBackup.has(rowKey);
-                          const isRealtime = log.backupType === 'RealTime' || log.backupType === 'REALTIME';
-                          const toggleRow = () => setSelectedBackup((prev) => {
-                            const next = new Set(prev);
-                            isSelected ? next.delete(rowKey) : next.add(rowKey);
-                            return next;
-                          });
-                          return (
-                            <tr
-                              key={i}
-                              onClick={toggleRow}
-                              className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                            >
-                              <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
-                                <input
-                                  type='checkbox'
-                                  checked={isSelected}
-                                  onChange={toggleRow}
-                                  className='w-4 h-4 accent-blue-600 cursor-pointer'
-                                />
-                              </td>
-                              <td className='px-4 py-3 text-xs text-gray-400 tabular-nums'>{jobsPageIndex * 10 + i + 1}</td>
-                              <td className='px-4 py-3'>
-                                <div className='flex items-center gap-2'>
-                                  <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
-                                    <span className='text-[10px] font-bold text-sky-500'>S</span>
-                                  </div>
-                                  <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
-                                </div>
-                              </td>
-                              <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</td>
-                              <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
-                              <td className='px-4 py-3'>
-                                {log.backupType ? (
-                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {isRealtime
-                                      ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
-                                      : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
-                                    }
-                                    {isRealtime ? 'Realtime' : 'Schedule'}
-                                  </span>
-                                ) : <span className='text-gray-400 text-xs'>—</span>}
-                              </td>
-                              <td className='px-4 py-3'>
-                                {log.status ? (() => {
-                                  const s = log.status.toUpperCase();
-                                  const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
-                                  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
-                                })() : <span className='text-gray-400 text-xs'>—</span>}
-                              </td>
-                              <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
-                                {log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}
-                              </td>
-                              {isRealtime && <>
-                                <td className='px-4 py-3 text-xs text-gray-600'>{log.objectApiName ?? '—'}</td>
-                                <td className='px-4 py-3'>
-                                  {log.operation ? (() => {
-                                    const opStyles: Record<string, string> = { INSERT: 'bg-green-100 text-green-700', UPDATE: 'bg-blue-100 text-blue-700', DELETE: 'bg-red-100 text-red-700', UPSERT: 'bg-orange-100 text-orange-700' };
-                                    return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${opStyles[log.operation.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>{log.operation}</span>;
-                                  })() : <span className='text-gray-400 text-xs'>—</span>}
-                                </td>
-                                <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>{log.recordCount ?? '—'}</td>
-                              </>}
-                              <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
-                                <button className='text-gray-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50'>
-                                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='w-4 h-4'>
-                                    <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/>
-                                    <circle cx='12' cy='12' r='3'/>
-                                  </svg>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-                {/* Footer */}
-                <div className='flex-shrink-0 mt-auto flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
-                  <button
-                    onClick={goJobsPrevPage}
-                    disabled={jobsPageIndex === 0 || isFetchingJobs}
-                    className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
-                  >
-                    ← Prev
-                  </button>
-                  <button
-                    onClick={goJobsNextPage}
-                    disabled={!jobsNextCursor || isFetchingJobs}
-                    className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
-                  >
-                    Next →
-                  </button>
-                  <span className='ml-auto text-xs text-gray-400'>Page {jobsPageIndex + 1} · {filteredLogs.length} entries</span>
-                </div>
+                <Table
+                  columns={backupColumns}
+                  rows={filteredLogs}
+                  getRowKey={(log: any, i: number) => `${log.dateTime ?? i}__${log.configName ?? i}`}
+                  loading={isLoadingJobs || isFetchingJobs}
+                  skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-24', 'w-20', 'w-20', 'w-20'] }}
+                  headerVariant='uppercase'
+                  borderless
+                  showSerialNumber
+                  serialNumberStart={jobsPageIndex * 10 + 1}
+                  showCheckbox
+                  selectedIds={selectedBackup}
+                  getRowId={(log: any) => `${log.dateTime ?? ''}__${log.configName ?? ''}`}
+                  onSelectionChange={setSelectedBackup}
+                  getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                  emptyState='No snapshot jobs found.'
+                  paginationConfig={{
+                    type: 'cursor',
+                    hasPrev: jobsPageIndex > 0,
+                    hasNext: !!jobsNextCursor,
+                    onPrev: goJobsPrevPage,
+                    onNext: goJobsNextPage,
+                    label: `Page ${jobsPageIndex + 1} · ${filteredLogs.length} entries`,
+                  }}
+                />
                 {selectedBackup.size >= 2 && (
                   <div className='flex-shrink-0 mx-4 mb-3 rounded-xl border border-yellow-200 bg-yellow-50 overflow-hidden'>
                     <div className='flex items-center gap-2 px-4 py-2.5 border-b border-yellow-200 bg-yellow-100/60'>
@@ -511,85 +547,31 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                 className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
               />
             </div>
-            {/* Table */}
-            <div className='flex-1 overflow-x-auto'>
-              {isLoadingArchive || isFetchingArchive ? (
-                <div className='flex items-center justify-center py-12'>
-                  <div className='h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600' />
-                </div>
-              ) : filteredArchiveLogs.length === 0 ? (
-                <div className='flex flex-col items-center justify-center py-12 text-center'>
-                  <p className='text-sm text-gray-500'>No archive entries found.</p>
-                </div>
-              ) : (
-                <table className='w-full' style={{ minWidth: '700px' }}>
-                  <thead>
-                    <tr className='border-b border-gray-200 bg-gray-50'>
-                      <th className='px-4 py-3 w-10'></th>
-                      {['#', 'Config Name', 'Source', 'Last Job Run', 'Objects', 'Data Size'].map((h) => (
-                        <th key={h} className='px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap'>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredArchiveLogs.map((log: any, i: number) => {
-                      const rowKey = log.backupConfigId ?? `${i}`;
-                      const isSelected = selectedArchiveKey === rowKey;
-                      return (
-                        <tr
-                          key={rowKey}
-                          onClick={() => setSelectedArchiveKey(rowKey)}
-                          className={`border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                        >
-                          <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type='radio'
-                              name='archive-row'
-                              checked={isSelected}
-                              onChange={() => setSelectedArchiveKey(rowKey)}
-                              className='w-4 h-4 accent-blue-600 cursor-pointer'
-                            />
-                          </td>
-                          <td className='px-4 py-3 text-xs text-gray-400 tabular-nums'>{archivePageIndex * 10 + i + 1}</td>
-                          <td className='px-4 py-3'>
-                            <div className='flex items-center gap-2'>
-                              <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 border border-gray-100'>
-                                <span className='text-[10px] font-bold text-purple-500'>A</span>
-                              </div>
-                              <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
-                            </div>
-                          </td>
-                          <td className='px-4 py-3 text-xs text-gray-600'>{log.sourceName ?? '—'}</td>
-                          <td className='px-4 py-3 text-xs text-gray-600 whitespace-nowrap'>{log.lastJobRunTime ? formatDateTime(log.lastJobRunTime) : '—'}</td>
-                          <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>{log.selectedObjectCount != null ? log.selectedObjectCount : '—'}</td>
-                          <td className='px-4 py-3 text-xs text-gray-600 tabular-nums'>
-                            {log.dataSize != null ? formatBytes(log.dataSize) : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            {/* Footer */}
-            <div className='flex-shrink-0 mt-auto flex items-center gap-3 px-4 py-2.5 border-t border-gray-100 text-xs text-gray-500'>
-              <button
-                onClick={goArchivePrevPage}
-                disabled={archivePageIndex === 0 || isFetchingArchive}
-                className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
-              >
-                ← Prev
-              </button>
-              <button
-                onClick={goArchiveNextPage}
-                disabled={!archiveNextCursor || isFetchingArchive}
-                className='inline-flex items-center gap-1 font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed'
-              >
-                Next →
-              </button>
-              <span className='ml-auto text-xs text-gray-400'>Page {archivePageIndex + 1} · {filteredArchiveLogs.length} entries</span>
-            </div>
+            <Table
+              columns={archiveColumns}
+              rows={filteredArchiveLogs}
+              getRowKey={(log: any, i: number) => log.backupConfigId ?? `${i}`}
+              loading={isLoadingArchive || isFetchingArchive}
+              skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-28', 'w-16', 'w-20'] }}
+              headerVariant='uppercase'
+              borderless
+              showSerialNumber
+              serialNumberStart={archivePageIndex * 10 + 1}
+              onRowClick={(log: any) => setSelectedArchiveKey(log.backupConfigId ?? '')}
+              getRowClassName={(log: any) => {
+                const isSelected = selectedArchiveKey === (log.backupConfigId ?? '');
+                return `border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
+              }}
+              emptyState='No archive entries found.'
+              paginationConfig={{
+                type: 'cursor',
+                hasPrev: archivePageIndex > 0,
+                hasNext: !!archiveNextCursor,
+                onPrev: goArchivePrevPage,
+                onNext: goArchiveNextPage,
+                label: `Page ${archivePageIndex + 1} · ${filteredArchiveLogs.length} entries`,
+              }}
+            />
           </div>
         )}
 
