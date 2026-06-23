@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
@@ -369,6 +370,91 @@ type DropdownMenuItem = {
   onClick?: () => void;
 };
 
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isFiltered = value !== 'All';
+  const activeLabel = options.find((o) => o.value === value)?.label ?? value;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }
+    setOpen((v) => !v);
+  }
+
+  return (
+    <div>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={handleOpen}
+        className={`flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+          isFiltered
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        }`}
+      >
+        <span className='text-[10px] font-semibold uppercase tracking-wide opacity-60'>{label}:</span>
+        <span>{isFiltered ? activeLabel : 'All'}</span>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-2.5 w-2.5 opacity-50'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'absolute', top: coords.top, left: coords.left, zIndex: 9999 }}
+          className='min-w-[130px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type='button'
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-medium transition hover:bg-gray-50 ${
+                value === opt.value ? 'text-blue-600' : 'text-gray-700'
+              }`}
+            >
+              {opt.label}
+              {value === opt.value && (
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-3 w-3 text-blue-600'>
+                  <polyline points='20 6 9 17 4 12' />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -424,6 +510,8 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
   );
 }
 
+
+const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'RUNNING', 'PENDING']);
 
 type FilterState = {
   backupType: BackupType | 'All';
@@ -551,13 +639,13 @@ export default function BackupManagementV2() {
   const filteredBackups = parsedRows.filter((row) => {
     if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
     if (filters.status !== 'All') {
-      if (filters.status === 'REALTIME' && row.backupType !== 'Realtime') return false;
-      else if (filters.status === 'SCHEDULED' && row.backupType !== 'Schedule') return false;
-      else if (filters.status === 'RUNNING') {
-        if (row.backupStatus !== 'RUNNING' && row.backupStatus !== 'PENDING') return false;
-      } else if (filters.status === 'SUCCESS' || filters.status === 'FAILED') {
-        if (row.backupStatus !== filters.status) return false;
-      } else if (filters.status !== 'REALTIME' && filters.status !== 'SCHEDULED') {
+      if (JOB_STATUS_VALUES.has(filters.status)) {
+        if (filters.status === 'RUNNING') {
+          if (row.backupStatus !== 'RUNNING' && row.backupStatus !== 'PENDING') return false;
+        } else {
+          if (row.backupStatus !== filters.status) return false;
+        }
+      } else {
         if (row.configStatus !== filters.status) return false;
       }
     }
@@ -711,34 +799,43 @@ export default function BackupManagementV2() {
               />
             </div>
             <div className='h-5 w-px bg-gray-200' />
-            {/* Status pills */}
-            {([
-              { label: 'All',           value: 'All'      },
-              { label: 'Active',        value: 'ACTIVE'   },
-              { label: 'Running',       value: 'RUNNING'  },
-              { label: 'Paused',        value: 'PAUSED'   },
-              { label: 'Draft',         value: 'DRAFT'    },
-              { label: 'Success',       value: 'SUCCESS'  },
-              { label: 'Real-Time Sync',value: 'REALTIME' },
-              { label: 'Scheduled',     value: 'SCHEDULED'},
-              { label: 'Failed',        value: 'FAILED'   },
-            ] as { label: string; value: string }[]).map(({ label, value }) => {
-              const active = filters.status === value || (value === 'All' && filters.status === 'All');
-              return (
-                <button
-                  key={value}
-                  type='button'
-                  onClick={() => setFilters((f) => ({ ...f, status: value as FilterState['status'] }))}
-                  className={`h-7 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
-                    active
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            {/* Status dropdown */}
+            <FilterDropdown
+              label='Status'
+              value={JOB_STATUS_VALUES.has(filters.status) ? 'All' : filters.status}
+              options={[
+                { label: 'All',      value: 'All'      },
+                { label: 'Active',   value: 'ACTIVE'   },
+                { label: 'Paused',   value: 'PAUSED'   },
+                { label: 'Draft',    value: 'DRAFT'    },
+                { label: 'Inactive', value: 'INACTIVE' },
+              ]}
+              onChange={(v) => setFilters((f) => ({ ...f, status: v as FilterState['status'] }))}
+            />
+            {/* Last Job dropdown */}
+            <FilterDropdown
+              label='Last Job'
+              value={JOB_STATUS_VALUES.has(filters.status) ? filters.status : 'All'}
+              options={[
+                { label: 'All',     value: 'All'     },
+                { label: 'Success', value: 'SUCCESS' },
+                { label: 'Failed',  value: 'FAILED'  },
+                { label: 'Running', value: 'RUNNING' },
+                { label: 'Pending', value: 'PENDING' },
+              ]}
+              onChange={(v) => setFilters((f) => ({ ...f, status: v as FilterState['status'] }))}
+            />
+            {/* Type dropdown */}
+            <FilterDropdown
+              label='Type'
+              value={filters.backupType}
+              options={[
+                { label: 'All',      value: 'All'      },
+                { label: 'Realtime', value: 'Realtime' },
+                { label: 'Schedule', value: 'Schedule' },
+              ]}
+              onChange={(v) => setFilters((f) => ({ ...f, backupType: v as FilterState['backupType'] }))}
+            />
             {/* Divider */}
             <div className='h-5 w-px bg-gray-200 mx-1' />
             {/* Export CSV */}
