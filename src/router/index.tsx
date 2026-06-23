@@ -33,6 +33,7 @@ import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
 import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
+import RestoreCenter from '../pages/RestoreCenter';
 
 const router = createBrowserRouter([
   {
@@ -63,7 +64,7 @@ const router = createBrowserRouter([
           { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
-          { path: '/restore-center', element: <div className='flex flex-1 items-center justify-center text-gray-400 text-sm'>Restore Center — Coming Soon</div> },
+          { path: '/restore-center', element: <RestoreCenter /> },
           { path: '/activity-logs', element: <ActivityLogs /> },
           { path: '/audit-logs', element: <AuditLogs /> },
           { path: '/reports', element: <Reports /> },
