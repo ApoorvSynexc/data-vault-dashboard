@@ -585,8 +585,13 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
             },
             {
               key: 'insertCount',
+              header: 'Records Processed',
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.totalRecordCount ?? 0).toLocaleString()}</span>,
+            },
+            {
+              key: 'completedRecordCount',
               header: 'Records Uploaded',
-              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? obj.completedRecordCount ?? obj.totalRecordCount ?? 0).toLocaleString()}</span>,
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#0891B2' }}>{(obj.completedRecordCount ?? 0).toLocaleString()}</span>,
             },
             {
               key: 'deletedSuccess',
@@ -639,7 +644,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
 
           const paginatedRows = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
           const totalPages = Math.ceil(filtered.length / itemsPerPage);
-          const colHeaders = ['Object', 'Depth', 'Status', 'Records Uploaded', 'Records Deleted', 'Records Failed', 'Data Size', 'API Calls'];
+          const colHeaders = ['Object', 'Depth', 'Status', 'Records Processed', 'Records Uploaded', 'Records Deleted', 'Records Failed', 'Data Size', 'API Calls'];
 
           return (
             <div className='flex flex-col flex-1 mx-7 rounded-xl relative overflow-hidden' style={{ border: '1.5px solid #E8EDF5', minHeight: 0 }}>
@@ -688,16 +693,18 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                                     <td className='px-5 py-3.5'>{jobColumns[1].render({ obj, depth, parentId: null }, idx)}</td>
                                     {/* Status */}
                                     <td className='px-5 py-3.5'>{jobColumns[2].render({ obj, depth, parentId: null }, idx)}</td>
-                                    {/* Records Uploaded */}
+                                    {/* Records Processed */}
                                     <td className='px-5 py-3.5'>{jobColumns[3].render({ obj, depth, parentId: null }, idx)}</td>
-                                    {/* Records Deleted */}
+                                    {/* Records Uploaded */}
                                     <td className='px-5 py-3.5'>{jobColumns[4].render({ obj, depth, parentId: null }, idx)}</td>
-                                    {/* Records Failed */}
+                                    {/* Records Deleted */}
                                     <td className='px-5 py-3.5'>{jobColumns[5].render({ obj, depth, parentId: null }, idx)}</td>
-                                    {/* Data Size */}
+                                    {/* Records Failed */}
                                     <td className='px-5 py-3.5'>{jobColumns[6].render({ obj, depth, parentId: null }, idx)}</td>
-                                    {/* API Calls */}
+                                    {/* Data Size */}
                                     <td className='px-5 py-3.5'>{jobColumns[7].render({ obj, depth, parentId: null }, idx)}</td>
+                                    {/* API Calls */}
+                                    <td className='px-5 py-3.5'>{jobColumns[8].render({ obj, depth, parentId: null }, idx)}</td>
                                   </tr>
                                   {/* Inline error row — only for job-level errorMessage (no per-record errors) */}
                                   {hasJobErrorOnly && isInlineOpen && (
