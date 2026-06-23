@@ -488,11 +488,11 @@ export default function ArchiveVaultHomePage() {
             },
             {
               key: 'displayDate',
-              header: 'Created On',
+              header: 'Last Run',
               render: (policy) => <span className='text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</span>,
             },
             {
-              key: 'records',
+              key: 'archivedRecordsCount',
               header: 'Records',
               render: (policy) => <span className='text-xs text-gray-600'>{policy.archivedRecordsCount != null ? policy.archivedRecordsCount.toLocaleString() : '--'}</span>,
             },
