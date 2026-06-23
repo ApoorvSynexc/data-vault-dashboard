@@ -28,7 +28,7 @@ import ArchiveDetailScreen from '../pages/ArchiveVault/DetailScreen';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
-// import RestoreCenter from '../pages/RestoreCenter';
+import RestoreCenter from '../pages/RestoreCenter';
 import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
 import AuditLogs from '../pages/AuditLogs';
@@ -63,7 +63,7 @@ const router = createBrowserRouter([
           { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
-          { path: '/restore-center', element: <div className='flex flex-1 items-center justify-center text-gray-400 text-sm'>Restore Center — Coming Soon</div> },
+          { path: '/restore-center', element: <RestoreCenter /> },
           { path: '/activity-logs', element: <ActivityLogs /> },
           { path: '/audit-logs', element: <AuditLogs /> },
           { path: '/reports', element: <Reports /> },
