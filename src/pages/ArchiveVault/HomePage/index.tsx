@@ -41,10 +41,9 @@ type ArchivalConfigItem = {
   createdAt: string;
   updatedAt: string;
   sizeInBytes?: number;
-  // Backend-computed aggregates across all archival jobs for this config.
-  // Sum of completedRecordCount and sizeInBytes across every object archived.
   archivedRecordsCount?: number;
   archivedSizeInBytes?: number;
+  lastBackupAt?: string;
   scheduleConfig?: {
     type: string;
     timeZone: string;
@@ -337,7 +336,7 @@ export default function ArchiveVaultHomePage() {
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
     displayStatus: normalizeStatus(item.status),
     lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
-    displayDate: formatDate(item.createdAt),
+    displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
   }));
 
   // Filters
@@ -489,7 +488,7 @@ export default function ArchiveVaultHomePage() {
             },
             {
               key: 'displayDate',
-              header: 'Created On',
+              header: 'Last Run',
               render: (policy) => <span className='text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</span>,
             },
             {
