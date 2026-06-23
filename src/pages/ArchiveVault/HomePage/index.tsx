@@ -494,12 +494,20 @@ export default function ArchiveVaultHomePage() {
             {
               key: 'archivedRecordsCount',
               header: 'Records',
-              render: (policy) => <span className='text-xs text-gray-600'>{policy.archivedRecordsCount != null ? policy.archivedRecordsCount.toLocaleString() : '--'}</span>,
+              render: (policy) => (
+                <span className='text-xs text-gray-600'>
+                  {policy.archivedRecordsCount != null ? Number(policy.archivedRecordsCount).toLocaleString() : '--'}
+                </span>
+              ),
             },
             {
               key: 'archivedSizeInBytes',
               header: 'Data Size',
-              render: (policy) => <span className='text-xs text-gray-600'>{policy.archivedSizeInBytes ? formatBytes(policy.archivedSizeInBytes) : '--'}</span>,
+              render: (policy) => (
+                <span className='text-xs text-gray-600'>
+                  {policy.archivedSizeInBytes ? formatBytes(policy.archivedSizeInBytes) : '--'}
+                </span>
+              ),
             },
             {
               key: 'action',
