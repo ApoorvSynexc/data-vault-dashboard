@@ -17,6 +17,7 @@
 // are applied client-side on the full list. Search is also client-side with debounce.
 // Pagination: 10 items per page, client-side slice.
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
@@ -65,6 +66,7 @@ function normalizeStatus(raw: string): string {
     ACTIVE: 'ACTIVE', RUNNING: 'RUNNING', SCHEDULED: 'SCHEDULED',
     DRAFT: 'DRAFT', PAUSED: 'PAUSED', FAILED: 'FAILED',
     ONE_TIME: 'ONE_TIME', PENDING: 'PENDING', SUCCESS: 'SUCCESS',
+    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'ACTIVE',
   };
   return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
 }
@@ -138,20 +140,23 @@ function PlatformBadge({ platform }: { platform: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ACTIVE:    'bg-blue-100 text-blue-700',
-    RUNNING:   'bg-green-100 text-green-700',
-    SCHEDULED: 'bg-blue-100 text-blue-700',
-    SUCCESS:   'bg-green-100 text-green-700',
-    PENDING:   'bg-indigo-100 text-indigo-700',
-    DRAFT:     'bg-yellow-100 text-yellow-700',
-    PAUSED:    'bg-gray-100 text-gray-700',
-    FAILED:    'bg-red-100 text-red-700',
-    ONE_TIME:  'bg-gray-100 text-gray-700',
+    ACTIVE:           'bg-blue-100 text-blue-700',
+    RUNNING:          'bg-green-100 text-green-700',
+    SCHEDULED:        'bg-blue-100 text-blue-700',
+    SUCCESS:          'bg-green-100 text-green-700',
+    PENDING:          'bg-indigo-100 text-indigo-700',
+    DRAFT:            'bg-yellow-100 text-yellow-700',
+    PAUSED:           'bg-gray-100 text-gray-700',
+    INACTIVE:         'bg-gray-100 text-gray-500',
+    FAILED:           'bg-red-100 text-red-700',
+    PARTIAL_FAILURE:  'bg-orange-100 text-orange-700',
+    ONE_TIME:         'bg-gray-100 text-gray-700',
   };
   const labels: Record<string, string> = {
     ACTIVE: 'Active', RUNNING: 'Running', SCHEDULED: 'Scheduled',
-    SUCCESS: 'Success', PENDING: 'Running', DRAFT: 'Draft',
-    PAUSED: 'Paused', FAILED: 'Failed', ONE_TIME: 'One Time',
+    SUCCESS: 'Success', PENDING: 'Pending', DRAFT: 'Draft',
+    PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
+    PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time',
   };
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-700'}`}>
@@ -232,6 +237,93 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
             </button>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Filter Dropdown ───────────────────────────────────────────────────────────
+
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isFiltered = value !== 'All';
+  const activeLabel = options.find((o) => o.value === value)?.label ?? value;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }
+    setOpen((v) => !v);
+  }
+
+  return (
+    <div>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={handleOpen}
+        className={`flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+          isFiltered
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        }`}
+      >
+        <span className='text-[10px] font-semibold uppercase tracking-wide opacity-60'>{label}:</span>
+        <span>{isFiltered ? activeLabel : 'All'}</span>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-2.5 w-2.5 opacity-50'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'absolute', top: coords.top, left: coords.left, zIndex: 9999 }}
+          className='min-w-[140px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type='button'
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-medium transition hover:bg-gray-50 ${
+                value === opt.value ? 'text-blue-600' : 'text-gray-700'
+              }`}
+            >
+              {opt.label}
+              {value === opt.value && (
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-3 w-3 text-blue-600'>
+                  <polyline points='20 6 9 17 4 12' />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -339,12 +431,20 @@ export default function ArchiveVaultHomePage() {
     displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
   }));
 
+  // Status pills split by which field they filter
+  const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
+
   // Filters
   const filtered = enriched.filter((r) => {
     if (search && !r.displayName.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'All') {
-      if (statusFilter === 'RUNNING' && r.displayStatus !== 'RUNNING' && r.displayStatus !== 'PENDING') return false;
-      else if (statusFilter !== 'RUNNING' && r.displayStatus !== statusFilter) return false;
+      if (JOB_STATUS_VALUES.has(statusFilter)) {
+        // Filter on lastJobStatus (backupStatus field)
+        if (r.lastJobStatus !== statusFilter) return false;
+      } else {
+        // Filter on displayStatus (status field)
+        if (r.displayStatus !== statusFilter) return false;
+      }
     }
     return true;
   });
@@ -409,33 +509,30 @@ export default function ArchiveVaultHomePage() {
               />
             </div>
             <div className='h-5 w-px bg-gray-200' />
-            {/* Status pills — only statuses that actually come from the API */}
-            {([
-              { label: 'All',     value: 'All'     },
-              { label: 'Active',  value: 'ACTIVE'  },
-              { label: 'Running', value: 'RUNNING' },
-              { label: 'Paused',  value: 'PAUSED'  },
-              { label: 'Draft',   value: 'DRAFT'   },
-              { label: 'Success', value: 'SUCCESS' },
-              { label: 'Failed',  value: 'FAILED'  },
-            ] as { label: string; value: string }[]).map(({ label, value }) => {
-
-              const active = statusFilter === value;
-              return (
-                <button
-                  key={value}
-                  type='button'
-                  onClick={() => { setStatusFilter(value); setCurrentPage(1); }}
-                  className={`h-7 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
-                    active
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            <FilterDropdown
+              label='Status'
+              value={JOB_STATUS_VALUES.has(statusFilter) ? 'All' : statusFilter}
+              options={[
+                { label: 'All',      value: 'All'      },
+                { label: 'Active',   value: 'ACTIVE'   },
+                { label: 'Paused',   value: 'PAUSED'   },
+                { label: 'Draft',    value: 'DRAFT'    },
+                { label: 'Inactive', value: 'INACTIVE' },
+              ]}
+              onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+            />
+            <FilterDropdown
+              label='Last Job'
+              value={JOB_STATUS_VALUES.has(statusFilter) ? statusFilter : 'All'}
+              options={[
+                { label: 'All',             value: 'All'             },
+                { label: 'Success',         value: 'SUCCESS'         },
+                { label: 'Failed',          value: 'FAILED'          },
+                { label: 'Partial Failure', value: 'PARTIAL_FAILURE' },
+                { label: 'Pending',         value: 'PENDING'         },
+              ]}
+              onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+            />
             <div className='h-5 w-px bg-gray-200 mx-1' />
             <button
               type='button'
