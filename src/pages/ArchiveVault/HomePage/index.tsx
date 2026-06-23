@@ -41,6 +41,9 @@ type ArchivalConfigItem = {
   createdAt: string;
   updatedAt: string;
   sizeInBytes?: number;
+  archivedRecordsCount?: number;
+  archivedSizeInBytes?: number;
+  lastBackupAt?: string;
   scheduleConfig?: {
     type: string;
     timeZone: string;
@@ -333,7 +336,7 @@ export default function ArchiveVaultHomePage() {
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
     displayStatus: normalizeStatus(item.status),
     lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
-    displayDate: formatDate(item.createdAt),
+    displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
   }));
 
   // Filters
@@ -491,12 +494,12 @@ export default function ArchiveVaultHomePage() {
             {
               key: 'records',
               header: 'Records',
-              render: () => <span className='text-xs text-gray-600'>--</span>,
+              render: (policy) => <span className='text-xs text-gray-600'>{policy.archivedRecordsCount != null ? policy.archivedRecordsCount.toLocaleString() : '--'}</span>,
             },
             {
-              key: 'sizeInBytes',
+              key: 'archivedSizeInBytes',
               header: 'Data Size',
-              render: (policy) => <span className='text-xs text-gray-600'>{policy.sizeInBytes ? formatBytes(policy.sizeInBytes) : '--'}</span>,
+              render: (policy) => <span className='text-xs text-gray-600'>{policy.archivedSizeInBytes ? formatBytes(policy.archivedSizeInBytes) : '--'}</span>,
             },
             {
               key: 'action',
