@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
-import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { useRestoreService } from '../../../../services/restore/restore.service';
@@ -104,6 +103,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     return freqMap[frequency] || frequency;
   };
 
+  // Reserved for future use — kept for feat/restore merge
   const apiBackups: BackupSnapshot[] = ((backupConfigData as any)?.data ?? []).map((item: any): BackupSnapshot => ({
     id: item.backupConfigId,
     name: item.name ?? item.slug ?? '—',
@@ -117,6 +117,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     destinationId: item.destinationId ?? '',
     scheduleType: item.schedule === 'REALTIME' ? 'REALTIME' : 'SCHEDULE',
   }));
+  void apiBackups;
 
   const restoreService = useRestoreService();
 
@@ -242,7 +243,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [pitDate, setPitDate] = useState('2026-05-23');
   const [pitTime, setPitTime] = useState('14:23');
 
-  // ── Merge table columns ───────────────────────────────────────────────────
+  // ── Merge table columns (reserved for feat/restore) ──────────────────────
   const mergeColumns: TableColumn<BackupSnapshot>[] = [
     {
       key: 'check',
@@ -289,6 +290,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
       },
     },
   ];
+  void mergeColumns;
 
   const canProceed =
     sourceType === 'backup'  ? selectedBackup.size > 0 && (selectedBackup.size < 2 || !!mergeRule) :
