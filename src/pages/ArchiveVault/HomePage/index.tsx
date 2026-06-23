@@ -41,6 +41,10 @@ type ArchivalConfigItem = {
   createdAt: string;
   updatedAt: string;
   sizeInBytes?: number;
+  // Backend-computed aggregates across all archival jobs for this config.
+  // Sum of completedRecordCount and sizeInBytes across every object archived.
+  archivedRecordsCount?: number;
+  archivedSizeInBytes?: number;
   scheduleConfig?: {
     type: string;
     timeZone: string;
@@ -489,14 +493,22 @@ export default function ArchiveVaultHomePage() {
               render: (policy) => <span className='text-xs text-gray-500 whitespace-nowrap'>{policy.displayDate}</span>,
             },
             {
-              key: 'records',
+              key: 'archivedRecordsCount',
               header: 'Records',
-              render: () => <span className='text-xs text-gray-600'>--</span>,
+              render: (policy) => (
+                <span className='text-xs text-gray-600'>
+                  {policy.archivedRecordsCount != null ? Number(policy.archivedRecordsCount).toLocaleString() : '--'}
+                </span>
+              ),
             },
             {
-              key: 'sizeInBytes',
+              key: 'archivedSizeInBytes',
               header: 'Data Size',
-              render: (policy) => <span className='text-xs text-gray-600'>{policy.sizeInBytes ? formatBytes(policy.sizeInBytes) : '--'}</span>,
+              render: (policy) => (
+                <span className='text-xs text-gray-600'>
+                  {policy.archivedSizeInBytes ? formatBytes(policy.archivedSizeInBytes) : '--'}
+                </span>
+              ),
             },
             {
               key: 'action',
