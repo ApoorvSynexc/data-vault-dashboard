@@ -585,8 +585,13 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
             },
             {
               key: 'insertCount',
+              header: 'Records Processed',
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? obj.totalRecordCount ?? 0).toLocaleString()}</span>,
+            },
+            {
+              key: 'insertCount',
               header: 'Records Uploaded',
-              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? obj.completedRecordCount ?? obj.totalRecordCount ?? 0).toLocaleString()}</span>,
+              render: ({ obj }) => <span className='text-sm font-semibold' style={{ color: '#008020' }}>{(obj.insertCount ?? obj.completedRecordCount ?? 0).toLocaleString()}</span>,
             },
             {
               key: 'deletedSuccess',
