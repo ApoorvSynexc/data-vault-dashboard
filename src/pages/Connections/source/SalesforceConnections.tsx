@@ -245,16 +245,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                 {selectedCrm === 'salesforce' ? 'Manage and monitor all your connected Salesforce orgs. Each org backed up independently.' : 'Manage your connected orgs for this platform.'}
               </Typography>
             </div>
-            {selectedCrm === 'salesforce' && (
-              <button
-                onClick={() => navigate('/connections/salesforce/connect')}
-                type='button'
-                className='shrink-0 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700'
-              >
-                <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'><path d='M10 4v12M4 10h12' strokeLinecap='round' /></svg>
-                Connect New Org
-              </button>
-            )}
           </div>
 
           <div className='flex-1 overflow-y-auto px-6 py-6'>
