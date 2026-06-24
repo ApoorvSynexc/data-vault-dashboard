@@ -11,25 +11,17 @@ type Step1Props = {
   initialSelectedPlatformId?: string | null;
 };
 
-const AVAILABLE_PLATFORMS = [
+const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
   {
-    name: 'Salesforce',
     crmId: 'salesforce-1',
     crmName: 'Salesforce',
-    isConnected: true,
-    status: 'ACTIVE' as const,
-    crmProfile: {
-      organizationId: 'org-123',
-      photoUrl: '',
-      name: 'Salesforce Production',
-      userId: 'user-123',
-      email: 'admin@salesforce.com',
-      instanceUrl: 'https://salesforce.com',
-      username: 'admin',
-    },
+    name: 'Salesforce',
+    organizationId: 'org-placeholder',
+    userId: 'user-placeholder',
+    status: 'ACTIVE',
+    environment: 'production',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    userId: 'user-123',
   },
 ];
 
@@ -66,7 +58,6 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   const connections = selectedPlatform
     ? allConnections.filter((conn: any) =>
         conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
-        conn.isConnected === true &&
         conn.status === 'ACTIVE'
       )
     : [];
@@ -179,7 +170,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                           <div className='flex-1 min-w-0'>
                             <div className='flex items-center gap-2'>
                               <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
-                                {connection.name}
+                                {connection.name ?? "Backend Changes Needed"}
                               </p>
                               {connection.environment && (
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
@@ -189,9 +180,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                                 }`}>{connection.environment}</span>
                               )}
                             </div>
-                            <p className='text-xs text-gray-500 truncate'>Org ID : {connection.crmProfile?.organizationId}</p>
-                            {connection.crmProfile?.username && <p className='text-xs text-gray-500 truncate'>@{connection.crmProfile.username}</p>}
-                            <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
+                            <p className='text-xs text-gray-500 truncate'>Org ID: {connection.organizationId}</p>
                           </div>
                         </div>
                       </div>
