@@ -1,4 +1,4 @@
-// DefineRestorePolicy — Step 4 of 7 in the New Restore wizard.
+// DefineRestorePolicy — Step 5 of 8 in the New Restore wizard.
 // Captures the restore job name, description, and tags before the user
 // selects a source. Mirrors the pattern used by DefineArchive in AddArchive.
 
@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -73,16 +73,16 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of 7</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 5 of 8</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Define Restore Policy</h1>
               <p className='text-gray-500 mt-1 text-sm'>Name this restore job and add optional context.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>4</span> of 7
+              Step <span className='text-blue-600'>5</span> of 8
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={4} />
+            <ProgressBar active={5} />
           </div>
         </div>
 
