@@ -1,4 +1,4 @@
-// ReviewSubmit — Step 7 of 7 (Final Step) in the New Restore wizard.
+// ReviewSubmit — Step 8 of 8 (Final Step) in the New Restore wizard.
 // Summarises all settings and provides Run Restore / Schedule for Later actions.
 
 import { useState } from 'react';
@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict & Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -78,10 +78,10 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
               <p className='text-gray-500 mt-1 text-sm'>Confirm all settings before executing.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>7</span> of 7
+              Step <span className='text-blue-600'>8</span> of 8
             </span>
           </div>
-          <ProgressBar active={7} />
+          <ProgressBar active={8} />
         </div>
 
         {/* Two-column layout */}
