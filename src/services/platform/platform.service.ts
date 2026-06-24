@@ -10,27 +10,16 @@ export const PLATFORM_ENDPOINTS = {
   delete:     '/v1/crm',
 } as const;
 
-export type CrmProfile = {
-  organizationId: string;
-  photoUrl: string;
-  name: string;
-  userId: string;
-  email: string;
-  instanceUrl: string;
-  username: string;
-};
-
 export type ConnectedPlatform = {
   crmId: string;
   crmName: string;
-  name: string;
-  isConnected: boolean;
-  status: 'ACTIVE' | 'INACTIVE' | 'ERROR';
-  crmProfile: CrmProfile;
+  name?: string;
+  organizationId: string;
+  userId: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
+  environment?: string;
   createdAt: string;
   updatedAt: string;
-  userId: string;
-  environment?: string;
 };
 
 export type ConnectPlatformResponse = {
