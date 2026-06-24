@@ -298,7 +298,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                       </div>
                       <div>
                         <div className='flex items-center gap-2'>
-                          <p className='font-medium text-gray-900'>{org.name}</p>
+                          <p className='font-medium text-gray-900'>{org.name ?? 'Backend Changes'}</p>
                           {org.environment && (
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
                               org.environment === 'production'
@@ -311,17 +311,16 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                             </span>
                           )}
                         </div>
-                        <p className='text-xs text-gray-500'>{org.crmProfile.name}</p>
-                        <p className='text-xs text-gray-500'>{org.crmProfile.email}</p>
-                        {org.crmProfile?.username && <p className='text-xs text-gray-500'>@{org.crmProfile.username}</p>}
+                        <p className='text-xs text-gray-500'>Org ID: {org.organizationId}</p>
+                        <p className='text-xs text-gray-500 capitalize'>{org.crmName}</p>
                       </div>
                     </div>
 
                     <div className='flex items-center gap-3'>
                       <div className='text-right'>
-                        <p className={`text-sm font-semibold ${org.isConnected ? getStatusColor(org.status) : 'text-gray-600'}`}>
-                          <span className='mr-1'>{org.isConnected ? getStatusIcon(org.status) : '○'}</span>
-                          {org.isConnected ? org.status.charAt(0) + org.status.slice(1).toLowerCase() : 'Disconnected'}
+                        <p className={`text-sm font-semibold ${getStatusColor(org.status as ConnectedPlatform['status'])}`}>
+                          <span className='mr-1'>{getStatusIcon(org.status as ConnectedPlatform['status'])}</span>
+                          {org.status.charAt(0) + org.status.slice(1).toLowerCase()}
                         </p>
                         <p className='text-xs text-gray-500'>Connected on {formatDate(org.createdAt)}</p>
                       </div>
@@ -351,12 +350,10 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                               Edit
                             </button>
 
-                            {org.isConnected ? (
+                            {org.status === 'ACTIVE' ? (
                               <button
                                 type='button'
-                                onClick={() => { 
-                                  setOpenMenuId(null); 
-                                  handleDisconnect(org.crmId); }}
+                                onClick={() => { setOpenMenuId(null); handleDisconnect(org.crmId); }}
                                 className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50'
                               >
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
@@ -368,7 +365,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                             ) : (
                               <button
                                 type='button'
-                                onClick={() => { setOpenMenuId(null); reconnectMutation.mutate({ crmId: org.crmId }); }}
+                                onClick={() => { setOpenMenuId(null); reconnectMutation.mutate({ crmId: org.crmId, environment: org.environment }); }}
                                 className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50'
                               >
                                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
