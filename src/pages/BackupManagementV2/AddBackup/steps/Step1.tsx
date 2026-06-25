@@ -6,7 +6,7 @@ import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
 type Step1Props = {
-  onNext: (platformId?: string) => void;
+  onNext: (platformId?: string, connectionName?: string) => void;
   strategy?: 'realtime' | 'scheduled';
   initialSelectedPlatformId?: string | null;
 };
@@ -213,7 +213,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           Cancel
         </button>
         <button
-          onClick={() => onNext(selectedConnection?.crmId)}
+          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.name ?? 'Backend Changes Needed')}
           disabled={!selectedConnection}
           className={`px-6 py-2 rounded-lg font-medium transition-colors ${
             selectedConnection

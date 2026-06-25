@@ -28,6 +28,8 @@ export default function AddBackup() {
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
   const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
+  const [selectedConnectionName, setSelectedConnectionName] = useState<string>('');
+  const [selectedDestinationName, setSelectedDestinationName] = useState<string>('');
   const [policyName, setPolicyName] = useState('');
   const [description, setDescription] = useState('');
   const environment = 'Production';
@@ -130,8 +132,9 @@ export default function AddBackup() {
         <Step1
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
-          onNext={(platformId) => {
+          onNext={(platformId, connectionName) => {
             if (platformId) setSelectedPlatformId(platformId);
+            if (connectionName) setSelectedConnectionName(connectionName);
             handleNextStep();
           }}
         />
@@ -144,6 +147,7 @@ export default function AddBackup() {
             if (destination?.destinationId) {
               setDestinationId(destination.destinationId);
             }
+            if (destination?.name) setSelectedDestinationName(destination.name);
             handleNextStep();
           }}
           onBack={handlePrevStep}
@@ -152,6 +156,8 @@ export default function AddBackup() {
       {currentStep === 3 && (
         <Step3
           strategy={selectedStrategy}
+          sourceName={selectedConnectionName}
+          destinationName={selectedDestinationName}
           policyName={policyName}
           description={description}
           onNext={(name, desc) => {
