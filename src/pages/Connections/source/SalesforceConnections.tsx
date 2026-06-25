@@ -329,17 +329,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
 
                         {openMenuId === org.crmId && (
                           <div className='absolute right-0 top-9 z-20 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg'>
-                            <button
-                              type='button'
-                              onClick={() => { setOpenMenuId(null); navigate(`/connections/salesforce/edit/${org.crmId}`); }}
-                              className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                            >
-                              <svg viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4 text-gray-500'>
-                                <path d='M11.586 2.686l.828-.828a2 2 0 012.828 0l2.828 2.828a2 2 0 010 2.828l-.828.828m-2.83-2.83l-2.5 2.5a2 2 0 00-.5 1.06V9h1.06a2 2 0 001.06-.5l2.5-2.5m0-2.83l2.83 2.83M3 7v10a2 2 0 002 2h10a2 2 0 002-2V7' strokeLinecap='round' strokeLinejoin='round' />
-                              </svg>
-                              Edit
-                            </button>
-
                             {org.status === 'ACTIVE' ? (
                               <button
                                 type='button'
