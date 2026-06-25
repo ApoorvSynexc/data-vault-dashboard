@@ -1,6 +1,10 @@
 import * as yup from 'yup';
 import { ValidationError } from 'yup';
-import type { AzureConfig, DestinationType, GoogleConfig, S3Config } from '../pages/BackupManagement/AddBackupModal/types';
+
+type DestinationType = 'S3' | 'Google' | 'Azure';
+type S3Config = { accessKeyId: string; secretAccessKey: string; bucketName: string; region: string };
+type GoogleConfig = { serviceAccountKey: string; bucketName: string; projectId: string };
+type AzureConfig = { accountName: string; accountKey: string; containerName: string };
 
 export type BackupFieldErrors = Partial<Record<string, string>>;
 

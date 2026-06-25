@@ -7,8 +7,8 @@ import type { ConnectedPlatform } from '../../../../services/platform/platform.s
 export const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
   {
     name: 'Salesforce', crmId: 'salesforce-1', crmName: 'Salesforce',
-    isConnected: true, status: 'ACTIVE' as const,
-    crmProfile: { organizationId: 'org-123', photoUrl: '', name: 'Salesforce Production', userId: 'user-123', email: 'admin@salesforce.com', instanceUrl: 'https://salesforce.com', username: 'admin' },
+    status: 'ACTIVE' as const,
+    organizationId: 'org-placeholder',
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), userId: 'user-123',
   },
 ];
@@ -35,7 +35,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
   const connections = selectedPlatform
-    ? allConnections.filter((c: any) => c.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() && c.isConnected && c.status === 'ACTIVE')
+    ? allConnections.filter((c: any) => c.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() && c.status === 'ACTIVE')
     : [];
 
   useEffect(() => { setSelectedConnection(null); }, [selectedPlatform?.crmId]);
@@ -99,9 +99,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
                             }`}>{connection.environment}</span>
                           )}
                         </div>
-                        <p className='text-xs text-gray-500 truncate'>Org ID: {connection.crmProfile?.organizationId}</p>
-                        {connection.crmProfile?.username && <p className='text-xs text-gray-500 truncate'>@{connection.crmProfile.username}</p>}
-                        <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
+                        <p className='text-xs text-gray-500 truncate'>Org ID: {connection.organizationId}</p>
                       </div>
                     </div>
                   </div>

@@ -79,8 +79,11 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const initializeState = () => {
     if (initialScheduleConfig?.scheduling) {
       const scheduling = initialScheduleConfig.scheduling;
+      const mappedFrequency = mapBackendFrequencyToFrontend(scheduling.frequency);
+      // If editing and the existing config is One Time, force to Daily so the user must pick a real schedule
+      const frequency = (hideOnce && mappedFrequency === 'One Time') ? null : mappedFrequency;
       return {
-        frequency: mapBackendFrequencyToFrontend(scheduling.frequency),
+        frequency: frequency as FrequencyType | null,
         runMode: (!scheduling.startDate && !scheduling.startTime) ? 'runNow' as const : 'scheduleRun' as const,
         selectedDays: mapBackendDaysToFrontend(scheduling.weekDays),
         selectedMonths: mapBackendMonthsToFrontend(scheduling.selectedMonths),
@@ -105,7 +108,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   };
 
   const initialState = initializeState();
-  const [frequency, setFrequency] = useState<FrequencyType>(initialState.frequency);
+  const [frequency, setFrequency] = useState<FrequencyType | null>(initialState.frequency);
   const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>(initialState.runMode);
   const [selectedDays, setSelectedDays] = useState<string[]>(initialState.selectedDays);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(initialState.selectedMonths);
@@ -188,6 +191,18 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             ))}
           </div>
         </div>
+
+        {/* Prompt when previous config was One Time */}
+        {frequency === null && (
+          <div className='flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4'>
+            <svg className='mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+            </svg>
+            <p className='text-sm text-amber-800'>
+              Your previous backup was set to <span className='font-semibold'>One Time</span>. Please select a recurring schedule from the options above to continue.
+            </p>
+          </div>
+        )}
 
         {/* Dynamic Content Based on Frequency */}
         {frequency === 'One Time' && (
@@ -580,7 +595,9 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             </button>
           )}
           <button
+            disabled={frequency === null}
             onClick={() => {
+              if (!frequency) return;
               // Validate required fields
               if (frequency !== 'One Time' && !startDate) {
                 alert('Please select a start date');
@@ -661,7 +678,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 onNext(scheduleConfig);
               }
             }}
-            className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700'
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${frequency === null ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
           >
             {onDone ? 'Save & Return →' : 'Next Step →'}
           </button>

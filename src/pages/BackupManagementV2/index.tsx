@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
-import type { PlatformType } from '../BackupManagement/AddBackupModal';
+import type { CrmPlatform as PlatformType } from '../../constants/platforms';
 import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';

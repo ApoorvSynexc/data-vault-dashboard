@@ -1,10 +1,25 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
-import type {
-  CreateBackupPayload,
-  DataScopeRow,
-  FieldDataType,
-  ObjectField,
-} from '../../pages/BackupManagement/AddBackupModal/types';
+
+export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id';
+
+export type ObjectField = {
+  name: string;
+  label: string;
+  dataType: FieldDataType;
+};
+
+export type DataScopeRow = {
+  id: string;
+  name: string;
+  type: string;
+  estimatedSize: string;
+  backupMode: 'both' | 'schedule' | 'realtime';
+  isCustom: boolean;
+  isBackedUp?: boolean;
+  schedule?: 'schedule' | 'realtime';
+};
+
+export type CreateBackupPayload = Record<string, unknown>;
 
 export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
