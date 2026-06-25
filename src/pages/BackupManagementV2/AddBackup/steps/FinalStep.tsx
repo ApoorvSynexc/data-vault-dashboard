@@ -39,6 +39,7 @@ type FinalStepProps = {
   destinationId?: string | null;
   editConfigId?: string | null;
   editConfigStatus?: string | null;
+  entireDatasetSelected?: boolean;
 };
 
 
@@ -56,6 +57,7 @@ export default function FinalStep({
   destinationId = null,
   editConfigId = null,
   editConfigStatus = null,
+  entireDatasetSelected = false,
 }: FinalStepProps) {
   const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
   const isNonDraftEdit = !!editConfigId && !isDraft;
@@ -125,6 +127,7 @@ export default function FinalStep({
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
       crmId, name: policyName, description, destinationId,
+      dataset: entireDatasetSelected ? 'ENTIRE' : 'PARTIAL',
       objectNames: objectIds,
       schedule: strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects: objectsToUse.map((obj) => {

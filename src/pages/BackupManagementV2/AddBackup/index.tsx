@@ -56,6 +56,10 @@ export default function AddBackup() {
     setEditConfigStatus(item.status ?? item.backupStatus ?? null);
     setSelectedPlatformId(item.crmId ?? null);
     setDestinationId(item.destinationId ?? null);
+    const datasetValue = item.dataset ?? item.datasetType ?? item.dataSet;
+    setEntireDatasetSelected(
+      datasetValue === 'ENTIRE' || datasetValue === 'entire' || datasetValue === true
+    );
     setPolicyName(item.name ?? '');
     setDescription(item.description ?? '');
     const strat: BackupStrategy = item.schedule === 'REALTIME' ? 'realtime' : 'scheduled';
@@ -226,6 +230,7 @@ export default function AddBackup() {
           destinationId={destinationId}
           editConfigId={editConfigId}
           editConfigStatus={editConfigStatus}
+          entireDatasetSelected={entireDatasetSelected}
         />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
@@ -245,6 +250,7 @@ export default function AddBackup() {
           destinationId={destinationId}
           editConfigId={editConfigId}
           editConfigStatus={editConfigStatus}
+          entireDatasetSelected={entireDatasetSelected}
         />
       )}
     </div>
