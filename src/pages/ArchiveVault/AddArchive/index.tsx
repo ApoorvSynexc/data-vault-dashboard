@@ -66,7 +66,7 @@ export default function AddArchive() {
       )}
       {currentStep === 2 && (
         <Step2
-          archiveSource={selectedConnection?.name ?? selectedConnection?.organizationId ?? 'Salesforce Production'}
+          archiveSource={selectedConnection?.name ?? 'Backend Changes Needed'}
           destination={selectedDestConnection?.name || 'AWS S3'}
           initialPolicyName={policyName}
           initialDescription={description}
