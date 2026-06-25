@@ -122,6 +122,7 @@ export default function ConnectAWSBucket() {
                   value={connectName}
                   onChange={(e) => setConnectName(e.target.value)}
                   placeholder='Enter any name to recognize your destination point'
+                  autoComplete='off'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                 />
               </div>
@@ -136,6 +137,7 @@ export default function ConnectAWSBucket() {
                   value={secretAccessKey}
                   onChange={(e) => setSecretAccessKey(e.target.value)}
                   placeholder='Enter your AWS access Key'
+                  autoComplete='new-password'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                 />
               </div>
@@ -167,6 +169,7 @@ export default function ConnectAWSBucket() {
                   value={accessKeyId}
                   onChange={(e) => setAccessKeyId(e.target.value)}
                   placeholder='Enter your AWS access Key'
+                  autoComplete='off'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                 />
               </div>
