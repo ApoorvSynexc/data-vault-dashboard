@@ -19,6 +19,7 @@ export default function SocialLoginCallback() {
     queryKey: ['socialLoginCallback', authProvider, code, state],
     queryFn: () => authService.handleSocialLoginCallback(authProvider, code, state),
     enabled: hasRequiredParams,
+    retry: false,
   });
 
   useEffect(() => {
