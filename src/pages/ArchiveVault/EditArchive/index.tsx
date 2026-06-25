@@ -183,7 +183,7 @@ export default function EditArchive() {
     <div className='flex-1 min-h-0 flex flex-col'>
       {currentStep === 2 && (
         <Step2
-          archiveSource={selectedConnection?.name ?? selectedConnection?.organizationId ?? 'Salesforce Production'}
+          archiveSource={selectedConnection?.name ?? 'Backend Changes Needed'}
           destination={selectedDestConnection?.name || 'AWS S3'}
           initialPolicyName={policyName}
           initialDescription={description}

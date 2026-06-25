@@ -90,7 +90,7 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
                       </div>
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2'>
-                          <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>{connection.name}</p>
+                          <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>{connection.name ?? 'Backend Changes Needed'}</p>
                           {connection.environment && (
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
                               connection.environment === 'production' ? 'bg-green-50 text-green-700'
