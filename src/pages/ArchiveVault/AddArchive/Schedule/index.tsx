@@ -214,7 +214,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                   : `${scheduledObjects.length} of ${selectedObjects.length} object${selectedObjects.length > 1 ? 's' : ''} already have a schedule assigned`}
               </span>
             </div>
-            <div className='flex flex-col gap-2'>
+            <div className='flex flex-col gap-2 overflow-y-auto' style={{ maxHeight: '200px' }}>
               {scheduledObjects.map((obj) => {
                 const s = obj.scheduleConfig!;
                 const freqLabel = freqBackMap[s.scheduling.frequency] ?? s.scheduling.frequency;
@@ -253,7 +253,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
               </div>
             )}
 
-            <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-1 min-h-0'
+            <div className='bg-white rounded-xl p-6 flex flex-col gap-6 flex-shrink-0'
               style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
               {/* Frequency tabs */}
@@ -266,7 +266,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                 ))}
               </div>
 
-              <div className='flex-1 min-h-0 overflow-y-auto'>
+              <div>
 
                 {/* One Time */}
                 {frequency === 'One Time' && (
