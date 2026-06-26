@@ -885,7 +885,7 @@ export default function ArchiveDetailScreen() {
                           </td>
                         </tr>
                       );
-                    })();
+                    });
                     })()}
                   </tbody>
                 </table>
