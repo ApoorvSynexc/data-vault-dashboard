@@ -17,7 +17,7 @@ import type { ConnectedPlatform } from '../../../services/platform/platform.serv
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SelectedArchiveObject } from './SelectObjects';
 import type { ArchiveScheduleConfig } from './Schedule';
-import type { DryRunSummary } from './DryRun';
+import type { DryRunSummary, DryRunCache } from './DryRun';
 import Step1 from './SourceDestination';
 import Step2 from './DefineArchive';
 import Step3 from './SelectObjects';
@@ -47,6 +47,8 @@ export default function AddArchive() {
 
   // Step 5 — dry run summary (null when user skips dry run)
   const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
+  // Cached dry run results so Back → DryRun restores the previous run
+  const [dryRunCache, setDryRunCache] = useState<DryRunCache | null>(null);
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 6) as Step);
   const goBack = () => setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -110,7 +112,12 @@ export default function AddArchive() {
           crmId={selectedConnection?.crmId ?? null}
           selectedObjects={selectedObjects}
           archivalPayload={archivalPayload}
-          onNext={(summary) => { if (summary) setDryRunSummary(summary); goNext(); }}
+          initialCache={dryRunCache}
+          onNext={(summary, cache) => {
+            if (summary) setDryRunSummary(summary);
+            if (cache) setDryRunCache(cache);
+            goNext();
+          }}
           onBack={goBack}
         />
       )}

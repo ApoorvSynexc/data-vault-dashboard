@@ -463,25 +463,33 @@ type DryRunState = 'idle' | 'loading' | 'results';
 
 export type DryRunSummary = { totalRecords: number; totalDataSize: string };
 
+export type DryRunCache = {
+  objectCountMap: Record<string, number>;
+  failedObjects: { name: string; error: string }[];
+  runTime: string;
+  duration: string;
+};
+
 interface Step3DryRunProps {
   crmId?: string | null;
   selectedObjects: SelectedArchiveObject[];
   archivalPayload?: Record<string, unknown> | null;
-  onNext: (summary?: DryRunSummary) => void;
+  initialCache?: DryRunCache | null;
+  onNext: (summary?: DryRunSummary, cache?: DryRunCache) => void;
   onBack: () => void;
 }
 
-export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, onNext, onBack }: Step3DryRunProps) {
+export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, initialCache, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
   const navigate = useNavigate();
-  const [dryRunState, setDryRunState] = useState<DryRunState>('idle');
+  const [dryRunState, setDryRunState] = useState<DryRunState>(initialCache ? 'results' : 'idle');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>({});
-  const [failedObjects, setFailedObjects] = useState<{ name: string; error: string }[]>([]);
+  const [objectCountMap, setObjectCountMap] = useState<Record<string, number>>(initialCache?.objectCountMap ?? {});
+  const [failedObjects, setFailedObjects] = useState<{ name: string; error: string }[]>(initialCache?.failedObjects ?? []);
   const [dryRunError, setDryRunError] = useState<string | null>(null);
-  const [runTime, setRunTime] = useState<string>('');
-  const [duration, setDuration] = useState<string>('');
+  const [runTime, setRunTime] = useState<string>(initialCache?.runTime ?? '');
+  const [duration, setDuration] = useState<string>(initialCache?.duration ?? '');
   const [impactPage, setImpactPage] = useState(0);
   const PAGE_SIZE = 5;
 
@@ -910,7 +918,10 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, o
               {isSavingDraft ? 'Saving…' : 'Save as Draft'}
             </button>
             <button
-              onClick={() => onNext(dryRunState === 'results' ? { totalRecords, totalDataSize } : undefined)}
+              onClick={() => onNext(
+                dryRunState === 'results' ? { totalRecords, totalDataSize } : undefined,
+                dryRunState === 'results' ? { objectCountMap, failedObjects, runTime, duration } : undefined,
+              )}
               className='px-5 py-2 rounded-lg font-medium transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700'>
               {dryRunState === 'results' ? 'Review & Confirm →' : 'Skip & Next →'}
             </button>
