@@ -912,7 +912,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                 ↺ Re-run
               </button>
             )}
-            <PermissionGate permission='archival.write'>
+            <PermissionGate permission={['archival.write', 'archival.execute']}>
               <button
                 onClick={handleSaveDraft}
                 disabled={isSavingDraft || !archivalPayload}
