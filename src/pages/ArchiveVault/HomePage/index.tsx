@@ -644,6 +644,35 @@ export default function ArchiveVaultHomePage() {
             },
           ];
 
+          if (!isLoading && filtered.length === 0) {
+            return (
+              <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
+                <div className='flex items-center justify-center rounded-full mb-4' style={{ width: 56, height: 56, background: 'rgba(21, 93, 252, 0.07)' }}>
+                  <svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
+                  </svg>
+                </div>
+                <p className='text-sm font-semibold text-gray-700 mb-1'>No archives found</p>
+                <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>
+                  {search || statusFilter !== 'All'
+                    ? 'No archives match the current filters. Try clearing them.'
+                    : permissions.includes('archival.write')
+                      ? 'No archive configurations exist yet. Create one to get started.'
+                      : 'No archive configurations exist yet.'}
+                </p>
+                {(search || statusFilter !== 'All') && (
+                  <button
+                    type='button'
+                    onClick={() => { setSearch(''); setStatusFilter('All'); }}
+                    className='mt-4 text-xs font-medium text-blue-600 hover:underline'
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            );
+          }
+
           return (
             <Table<EnrichedPolicy>
               columns={columns}
@@ -654,32 +683,6 @@ export default function ArchiveVaultHomePage() {
               headerVariant='uppercase'
               rowClassName='hover:bg-gray-50/60 transition-colors'
               cellPaddingClassName='px-5 py-3.5'
-              emptyState={
-                <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
-                  <div className='flex items-center justify-center rounded-full mb-4' style={{ width: 56, height: 56, background: 'rgba(21, 93, 252, 0.07)' }}>
-                    <svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
-                    </svg>
-                  </div>
-                  <p className='text-sm font-semibold text-gray-700 mb-1'>No archives found</p>
-                  <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>
-                    {search || statusFilter !== 'All'
-                      ? 'No archives match the current filters. Try clearing them.'
-                      : permissions.includes('archival.write')
-                        ? 'No archive configurations exist yet. Create one to get started.'
-                        : 'No archive configurations exist yet.'}
-                  </p>
-                  {(search || statusFilter !== 'All') && (
-                    <button
-                      type='button'
-                      onClick={() => { setSearch(''); setStatusFilter('All'); }}
-                      className='mt-4 text-xs font-medium text-blue-600 hover:underline'
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-              }
               pagination={{
                 currentPage,
                 pageSize: ITEMS_PER_PAGE,
