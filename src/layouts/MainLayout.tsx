@@ -36,7 +36,7 @@ const Icons = {
 // A tab is shown if the user has ANY permission starting with that prefix (e.g. "backup.read").
 // Tabs with no `permission` key are always visible (e.g. Dashboard).
 const mainNav: { to: string; label: string; Icon: () => React.ReactElement; permission?: string }[] = [
-  { to: '/',                   label: 'Dashboard',           Icon: Icons.dashboard,  permission: 'dashboard'    },
+  { to: '/dashboard',          label: 'Dashboard',           Icon: Icons.dashboard,  permission: 'dashboard'    },
   { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup,     permission: 'backup'       },
   { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore,    permission: 'restore'      },
   { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permission: 'archival'     },

@@ -754,7 +754,15 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (!backupQuery.isLoading && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  if (backupQuery.isLoading) {
+    return (
+      <div className='flex flex-1 items-center justify-center'>
+        <div className='h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
+      </div>
+    );
+  }
+
+  if (apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
     return <BackupManagementWelcome />;
   }
 
