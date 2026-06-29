@@ -765,7 +765,7 @@ export default function BackupManagementV2() {
     );
   }
 
-  if (apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  if (apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search && permissions.includes('backup.write')) {
     return <BackupManagementWelcome />;
   }
 
