@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
@@ -32,21 +32,25 @@ const Icons = {
 };
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
-const mainNav = [
-  { to: '/',                   label: 'Dashboard',           Icon: Icons.dashboard  },
-  { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup     },
-  { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore    },
-  { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive    },
-  { to: '/connections',        label: 'Connections',         Icon: Icons.connectors },
-  { to: '/storage',            label: 'Storage',             Icon: Icons.storage    },
-  { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity   },
-  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports    },
-  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports    },
-  { to: '/settings',           label: 'Settings',            Icon: Icons.settings   },
+// `permission` is the prefix checked against the user's permissions array.
+// A tab is shown if the user has ANY permission starting with that prefix (e.g. "backup.read").
+// Tabs with no `permission` key are always visible (e.g. Dashboard).
+const mainNav: { to: string; label: string; Icon: () => React.ReactElement; permission?: string }[] = [
+  { to: '/',                   label: 'Dashboard',           Icon: Icons.dashboard,  permission: 'dashboard'    },
+  { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup,     permission: 'backup'       },
+  { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore,    permission: 'restore'      },
+  { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permission: 'archival'     },
+  { to: '/connections',        label: 'Connections',         Icon: Icons.connectors, permission: 'connection'   },
+  { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permission: 'storage'      },
+  { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permission: 'activitylogs' },
+  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permission: 'activitylogs' },
+  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permission: 'report'       },
+  { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permission: 'settings'     },
 ];
 
 export default function MainLayout() {
-  const { logout } = useAuth();
+  const { logout, hasPermission } = useAuth();
+  const visibleNav = mainNav.filter(({ permission }) => !permission || hasPermission(permission));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -116,7 +120,7 @@ export default function MainLayout() {
 
         {/* Nav */}
         <nav className='flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto'>
-          {mainNav.map(({ to, label, Icon }) => (
+          {visibleNav.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
