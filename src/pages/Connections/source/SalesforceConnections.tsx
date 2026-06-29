@@ -23,10 +23,8 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
   const queryClient = useQueryClient();
   const platformService = usePlatformService();
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -55,18 +53,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (crmId: string) => platformService.deletePlatform(crmId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['platforms'] });
-      setDeleteDialogOpen(false);
-      setSelectedOrgId(null);
-      setDeleteError(null);
-    },
-    onError: (err: any) => {
-      setDeleteError(err?.message || 'Failed to delete. Please try again.');
-    },
-  });
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -354,18 +340,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                               </button>
                             )}
 
-                            <div className='my-1 border-t border-gray-100' />
-
-                            <button
-                              type='button'
-                              onClick={() => { setOpenMenuId(null); setSelectedOrgId(org.crmId); setDeleteDialogOpen(true); setDeleteError(null); }}
-                              className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50'
-                            >
-                              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                                <polyline points='3 6 5 6 21 6' /><path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6' /><path d='M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2' strokeLinecap='round' />
-                              </svg>
-                              Delete
-                            </button>
                           </div>
                         )}
                       </div>
@@ -395,21 +369,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
         }}
       />
 
-      <WarningDialog
-        isOpen={deleteDialogOpen}
-        title='Delete Salesforce Connection?'
-        message='This will permanently delete the CRM connection. Make sure to remove all backup configurations linked to this org first.'
-        confirmLabel='Delete'
-        cancelLabel='Cancel'
-        isLoading={deleteMutation.isPending}
-        error={deleteError}
-        onConfirm={() => { if (selectedOrgId) deleteMutation.mutate(selectedOrgId); }}
-        onCancel={() => {
-          setDeleteDialogOpen(false);
-          setSelectedOrgId(null);
-          setDeleteError(null);
-        }}
-      />
     </div>
   );
 }
