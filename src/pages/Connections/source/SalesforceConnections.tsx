@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
@@ -25,20 +25,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!openMenuId) return;
-      const openMenuEl = menuRefs.current.get(openMenuId);
-      if (openMenuEl && !openMenuEl.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [openMenuId]);
 
   const disconnectMutation = useMutation({
     mutationFn: (crmId: string) => platformService.disconnectPlatform(crmId),
@@ -301,48 +287,31 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                         <p className='text-xs text-gray-500'>Connected on {formatDate(org.createdAt)}</p>
                       </div>
 
-                      {/* Three-dot menu */}
-                      <div className='relative' ref={(el) => { if (el) menuRefs.current.set(org.crmId, el); else menuRefs.current.delete(org.crmId); }}>
+                      {/* Inline action button */}
+                      {org.status === 'ACTIVE' ? (
                         <button
                           type='button'
-                          onClick={() => setOpenMenuId(openMenuId === org.crmId ? null : org.crmId)}
-                          className='flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-100'
+                          onClick={() => handleDisconnect(org.crmId)}
+                          className='flex items-center gap-1.5 rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600 transition hover:bg-orange-50'
                         >
-                          <svg viewBox='0 0 24 24' fill='currentColor' className='h-4 w-4'>
-                            <circle cx='12' cy='5' r='1.5' /><circle cx='12' cy='12' r='1.5' /><circle cx='12' cy='19' r='1.5' />
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                            <path d='M18.36 6.64A9 9 0 0 1 20 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 1.64-5.36' strokeLinecap='round' />
+                            <path d='M12 2v10' strokeLinecap='round' />
                           </svg>
+                          Disconnect
                         </button>
-
-                        {openMenuId === org.crmId && (
-                          <div className='absolute right-0 top-9 z-20 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg'>
-                            {org.status === 'ACTIVE' ? (
-                              <button
-                                type='button'
-                                onClick={() => { setOpenMenuId(null); handleDisconnect(org.crmId); }}
-                                className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50'
-                              >
-                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                                  <path d='M18.36 6.64A9 9 0 0 1 20 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 1.64-5.36' strokeLinecap='round' />
-                                  <path d='M12 2v10' strokeLinecap='round' />
-                                </svg>
-                                Disconnect
-                              </button>
-                            ) : (
-                              <button
-                                type='button'
-                                onClick={() => { setOpenMenuId(null); reconnectMutation.mutate({ crmId: org.crmId, environment: org.environment }); }}
-                                className='flex w-full items-center gap-2.5 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50'
-                              >
-                                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                                  <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' strokeLinecap='round' strokeLinejoin='round' />
-                                </svg>
-                                Reconnect
-                              </button>
-                            )}
-
-                          </div>
-                        )}
-                      </div>
+                      ) : (
+                        <button
+                          type='button'
+                          onClick={() => reconnectMutation.mutate({ crmId: org.crmId, environment: org.environment })}
+                          className='flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-50'
+                        >
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                            <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' strokeLinecap='round' strokeLinejoin='round' />
+                          </svg>
+                          Reconnect
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
