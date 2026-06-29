@@ -8,6 +8,7 @@ import Typography from '../../components/Typography';
 import WarningDialog from '../../components/WarningDialog';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes, formatDateTime } from '../../utils';
+import PermissionGate from '../../components/PermissionGate';
 import BackupManagementWelcome from './Welcome';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
@@ -778,13 +779,15 @@ export default function BackupManagementV2() {
             Track schedules, performance, and intervention points across every protected workload.
           </Typography>
         </div>
-        <button
-          type='button'
-          onClick={() => navigate('/backup-management/add')}
-          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
-        >
-          + New Backup
-        </button>
+        <PermissionGate permission='backup.write'>
+          <button
+            type='button'
+            onClick={() => navigate('/backup-management/add')}
+            className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
+          >
+            + New Backup
+          </button>
+        </PermissionGate>
       </div>
 
       <JobsStatusSection service={backupConfigService} />
@@ -863,6 +866,30 @@ export default function BackupManagementV2() {
           <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
         ) : backupQuery.isError ? (
           <div className='p-8 text-center text-red-500'>Failed to load backup configs.</div>
+        ) : filteredBackups.length === 0 ? (
+          <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
+            <div className='flex items-center justify-center rounded-full mb-4' style={{ width: 56, height: 56, background: 'rgba(21, 93, 252, 0.07)' }}>
+              <svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='16 16 12 12 8 16' /><line x1='12' y1='12' x2='12' y2='21' />
+                <path d='M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3' />
+              </svg>
+            </div>
+            <p className='text-sm font-semibold text-gray-700 mb-1'>No backups found</p>
+            <p className='text-xs text-gray-400 mb-5 max-w-xs leading-relaxed'>
+              {filters.status !== 'All' || filters.backupType !== 'All' || filters.search
+                ? 'No backups match the current filters. Try clearing them.'
+                : 'No backup configurations exist yet. Create one to get started.'}
+            </p>
+            {(filters.status !== 'All' || filters.backupType !== 'All' || filters.search) && (
+              <button
+                type='button'
+                onClick={() => setFilters({ backupType: 'All', status: 'All', search: '' })}
+                className='text-xs font-medium text-blue-600 hover:underline'
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         ) : (
           <Table
             columns={backupColumns}
