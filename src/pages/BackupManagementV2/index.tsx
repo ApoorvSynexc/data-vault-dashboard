@@ -737,8 +737,8 @@ export default function BackupManagementV2() {
                   setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
                 },
               }] : []),
-              ...(row.configStatus !== 'DRAFT' ? [{ label: 'Run Now' }] : []),
-              ...(row.configStatus !== 'DRAFT' ? [{
+              ...(row.configStatus !== 'DRAFT' && permissions.includes('backup.execute') ? [{ label: 'Run Now' }] : []),
+              ...(row.configStatus !== 'DRAFT' && permissions.includes('backup.write') ? [{
                 label: row.configStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
                   if (row.configStatus === 'PAUSED') {
@@ -748,8 +748,8 @@ export default function BackupManagementV2() {
                   }
                 },
               }] : []),
-              { label: 'Edit Policy', onClick: () => navigate(`/backup-management/add?edit=${row.slug}`) },
-              { label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) },
+              ...(permissions.includes('backup.write') ? [{ label: 'Edit Policy', onClick: () => navigate(`/backup-management/add?edit=${row.slug}`) }] : []),
+              ...(permissions.includes('backup.delete') ? [{ label: 'Delete', danger: true, onClick: () => setDeleteTarget({ id: row.id, name: row.name }) }] : []),
             ]}
           />
         </div>
