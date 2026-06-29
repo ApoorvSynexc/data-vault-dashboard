@@ -292,24 +292,24 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                         <button
                           type='button'
                           onClick={() => handleDisconnect(org.crmId)}
-                          className='flex items-center gap-1.5 rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-medium text-orange-600 transition hover:bg-orange-50'
+                          title='Disconnect'
+                          className='rounded-lg p-2 text-orange-500 border border-orange-200 transition hover:bg-orange-50 hover:text-orange-600'
                         >
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
                             <path d='M18.36 6.64A9 9 0 0 1 20 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 1.64-5.36' strokeLinecap='round' />
                             <path d='M12 2v10' strokeLinecap='round' />
                           </svg>
-                          Disconnect
                         </button>
                       ) : (
                         <button
                           type='button'
                           onClick={() => reconnectMutation.mutate({ crmId: org.crmId, environment: org.environment })}
-                          className='flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-50'
+                          title='Reconnect'
+                          className='rounded-lg p-2 text-blue-500 border border-blue-200 transition hover:bg-blue-50 hover:text-blue-600'
                         >
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-3.5 w-3.5'>
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
                             <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' strokeLinecap='round' strokeLinejoin='round' />
                           </svg>
-                          Reconnect
                         </button>
                       )}
                     </div>
