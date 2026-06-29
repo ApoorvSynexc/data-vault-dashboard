@@ -22,7 +22,9 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
+import { useAuth } from '../../../context/AuthContext';
 import Typography from '../../../components/Typography';
+import PermissionGate from '../../../components/PermissionGate';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { formatBytes } from '../../../utils';
@@ -335,6 +337,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function ArchiveVaultHomePage() {
   const navigate = useNavigate();
+  const { permissions } = useAuth();
   const archivalService = useArchivalService();
   const platformService = usePlatformService();
   const queryClient = useQueryClient();
@@ -463,10 +466,12 @@ export default function ArchiveVaultHomePage() {
             Track schedules, status, and archived records across every connected platform.
           </Typography>
         </div>
-        <button type='button' onClick={() => navigate('/archive-vault/new')}
-          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'>
-          + New Archive
-        </button>
+        <PermissionGate permission='archival.write'>
+          <button type='button' onClick={() => navigate('/archive-vault/new')}
+            className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'>
+            + New Archive
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Stats Section */}
@@ -649,7 +654,11 @@ export default function ArchiveVaultHomePage() {
               headerVariant='uppercase'
               rowClassName='hover:bg-gray-50/60 transition-colors'
               cellPaddingClassName='px-5 py-3.5'
-              emptyState='No archive policies match your filters.'
+              emptyState={
+                permissions.includes('archival.write')
+                  ? 'No archive policies found. Create one to get started.'
+                  : 'No archive policies found. Contact a user with archive creation permissions to get started.'
+              }
               pagination={{
                 currentPage,
                 pageSize: ITEMS_PER_PAGE,

@@ -1,18 +1,18 @@
 // Archive Vault entry point.
 // Fetches the list of archival configs to decide which screen to show:
-//   - No configs exist → Welcome/onboarding screen
-//   - Configs exist    → HomePage (list view with actions)
-// Uses a 30-second stale time so the list stays reasonably fresh without
-// hammering the API on every navigation.
+//   - No configs + has archival.write  → Welcome/onboarding screen
+//   - No configs + no archival.write   → HomePage with inline empty state
+//   - Configs exist                    → HomePage (list view with actions)
 import { useQuery } from '@tanstack/react-query';
 import { useArchivalService } from '../../services/archival/archival.service';
+import { useAuth } from '../../context/AuthContext';
 import ArchiveVaultHomePage from './HomePage';
 import ArchiveVaultWelcome from './Welcome';
 
 export default function ArchiveVault() {
   const archivalService = useArchivalService();
+  const { permissions } = useAuth();
 
-  // GET /v1/archival-config/list — determines whether to show onboarding or list
   const { data, isLoading } = useQuery({
     queryKey: ['archival-config-list'],
     queryFn: () => archivalService.getList(),
@@ -30,10 +30,9 @@ export default function ArchiveVault() {
     );
   }
 
-  // Normalise the response — API may return the array directly or wrapped in .data/.results
   const list: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? (data as any)?.results ?? []);
 
-  if (list.length === 0) return <ArchiveVaultWelcome />;
+  if (list.length === 0 && permissions.includes('archival.write')) return <ArchiveVaultWelcome />;
 
   return <ArchiveVaultHomePage />;
 }
