@@ -625,18 +625,18 @@ export default function ArchiveVaultHomePage() {
                   </button>
                   <ActionDropdown
                     items={[
-                      ...(policy.displayStatus === 'DRAFT' ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
-                      {
+                      ...(policy.displayStatus === 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.write') ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
+                      ...(permissions.includes('archival.write') ? [{
                         label: 'Edit Policy',
                         disabled: policy.scheduleConfig?.scheduling?.frequency === 'ONCE',
                         title: policy.scheduleConfig?.scheduling?.frequency === 'ONCE' ? 'One-time archives cannot be edited' : undefined,
                         onClick: policy.scheduleConfig?.scheduling?.frequency === 'ONCE'
                           ? undefined
                           : () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`),
-                      },
-                      { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
+                      }] : []),
+                      ...(permissions.includes('archival.delete') ? [{ label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) }] : []),
                     ]}
                   />
                 </div>
