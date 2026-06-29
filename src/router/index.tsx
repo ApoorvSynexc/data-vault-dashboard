@@ -1,4 +1,5 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard';
 import Profile from '../pages/Profile';
@@ -31,6 +32,27 @@ import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
 import RestoreCenter from '../pages/RestoreCenter';
 
+// Ordered list of tabs and the permission prefix required to access them.
+// The first entry the user has permission for becomes the landing page.
+const NAV_PERMISSION_ORDER = [
+  { to: '/dashboard',         permission: 'dashboard'    },
+  { to: '/backup-management', permission: 'backup'       },
+  { to: '/restore-center',    permission: 'restore'      },
+  { to: '/archive-vault',     permission: 'archival'     },
+  { to: '/connections',       permission: 'connection'   },
+  { to: '/storage',           permission: 'storage'      },
+  { to: '/activity-logs',     permission: 'activitylogs' },
+  { to: '/reports',           permission: 'report'       },
+  { to: '/settings',          permission: 'settings'     },
+];
+
+function DefaultRedirect() {
+  const { hasPermission } = useAuth();
+  const first = NAV_PERMISSION_ORDER.find(({ permission }) => hasPermission(permission));
+  // If no permissions match at all, fall back to dashboard (server will decide what to show)
+  return <Navigate to={first?.to ?? '/'} replace />;
+}
+
 const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
@@ -40,7 +62,8 @@ const router = createBrowserRouter([
         path: '/',
         element: <MainLayout />,
         children: [
-          { index: true, element: <Dashboard /> },
+          { index: true, element: <DefaultRedirect /> },
+          { path: '/dashboard', element: <Dashboard /> },
           { path: '/profile', element: <Profile /> },
           { path: '/change-password', element: <ChangePassword /> },
           { path: '/backup-management', element: <BackupManagementV2 /> },
