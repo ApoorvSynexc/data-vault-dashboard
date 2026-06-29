@@ -327,7 +327,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             </button>
           ) : (
             <>
-              <PermissionGate permission='backup.write'>
+              <PermissionGate permission={['backup.write', 'backup.execute']}>
                 <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
                   {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
                 </button>

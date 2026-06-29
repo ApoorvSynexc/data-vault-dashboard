@@ -330,7 +330,7 @@ const [confirmError, setConfirmError] = useState(false);
             ←Back
           </button>
           {!editMode && (
-            <PermissionGate permission='archival.write'>
+            <PermissionGate permission={['archival.write', 'archival.execute']}>
               <button onClick={handleSaveDraft} disabled={isLoading}
                 className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
                 style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
