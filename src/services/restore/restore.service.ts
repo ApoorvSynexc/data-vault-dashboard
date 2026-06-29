@@ -1,7 +1,7 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 const RESTORE_ENDPOINTS = {
-  snapshotLogs: '/v1/restore-retrieve/snapshot-logs',
+  snapshotLogs: '/v1/restore/snapshot-logs',
 };
 
 export type SnapshotType = 'BACKUP' | 'ARCHIVAL' | 'UNIFIED';
