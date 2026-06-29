@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 
-const TEMPLATES = [
-  { id: 1, title: 'Full org backup — all 200 objects',       subtitle: 'Daily schedule · ~5 min setup' },
-  { id: 2, title: 'Contacts & Accounts only',                subtitle: 'Lightweight backup · ~ 3 min setup' },
-  { id: 3, title: 'Real-time sync for Leads',                subtitle: 'Continuous backup as records change' },
-  { id: 4, title: 'Custom — start from scratch',             subtitle: 'Pick your own objects and schedule' },
-];
+// const TEMPLATES = [
+//   { id: 1, title: 'Full org backup — all 200 objects',       subtitle: 'Daily schedule · ~5 min setup' },
+//   { id: 2, title: 'Contacts & Accounts only',                subtitle: 'Lightweight backup · ~ 3 min setup' },
+//   { id: 3, title: 'Real-time sync for Leads',                subtitle: 'Continuous backup as records change' },
+//   { id: 4, title: 'Custom — start from scratch',             subtitle: 'Pick your own objects and schedule' },
+// ];
 
 const STEPS = [
   { number: '1', label: 'Connect',  description: 'Pick your Salesforce org and destination storage' },
@@ -68,7 +68,7 @@ export default function BackupManagementWelcome() {
           ))}
         </div>
 
-        {/* ── Templates ── */}
+        {/* ── Templates (commented out) ──
         <div className='flex flex-col items-center w-full flex-shrink-0'>
           <p className='tracking-widest uppercase mb-2' style={{ color: '#64748B', fontSize: 'clamp(10px, 0.9vw, 13px)' }}>
             START WITH A TEMPLATE
@@ -91,6 +91,7 @@ export default function BackupManagementWelcome() {
             ))}
           </div>
         </div>
+        ── */}
 
         {/* ── CTA button ── */}
         <button
