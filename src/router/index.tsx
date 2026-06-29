@@ -1,3 +1,4 @@
+import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
@@ -49,8 +50,15 @@ const NAV_PERMISSION_ORDER = [
 function DefaultRedirect() {
   const { hasPermission } = useAuth();
   const first = NAV_PERMISSION_ORDER.find(({ permission }) => hasPermission(permission));
-  // If no permissions match at all, fall back to dashboard (server will decide what to show)
-  return <Navigate to={first?.to ?? '/'} replace />;
+  return <Navigate to={first?.to ?? '/dashboard'} replace />;
+}
+
+// Wraps a route element — redirects to the user's first allowed tab if they
+// lack the required permission, instead of showing a forbidden page.
+function PermissionRoute({ permission, children }: { permission: string; children: React.ReactElement }) {
+  const { hasPermission } = useAuth();
+  if (!hasPermission(permission)) return <DefaultRedirect />;
+  return children;
 }
 
 const router = createBrowserRouter([
@@ -63,28 +71,28 @@ const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <DefaultRedirect /> },
-          { path: '/dashboard', element: <Dashboard /> },
-          { path: '/profile', element: <Profile /> },
-          { path: '/change-password', element: <ChangePassword /> },
-          { path: '/backup-management', element: <BackupManagementV2 /> },
-          { path: '/backup-management/add', element: <AddBackup /> },
-          { path: '/backup-management-v2/details/:slug', element: <BackupDetails /> },
-          { path: '/connections', element: <Connectors /> },
-          { path: '/connections/salesforce', element: <SalesforceConnections /> },
-          { path: '/connections/aws', element: <AWSConnections /> },
-          { path: '/connections/aws/connect', element: <ConnectAWSBucket /> },
-          { path: '/connections/aws/edit/:destinationId', element: <EditAWSBucket /> },
-          { path: '/archive-vault', element: <ArchiveVault /> },
-          { path: '/archive-vault/new', element: <AddArchive /> },
-          { path: '/archive-vault/edit/:slug', element: <EditArchive /> },
-          { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
-          { path: '/storage', element: <Storage /> },
-          { path: '/notifications', element: <Notifications /> },
-          { path: '/restore-center', element: <RestoreCenter /> },
-          { path: '/activity-logs', element: <ActivityLogs /> },
-          { path: '/audit-logs', element: <AuditLogs /> },
-          { path: '/reports', element: <Reports /> },
-          { path: '/settings', element: <Settings /> },
+          { path: '/dashboard',                          element: <PermissionRoute permission='dashboard'><Dashboard /></PermissionRoute> },
+          { path: '/profile',                            element: <Profile /> },
+          { path: '/change-password',                    element: <ChangePassword /> },
+          { path: '/backup-management',                  element: <PermissionRoute permission='backup'><BackupManagementV2 /></PermissionRoute> },
+          { path: '/backup-management/add',              element: <PermissionRoute permission='backup'><AddBackup /></PermissionRoute> },
+          { path: '/backup-management-v2/details/:slug', element: <PermissionRoute permission='backup'><BackupDetails /></PermissionRoute> },
+          { path: '/connections',                        element: <PermissionRoute permission='connection'><Connectors /></PermissionRoute> },
+          { path: '/connections/salesforce',             element: <PermissionRoute permission='connection'><SalesforceConnections /></PermissionRoute> },
+          { path: '/connections/aws',                    element: <PermissionRoute permission='connection'><AWSConnections /></PermissionRoute> },
+          { path: '/connections/aws/connect',            element: <PermissionRoute permission='connection'><ConnectAWSBucket /></PermissionRoute> },
+          { path: '/connections/aws/edit/:destinationId',element: <PermissionRoute permission='connection'><EditAWSBucket /></PermissionRoute> },
+          { path: '/archive-vault',                      element: <PermissionRoute permission='archival'><ArchiveVault /></PermissionRoute> },
+          { path: '/archive-vault/new',                  element: <PermissionRoute permission='archival'><AddArchive /></PermissionRoute> },
+          { path: '/archive-vault/edit/:slug',           element: <PermissionRoute permission='archival'><EditArchive /></PermissionRoute> },
+          { path: '/archive-vault/:slug',                element: <PermissionRoute permission='archival'><ArchiveDetailScreen /></PermissionRoute> },
+          { path: '/storage',                            element: <PermissionRoute permission='storage'><Storage /></PermissionRoute> },
+          { path: '/notifications',                      element: <Notifications /> },
+          { path: '/restore-center',                     element: <PermissionRoute permission='restore'><RestoreCenter /></PermissionRoute> },
+          { path: '/activity-logs',                      element: <PermissionRoute permission='activitylogs'><ActivityLogs /></PermissionRoute> },
+          { path: '/audit-logs',                         element: <PermissionRoute permission='activitylogs'><AuditLogs /></PermissionRoute> },
+          { path: '/reports',                            element: <PermissionRoute permission='report'><Reports /></PermissionRoute> },
+          { path: '/settings',                           element: <PermissionRoute permission='settings'><Settings /></PermissionRoute> },
         ],
       },
     ],
