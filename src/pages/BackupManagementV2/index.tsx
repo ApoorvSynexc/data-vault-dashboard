@@ -10,6 +10,7 @@ import { useBackupConfigService } from '../../services/backup-config/backup-conf
 import { formatBytes, formatDateTime } from '../../utils';
 import PermissionGate from '../../components/PermissionGate';
 import BackupManagementWelcome from './Welcome';
+import { useAuth } from '../../context/AuthContext';
 
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
@@ -522,6 +523,7 @@ type FilterState = {
 
 export default function BackupManagementV2() {
   const navigate = useNavigate();
+  const { permissions } = useAuth();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', search: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -727,7 +729,7 @@ export default function BackupManagementV2() {
           <ActionDropdown
             key={row.id}
             items={[
-              ...(row.configStatus === 'DRAFT' ? [{
+              ...(row.configStatus === 'DRAFT' && permissions.includes('backup.execute') ? [{
                 label: 'Activate',
                 onClick: () => {
                   setActivateAcceptText('');

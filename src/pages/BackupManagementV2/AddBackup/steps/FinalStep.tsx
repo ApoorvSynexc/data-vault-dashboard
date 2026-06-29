@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import { useDestinationService } from '../../../../services/destination/destination.service';
+import PermissionGate from '../../../../components/PermissionGate';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -326,16 +327,20 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             </button>
           ) : (
             <>
-              <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
-              </button>
-              <button
-                onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
-                disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
-                className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
-              </button>
+              <PermissionGate permission='backup.write'>
+                <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                  {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
+                </button>
+              </PermissionGate>
+              <PermissionGate permission='backup.execute'>
+                <button
+                  onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
+                  disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+                  className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
+                </button>
+              </PermissionGate>
             </>
           )}
         </div>
