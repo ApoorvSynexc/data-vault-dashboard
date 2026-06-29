@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import PermissionGate from '../../../components/PermissionGate';
 
 // const TEMPLATES = [
 //   { id: 1, title: 'Full org backup — all 200 objects',       subtitle: 'Daily schedule · ~5 min setup' },
@@ -94,13 +95,15 @@ export default function BackupManagementWelcome() {
         ── */}
 
         {/* ── CTA button ── */}
-        <button
-          onClick={() => navigate('/backup-management/add')}
-          className='flex items-center justify-center font-semibold text-white rounded-full transition hover:opacity-90 flex-shrink-0'
-          style={{ background: '#155DFC', width: 'clamp(220px, 26vw, 362px)', height: 'clamp(44px, 5vh, 58px)', fontSize: 'clamp(13px, 1.1vw, 16px)', gap: 10 }}
-        >
-          + New Backup
-        </button>
+        <PermissionGate permission='backup.write'>
+          <button
+            onClick={() => navigate('/backup-management/add')}
+            className='flex items-center justify-center font-semibold text-white rounded-full transition hover:opacity-90 flex-shrink-0'
+            style={{ background: '#155DFC', width: 'clamp(220px, 26vw, 362px)', height: 'clamp(44px, 5vh, 58px)', fontSize: 'clamp(13px, 1.1vw, 16px)', gap: 10 }}
+          >
+            + New Backup
+          </button>
+        </PermissionGate>
 
       </div>
     </div>
