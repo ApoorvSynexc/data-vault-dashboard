@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import PermissionGate from '../../../../components/PermissionGate';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import type { ArchiveScheduleConfig } from '../Schedule';
 import type { DryRunSummary } from '../DryRun';
@@ -329,21 +330,25 @@ const [confirmError, setConfirmError] = useState(false);
             ←Back
           </button>
           {!editMode && (
-            <button onClick={handleSaveDraft} disabled={isLoading}
-              className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
-              style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
-              Save As Draft
-            </button>
+            <PermissionGate permission='archival.write'>
+              <button onClick={handleSaveDraft} disabled={isLoading}
+                className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
+                style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
+                Save As Draft
+              </button>
+            </PermissionGate>
           )}
-          <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading}
-            className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
-            style={{ background: '#155DFC' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
-            {isLoading ? (editMode ? 'Saving…' : 'Creating…') : (editMode ? 'Save Changes' : 'Start Archive')}
-          </button>
+          <PermissionGate permission='archival.execute'>
+            <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading}
+              className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
+              style={{ background: '#155DFC' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
+              {isLoading ? (editMode ? 'Saving…' : 'Creating…') : (editMode ? 'Save Changes' : 'Start Archive')}
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
