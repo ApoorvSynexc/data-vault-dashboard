@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 
-const TEMPLATES = [
-  { id: 1, title: 'Closed Cases older than 2 years',     subtitle: 'Common compliance archive . ~ 5 min setup' },
-  { id: 2, title: 'Lost opportunities older than 1 year', subtitle: 'Free up storage . ~ 3 min setup' },
-  { id: 3, title: 'Inactive contacts with no activity',   subtitle: 'No task, events, or emails for 18 months' },
-  { id: 4, title: 'Custom - start from scratch',          subtitle: 'Build your own filter and schedule' },
-];
+// const TEMPLATES = [
+//   { id: 1, title: 'Closed Cases older than 2 years',     subtitle: 'Common compliance archive . ~ 5 min setup' },
+//   { id: 2, title: 'Lost opportunities older than 1 year', subtitle: 'Free up storage . ~ 3 min setup' },
+//   { id: 3, title: 'Inactive contacts with no activity',   subtitle: 'No task, events, or emails for 18 months' },
+//   { id: 4, title: 'Custom - start from scratch',          subtitle: 'Build your own filter and schedule' },
+// ];
 
 const STEPS = [
   { number: '1', label: 'Connect',  description: 'Pick your source org and destination connections' },
@@ -68,7 +68,7 @@ export default function ArchiveVaultWelcome() {
           ))}
         </div>
 
-        {/* ── Templates ── */}
+        {/* ── Templates (commented out) ──
         <div className='flex flex-col items-center w-full flex-shrink-0'>
           <p className='tracking-widest uppercase mb-2' style={{ color: '#64748B', fontSize: 'clamp(10px, 0.9vw, 13px)' }}>
             START WITH A TEMPLATE
@@ -91,6 +91,7 @@ export default function ArchiveVaultWelcome() {
             ))}
           </div>
         </div>
+        ── */}
 
         {/* ── CTA button ── */}
         <button
