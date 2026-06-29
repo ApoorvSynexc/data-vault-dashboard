@@ -32,25 +32,23 @@ const Icons = {
 };
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
-// `permission` is the prefix checked against the user's permissions array.
-// A tab is shown if the user has ANY permission starting with that prefix (e.g. "backup.read").
-// Tabs with no `permission` key are always visible (e.g. Dashboard).
-const mainNav: { to: string; label: string; Icon: () => React.ReactElement; permission?: string }[] = [
-  { to: '/dashboard',          label: 'Dashboard',           Icon: Icons.dashboard,  permission: 'dashboard'    },
-  { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup,     permission: 'backup'       },
-  { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore,    permission: 'restore'      },
-  { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permission: 'archival'     },
-  { to: '/connections',        label: 'Connections',         Icon: Icons.connectors, permission: 'connection'   },
-  { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permission: 'storage'      },
-  { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permission: 'activitylogs' },
-  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permission: 'activitylogs' },
-  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permission: 'report'       },
-  { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permission: 'settings'     },
+// `permissions` is OR-checked — tab shows if user has ANY permission starting with any listed prefix.
+const mainNav: { to: string; label: string; Icon: () => React.ReactElement; permissions?: string[] }[] = [
+  { to: '/dashboard',          label: 'Dashboard',           Icon: Icons.dashboard,  permissions: ['dashboard']                                 },
+  { to: '/backup-management',  label: 'Backup Management',   Icon: Icons.backup,     permissions: ['backup']                                    },
+  { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore,    permissions: ['restore']                                   },
+  { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permissions: ['archival']                                  },
+  { to: '/connections',        label: 'Connections',         Icon: Icons.connectors, permissions: ['sourceConnection', 'destinationConnection'] },
+  { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permissions: ['storage']                                   },
+  { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permissions: ['activitylogs']                              },
+  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permissions: ['activitylogs']                              },
+  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
+  { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permissions: ['settings']                                  },
 ];
 
 export default function MainLayout() {
   const { logout, hasPermission } = useAuth();
-  const visibleNav = mainNav.filter(({ permission }) => !permission || hasPermission(permission));
+  const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
