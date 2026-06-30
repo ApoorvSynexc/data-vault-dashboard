@@ -170,7 +170,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                           <div className='flex-1 min-w-0'>
                             <div className='flex items-center gap-2'>
                               <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
-                                {connection.name ?? "Backend Changes Needed"}
+                                {connection.name ?? connection.crmProfile?.username ?? connection.contactEmail ?? connection.crmId}
                               </p>
                               {connection.environment && (
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
@@ -181,6 +181,9 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                               )}
                             </div>
                             <p className='text-xs text-gray-500 truncate'>Org ID: {connection.organizationId}</p>
+                            {(connection.firstName || connection.lastName) && (
+                              <p className='text-xs text-gray-500 truncate'>{[connection.firstName, connection.lastName].filter(Boolean).join(' ')}</p>
+                            )}
                           </div>
                         </div>
                       </div>
