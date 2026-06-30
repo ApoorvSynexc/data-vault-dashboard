@@ -260,7 +260,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) : 'Salesforce'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.provider ?? '--'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeCrm?.name ?? 'Backend Changes Needed'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeCrm?.name ?? activeCrm?.crmProfile?.username ?? activeCrm?.contactEmail ?? activeCrm?.crmId ?? '--'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeDestinationDetail?.provider ? activeDestinationDetail.provider + ' Connection' : 'Destination Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.name ?? '--'}</p></div>
           </div>
         </SectionBox>

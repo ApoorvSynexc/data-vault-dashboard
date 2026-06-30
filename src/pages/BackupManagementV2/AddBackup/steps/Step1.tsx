@@ -216,7 +216,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           Cancel
         </button>
         <button
-          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.name ?? 'Backend Changes Needed')}
+          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.name ?? selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? '')}
           disabled={!selectedConnection}
           className={`px-6 py-2 rounded-lg font-medium transition-colors ${
             selectedConnection
