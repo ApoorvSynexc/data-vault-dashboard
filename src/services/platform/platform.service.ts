@@ -42,6 +42,7 @@ export type ConnectedPlatform = {
   firstName?: string;
   lastName?: string;
   contactEmail?: string;
+  isCrmConnected?: boolean;
 };
 
 export type ConnectPlatformResponse = {
@@ -75,6 +76,7 @@ export function usePlatformService() {
         firstName:      item.firstName,
         lastName:       item.lastName,
         contactEmail:   item.contactEmail,
+        isCrmConnected: item.isCrmConnected,
       }));
     },
     connectPlatform: async (crmType: CrmPlatform, options?: ConnectOptions) => {
@@ -84,8 +86,8 @@ export function usePlatformService() {
       if (options?.name) query.name = options.name;
       return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
     },
-    reconnectPlatform: async (crmId: string, options?: ConnectOptions) => {
-      const query: Record<string, string | undefined> = { crmId };
+    reconnectPlatform: async (orgId: string, options?: ConnectOptions) => {
+      const query: Record<string, string | undefined> = { userId: orgId };
       if (options?.environment) query.environment = options.environment;
       if (options?.customUrl) query.customUrl = options.customUrl;
       return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
@@ -94,9 +96,9 @@ export function usePlatformService() {
       (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.callback, {
         query: { crmName: payload.crmName.toLowerCase(), code: payload.code, state: payload.state },
       })).data,
-    disconnectPlatform: async (crmId: string) =>
+    disconnectPlatform: async (orgId: string) =>
       (await api.delete<void>(PLATFORM_ENDPOINTS.disconnect, {
-        query: { crmId },
+        query: { userId: orgId },
       })).data,
     deletePlatform: async (crmId: string) =>
       (await api.delete<void>(PLATFORM_ENDPOINTS.delete, {

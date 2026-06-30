@@ -105,8 +105,8 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
     }
   };
 
-  const handleDisconnect = (orgId: string) => {
-    setSelectedOrgId(orgId);
+  const handleDisconnect = (organizationId: string) => {
+    setSelectedOrgId(organizationId);
     setDisconnectDialogOpen(true);
   };
 
@@ -282,19 +282,19 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
 
                     <div className='flex items-center gap-3'>
                       <div className='text-right'>
-                        <p className={`text-sm font-semibold ${getStatusColor(org.status as ConnectedPlatform['status'])}`}>
-                          <span className='mr-1'>{getStatusIcon(org.status as ConnectedPlatform['status'])}</span>
-                          {org.status.charAt(0) + org.status.slice(1).toLowerCase()}
+                        <p className={`text-sm font-semibold ${org.isCrmConnected ? 'text-green-600' : 'text-gray-400'}`}>
+                          <span className='mr-1'>{org.isCrmConnected ? '✓' : '○'}</span>
+                          {org.isCrmConnected ? 'Active' : 'Inactive'}
                         </p>
                         <p className='text-xs text-gray-500'>Connected on {formatDate(org.createdAt)}</p>
                       </div>
 
                       {/* Inline action button */}
-                      {org.status === 'ACTIVE' ? (
+                      {org.isCrmConnected ? (
                         <button
                           type='button'
-                          onClick={() => handleDisconnect(org.crmId)}
-                          title='Disconnect'
+                          onClick={() => handleDisconnect(org.userId)}
+                          title='Deactivate'
                           className='rounded-lg p-2 text-orange-500 border border-orange-200 transition hover:bg-orange-50 hover:text-orange-600'
                         >
                           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
@@ -305,8 +305,8 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                       ) : (
                         <button
                           type='button'
-                          onClick={() => reconnectMutation.mutate({ crmId: org.crmId, environment: org.environment })}
-                          title='Reconnect'
+                          onClick={() => reconnectMutation.mutate({ crmId: org.userId, environment: org.environment })}
+                          title='Activate'
                           className='rounded-lg p-2 text-blue-500 border border-blue-200 transition hover:bg-blue-50 hover:text-blue-600'
                         >
                           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
@@ -326,9 +326,9 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
 
       <WarningDialog
         isOpen={disconnectDialogOpen}
-        title='Disconnect Salesforce Org?'
-        message='Are you sure you want to disconnect this Salesforce org? This action cannot be undone.'
-        confirmLabel='Disconnect'
+        title='Deactivate Salesforce Org?'
+        message='Are you sure you want to deactivate this Salesforce org?'
+        confirmLabel='Deactivate'
         cancelLabel='Cancel'
         isLoading={disconnectMutation.isPending}
         error={disconnectError}
