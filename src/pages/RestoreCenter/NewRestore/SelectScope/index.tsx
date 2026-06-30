@@ -11,9 +11,12 @@
 //   Bulk via CSV   — upload / paste ID list
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { SourceSelection } from '../SelectSourceType';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -164,18 +167,37 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; sourceSelection: SourceSelection; }
 
-export default function SelectScope({ onNext, onBack }: Props) {
+export default function SelectScope({ onNext, onBack, sourceSelection }: Props) {
+  const restoreService = useRestoreService();
+
   // scope selection
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
+
+  // by-record: object + columns picked by user before fetching
+  const [recordObj, setRecordObj] = useState('Account');
+
+  const fetchPayload = scopeMode === 'record'
+    ? sourceSelection.configType === 'ARCHIVAL'
+      ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name'], backupConfigId: sourceSelection.backupConfigId }
+      : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name'], backupJobIds: sourceSelection.backupJobIds }
+    : null;
+
+  const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
+    queryKey: ['restore-fetch-records', sourceSelection, recordObj],
+    queryFn: () => restoreService.fetchRecords(fetchPayload!),
+    enabled: scopeMode === 'record' && !!fetchPayload && (
+      sourceSelection.configType === 'ARCHIVAL' ? !!sourceSelection.backupConfigId : sourceSelection.backupJobIds.length > 0
+    ),
+    staleTime: 60_000,
+  });
 
   // by-object state
   const [objSearch,        setObjSearch]        = useState('');
   const [selectedObjects,  setSelectedObjects]  = useState<Set<string>>(new Set(['1', '2', '4']));
 
   // by-record state
-  const [recordObj,        setRecordObj]        = useState('Account');
   const [recordSearch,     setRecordSearch]     = useState('');
   const [selectedRecords,  setSelectedRecords]  = useState<Set<string>>(new Set(['1', '2']));
   const [showIdList,       setShowIdList]       = useState(false);

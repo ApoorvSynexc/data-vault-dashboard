@@ -1,7 +1,8 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 const RESTORE_ENDPOINTS = {
-  snapshotLogs: '/v1/restore/snapshot-logs',
+  snapshotLogs:  '/v1/restore/snapshot-logs',
+  fetchRecords:  '/v1/restore/retrieve/fetch-records',
 };
 
 export type SnapshotType = 'BACKUP' | 'ARCHIVAL' | 'UNIFIED';
@@ -72,5 +73,10 @@ export function useRestoreService() {
           ...(params.cursor ? { cursor: params.cursor } : {}),
         },
       }),
+
+    fetchRecords: (payload:
+      | { configType: 'BACKUP';   objectApiName: string; columnNames: string[]; backupJobIds: string[] }
+      | { configType: 'ARCHIVAL'; objectApiName: string; columnNames: string[]; backupConfigId: string }
+    ) => api.post<unknown>(RESTORE_ENDPOINTS.fetchRecords, payload),
   };
 }
