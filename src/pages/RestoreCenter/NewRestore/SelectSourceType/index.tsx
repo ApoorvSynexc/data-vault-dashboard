@@ -629,7 +629,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               if (sourceType === 'archive') {
                 onNext({ configType: 'ARCHIVAL', backupConfigId: selectedArchiveKey, backupJobIds: [] });
               } else {
-                onNext({ configType: 'BACKUP', backupConfigId: selectedBackupConfigId, backupJobIds: selectedBackupRows.map((r: any) => r.backupJobId ?? r.backupConfigId ?? '') });
+                onNext({ configType: 'BACKUP', backupConfigId: selectedBackupConfigId, backupJobIds: selectedBackupRows.map((r: any) => r.backupJobId).filter(Boolean) });
               }
             }}
             disabled={!canProceed}

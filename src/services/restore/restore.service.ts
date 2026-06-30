@@ -9,6 +9,8 @@ export type SnapshotType = 'BACKUP' | 'ARCHIVAL' | 'UNIFIED';
 export type ScheduleType = 'REALTIME' | 'SCHEDULE';
 
 export interface SnapshotLog {
+  backupConfigId: string;
+  backupJobId: string;
   dateTime: string;
   configName: string;
   sourceName: string;
