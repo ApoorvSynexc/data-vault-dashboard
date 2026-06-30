@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Step1 from './steps/Step1';
 import Step2 from './steps/Step2';
@@ -18,26 +18,61 @@ type SelectedObject = {
   type: 'STANDARD' | 'CUSTOM';
 };
 
+const WIZARD_STORAGE_KEY = 'addBackupWizardState';
+
+function loadWizardState() {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(WIZARD_STORAGE_KEY);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function AddBackup() {
   const [searchParams] = useSearchParams();
   const editSlug = searchParams.get('edit') ?? null;
   const isEditMode = !!editSlug;
 
-  const initialStep = Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step;
+  const restored = !isEditMode ? loadWizardState() : null;
+
+  const initialStep = isEditMode
+    ? (Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step)
+    : ((restored?.currentStep ?? 1) as Step);
   const [currentStep, setCurrentStep] = useState<Step>(initialStep);
-  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
-  const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
-  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
-  const [selectedConnectionName, setSelectedConnectionName] = useState<string>('');
-  const [selectedDestinationName, setSelectedDestinationName] = useState<string>('');
-  const [policyName, setPolicyName] = useState('');
-  const [description, setDescription] = useState('');
+  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>(restored?.selectedStrategy ?? 'realtime');
+  const [entireDatasetSelected, setEntireDatasetSelected] = useState<boolean>(restored?.entireDatasetSelected ?? false);
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(restored?.selectedPlatformId ?? null);
+  const [selectedConnectionName, setSelectedConnectionName] = useState<string>(restored?.selectedConnectionName ?? '');
+  const [selectedDestinationName, setSelectedDestinationName] = useState<string>(restored?.selectedDestinationName ?? '');
+  const [policyName, setPolicyName] = useState<string>(restored?.policyName ?? '');
+  const [description, setDescription] = useState<string>(restored?.description ?? '');
   const environment = 'Production';
-  const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>([]);
-  const [destinationId, setDestinationId] = useState<string | null>(null);
+  const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>(restored?.selectedObjects ?? []);
+  const [destinationId, setDestinationId] = useState<string | null>(restored?.destinationId ?? null);
   const [editConfigId, setEditConfigId] = useState<string | null>(null);
   const [editConfigStatus, setEditConfigStatus] = useState<string | null>(null);
   const [prefilled, setPrefilled] = useState(false);
+
+  const navigate = useNavigate();
+
+  const saveStateAndNavigate = (to: string) => {
+    sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
+      currentStep,
+      selectedStrategy,
+      entireDatasetSelected,
+      selectedPlatformId,
+      selectedConnectionName,
+      selectedDestinationName,
+      policyName,
+      description,
+      selectedObjects,
+      destinationId,
+    }));
+    navigate(to);
+  };
 
   const backupConfigService = useBackupConfigService();
 
@@ -155,6 +190,7 @@ export default function AddBackup() {
             handleNextStep();
           }}
           onBack={handlePrevStep}
+          onAddNewDestination={() => saveStateAndNavigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
         />
       )}
       {currentStep === 3 && (

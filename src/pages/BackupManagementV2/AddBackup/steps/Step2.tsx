@@ -11,6 +11,7 @@ type Step2Props = {
   onBack: () => void;
   strategy?: 'realtime' | 'scheduled';
   initialDestinationId?: string | null;
+  onAddNewDestination?: () => void;
 };
 
 const DEFAULT_DESTINATION = {
@@ -19,7 +20,7 @@ const DEFAULT_DESTINATION = {
   status: 'ACTIVE' as const,
 };
 
-export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId }: Step2Props) {
+export default function Step2({ onNext, onBack, strategy = 'realtime', initialDestinationId, onAddNewDestination }: Step2Props) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const destinationService = useDestinationService();
@@ -204,7 +205,7 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
                     <PermissionGate permission='destinationConnection.write'>
                       <div className='flex justify-center pt-2'>
                         <button
-                          onClick={() => navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
+                          onClick={() => onAddNewDestination ? onAddNewDestination() : navigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
                           className='px-5 py-2 text-sm rounded-full text-white font-medium bg-blue-600 hover:bg-blue-700 transition-all'
                         >
                           + Add New Destination
