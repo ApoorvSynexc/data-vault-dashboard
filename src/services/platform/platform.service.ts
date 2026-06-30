@@ -20,6 +20,28 @@ export type ConnectedPlatform = {
   environment?: string;
   createdAt: string;
   updatedAt: string;
+  // nested profile from new API shape
+  crmProfile?: {
+    organizationId: string;
+    email: string;
+    username: string;
+    instanceUrl: string;
+    photoUrl?: string;
+    userId: string;
+  };
+  crm?: {
+    crmId: string;
+    crmName: string;
+    status: string;
+    environment?: string;
+    organizationId: string;
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+  };
+  firstName?: string;
+  lastName?: string;
+  contactEmail?: string;
 };
 
 export type ConnectPlatformResponse = {
@@ -36,8 +58,25 @@ export function usePlatformService() {
   const api = useHttpRequest();
 
   return {
-    getConnectedPlatforms: async () =>
-      (await api.get<ConnectedPlatform[]>(PLATFORM_ENDPOINTS.list)).data,
+    getConnectedPlatforms: async () => {
+      const raw = (await api.get<any[]>(PLATFORM_ENDPOINTS.list)).data ?? [];
+      return raw.map((item): ConnectedPlatform => ({
+        crmId:          item.crmId          ?? item.crm?.crmId,
+        crmName:        item.crm?.crmName   ?? item.crmName   ?? '',
+        name:           item.name,
+        organizationId: item.crm?.organizationId ?? item.organizationId ?? item.crmProfile?.organizationId ?? '',
+        userId:         item.userId,
+        status:         item.crm?.status    ?? item.status    ?? 'ACTIVE',
+        environment:    item.crm?.environment ?? item.environment,
+        createdAt:      item.createdAt,
+        updatedAt:      item.updatedAt,
+        crmProfile:     item.crmProfile,
+        crm:            item.crm,
+        firstName:      item.firstName,
+        lastName:       item.lastName,
+        contactEmail:   item.contactEmail,
+      }));
+    },
     connectPlatform: async (crmType: CrmPlatform, options?: ConnectOptions) => {
       const query: Record<string, string | undefined> = { crmName: crmType.toLowerCase() };
       if (options?.environment) query.environment = options.environment;
