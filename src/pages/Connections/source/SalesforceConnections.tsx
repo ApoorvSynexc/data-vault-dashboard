@@ -260,7 +260,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                       </div>
                       <div>
                         <div className='flex items-center gap-2'>
-                          <p className='font-medium text-gray-900'>{org.name ?? 'Backend Changes'}</p>
+                          <p className='font-medium text-gray-900'>{org.name ?? org.crmProfile?.username ?? org.contactEmail ?? org.crmId}</p>
                           {org.environment && (
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
                               org.environment === 'production'
@@ -274,7 +274,9 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
                           )}
                         </div>
                         <p className='text-xs text-gray-500'>Org ID: {org.organizationId}</p>
-                        <p className='text-xs text-gray-500 capitalize'>{org.crmName}</p>
+                        {(org.firstName || org.lastName) && (
+                          <p className='text-xs text-gray-500'>{[org.firstName, org.lastName].filter(Boolean).join(' ')}</p>
+                        )}
                       </div>
                     </div>
 
