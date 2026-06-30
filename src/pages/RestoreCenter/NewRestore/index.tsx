@@ -20,6 +20,7 @@ import ConflictConfig from './ConflictConfig';
 import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
+import type { SourceSelection } from './SelectSourceType';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
@@ -33,6 +34,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [templateMode, setTemplateMode] = useState(isTemplateMode);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
+  const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [] });
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
   const goBack = () => {
@@ -69,12 +71,12 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       )}
       {currentStep === 2 && (
         <SelectSourceType
-          onNext={goNext}
+          onNext={(sel) => { setSourceSelection(sel); goNext(); }}
           onBack={goBack}
           selectedConnection={selectedConnection}
         />
       )}
-      {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} />}
+      {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
       {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} />}
       {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}

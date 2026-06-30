@@ -87,8 +87,14 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+export interface SourceSelection {
+  configType: 'BACKUP' | 'ARCHIVAL';
+  backupConfigId: string;       // for ARCHIVAL
+  backupJobIds: string[];       // for BACKUP (selected snapshot job IDs)
+}
+
 interface Props {
-  onNext: () => void;
+  onNext: (selection: SourceSelection) => void;
   onBack: () => void;
   selectedConnection: Destination | null;
 }
@@ -97,6 +103,8 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [sourceType, setSourceType] = useState<SourceType>('backup');
   const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
+  const [selectedBackupRows, setSelectedBackupRows] = useState<any[]>([]);
+  const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>('');
   const [mergeRule, setMergeRule] = useState('');
 
   const restoreService = useRestoreService();
@@ -482,7 +490,12 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                   showCheckbox
                   selectedIds={selectedBackup}
                   getRowId={(log: any) => `${log.dateTime ?? ''}__${log.configName ?? ''}`}
-                  onSelectionChange={setSelectedBackup}
+                  onSelectionChange={(ids) => {
+                    setSelectedBackup(ids);
+                    const rows = filteredLogs.filter((l: any) => ids.has(`${l.dateTime ?? ''}__${l.configName ?? ''}`));
+                    setSelectedBackupRows(rows);
+                    setSelectedBackupConfigId(rows[0]?.backupConfigId ?? '');
+                  }}
                   getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                   emptyState='No snapshot jobs found.'
                   paginationConfig={{
@@ -612,7 +625,13 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
             💾 Save as Draft
           </button>
           <button
-            onClick={onNext}
+            onClick={() => {
+              if (sourceType === 'archive') {
+                onNext({ configType: 'ARCHIVAL', backupConfigId: selectedArchiveKey, backupJobIds: [] });
+              } else {
+                onNext({ configType: 'BACKUP', backupConfigId: selectedBackupConfigId, backupJobIds: selectedBackupRows.map((r: any) => r.backupJobId ?? r.backupConfigId ?? '') });
+              }
+            }}
             disabled={!canProceed}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}
