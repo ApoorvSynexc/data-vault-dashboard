@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import WarningDialog from '../../../components/WarningDialog';
-import { usePlatformService, type ConnectedPlatform } from '../../../services/platform/platform.service';
+import { usePlatformService } from '../../../services/platform/platform.service';
 import { formatDate } from '../../../utils';
 
 function SalesforceLogo() {
@@ -82,28 +82,6 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
   const salesforcePlatforms = (allPlatforms || []).filter(
     (platform) => platform.crmName.toLowerCase() === 'salesforce'
   );
-
-  const getStatusColor = (status: ConnectedPlatform['status']) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'text-green-600';
-      case 'ERROR':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
-  const getStatusIcon = (status: ConnectedPlatform['status']) => {
-    switch (status) {
-      case 'ACTIVE':
-        return '✓';
-      case 'ERROR':
-        return '✕';
-      default:
-        return '○';
-    }
-  };
 
   const handleDisconnect = (organizationId: string) => {
     setSelectedOrgId(organizationId);
