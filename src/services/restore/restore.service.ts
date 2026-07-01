@@ -1,8 +1,9 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 const RESTORE_ENDPOINTS = {
-  snapshotLogs:  '/v1/restore/snapshot-logs',
-  fetchRecords:  '/v1/restore/retrieve/fetch-records',
+  snapshotLogs:       '/v1/restore/snapshot-logs',
+  fetchRecords:       '/v1/restore/retrieve/fetch-records',
+  backupConfigsName:  '/v1/restore/get-backup-configs-name',
 };
 
 export type SnapshotType = 'BACKUP' | 'ARCHIVAL' | 'UNIFIED';
@@ -80,5 +81,11 @@ export function useRestoreService() {
       | { configType: 'BACKUP';   objectApiName: string; columnNames: string[]; backupJobIds: string[] }
       | { configType: 'ARCHIVAL'; objectApiName: string; columnNames: string[]; backupConfigId: string }
     ) => api.post<unknown>(RESTORE_ENDPOINTS.fetchRecords, payload),
+
+    getBackupConfigsName: (destinationId: string) =>
+      api.get<{ data: { backupConfigId: string; name: string }[] }>(
+        RESTORE_ENDPOINTS.backupConfigsName,
+        { query: { destinationId } },
+      ),
   };
 }

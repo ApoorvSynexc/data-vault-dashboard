@@ -110,6 +110,15 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
 
   const restoreService = useRestoreService();
 
+  const { data: backupConfigsData, isLoading: isLoadingConfigs } = useQuery({
+    queryKey: ['backup-configs-name', selectedConnection?.destinationId],
+    queryFn: () => restoreService.getBackupConfigsName(selectedConnection!.destinationId),
+    enabled: !!selectedConnection && sourceType === 'backup',
+  });
+
+  const backupConfigs: { backupConfigId: string; name: string }[] =
+    (backupConfigsData as any)?.data ?? [];
+
   // ── Snapshot logs state ───────────────────────────────────────────────────
   const [jobsFilterName, setJobsFilterName] = useState('');
   const [jobsFilterType, setJobsFilterType] = useState<'REALTIME' | 'SCHEDULE'>('SCHEDULE');
@@ -443,12 +452,15 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               <select
                 value={selectedBackupPolicy}
                 onChange={(e) => { setSelectedBackupPolicy(e.target.value); resetJobsPagination(); setSelectedBackup(new Set()); setMergeRule(''); }}
-                className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 flex-1 max-w-xs'
+                disabled={isLoadingConfigs}
+                className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 flex-1 max-w-xs disabled:opacity-50'
               >
-                <option value=''>— Select a backup policy —</option>
-                <option value='policy-1'>Daily Salesforce Backup</option>
-                <option value='policy-2'>Weekly Full Backup</option>
-                <option value='policy-3'>Realtime Sync Backup</option>
+                <option value=''>
+                  {isLoadingConfigs ? 'Loading policies…' : '— Select a backup policy —'}
+                </option>
+                {backupConfigs.map((c) => (
+                  <option key={c.backupConfigId} value={c.backupConfigId}>{c.name}</option>
+                ))}
               </select>
             </div>
 
