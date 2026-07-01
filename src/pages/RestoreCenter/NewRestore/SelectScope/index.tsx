@@ -180,8 +180,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const fetchPayload = scopeMode === 'record'
     ? sourceSelection.configType === 'ARCHIVAL'
-      ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name'], backupConfigId: sourceSelection.backupConfigId }
-      : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name'], backupJobIds: sourceSelection.backupJobIds }
+      ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupConfigId: sourceSelection.backupConfigId }
+      : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupJobIds: sourceSelection.backupJobIds }
     : null;
 
   const { data: _fetchedRecordsData, isLoading: _isLoadingRecords } = useQuery({
