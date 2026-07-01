@@ -184,7 +184,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name'], backupJobIds: sourceSelection.backupJobIds }
     : null;
 
-  const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
+  const { data: _fetchedRecordsData, isLoading: _isLoadingRecords } = useQuery({
     queryKey: ['restore-fetch-records', sourceSelection, recordObj],
     queryFn: () => restoreService.fetchRecords(fetchPayload!),
     enabled: scopeMode === 'record' && !!fetchPayload && (

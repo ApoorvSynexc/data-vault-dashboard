@@ -158,7 +158,7 @@ function CloudSourcePicker({
                     <div
                       key={conn.destinationId}
                       onClick={() => setSelectedConnection(conn)}
-                      className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
+                      className={`p-4 border-2 rounded-lg transition-all cursor-pointer select-none ${
                         isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >
