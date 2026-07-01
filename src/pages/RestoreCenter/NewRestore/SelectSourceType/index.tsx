@@ -106,13 +106,13 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [selectedBackupRows, setSelectedBackupRows] = useState<any[]>([]);
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>('');
   const [mergeRule, setMergeRule] = useState('');
+  const [selectedBackupPolicy, setSelectedBackupPolicy] = useState<string>('');
 
   const restoreService = useRestoreService();
 
   // ── Snapshot logs state ───────────────────────────────────────────────────
   const [jobsFilterName, setJobsFilterName] = useState('');
   const [jobsFilterType, setJobsFilterType] = useState<'REALTIME' | 'SCHEDULE'>('SCHEDULE');
-  const [jobsFilterSource, setJobsFilterSource] = useState('ALL');
   const [jobsCursorStack, setJobsCursorStack] = useState<(string | undefined)[]>([undefined]);
   const [jobsPageIndex, setJobsPageIndex] = useState(0);
   const [jobsPageLogs, setJobsPageLogs] = useState<any[]>([]);
@@ -164,14 +164,11 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     setJobsNextCursor(undefined);
   };
 
-  const jobsSourceOptions = ['ALL', ...Array.from(new Set(jobsPageLogs.map((l: any) => l.sourceName).filter(Boolean)))];
-
   const filteredLogs = jobsPageLogs.filter((log: any) => {
     if (jobsFilterName.trim()) {
       const q = jobsFilterName.trim().toLowerCase();
       if (!(log.configName ?? '').toLowerCase().includes(q)) return false;
     }
-    if (jobsFilterSource !== 'ALL' && log.sourceName !== jobsFilterSource) return false;
     return true;
   });
 
@@ -440,9 +437,24 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               </div>
             </div>
 
+            {/* Backup policy selector */}
+            <div className='flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white'>
+              <span className='text-xs font-bold text-gray-600 whitespace-nowrap'>Backup Policy:</span>
+              <select
+                value={selectedBackupPolicy}
+                onChange={(e) => { setSelectedBackupPolicy(e.target.value); resetJobsPagination(); setSelectedBackup(new Set()); setMergeRule(''); }}
+                className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 flex-1 max-w-xs'
+              >
+                <option value=''>— Select a backup policy —</option>
+                <option value='policy-1'>Daily Salesforce Backup</option>
+                <option value='policy-2'>Weekly Full Backup</option>
+                <option value='policy-3'>Realtime Sync Backup</option>
+              </select>
+            </div>
+
             {/* Filter bar */}
             <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-              {backupMode === 'list' && <>
+              {backupMode === 'list' && selectedBackupPolicy && <>
                 <span className='text-xs font-bold text-gray-600'>Filter:</span>
                 <input
                   value={jobsFilterName}
@@ -450,15 +462,6 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                   placeholder='Backup name'
                   className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
                 />
-                <select
-                  value={jobsFilterSource}
-                  onChange={(e) => setJobsFilterSource(e.target.value)}
-                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none focus:border-blue-400'
-                >
-                  {jobsSourceOptions.map((s) => (
-                    <option key={s} value={s}>{s === 'ALL' ? 'All sources' : s}</option>
-                  ))}
-                </select>
               </>}
               <div className='ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
                 {(['list', 'pit'] as BackupMode[]).map((m) => (
@@ -477,60 +480,74 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
 
             {backupMode === 'list' ? (
               <>
-                <Table
-                  columns={backupColumns}
-                  rows={filteredLogs}
-                  getRowKey={(log: any, i: number) => `${log.dateTime ?? i}__${log.configName ?? i}`}
-                  loading={isLoadingJobs || isFetchingJobs}
-                  skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-24', 'w-20', 'w-20', 'w-20'] }}
-                  headerVariant='uppercase'
-                  borderless
-                  showSerialNumber
-                  serialNumberStart={jobsPageIndex * 10 + 1}
-                  showCheckbox
-                  selectedIds={selectedBackup}
-                  getRowId={(log: any) => `${log.dateTime ?? ''}__${log.configName ?? ''}`}
-                  onSelectionChange={(ids) => {
-                    setSelectedBackup(ids);
-                    const rows = filteredLogs.filter((l: any) => ids.has(`${l.dateTime ?? ''}__${l.configName ?? ''}`));
-                    setSelectedBackupRows(rows);
-                    setSelectedBackupConfigId(rows[0]?.backupConfigId ?? '');
-                  }}
-                  getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                  emptyState='No snapshot jobs found.'
-                  paginationConfig={{
-                    type: 'cursor',
-                    hasPrev: jobsPageIndex > 0,
-                    hasNext: !!jobsNextCursor,
-                    onPrev: goJobsPrevPage,
-                    onNext: goJobsNextPage,
-                    label: `Page ${jobsPageIndex + 1} · ${filteredLogs.length} entries`,
-                  }}
-                />
-                {selectedBackup.size >= 2 && (
-                  <div className='flex-shrink-0 mx-4 mb-3 rounded-xl border border-yellow-200 bg-yellow-50 overflow-hidden'>
-                    <div className='flex items-center gap-2 px-4 py-2.5 border-b border-yellow-200 bg-yellow-100/60'>
-                      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4 text-yellow-600 flex-shrink-0'>
-                        <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/>
+                {!selectedBackupPolicy ? (
+                  <div className='flex-1 flex flex-col items-center justify-center py-16 text-center'>
+                    <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100'>
+                      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='h-6 w-6 text-gray-400'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M3 7h18M3 12h18M3 17h18' />
                       </svg>
-                      <span className='text-xs font-semibold text-yellow-800'>Multiple snapshots selected ({selectedBackup.size})</span>
-                      <span className='text-xs text-yellow-600 ml-1'>— conflict resolution required</span>
                     </div>
-                    <div className='flex items-center justify-between gap-4 px-4 py-3'>
-                      <p className='text-xs text-yellow-800 leading-relaxed'>When the same record exists in more than one selected snapshot, choose which version wins during restore.</p>
-                      <select
-                        value={mergeRule}
-                        onChange={(e) => setMergeRule(e.target.value)}
-                        className={`h-8 text-xs border rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-yellow-500 flex-shrink-0 min-w-[220px] ${!mergeRule ? 'border-red-300' : 'border-yellow-300'}`}
-                      >
-                        <option value=''>— Select a rule —</option>
-                        <option value='newest'>Newest LastModifiedDate wins</option>
-                        <option value='oldest'>Oldest snapshot wins</option>
-                        <option value='latest'>Latest selected snapshot wins</option>
-                        <option value='perfield'>Per-field rule (set on Conflict step)</option>
-                      </select>
-                    </div>
+                    <p className='text-sm font-semibold text-gray-600'>No backup policy selected</p>
+                    <p className='mt-1 text-xs text-gray-400'>Select a backup policy from the dropdown above to view its snapshot jobs</p>
                   </div>
+                ) : (
+                  <>
+                    <Table
+                      columns={backupColumns}
+                      rows={filteredLogs}
+                      getRowKey={(log: any, i: number) => `${log.dateTime ?? i}__${log.configName ?? i}`}
+                      loading={isLoadingJobs || isFetchingJobs}
+                      skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-24', 'w-20', 'w-20', 'w-20'] }}
+                      headerVariant='uppercase'
+                      borderless
+                      showSerialNumber
+                      serialNumberStart={jobsPageIndex * 10 + 1}
+                      showCheckbox
+                      selectedIds={selectedBackup}
+                      getRowId={(log: any) => `${log.dateTime ?? ''}__${log.configName ?? ''}`}
+                      onSelectionChange={(ids) => {
+                        setSelectedBackup(ids);
+                        const rows = filteredLogs.filter((l: any) => ids.has(`${l.dateTime ?? ''}__${l.configName ?? ''}`));
+                        setSelectedBackupRows(rows);
+                        setSelectedBackupConfigId(rows[0]?.backupConfigId ?? '');
+                      }}
+                      getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                      emptyState='No snapshot jobs found.'
+                      paginationConfig={{
+                        type: 'cursor',
+                        hasPrev: jobsPageIndex > 0,
+                        hasNext: !!jobsNextCursor,
+                        onPrev: goJobsPrevPage,
+                        onNext: goJobsNextPage,
+                        label: `Page ${jobsPageIndex + 1} · ${filteredLogs.length} entries`,
+                      }}
+                    />
+                    {selectedBackup.size >= 2 && (
+                      <div className='flex-shrink-0 mx-4 mb-3 rounded-xl border border-yellow-200 bg-yellow-50 overflow-hidden'>
+                        <div className='flex items-center gap-2 px-4 py-2.5 border-b border-yellow-200 bg-yellow-100/60'>
+                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4 text-yellow-600 flex-shrink-0'>
+                            <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/>
+                          </svg>
+                          <span className='text-xs font-semibold text-yellow-800'>Multiple snapshots selected ({selectedBackup.size})</span>
+                          <span className='text-xs text-yellow-600 ml-1'>— conflict resolution required</span>
+                        </div>
+                        <div className='flex items-center justify-between gap-4 px-4 py-3'>
+                          <p className='text-xs text-yellow-800 leading-relaxed'>When the same record exists in more than one selected snapshot, choose which version wins during restore.</p>
+                          <select
+                            value={mergeRule}
+                            onChange={(e) => setMergeRule(e.target.value)}
+                            className={`h-8 text-xs border rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-yellow-500 flex-shrink-0 min-w-[220px] ${!mergeRule ? 'border-red-300' : 'border-yellow-300'}`}
+                          >
+                            <option value=''>— Select a rule —</option>
+                            <option value='newest'>Newest LastModifiedDate wins</option>
+                            <option value='oldest'>Oldest snapshot wins</option>
+                            <option value='latest'>Latest selected snapshot wins</option>
+                            <option value='perfield'>Per-field rule (set on Conflict step)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             ) : (
