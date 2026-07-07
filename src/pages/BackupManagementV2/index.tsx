@@ -577,9 +577,8 @@ export default function BackupManagementV2() {
     refetchOnWindowFocus: false,
   });
 
-  const responseBody = (backupQuery.data as any)?.data ?? null;
-  const apiDataArray: BackupConfigItem[] = Array.isArray(responseBody?.data) ? responseBody.data : [];
-  const apiMeta = responseBody?.meta ?? {
+  const apiDataArray: BackupConfigItem[] = Array.isArray((backupQuery.data as any)?.data) ? (backupQuery.data as any).data : [];
+  const apiMeta = (backupQuery.data as any)?.meta ?? {
     limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
@@ -589,7 +588,7 @@ export default function BackupManagementV2() {
   useEffect(() => {
     if (!backupQuery.data) return;
 
-    const nextCursor = (backupQuery.data as any)?.data?.meta?.nextCursor ?? null;
+    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
 
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
@@ -753,7 +752,7 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (!backupQuery.isLoading && !backupQuery.isFetching && responseBody !== null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  if (!backupQuery.isLoading && !backupQuery.isFetching && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
     return <BackupManagementWelcome />;
   }
 
