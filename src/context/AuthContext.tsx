@@ -23,8 +23,20 @@ const AuthContext = createContext<AuthContextValue>({
 
 function extractPermissions(profile: Record<string, unknown>): string[] {
   try {
-    const role = profile.role as { permissions?: string[] } | undefined;
-    return Array.isArray(role?.permissions) ? role.permissions : [];
+    const role = profile.role as { permissions?: unknown } | undefined;
+    const perms = role?.permissions;
+
+    // Old shape: flat string array ["backup.read", "backup.write", ...]
+    if (Array.isArray(perms)) return perms;
+
+    // New shape: object { backup: ["read","write"], restore: ["read"], ... }
+    if (perms && typeof perms === 'object') {
+      return Object.entries(perms as Record<string, string[]>).flatMap(
+        ([resource, actions]) => actions.map((action) => `${resource}.${action}`)
+      );
+    }
+
+    return [];
   } catch {
     return [];
   }
