@@ -543,7 +543,7 @@ export default function BackupManagementV2() {
     mutationFn: (backupConfigId: string) => backupConfigService.deleteBackupConfig(backupConfigId),
     onSuccess: () => {
       setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
     onError: (error: any) => {
@@ -559,7 +559,7 @@ export default function BackupManagementV2() {
     mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'ACTIVE' | 'PAUSED' | 'RESUMED' }) =>
       backupConfigService.updateBackupConfig(backupConfigId, { status: backupStatus }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
     onError: (error) => {
@@ -574,15 +574,14 @@ export default function BackupManagementV2() {
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list', currentCursor],
+    queryKey: ['backup-config-list-v2', currentCursor],
     queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 
-  const listObject = (backupQuery.data as any)?.data ?? null;
-  const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
-  const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
+  const apiDataArray: BackupConfigItem[] = Array.isArray((backupQuery.data as any)?.data) ? (backupQuery.data as any).data : [];
+  const apiMeta = (backupQuery.data as any)?.meta ?? {
     limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
@@ -590,10 +589,9 @@ export default function BackupManagementV2() {
   };
 
   useEffect(() => {
-    const sourceData = (backupQuery.data as any)?.data;
-    if (!sourceData) return;
+    if (!backupQuery.data) return;
 
-    const nextCursor = (sourceData as any)?.meta?.nextCursor ?? null;
+    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
 
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
@@ -757,15 +755,7 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (backupQuery.isLoading) {
-    return (
-      <div className='flex flex-1 items-center justify-center'>
-        <div className='h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
-      </div>
-    );
-  }
-
-  if (apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search && permissions.includes('backup.write')) {
+  if (!backupQuery.isLoading && !backupQuery.isFetching && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
     return <BackupManagementWelcome />;
   }
 
@@ -902,7 +892,8 @@ export default function BackupManagementV2() {
             cellPaddingClassName='px-4 py-2.5'
             paginationClassName='px-5 py-2'
             pagination={{
-              currentPage,
+              currentPage: 1,
+              displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
               totalRecords: apiMeta.totalRecords ?? filteredBackups.length,
               onPageChange: (nextPage) => {
