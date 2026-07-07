@@ -540,7 +540,7 @@ export default function BackupManagementV2() {
     mutationFn: (backupConfigId: string) => backupConfigService.deleteBackupConfig(backupConfigId),
     onSuccess: () => {
       setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
     onError: (error: any) => {
@@ -556,7 +556,7 @@ export default function BackupManagementV2() {
     mutationFn: ({ backupConfigId, backupStatus }: { backupConfigId: string; backupStatus: 'ACTIVE' | 'PAUSED' | 'RESUMED' }) =>
       backupConfigService.updateBackupConfig(backupConfigId, { status: backupStatus }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
     },
     onError: (error) => {
@@ -571,7 +571,7 @@ export default function BackupManagementV2() {
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list', currentCursor],
+    queryKey: ['backup-config-list-v2', currentCursor],
     queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -753,7 +753,7 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (!backupQuery.isLoading && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  if (!backupQuery.isLoading && !backupQuery.isFetching && responseBody !== null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
     return <BackupManagementWelcome />;
   }
 
