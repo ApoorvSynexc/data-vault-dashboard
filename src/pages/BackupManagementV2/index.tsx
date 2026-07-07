@@ -863,7 +863,8 @@ export default function BackupManagementV2() {
             cellPaddingClassName='px-4 py-2.5'
             paginationClassName='px-5 py-2'
             pagination={{
-              currentPage,
+              currentPage: 1,
+              displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
               totalRecords: apiMeta.totalRecords ?? filteredBackups.length,
               onPageChange: (nextPage) => {
