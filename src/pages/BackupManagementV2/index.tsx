@@ -577,9 +577,9 @@ export default function BackupManagementV2() {
     refetchOnWindowFocus: false,
   });
 
-  const listObject = (backupQuery.data as any)?.data ?? null;
+  const listObject = (backupQuery.data as any)?.data?.data ?? null;
   const apiDataArray = Array.isArray(listObject) ? listObject : [];
-  const apiMeta = (backupQuery.data as any)?.meta ?? {
+  const apiMeta = (backupQuery.data as any)?.data?.meta ?? {
     limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
@@ -589,7 +589,7 @@ export default function BackupManagementV2() {
   useEffect(() => {
     if (!backupQuery.data) return;
 
-    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
+    const nextCursor = (backupQuery.data as any)?.data?.meta?.nextCursor ?? null;
 
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
