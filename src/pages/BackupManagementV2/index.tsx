@@ -577,9 +577,9 @@ export default function BackupManagementV2() {
     refetchOnWindowFocus: false,
   });
 
-  const listObject = (backupQuery.data as any)?.data?.data ?? null;
-  const apiDataArray = Array.isArray(listObject) ? listObject : [];
-  const apiMeta = (backupQuery.data as any)?.data?.meta ?? {
+  const responseBody = (backupQuery.data as any)?.data ?? null;
+  const apiDataArray: BackupConfigItem[] = Array.isArray(responseBody?.data) ? responseBody.data : [];
+  const apiMeta = responseBody?.meta ?? {
     limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
