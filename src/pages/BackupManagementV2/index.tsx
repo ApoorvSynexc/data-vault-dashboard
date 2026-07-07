@@ -578,8 +578,8 @@ export default function BackupManagementV2() {
   });
 
   const listObject = (backupQuery.data as any)?.data ?? null;
-  const apiDataArray = Array.isArray(listObject) ? listObject : (listObject as any)?.data ?? [];
-  const apiMeta = (listObject as any)?.meta ?? (backupQuery.data as any)?.meta ?? {
+  const apiDataArray = Array.isArray(listObject) ? listObject : [];
+  const apiMeta = (backupQuery.data as any)?.meta ?? {
     limit: 25,
     nextCursor: null,
     totalRecords: apiDataArray.length,
@@ -587,10 +587,9 @@ export default function BackupManagementV2() {
   };
 
   useEffect(() => {
-    const sourceData = (backupQuery.data as any)?.data;
-    if (!sourceData) return;
+    if (!backupQuery.data) return;
 
-    const nextCursor = (sourceData as any)?.meta?.nextCursor ?? null;
+    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
 
     if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
       setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
