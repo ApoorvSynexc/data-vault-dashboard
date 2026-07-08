@@ -57,8 +57,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   // Filter connections by selected platform type (case-insensitive)
   const connections = selectedPlatform
     ? allConnections.filter((conn: any) =>
-        conn.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
-        conn.status === 'ACTIVE'
+        (conn.crm?.crmName ?? conn.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase()
       )
     : [];
   // Clear connection when platform changes
@@ -170,17 +169,17 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
                           <div className='flex-1 min-w-0'>
                             <div className='flex items-center gap-2'>
                               <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>
-                                {connection.name ?? connection.crmProfile?.username ?? connection.contactEmail ?? connection.crmId}
+                                {connection.crmProfile?.username ?? connection.contactEmail ?? connection.crmId}
                               </p>
-                              {connection.environment && (
+                              {(connection.crm?.environment ?? connection.environment) && (
                                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
-                                  connection.environment === 'production' ? 'bg-green-50 text-green-700'
-                                  : connection.environment === 'sandbox' ? 'bg-amber-50 text-amber-700'
+                                  (connection.crm?.environment ?? connection.environment) === 'production' ? 'bg-green-50 text-green-700'
+                                  : (connection.crm?.environment ?? connection.environment) === 'sandbox' ? 'bg-amber-50 text-amber-700'
                                   : 'bg-blue-50 text-blue-700'
-                                }`}>{connection.environment}</span>
+                                }`}>{connection.crm?.environment ?? connection.environment}</span>
                               )}
                             </div>
-                            <p className='text-xs text-gray-500 truncate'>Org ID: {connection.organizationId}</p>
+                            <p className='text-xs text-gray-500 truncate'>Org ID: {connection.crm?.organizationId ?? connection.organizationId}</p>
                             {(connection.firstName || connection.lastName) && (
                               <p className='text-xs text-gray-500 truncate'>{[connection.firstName, connection.lastName].filter(Boolean).join(' ')}</p>
                             )}
@@ -216,7 +215,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           Cancel
         </button>
         <button
-          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.name ?? selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? '')}
+          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? '')}
           disabled={!selectedConnection}
           className={`px-6 py-2 rounded-lg font-medium transition-colors ${
             selectedConnection
