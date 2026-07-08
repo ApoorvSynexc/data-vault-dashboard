@@ -3,6 +3,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { useStorageService } from '../../services/storage/storage.service';
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const val = bytes / Math.pow(1024, i);
+  return `${val % 1 === 0 ? val : val.toFixed(1)} ${units[i]}`;
+}
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function TierBadge({ tier }: { tier: 'Hot' | 'Cold' | 'Warm' }) {
@@ -38,11 +52,21 @@ const ARCHIVE_POLICIES: { name: string; object: string; records: string; sfFreed
 
 // ── SVG Area Chart ────────────────────────────────────────────────────────────
 
-function AreaChart() {
-  const path = 'M0,130 L40,120 L100,108 L160,98 L220,88 L280,72 L340,60 L400,50 L460,38 L520,28 L580,18 L640,10 L700,5';
-  const area = path + ' L700,140 L0,140 Z';
+type MonthlyStat = { month: string; sizeInBytes: number; uploadedRecords: number };
+
+function AreaChart({ stats }: { stats: MonthlyStat[] }) {
+  const W = 700, H = 140, PAD = 10;
+  const values = stats.map((s) => s.sizeInBytes);
+  const max = Math.max(...values, 1);
+  const points = values.map((v, i) => {
+    const x = values.length === 1 ? W / 2 : (i / (values.length - 1)) * W;
+    const y = PAD + ((max - v) / max) * (H - PAD * 2);
+    return `${x},${y}`;
+  });
+  const path = `M${points.join(' L')}`;
+  const area = `${path} L${W},${H} L0,${H} Z`;
   return (
-    <svg viewBox='0 0 700 140' className='w-full h-24' preserveAspectRatio='none'>
+    <svg viewBox={`0 0 ${W} ${H}`} className='w-full h-24' preserveAspectRatio='none'>
       <defs>
         <linearGradient id='archGrad' x1='0' x2='0' y1='0' y2='1'>
           <stop offset='0%'   stopColor='#16a34a' stopOpacity='0.35' />
@@ -51,7 +75,7 @@ function AreaChart() {
       </defs>
       <path d={area} fill='url(#archGrad)' />
       <path d={path} fill='none' stroke='#16a34a' strokeWidth='2' strokeLinejoin='round' />
-      <line x1='0' y1='130' x2='700' y2='130' stroke='#e5e7eb' strokeWidth='1' />
+      <line x1='0' y1={H - PAD} x2={W} y2={H - PAD} stroke='#e5e7eb' strokeWidth='1' />
     </svg>
   );
 }
@@ -68,23 +92,17 @@ export default function Storage() {
     refetchOnWindowFocus: false,
   });
 
-  const lastBackupQuery = useQuery({
-    queryKey: ['storage-last-backup-config', 'NORMAL'],
-    queryFn: () => storageService.getLastBackupConfig('NORMAL'),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
 
-  const lastArchivalQuery = useQuery({
-    queryKey: ['storage-last-backup-config', 'ARCHIVAL'],
-    queryFn: () => storageService.getLastBackupConfig('ARCHIVAL'),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const overviewData = (overviewQuery.data as any)?.data;
+  const backupSize: number = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes ?? 0;
+  const backupRecords: number = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords ?? 0;
+  const archivalSize: number = overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0;
+  const monthlyStats: MonthlyStat[] = Array.isArray(overviewData?.monthlyStats) ? overviewData.monthlyStats : [];
 
-  console.log('storage overview:', overviewQuery.data);
-  console.log('last backup config (NORMAL):', lastBackupQuery.data);
-  console.log('last backup config (ARCHIVAL):', lastArchivalQuery.data);
+  const chartMonthLabels = monthlyStats.map((s) => {
+    const [, mm] = s.month.split('-');
+    return new Date(2000, Number(mm) - 1).toLocaleString('default', { month: 'short' });
+  });
 
   return (
     <div className='flex flex-col gap-5 p-4 sm:p-6 w-full'>
@@ -95,26 +113,23 @@ export default function Storage() {
           <h2 className='text-base font-bold text-gray-900'>Storage</h2>
           <p className='text-sm text-gray-500 mt-1'>Recovery coverage, archive savings, and how long we keep your data.</p>
         </div>
-        <button className='flex-shrink-0 rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90' style={{ background: '#155DFC' }}>
-          Save Changes
-        </button>
       </div>
 
       {/* ── Stat Cards ── */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
           <p className='text-xs text-gray-500'>DataVault Storage Used</p>
-          <p className='text-xl font-bold mt-1' style={{ color: '#155DFC' }}>156 GB</p>
-          <p className='text-xs mt-1 text-green-600'>↑ 8 GB this month</p>
+          <p className='text-xl font-bold mt-1' style={{ color: '#155DFC' }}>{formatBytes(backupSize)}</p>
+          <p className='text-xs mt-1 text-gray-400'>Backup storage consumed</p>
         </div>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
           <p className='text-xs text-gray-500'>Records Protected</p>
-          <p className='text-xl font-bold mt-1 text-gray-900'>4.82M</p>
-          <p className='text-xs mt-1 text-gray-400'>Across 12 backup policies</p>
+          <p className='text-xl font-bold mt-1 text-gray-900'>{formatCount(backupRecords)}</p>
+          <p className='text-xs mt-1 text-gray-400'>Across all backup policies</p>
         </div>
         <div className='rounded-xl shadow-sm px-4 py-3.5' style={{ background: 'linear-gradient(180deg,#eef9f1,#fff)', border: '1px solid #16a34a' }}>
           <p className='text-xs font-semibold text-green-700'>Salesforce Storage Saved</p>
-          <p className='text-xl font-bold mt-1 text-green-700'>312 GB</p>
+          <p className='text-xl font-bold mt-1 text-green-700'>{formatBytes(archivalSize)}</p>
           <p className='text-xs mt-1 text-gray-400'>Freed by Archive Vault</p>
         </div>
         <div className='rounded-xl shadow-sm px-4 py-3.5' style={{ background: 'linear-gradient(180deg,#eef9f1,#fff)', border: '1px solid #16a34a' }}>
@@ -245,15 +260,14 @@ export default function Storage() {
           <div className='rounded-lg border border-gray-200 bg-gray-50 p-4 mb-5'>
             <div className='flex items-start justify-between mb-1'>
               <div>
-                <p className='text-xs font-semibold text-gray-700'>Salesforce storage freed — last 12 months</p>
-                <p className='text-xs text-gray-400'>Cumulative GB freed by archive policies</p>
+                <p className='text-xs font-semibold text-gray-700'>Storage used — this year</p>
+                <p className='text-xs text-gray-400'>Monthly sizeInBytes across all backups</p>
               </div>
-              <span className='text-xs font-semibold text-green-600 flex-shrink-0'>↑ 312 GB total · 28 GB last month</span>
             </div>
-            <AreaChart />
+            <AreaChart stats={monthlyStats} />
             <div className='flex justify-between mt-1'>
-              {['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'].map((m) => (
-                <span key={m} className='text-[10px] text-gray-400'>{m}</span>
+              {chartMonthLabels.map((m, i) => (
+                <span key={i} className='text-[10px] text-gray-400'>{m}</span>
               ))}
             </div>
           </div>
