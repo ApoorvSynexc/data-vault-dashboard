@@ -1,6 +1,7 @@
 // Storage & Retention page — matches HTML reference screen-storage
 
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useStorageService } from '../../services/storage/storage.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,16 +17,6 @@ function HealthBadge() {
   return <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700'>Healthy</span>;
 }
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors ${value ? 'bg-blue-600 border-blue-600' : 'bg-gray-200 border-gray-200'}`}
-    >
-      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
-    </button>
-  );
-}
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
@@ -68,14 +59,32 @@ function AreaChart() {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Storage() {
-  const [backupRetention,    setBackupRetention]    = useState('90 days');
-  const [archiveRetention,   setArchiveRetention]   = useState('Forever');
-  const [defaultArchiveTier, setDefaultArchiveTier] = useState('Hot (immediate access)');
-  const [autoTransition,     setAutoTransition]     = useState('90 days');
-  const [autoDelete,         setAutoDelete]         = useState(true);
+  const storageService = useStorageService();
 
-  const selectCls = 'h-9 w-full px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
-  const selectSty = { border: '1px solid #E2E8F0', color: '#33363F' };
+  const overviewQuery = useQuery({
+    queryKey: ['storage-overview'],
+    queryFn: () => storageService.getOverview(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const lastBackupQuery = useQuery({
+    queryKey: ['storage-last-backup-config', 'NORMAL'],
+    queryFn: () => storageService.getLastBackupConfig('NORMAL'),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const lastArchivalQuery = useQuery({
+    queryKey: ['storage-last-backup-config', 'ARCHIVAL'],
+    queryFn: () => storageService.getLastBackupConfig('ARCHIVAL'),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  console.log('storage overview:', overviewQuery.data);
+  console.log('last backup config (NORMAL):', lastBackupQuery.data);
+  console.log('last backup config (ARCHIVAL):', lastArchivalQuery.data);
 
   return (
     <div className='flex flex-col gap-5 p-4 sm:p-6 w-full'>
@@ -291,66 +300,6 @@ export default function Storage() {
         </div>
       </div>
 
-      {/* ── Retention ── */}
-      <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-        <div className='px-5 py-4 border-b border-gray-100'>
-          <p className='text-sm font-semibold text-gray-800'>⏱ Retention</p>
-          <p className='text-xs text-gray-400 mt-0.5'>How long we keep your data.</p>
-        </div>
-        <div className='p-5'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-0 sm:divide-x divide-gray-100'>
-
-            {/* Backup retention */}
-            <div className='flex flex-col gap-4 sm:pr-6 pb-6 sm:pb-0'>
-              <p className='text-sm font-semibold text-gray-700'>Backup retention</p>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-medium text-gray-600'>Keep backup snapshots for</label>
-                <select value={backupRetention} onChange={(e) => setBackupRetention(e.target.value)} className={selectCls} style={selectSty}>
-                  {['30 days','60 days','90 days','1 year','Forever'].map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-              <div className='flex items-start justify-between gap-4'>
-                <div>
-                  <p className='text-sm font-medium text-gray-700'>Auto-delete expired snapshots</p>
-                  <p className='text-xs text-gray-400 mt-0.5'>Purge backups beyond the retention window automatically</p>
-                </div>
-                <Toggle value={autoDelete} onChange={setAutoDelete} />
-              </div>
-            </div>
-
-            {/* Archive retention */}
-            <div className='flex flex-col gap-4 sm:pl-6 pt-6 sm:pt-0 border-t sm:border-t-0 border-gray-100'>
-              <p className='text-sm font-semibold text-gray-700'>Archive retention</p>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-medium text-gray-600'>Keep archived records for</label>
-                <select value={archiveRetention} onChange={(e) => setArchiveRetention(e.target.value)} className={selectCls} style={selectSty}>
-                  {['1 year','3 years','7 years','Forever'].map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-medium text-gray-600'>Default archive tier</label>
-                <select value={defaultArchiveTier} onChange={(e) => setDefaultArchiveTier(e.target.value)} className={selectCls} style={selectSty}>
-                  {['Hot (immediate access)','Warm (1–5 min restore)','Cold (1–12 hr restore)'].map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-              <div className='flex flex-col gap-1.5'>
-                <label className='text-xs font-medium text-gray-600'>Auto-transition Hot → Cold after</label>
-                <select value={autoTransition} onChange={(e) => setAutoTransition(e.target.value)} className={selectCls} style={selectSty}>
-                  {['Never','90 days','180 days','365 days'].map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Footer note */}
-          <div className='mt-5 rounded-lg px-4 py-3 bg-gray-50' style={{ border: '1px solid #f1f5f9' }}>
-            <p className='text-xs text-gray-500 italic'>
-              Pre-job snapshots for rollback are kept for 7 days. Audit logs are kept for 7 years. These are system defaults and cannot be changed.
-            </p>
-          </div>
-        </div>
-      </div>
 
     </div>
   );
