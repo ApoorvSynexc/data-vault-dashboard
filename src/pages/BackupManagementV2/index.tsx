@@ -531,6 +531,17 @@ export default function BackupManagementV2() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search — reset to page 1 and re-fetch after 400ms of no typing
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+      setCurrentPage(1);
+      setCursorMap({ 1: null });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [filters.search]);
 
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
@@ -566,12 +577,12 @@ export default function BackupManagementV2() {
   });
 
   const queryFn = useCallback(() =>
-    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
-    [currentCursor]
+    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined, debouncedSearch || undefined),
+    [currentCursor, debouncedSearch]
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list-v2', currentCursor],
+    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch],
     queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -647,7 +658,6 @@ export default function BackupManagementV2() {
         if (row.configStatus !== filters.status) return false;
       }
     }
-    if (filters.search && !row.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
 
@@ -885,6 +895,7 @@ export default function BackupManagementV2() {
               },
             }}
             showSerialNumber={true}
+            hidePaginationSummary={!!debouncedSearch}
           />
         )}
       </Panel>
