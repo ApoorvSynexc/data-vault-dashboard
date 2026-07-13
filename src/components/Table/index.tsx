@@ -108,6 +108,7 @@ type TableProps<TRow> = {
   itemsPerPage?: number;
   showPageNumbers?: boolean;
   paginationClassName?: string;
+  hidePaginationSummary?: boolean;
 
   // ── Serial number ──────────────────────────────────────────────────────────
   showSerialNumber?: boolean;
@@ -142,6 +143,7 @@ export default function Table<TRow>({
   itemsPerPage = 10,
   showPageNumbers = true,
   paginationClassName,
+  hidePaginationSummary = false,
   showCheckbox = false,
   selectedIds,
   onSelectionChange,
@@ -400,10 +402,12 @@ export default function Table<TRow>({
           {/* ── Page pagination ── */}
           {!isCursorPagination && usePagination && (
             <>
-              <p className='text-sm text-gray-600'>
-                Showing {(displayPage - 1) * safePageSize + 1} to{' '}
-                {Math.min(displayPage * safePageSize, totalRecords)} of {totalRecords}
-              </p>
+              {hidePaginationSummary ? <span /> : (
+                <p className='text-sm text-gray-600'>
+                  Showing {(displayPage - 1) * safePageSize + 1} to{' '}
+                  {Math.min(displayPage * safePageSize, totalRecords)} of {totalRecords}
+                </p>
+              )}
               <div className='flex items-center gap-4'>
                 <div className='flex items-center gap-2'>
                   <button
