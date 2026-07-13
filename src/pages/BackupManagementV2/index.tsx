@@ -762,7 +762,8 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (!backupQuery.isLoading && !backupQuery.isFetching && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  const isSearchPending = filters.search !== debouncedSearch;
+  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch) {
     return <BackupManagementWelcome />;
   }
 
