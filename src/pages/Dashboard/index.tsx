@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../utils';
@@ -102,6 +103,8 @@ const floatingFrames = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
   const backupConfigService = useBackupConfigService();
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
 
@@ -281,7 +284,7 @@ export default function Dashboard() {
             className='font-bold leading-snug mb-2'
             style={{ color: '#33363F', fontSize: 32, lineHeight: '34px' }}
           >
-            Welcome User !
+            Welcome {userName}!
           </h1>
           <p
             className='mb-10'
