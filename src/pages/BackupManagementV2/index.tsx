@@ -529,9 +529,21 @@ export default function BackupManagementV2() {
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const saved = sessionStorage.getItem('bm-v2-page');
+    return saved ? Number(saved) : 1;
+  });
+  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>(() => {
+    try {
+      const saved = sessionStorage.getItem('bm-v2-cursor-map');
+      return saved ? JSON.parse(saved) : { 1: null };
+    } catch { return { 1: null }; }
+  });
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Persist page + cursorMap to sessionStorage so back-navigation restores position
+  useEffect(() => { sessionStorage.setItem('bm-v2-page', String(currentPage)); }, [currentPage]);
+  useEffect(() => { sessionStorage.setItem('bm-v2-cursor-map', JSON.stringify(cursorMap)); }, [cursorMap]);
 
   // Debounce search — reset to page 1 and re-fetch after 400ms of no typing
   useEffect(() => {
