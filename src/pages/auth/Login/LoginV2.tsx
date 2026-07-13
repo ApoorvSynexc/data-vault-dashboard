@@ -16,7 +16,10 @@ export default function LoginV2() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      if (event.data?.type === 'SALESFORCE_LOGIN_SUCCESS') {
+      if (
+        event.data?.type === 'SALESFORCE_LOGIN_SUCCESS' ||
+        event.data?.type === 'SALESFORCE_CONNECT_SUCCESS'
+      ) {
         window.location.replace('/');
       }
     };
