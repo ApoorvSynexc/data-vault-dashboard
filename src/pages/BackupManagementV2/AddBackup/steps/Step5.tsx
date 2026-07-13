@@ -137,7 +137,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
           <h1 className='text-2xl font-bold text-gray-900'>Data Scope</h1>
-          <p className='text-sm text-gray-600 mt-1'>Select object that you want to backup in scheduled backup</p>
+          <p className='text-sm text-gray-600 mt-1'>Select the objects that you want to back up in the scheduled backup.</p>
         </div>
         <span className='text-xs font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 5 of {maxSteps}
@@ -159,7 +159,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             </span>
             <input
               type='text'
-              placeholder='Search Object'
+              placeholder='Search Objects'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className='w-full pl-8 pr-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
@@ -185,14 +185,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
               <polyline points='20 6 9 17 4 12' />
             </svg>
-            <span className='font-medium'>{selectedObjects.size} object selected</span>
+            <span className='font-medium'>{selectedObjects.size} objects selected</span>
           </div>
 
           {/* Clear */}
           <button
             onClick={() => setSelectedObjects(new Set())}
-            className='text-sm font-medium text-gray-500 hover:text-gray-700 flex-shrink-0'>
-            Clear
+            className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
+            Clear All
           </button>
         </div>
 
@@ -225,8 +225,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 const size = kb >= 1024 * 1024
                   ? `${(kb / (1024 * 1024)).toFixed(2)} GB`
                   : kb >= 1024
-                  ? `${(kb / 1024).toFixed(2)} MB`
-                  : `${kb} KB`;
+                    ? `${(kb / 1024).toFixed(2)} MB`
+                    : `${kb} KB`;
                 return <span className='text-sm text-gray-600'>{size}</span>;
               },
             },
@@ -237,7 +237,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               {error ? (
                 <div className='mx-5 my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-4 flex items-start gap-3'>
                   <svg className='h-5 w-5 shrink-0 text-red-500 mt-0.5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                    <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
                   </svg>
                   <div>
                     <p className='text-sm font-semibold text-red-700'>{parseSalesforceError(error).title}</p>
@@ -306,11 +306,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               onNext(selectedObjectsData);
             }}
             disabled={selectedObjects.size === 0}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-              selectedObjects.size > 0
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedObjects.size > 0
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+              }`}
           >
             Next Step →
           </button>

@@ -228,7 +228,7 @@ export default function Table<TRow>({
             <thead className='sticky top-0 z-20 bg-white'>
               <tr className='border-b border-gray-200 shadow-sm'>
                 {showSerialNumber && (
-                  <th className={headerCellClass}>#</th>
+                  <th className={headerCellClass}>SL No.</th>
                 )}
                 {showCheckbox && (
                   <th className={`${cellPaddingClassName} text-left`}>
