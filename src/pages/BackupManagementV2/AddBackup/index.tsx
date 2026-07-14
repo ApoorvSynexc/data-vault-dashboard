@@ -90,7 +90,9 @@ export default function AddBackup() {
   };
 
   const handleStrategySelected = (strategy: BackupStrategy, entireDataset: boolean) => {
-    if (entireDatasetSelected && !entireDataset) {
+    const strategyChanged = strategy !== selectedStrategy;
+    const entireDatasetToggled = entireDataset !== entireDatasetSelected;
+    if (strategyChanged || entireDatasetToggled) {
       setSelectedObjects([]);
     }
     setSelectedStrategy(strategy);
@@ -131,7 +133,12 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
           onNext={(platformId) => {
-            if (platformId) setSelectedPlatformId(platformId);
+            if (platformId && platformId !== selectedPlatformId) {
+              setSelectedPlatformId(platformId);
+              setSelectedObjects([]);
+            } else if (platformId) {
+              setSelectedPlatformId(platformId);
+            }
             handleNextStep();
           }}
         />
@@ -208,7 +215,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}
@@ -227,7 +233,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}
