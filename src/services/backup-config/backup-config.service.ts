@@ -185,9 +185,17 @@ export function useBackupConfigService() {
   return {
     createBackupConfig: (payload: CreateBackupPayload) =>
       api.post<void>(BACKUP_CONFIG_ENDPOINTS.create, payload),
-    listBackupConfigs: async (pagination = true, cursor?: string, search?: string) => {
+    listBackupConfigs: async (pagination = true, cursor?: string, search?: string, status?: string, schedule?: string, backupStatus?: string) => {
       const response = await api.get<BackupConfigListApiResponse>(BACKUP_CONFIG_ENDPOINTS.list, {
-        query: { pagination, cursor, limit: 25, ...(search ? { search } : {}) },
+        query: {
+          pagination,
+          cursor,
+          limit: 25,
+          ...(search ? { search } : {}),
+          ...(status ? { status } : {}),
+          ...(schedule ? { schedule } : {}),
+          ...(backupStatus ? { backupStatus } : {}),
+        },
       });
 
       return response;

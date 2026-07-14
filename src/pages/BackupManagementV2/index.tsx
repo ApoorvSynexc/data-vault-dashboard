@@ -570,6 +570,18 @@ export default function BackupManagementV2() {
     return () => clearTimeout(t);
   }, [filters.search]);
 
+  // Reset to page 1 when dropdown filters change
+  const isFirstFilterRender = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('page');
+      next.delete('cursor');
+      return next;
+    }, { replace: true });
+  }, [filters.backupType, filters.status]);
+
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
 
@@ -602,13 +614,26 @@ export default function BackupManagementV2() {
     },
   });
 
+  // Derive API filter params from filter state
+  const apiStatus = !JOB_STATUS_VALUES.has(filters.status) && filters.status !== 'All' ? filters.status : undefined;
+  const apiBackupStatus = JOB_STATUS_VALUES.has(filters.status) ? (filters.status === 'RUNNING' ? undefined : filters.status) : undefined;
+  const apiRunningStatus = filters.status === 'RUNNING' ? 'RUNNING' : undefined;
+  const apiSchedule = filters.backupType === 'Realtime' ? 'REALTIME' : filters.backupType === 'Schedule' ? 'SCHEDULE' : undefined;
+
   const queryFn = useCallback(() =>
-    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined, debouncedSearch || undefined),
-    [currentCursor, debouncedSearch]
+    backupConfigService.listBackupConfigs(
+      true,
+      currentCursor ?? undefined,
+      debouncedSearch || undefined,
+      apiStatus,
+      apiSchedule,
+      apiBackupStatus ?? apiRunningStatus,
+    ),
+    [currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus, apiRunningStatus]
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch],
+    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus ?? apiRunningStatus],
     queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -621,8 +646,6 @@ export default function BackupManagementV2() {
     totalRecords: apiDataArray.length,
     totalPages: 1,
   };
-
-  // No-op: cursor is now carried in the URL, nothing to store here.
 
   const getScheduleFrequencyDisplay = (frequency?: string): string => {
     if (!frequency) return '--';
@@ -663,21 +686,8 @@ export default function BackupManagementV2() {
     };
   });
 
-  const filteredBackups = parsedRows.filter((row) => {
-    if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
-    if (filters.status !== 'All') {
-      if (JOB_STATUS_VALUES.has(filters.status)) {
-        if (filters.status === 'RUNNING') {
-          if (row.backupStatus !== 'RUNNING' && row.backupStatus !== 'PENDING') return false;
-        } else {
-          if (row.backupStatus !== filters.status) return false;
-        }
-      } else {
-        if (row.configStatus !== filters.status) return false;
-      }
-    }
-    return true;
-  });
+  // Filters are applied server-side via API params — no client-side filtering needed.
+  const filteredBackups = parsedRows;
 
   const backupColumns: TableColumn<BackupRow>[] = [
     {
@@ -895,7 +905,7 @@ export default function BackupManagementV2() {
               currentPage: 1,
               displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
-              totalRecords: debouncedSearch ? apiDataArray.length : (apiMeta.totalRecords ?? filteredBackups.length),
+              totalRecords: apiMeta.totalRecords ?? apiDataArray.length,
               onPageChange: (nextPage) => {
                 if (nextPage <= 0 || nextPage === currentPage) return;
                 if (nextPage === 1) {
@@ -910,7 +920,7 @@ export default function BackupManagementV2() {
             }}
             showSerialNumber={true}
             serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
-            hidePaginationSummary={!!debouncedSearch}
+            hidePaginationSummary={false}
           />
         )}
       </Panel>
