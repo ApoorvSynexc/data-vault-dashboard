@@ -99,6 +99,10 @@ export default function FinalStep({
 
   const onMutationSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+    queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
+    // Reset saved pagination so list starts from page 1 with fresh data
+    sessionStorage.removeItem('bm-v2-page');
+    sessionStorage.removeItem('bm-v2-cursor-map');
     setIsLoading(false);
     setIsSuccess(true);
   };
@@ -165,6 +169,9 @@ export default function FinalStep({
       await backupConfigService.updateBackupConfig(editConfigId!, buildPayload('DRAFT'));
       await backupConfigService.updateBackupConfig(editConfigId!, buildPayload('ACTIVE'));
       queryClient.invalidateQueries({ queryKey: ['backup-config-list'] });
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
+      sessionStorage.removeItem('bm-v2-page');
+      sessionStorage.removeItem('bm-v2-cursor-map');
       setIsLoading(false);
       setIsSuccess(true);
     } catch (error: any) {
