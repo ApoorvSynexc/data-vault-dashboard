@@ -403,8 +403,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                 disabled={!isSelected}
                                 className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap'
                                 style={{
-                                  border: `1px solid ${!isSelected ? '#E2E8F0' : hasConfig ? '#155DFC' : '#E2E8F0'}`,
-                                  color: !isSelected ? '#CBD5E1' : hasConfig ? '#fff' : '#64748B',
+                                  border: `1px solid ${!isSelected ? '#E2E8F0' : hasConfig ? '#155DFC' : '#155DFC'}`,
+                                  color: !isSelected ? '#CBD5E1' : hasConfig ? '#fff' : '#155DFC',
                                   background: !isSelected ? 'white' : hasConfig ? '#155DFC' : 'white',
                                   cursor: isSelected ? 'pointer' : 'not-allowed',
                                   opacity: isSelected ? 1 : 0.5,
@@ -425,7 +425,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                                   <path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7' />
                                   <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z' />
                                 </svg>
-                                {hasConfig ? 'Details Added' : 'Add Details'}
+                                {hasConfig ? 'Details Added' : 'Set Configuration'}
                               </button>
                             </div>
                           </td>
