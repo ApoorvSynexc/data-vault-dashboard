@@ -905,7 +905,9 @@ export default function BackupManagementV2() {
               currentPage: 1,
               displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
-              totalRecords: apiMeta.totalRecords ?? apiDataArray.length,
+              totalRecords: (apiStatus || apiSchedule || apiBackupStatus || apiRunningStatus || debouncedSearch)
+                ? apiDataArray.length
+                : (apiMeta.totalRecords ?? apiDataArray.length),
               onPageChange: (nextPage) => {
                 if (nextPage <= 0 || nextPage === currentPage) return;
                 if (nextPage === 1) {
