@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
 import type { PlatformType } from '../BackupManagement/AddBackupModal';
@@ -521,6 +521,7 @@ type FilterState = {
 
 export default function BackupManagementV2() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', search: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -529,35 +530,48 @@ export default function BackupManagementV2() {
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState<number>(() => {
-    const saved = sessionStorage.getItem('bm-v2-page');
-    return saved ? Number(saved) : 1;
-  });
-  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>(() => {
-    try {
-      const saved = sessionStorage.getItem('bm-v2-cursor-map');
-      return saved ? JSON.parse(saved) : { 1: null };
-    } catch { return { 1: null }; }
-  });
+  // Page + cursor both live in the URL so back-navigation restores them exactly.
+  // URL shape: /backup-management?page=2&cursor=XXXXXX
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+  const currentCursor = searchParams.get('cursor') ?? null;
+
+  const goToPage = useCallback((page: number, cursor: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (page <= 1) {
+        next.delete('page');
+        next.delete('cursor');
+      } else {
+        next.set('page', String(page));
+        if (cursor) next.set('cursor', cursor);
+        else next.delete('cursor');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Persist page + cursorMap to sessionStorage so back-navigation restores position
-  useEffect(() => { sessionStorage.setItem('bm-v2-page', String(currentPage)); }, [currentPage]);
-  useEffect(() => { sessionStorage.setItem('bm-v2-cursor-map', JSON.stringify(cursorMap)); }, [cursorMap]);
-
-  // Debounce search — reset to page 1 and re-fetch after 400ms of no typing
+  // Debounce search. Only reset page when the user is actively typing (non-empty search).
+  // When search is empty we just sync debouncedSearch without touching the URL page/cursor,
+  // so back-navigation always lands on the correct page.
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(filters.search);
-      setCurrentPage(1);
-      setCursorMap({ 1: null });
+      if (filters.search) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('page');
+          next.delete('cursor');
+          return next;
+        }, { replace: true });
+      }
     }, 400);
     return () => clearTimeout(t);
   }, [filters.search]);
 
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
-  const currentCursor = cursorMap[currentPage] ?? null;
 
   const deleteMutation = useMutation({
     mutationFn: (backupConfigId: string) => backupConfigService.deleteBackupConfig(backupConfigId),
@@ -608,15 +622,7 @@ export default function BackupManagementV2() {
     totalPages: 1,
   };
 
-  useEffect(() => {
-    if (!backupQuery.data) return;
-
-    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
-
-    if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
-      setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
-    }
-  }, [backupQuery.data, currentPage]);
+  // No-op: cursor is now carried in the URL, nothing to store here.
 
   const getScheduleFrequencyDisplay = (frequency?: string): string => {
     if (!frequency) return '--';
@@ -891,19 +897,14 @@ export default function BackupManagementV2() {
               pageSize: apiMeta.limit ?? 10,
               totalRecords: debouncedSearch ? apiDataArray.length : (apiMeta.totalRecords ?? filteredBackups.length),
               onPageChange: (nextPage) => {
-                if (nextPage <= 0) return;
-                if (nextPage === currentPage) return;
-
-                const nextCursor = cursorMap[nextPage];
-                if (nextCursor !== undefined) {
-                  setCurrentPage(nextPage);
+                if (nextPage <= 0 || nextPage === currentPage) return;
+                if (nextPage === 1) {
+                  goToPage(1, null);
                   return;
                 }
-
-                const foundNextCursor = apiMeta.nextCursor;
-                if (foundNextCursor && nextPage === currentPage + 1) {
-                  setCursorMap((prev) => ({ ...prev, [nextPage]: foundNextCursor }));
-                  setCurrentPage(nextPage);
+                // Can only go forward one page at a time using the nextCursor from current response
+                if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+                  goToPage(nextPage, apiMeta.nextCursor);
                 }
               },
             }}
