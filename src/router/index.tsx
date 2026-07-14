@@ -33,6 +33,7 @@ import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
 import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
+import ComingSoon from '../components/ComingSoon';
 
 const router = createBrowserRouter([
   {
@@ -63,7 +64,7 @@ const router = createBrowserRouter([
           { path: '/archive-vault/:slug', element: <ArchiveDetailScreen /> },
           { path: '/storage', element: <Storage /> },
           { path: '/notifications', element: <Notifications /> },
-          { path: '/restore-center', element: <RestoreCenter /> },
+          { path: '/restore-center', element: <ComingSoon /> },
           { path: '/activity-logs', element: <ActivityLogs /> },
           { path: '/audit-logs', element: <AuditLogs /> },
           { path: '/reports', element: <Reports /> },
