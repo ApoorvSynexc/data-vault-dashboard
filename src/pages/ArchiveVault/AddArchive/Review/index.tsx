@@ -72,9 +72,16 @@ const [confirmError, setConfirmError] = useState(false);
   const schedFreq = scheduleConfig
     ? (freqLabel[scheduleConfig.scheduling.frequency] ?? scheduleConfig.scheduling.frequency)
     : 'Daily';
-  const schedStartDate = scheduleConfig?.scheduling.startDate ?? '20-05-2026';
-  const schedStartTime = scheduleConfig?.scheduling.startTime ?? '06:00 PM';
-  const scheduleDisplay = `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`;
+  const schedStartDate = scheduleConfig?.scheduling.startDate;
+  const schedStartTime = scheduleConfig?.scheduling.startTime;
+  const isRunNow = scheduleConfig?.scheduling.frequency === 'ONCE' && !schedStartDate && !schedStartTime;
+  const scheduleDisplay = isRunNow
+    ? 'One Time (Archive Now)'
+    : schedStartTime && schedStartDate
+      ? `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`
+      : schedStartTime
+        ? `${schedFreq} at ${schedStartTime}`
+        : schedFreq;
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
