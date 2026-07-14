@@ -15,6 +15,7 @@
 // Save as Draft: calls POST /v1/archival-config with status "DRAFT" — saves without scheduling.
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
@@ -482,6 +483,7 @@ interface Step3DryRunProps {
 export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, initialCache, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [dryRunState, setDryRunState] = useState<DryRunState>(initialCache ? 'results' : 'idle');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -569,6 +571,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
     setDraftError(null);
     try {
       await archivalService.applyConfig({ ...archivalPayload, status: 'DRAFT' } as any);
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       navigate('/archive-vault');
     } catch (err: any) {
       setDraftError(err?.message ?? 'Failed to save draft. Please try again.');
