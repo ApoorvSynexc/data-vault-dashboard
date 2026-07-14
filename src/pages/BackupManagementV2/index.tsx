@@ -889,7 +889,7 @@ export default function BackupManagementV2() {
               currentPage: 1,
               displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
-              totalRecords: apiMeta.totalRecords ?? filteredBackups.length,
+              totalRecords: debouncedSearch ? apiDataArray.length : (apiMeta.totalRecords ?? filteredBackups.length),
               onPageChange: (nextPage) => {
                 if (nextPage <= 0) return;
                 if (nextPage === currentPage) return;
