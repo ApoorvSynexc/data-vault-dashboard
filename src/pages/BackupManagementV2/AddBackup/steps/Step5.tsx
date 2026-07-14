@@ -19,6 +19,7 @@ type Step5Props = {
   crmId?: string | null;
   selectedObjectIds?: string[];
   strategy?: 'realtime' | 'scheduled';
+  onSelectionChange?: (selectedIds: string[]) => void;
 };
 
 interface BackupObject {
@@ -33,7 +34,7 @@ interface BackupObject {
   schedule?: 'realtime' | 'schedule' | null;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime' }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange }: Step5Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,6 +116,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
   const autoSelectedRef = useRef(false);
+
+  // Notify parent of selection changes so it can persist across back/forward navigation
+  useEffect(() => {
+    onSelectionChange?.(Array.from(selectedObjects));
+  }, [selectedObjects]);
 
   // Auto-select all objects if entire dataset is selected — only once on first load
   useEffect(() => {

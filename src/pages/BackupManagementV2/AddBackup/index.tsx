@@ -188,6 +188,12 @@ export default function AddBackup() {
           entireDatasetSelected={entireDatasetSelected}
           selectedObjectIds={selectedObjects.map((o) => o.id)}
           strategy={selectedStrategy}
+          onSelectionChange={(ids) => {
+            setSelectedObjects(ids.map((id) => {
+              const existing = selectedObjects.find((o) => o.id === id);
+              return existing ?? { id, type: 'STANDARD' as const };
+            }));
+          }}
           onNext={(objects) => {
             setSelectedObjects(objects);
             handleNextStep();
