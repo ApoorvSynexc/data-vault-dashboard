@@ -16,9 +16,9 @@
 // Filtering: status filter buttons (All / Active / Running / Paused / Draft / etc.)
 // are applied client-side on the full list. Search is also client-side with debounce.
 // Pagination: 10 items per page, client-side slice.
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
@@ -331,17 +331,34 @@ function FilterDropdown({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-const ITEMS_PER_PAGE = 10;
-
 export default function ArchiveVaultHomePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const archivalService = useArchivalService();
   const platformService = usePlatformService();
   const queryClient = useQueryClient();
 
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+  const currentCursor = searchParams.get('cursor') ?? null;
+
+  const goToPage = useCallback((page: number, cursor: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (page <= 1) {
+        next.delete('page');
+        next.delete('cursor');
+      } else {
+        next.set('page', String(page));
+        if (cursor) next.set('cursor', cursor);
+        else next.delete('cursor');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
   const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -388,9 +405,43 @@ export default function ArchiveVaultHomePage() {
     },
   });
 
+  // Debounce search — only reset page when actively typing
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      if (search) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('page');
+          next.delete('cursor');
+          return next;
+        }, { replace: true });
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to page 1 when filter changes
+  const isFirstFilterRender = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('page');
+      next.delete('cursor');
+      return next;
+    }, { replace: true });
+  }, [statusFilter]);
+
   const { data: rawListData, isLoading: isLoadingList } = useQuery({
-    queryKey: ['archival-config-list'],
-    queryFn: () => archivalService.getList(),
+    queryKey: ['archival-config-list', currentCursor, debouncedSearch, statusFilter],
+    queryFn: () => {
+      const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
+      const isJobStatus = JOB_STATUS_SET.has(statusFilter);
+      const apiStatus = !isJobStatus && statusFilter !== 'All' ? statusFilter : undefined;
+      const apiBackupStatus = isJobStatus ? statusFilter : undefined;
+      return archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, apiStatus, apiBackupStatus);
+    },
     staleTime: 0,
   });
 
@@ -410,9 +461,13 @@ export default function ArchiveVaultHomePage() {
 
   const isLoading = isLoadingList || isLoadingPlatforms || isLoadingStats;
 
-  const rawList: ArchivalConfigItem[] = Array.isArray(rawListData)
+  const rawList: ArchivalConfigItem[] = Array.isArray((rawListData as any)?.data)
+    ? (rawListData as any).data
+    : Array.isArray(rawListData)
     ? rawListData
     : ((rawListData as any)?.data ?? []);
+
+  const apiMeta = (rawListData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: rawList.length, totalPages: 1 };
 
   const platforms: any[] = Array.isArray(platformsData) ? platformsData : ((platformsData as any)?.data ?? []);
 
@@ -431,23 +486,10 @@ export default function ArchiveVaultHomePage() {
     displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
   }));
 
-  // Status pills split by which field they filter
   const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
 
-  // Filters
-  const filtered = enriched.filter((r) => {
-    if (search && !r.displayName.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter !== 'All') {
-      if (JOB_STATUS_VALUES.has(statusFilter)) {
-        // Filter on lastJobStatus (backupStatus field)
-        if (r.lastJobStatus !== statusFilter) return false;
-      } else {
-        // Filter on displayStatus (status field)
-        if (r.displayStatus !== statusFilter) return false;
-      }
-    }
-    return true;
-  });
+  // All filters are server-side — no client-side filtering needed
+  const filtered = enriched;
 
   const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -503,7 +545,7 @@ export default function ArchiveVaultHomePage() {
               <input
                 type='text'
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder='Search Archive'
                 className='h-7 w-44 rounded-full border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
               />
@@ -519,7 +561,7 @@ export default function ArchiveVaultHomePage() {
                 { label: 'Draft',    value: 'DRAFT'    },
                 { label: 'Inactive', value: 'INACTIVE' },
               ]}
-              onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+              onChange={(v) => setStatusFilter(v)}
             />
             <FilterDropdown
               label='Last Job'
@@ -531,7 +573,7 @@ export default function ArchiveVaultHomePage() {
                 { label: 'Partial Failure', value: 'PARTIAL_FAILURE' },
                 { label: 'Pending',         value: 'PENDING'         },
               ]}
-              onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+              onChange={(v) => setStatusFilter(v)}
             />
           </div>
         }
@@ -640,11 +682,20 @@ export default function ArchiveVaultHomePage() {
               rowClassName='hover:bg-gray-50/60 transition-colors'
               cellPaddingClassName='px-5 py-3.5'
               emptyState='No archive policies match your filters.'
+              showSerialNumber
+              serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
               pagination={{
-                currentPage,
-                pageSize: ITEMS_PER_PAGE,
-                totalRecords: filtered.length,
-                onPageChange: setCurrentPage,
+                currentPage: 1,
+                displayPage: currentPage,
+                pageSize: apiMeta.limit ?? 25,
+                totalRecords: apiMeta.totalRecords ?? filtered.length,
+                onPageChange: (nextPage) => {
+                  if (nextPage <= 0 || nextPage === currentPage) return;
+                  if (nextPage === 1) { goToPage(1, null); return; }
+                  if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+                    goToPage(nextPage, apiMeta.nextCursor);
+                  }
+                },
               }}
             />
           );
