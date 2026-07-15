@@ -421,10 +421,11 @@ export default function ArchiveVaultHomePage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset to page 1 when filter changes
-  const isFirstFilterRender = useRef(true);
+  // Reset to page 1 when filter changes — only when filter is non-default (avoids StrictMode double-invoke resetting the page)
+  const prevStatusFilter = useRef(statusFilter);
   useEffect(() => {
-    if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    if (prevStatusFilter.current === statusFilter) return;
+    prevStatusFilter.current = statusFilter;
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('page');
