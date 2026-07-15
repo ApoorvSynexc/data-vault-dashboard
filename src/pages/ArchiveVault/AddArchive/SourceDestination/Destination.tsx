@@ -109,7 +109,8 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
                       <div className='flex-1 min-w-0'>
                         <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>{conn.name}</p>
                         <p className='text-xs text-gray-500 truncate'>Provider: {conn.provider}</p>
-                        <p className='text-xs text-gray-500 truncate'>Status: {conn.status}</p>
+                        <p className='text-xs text-gray-500 truncate'>Bucket: {conn.bucketName ?? '--'}</p>
+                        <p className='text-xs text-gray-500 truncate'>Region: {conn.region ?? '--'}</p>
                       </div>
                     </div>
                   </div>
