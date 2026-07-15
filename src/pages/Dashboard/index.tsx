@@ -352,7 +352,9 @@ export default function Dashboard() {
   return (
     <>
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
+
+      {/* Non-growing top area: header + KPIs */}
+      <div className='flex-shrink-0 flex flex-col gap-5 p-4 sm:p-6 pb-0'>
 
         {/* Page Header — matches Backup / Archive */}
         <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
@@ -407,93 +409,93 @@ export default function Dashboard() {
             sub={`${kpiRunning} ${overview?.activeJobs?.period ?? 'Running'}`}
           />
         </div>
+      </div>
 
-        {/* Main two-column layout */}
-        <div className='grid gap-5 flex-1 min-h-0' style={{ gridTemplateColumns: '1fr 280px' }}>
+      {/* Main two-column layout — flex-1 so it fills remaining height */}
+      <div className='grid gap-5 flex-1 min-h-0 p-4 sm:p-6 pt-5' style={{ gridTemplateColumns: '1fr 280px', gridTemplateRows: '1fr', alignItems: 'stretch' }}>
 
-          {/* Recent Jobs table */}
-          <section className='flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
-            <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
-              <Typography as='h3' variant='sectionTitle' color='secondary'>Recent Jobs</Typography>
-              <span className='text-xs text-gray-400 font-medium'>Last 10 jobs</span>
+        {/* Recent Jobs table — stretches to fill remaining page height */}
+        <section className='flex flex-col min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
+            <Typography as='h3' variant='sectionTitle' color='secondary'>Recent Jobs</Typography>
+            <span className='text-xs text-gray-400 font-medium'>Last 10 jobs</span>
+          </div>
+          <Table<any>
+            borderless
+            loading={isLoading}
+            skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-20', 'w-24', 'w-32', 'w-16', 'w-20'] }}
+            rows={recentJobs.slice(0, 10)}
+            getRowKey={(job) => job.backupJobId}
+            onRowClick={(job) => setSelectedJob(job)}
+            rowClassName='border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer'
+            cellPaddingClassName='px-4 py-2.5'
+            emptyState={<span className='text-sm text-gray-500'>No recent jobs found.</span>}
+            columns={recentJobColumns}
+          />
+        </section>
+
+        {/* Right column — self-aligns to top so panels stay compact */}
+        <div className='flex flex-col gap-4 self-start overflow-y-auto' style={{ maxHeight: '100%' }}>
+
+          {/* System Health */}
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>System Health</Typography>
+            <div className='flex flex-col items-center gap-2'>
+              <HealthGauge score={Number(successRate)} />
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                Number(successRate) >= 90
+                  ? 'bg-green-100 text-green-700'
+                  : Number(successRate) >= 70
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
+                }`} />
+                {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
+              </span>
             </div>
-            <Table<any>
-              borderless
-              loading={isLoading}
-              skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-20', 'w-24', 'w-32', 'w-16', 'w-20'] }}
-              rows={recentJobs.slice(0, 10)}
-              getRowKey={(job) => job.backupJobId}
-              onRowClick={(job) => setSelectedJob(job)}
-              rowClassName='border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer'
-              cellPaddingClassName='px-5 py-3'
-              emptyState={<span className='text-sm text-gray-500'>No recent jobs found.</span>}
-              columns={recentJobColumns}
-            />
+            <ul className='mt-4 flex flex-col gap-2'>
+              {[
+                `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
+                `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
+                failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
+              ].map((item, i) => (
+                <li key={i} className='flex items-center gap-2 text-sm text-gray-700'>
+                  <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
+                    <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
+                    <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
+                  </svg>
+                  {item}
+                </li>
+              ))}
+            </ul>
           </section>
 
-          {/* Right column */}
-          <div className='flex flex-col gap-4'>
-
-            {/* System Health */}
-            <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
-              <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>System Health</Typography>
-              <div className='flex flex-col items-center gap-2'>
-                <HealthGauge score={Number(successRate)} />
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                  Number(successRate) >= 90
-                    ? 'bg-green-100 text-green-700'
-                    : Number(successRate) >= 70
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
-                  }`} />
-                  {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
-                </span>
-              </div>
-              <ul className='mt-4 flex flex-col gap-2'>
-                {[
-                  `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
-                  `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
-                  failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
-                ].map((item, i) => (
-                  <li key={i} className='flex items-center gap-2 text-sm text-gray-700'>
-                    <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
-                      <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
-                      <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* Jobs Summary */}
-            <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
-              <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>Jobs Summary</Typography>
-              <div className='flex flex-col gap-2.5'>
-                {[
-                  { label: 'Completed', value: completedJobs, color: 'text-green-600' },
-                  { label: 'Running',   value: runningJobs,   color: 'text-blue-600'  },
-                  { label: 'Failed',    value: failedJobs,    color: 'text-red-600'   },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className='flex items-center justify-between'>
-                    <span className='text-sm text-gray-500'>{label}</span>
-                    <span className={`text-sm font-bold ${color}`}>{value}</span>
-                  </div>
-                ))}
-                <div className='border-t border-gray-100 pt-2.5 flex items-center justify-between'>
-                  <span className='text-sm text-gray-500'>Success Rate</span>
-                  <span className='text-sm font-bold text-gray-800'>{successRate}%</span>
+          {/* Jobs Summary */}
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>Jobs Summary</Typography>
+            <div className='flex flex-col gap-2.5'>
+              {[
+                { label: 'Completed', value: completedJobs, color: 'text-green-600' },
+                { label: 'Running',   value: runningJobs,   color: 'text-blue-600'  },
+                { label: 'Failed',    value: failedJobs,    color: 'text-red-600'   },
+              ].map(({ label, value, color }) => (
+                <div key={label} className='flex items-center justify-between'>
+                  <span className='text-sm text-gray-500'>{label}</span>
+                  <span className={`text-sm font-bold ${color}`}>{value}</span>
                 </div>
+              ))}
+              <div className='border-t border-gray-100 pt-2.5 flex items-center justify-between'>
+                <span className='text-sm text-gray-500'>Success Rate</span>
+                <span className='text-sm font-bold text-gray-800'>{successRate}%</span>
               </div>
-            </section>
+            </div>
+          </section>
 
-          </div>
         </div>
-
       </div>
+
     </div>
 
     {selectedJob && (
