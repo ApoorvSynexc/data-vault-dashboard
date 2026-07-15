@@ -28,7 +28,6 @@ import ArchiveDetailScreen from '../pages/ArchiveVault/DetailScreen';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
-import RestoreCenter from '../pages/RestoreCenter';
 import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
 import AuditLogs from '../pages/AuditLogs';

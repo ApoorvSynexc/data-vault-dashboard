@@ -43,22 +43,6 @@ export default function AWSConnections({ hideHeader }: { hideHeader?: boolean } 
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'text-green-600';
-      case 'INACTIVE': return 'text-red-600';
-      default: return 'text-gray-600';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return '✓';
-      case 'INACTIVE': return '✕';
-      default: return '○';
-    }
-  };
-
   const clouds: { id: string; label: string; icon: ReactNode }[] = [
     {
       id: 'aws',
@@ -198,31 +182,24 @@ export default function AWSConnections({ hideHeader }: { hideHeader?: boolean } 
                 {awsDestinations.map((destination) => (
                   <div
                     key={destination.destinationId}
-                    className='flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4 hover:bg-gray-50'
+                    className='rounded-xl border border-gray-200 px-5 py-4 hover:bg-gray-50 transition-colors'
                   >
-                    <div className='flex items-center gap-4'>
-                      <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50'>
-                        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5 text-orange-500'>
-                          <rect x='2' y='3' width='20' height='14' rx='2' ry='2' />
-                          <line x1='2' y1='17' x2='22' y2='17' />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className='font-medium text-gray-900'>{destination.name}</p>
-                        <p className='text-xs text-gray-500'>AWS S3 Destination</p>
-                      </div>
-                    </div>
-
-                    <div className='flex items-center gap-4'>
-                      <div className='text-right'>
-                        <p className={`text-sm font-semibold ${getStatusColor(destination.status)}`}>
-                          <span className='mr-1'>{getStatusIcon(destination.status)}</span>
-                          {destination.status}
-                        </p>
-                        <p className='text-xs text-gray-500'>Connected on {formatDate(destination.createdAt)}</p>
+                    <div className='flex items-start justify-between gap-4'>
+                      {/* Left: icon + name */}
+                      <div className='flex items-center gap-3'>
+                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50'>
+                          <svg viewBox='0 0 100 60' fill='none' xmlns='http://www.w3.org/2000/svg' className='h-5 w-auto'>
+                            <text x='50' y='40' fontSize='28' fontWeight='bold' fill='#FF9900' textAnchor='middle'>aws</text>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className='text-sm font-semibold text-gray-900'>{destination.name}</p>
+                          <p className='text-xs text-gray-400'>AWS S3 · Connected on {formatDate(destination.createdAt)}</p>
+                        </div>
                       </div>
 
-                      <div className='flex gap-2'>
+                      {/* Right: actions */}
+                      <div className='flex shrink-0 items-center gap-1'>
                         <button
                           type='button'
                           onClick={() => navigate(`/connections/aws/edit/${destination.destinationId}`)}
@@ -247,6 +224,24 @@ export default function AWSConnections({ hideHeader }: { hideHeader?: boolean } 
                           </svg>
                         </button>
                       </div>
+                    </div>
+
+                    {/* Metadata pills */}
+                    <div className='mt-3 flex items-center gap-2'>
+                      <span className='inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600'>
+                        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3 w-3 text-orange-400'>
+                          <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
+                        </svg>
+                        <span className='font-medium text-gray-400'>Bucket:</span>
+                        <span className='font-semibold text-gray-700'>{destination.bucketName ?? '--'}</span>
+                      </span>
+                      <span className='inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600'>
+                        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-3 w-3 text-blue-400'>
+                          <circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/>
+                        </svg>
+                        <span className='font-medium text-gray-400'>Region:</span>
+                        <span className='font-semibold text-gray-700'>{destination.region ?? '--'}</span>
+                      </span>
                     </div>
                   </div>
                 ))}
