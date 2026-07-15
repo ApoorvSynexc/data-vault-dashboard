@@ -71,7 +71,7 @@ function HealthGauge({ score }: { score: number }) {
   const py = +(cy - r * Math.sin(rad)).toFixed(2);
   const la = progressAngle >= 180 ? 1 : 0;
   return (
-    <svg viewBox='0 0 160 90' className='w-28 flex-shrink-0'>
+    <svg viewBox='0 0 160 90' className='w-36 flex-shrink-0'>
       <path d={`M ${cx - r},${cy} A ${r},${r} 0 0,1 ${cx + r},${cy}`} fill='none' stroke='#E2E8F0' strokeWidth='10' strokeLinecap='round' />
       <path d={`M ${cx - r},${cy} A ${r},${r} 0 ${la},1 ${px},${py}`} fill='none' stroke='#22C55E' strokeWidth='10' strokeLinecap='round' />
       <text x={cx} y={cy - 8} textAnchor='middle' fill='#0F172A' fontSize='22' fontWeight='bold'>{score}</text>
@@ -419,7 +419,6 @@ export default function Dashboard() {
         <section className='flex flex-col min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Recent Jobs</Typography>
-            <span className='text-xs text-gray-400 font-medium'>Last 10 jobs</span>
           </div>
           <Table<any>
             borderless
@@ -433,6 +432,9 @@ export default function Dashboard() {
             emptyState={<span className='text-sm text-gray-500'>No recent jobs found.</span>}
             columns={recentJobColumns}
           />
+          <div className='flex-shrink-0 flex items-center justify-between border-t border-gray-100 px-5 py-2.5'>
+            <span className='text-xs text-gray-600 font-medium'>Showing last {Math.min(recentJobs.length, 10)} backup jobs</span>
+          </div>
         </section>
 
         {/* Right column — stretches to match table height, cards split 50/50 */}
@@ -440,7 +442,7 @@ export default function Dashboard() {
 
           {/* System Health */}
           <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col'>
-            <div className='flex items-center justify-between mb-3'>
+            <div className='flex items-center justify-between mb-2'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>System Health</Typography>
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                 Number(successRate) >= 90 ? 'bg-green-100 text-green-700' : Number(successRate) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
@@ -449,11 +451,14 @@ export default function Dashboard() {
                 {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
               </span>
             </div>
-            <div className='flex flex-col gap-2.5 flex-1 justify-center'>
+            <div className='flex justify-center'>
+              <HealthGauge score={Number(successRate)} />
+            </div>
+            <div className='flex flex-col gap-2 mt-2'>
               {[
-                { label: 'Active Backups',   value: kpiActiveJobs,  color: 'text-blue-600',  dot: '#3B82F6' },
-                { label: 'Completed Jobs',   value: completedJobs,  color: 'text-green-600', dot: '#16A34A' },
-                { label: 'Failed Jobs',      value: failedJobs,     color: failedJobs > 0 ? 'text-red-600' : 'text-gray-400', dot: failedJobs > 0 ? '#DC2626' : '#9CA3AF' },
+                { label: 'Active Backups', value: kpiActiveJobs, color: 'text-blue-600',  dot: '#3B82F6' },
+                { label: 'Completed Jobs', value: completedJobs, color: 'text-green-600', dot: '#16A34A' },
+                { label: 'Failed Jobs',    value: failedJobs,    color: failedJobs > 0 ? 'text-red-600' : 'text-gray-400', dot: failedJobs > 0 ? '#DC2626' : '#9CA3AF' },
               ].map(({ label, value, color, dot }) => (
                 <div key={label} className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
