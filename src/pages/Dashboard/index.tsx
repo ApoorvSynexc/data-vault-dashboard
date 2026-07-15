@@ -7,6 +7,7 @@ import { formatBytes } from '../../utils';
 import JobDetailsModal from '../BackupManagementV2/BackupDetails/BackupHistory/JobDetailsModal';
 import Table from '../../components/Table';
 import type { TableColumn } from '../../components/Table';
+import Typography from '../../components/Typography';
 import dayjs from 'dayjs';
 
 // Dashboard floating frame icons
@@ -350,117 +351,148 @@ export default function Dashboard() {
   /* ── main dashboard ── */
   return (
     <>
-    <div className='flex flex-col gap-3 min-w-0 w-full'>
-      <h2 className='text-lg font-semibold flex-shrink-0' style={{ color: '#33363F' }}>Dashboard Overview</h2>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
 
-      {/* ── KPI Row ── */}
-      <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
-          label='Protected Records'
-          value={String(kpiProtectedRecords)}
-          sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
-        />
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
-          label='Storage Used'
-          value={kpiStorageValue || '--'}
-          sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
-        />
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
-          label='Backup Success Rate'
-          value={kpiSuccessRate || '--'}
-          sub={kpiSuccessPeriod ?? undefined}
-        />
-        <KpiCard
-          icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
-          label='Active Jobs'
-          value={String(kpiRunning)}
-          sub={overview?.activeJobs?.period ?? 'Running'}
-        />
-      </div>
-
-      {/* ── Main two-column layout ── */}
-      <div className='grid gap-3' style={{ gridTemplateColumns: '1fr 265px' }}>
-
-        {/* Left: Recent Jobs table */}
-        <div className='rounded-xl bg-white flex flex-col min-w-0 overflow-hidden' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-          <div className='flex items-center px-5 py-3 flex-shrink-0' style={{ borderBottom: '1px solid #E2E8F0' }}>
-            <h3 className='font-semibold' style={{ fontSize: '16px', color: '#33363F' }}>Recent Jobs (Last 10 Jobs)</h3>
+        {/* Page Header — matches Backup / Archive */}
+        <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
+          <div>
+            <Typography as='h2' variant='pageTitle'>Dashboard</Typography>
+            <Typography variant='bodySm' color='muted' className='mt-0.5'>
+              Overview of your backup jobs, storage usage, and system health.
+            </Typography>
           </div>
-          <Table<any>
-            borderless
-            loading={isLoading}
-            skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-20', 'w-24', 'w-32', 'w-16', 'w-20'] }}
-            rows={recentJobs.slice(0, 10)}
-            getRowKey={(job) => job.backupJobId}
-            onRowClick={(job) => setSelectedJob(job)}
-            rowClassName='hover:bg-blue-50 transition-colors'
-            getRowStyle={() => ({ borderBottom: '1px solid #EBEBEB' })}
-            cellPaddingClassName='px-5 py-3'
-            maxHeightClassName='max-h-[420px]'
-            emptyState={<span style={{ color: '#64748B' }}>No recent jobs found.</span>}
-            columns={recentJobColumns}
+          <div className='flex items-center gap-3'>
+            <button
+              type='button'
+              onClick={() => navigate('/backup-management/add')}
+              className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50 whitespace-nowrap'
+            >
+              + New Backup
+            </button>
+            <button
+              type='button'
+              onClick={() => navigate('/archive-vault/new')}
+              className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
+            >
+              + New Archive
+            </button>
+          </div>
+        </div>
+
+        {/* KPI Row */}
+        <div className='grid grid-cols-4 gap-4'>
+          <KpiCard
+            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
+            label='Protected Records'
+            value={String(kpiProtectedRecords)}
+            sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
+          />
+          <KpiCard
+            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
+            label='Storage Used'
+            value={kpiStorageValue || '--'}
+            sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
+          />
+          <KpiCard
+            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
+            label='Backup Success Rate'
+            value={kpiSuccessRate || '--'}
+            sub={kpiSuccessPeriod ?? undefined}
+          />
+          <KpiCard
+            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
+            label='Active Jobs'
+            value={String(kpiActiveJobs)}
+            sub={`${kpiRunning} ${overview?.activeJobs?.period ?? 'Running'}`}
           />
         </div>
 
-        {/* Right column */}
-        <div className='flex flex-col gap-4'>
-          <div className='rounded-xl bg-white p-5' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <h3 className='font-semibold mb-3' style={{ fontSize: '16px', color: '#33363F' }}>System Health</h3>
-            <div className='flex flex-col items-center gap-2'>
-              <HealthGauge score={Number(successRate)} />
-              <span className='inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium' style={{ background: 'rgba(2,169,64,0.1)', color: '#008020' }}>
-                <span className='w-2 h-2 rounded-full bg-green-600' />
-                {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
-              </span>
-            </div>
-            <ul className='mt-4 flex flex-col gap-1.5'>
-              {[
-                `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
-                `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
-                failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
-              ].map((item, i) => (
-                <li key={i} className='flex items-center gap-2 text-sm' style={{ color: '#33363F' }}>
-                  <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
-                    <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : 'url(#hg)'} />
-                    <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
-                    <defs>
-                      <linearGradient id='hg' x1='0' y1='0' x2='0' y2='1'>
-                        <stop offset='0%' stopColor='#008020' />
-                        <stop offset='100%' stopColor='#37C55B' />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Main two-column layout */}
+        <div className='grid gap-5 flex-1 min-h-0' style={{ gridTemplateColumns: '1fr 280px' }}>
 
-          <div className='rounded-xl bg-white p-5' style={{ border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-            <h3 className='font-semibold mb-3' style={{ fontSize: '16px', color: '#33363F' }}>Jobs Summary</h3>
-            <div className='flex flex-col gap-3'>
-              <div className='flex items-center justify-between'>
-                <span className='text-sm' style={{ color: '#64748B' }}>Completed</span>
-                <span className='text-sm font-bold' style={{ color: '#16A34A' }}>{completedJobs}</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-sm' style={{ color: '#64748B' }}>Running</span>
-                <span className='text-sm font-bold' style={{ color: '#155DFC' }}>{runningJobs}</span>
-              </div>
-              <div className='flex items-center justify-between'>
-                <span className='text-sm' style={{ color: '#64748B' }}>Failed</span>
-                <span className='text-sm font-bold' style={{ color: '#DC2626' }}>{failedJobs}</span>
-              </div>
-              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '8px' }} className='flex items-center justify-between'>
-                <span className='text-sm' style={{ color: '#64748B' }}>Success Rate</span>
-                <span className='text-sm font-bold' style={{ color: '#33363F' }}>{successRate}%</span>
-              </div>
+          {/* Recent Jobs table */}
+          <section className='flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+            <div className='flex items-center justify-between border-b border-gray-100 px-5 py-2.5 flex-shrink-0'>
+              <Typography as='h3' variant='sectionTitle' color='secondary'>Recent Jobs</Typography>
+              <span className='text-xs text-gray-400 font-medium'>Last 10 jobs</span>
             </div>
+            <Table<any>
+              borderless
+              loading={isLoading}
+              skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-20', 'w-24', 'w-32', 'w-16', 'w-20'] }}
+              rows={recentJobs.slice(0, 10)}
+              getRowKey={(job) => job.backupJobId}
+              onRowClick={(job) => setSelectedJob(job)}
+              rowClassName='border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer'
+              cellPaddingClassName='px-5 py-3'
+              emptyState={<span className='text-sm text-gray-500'>No recent jobs found.</span>}
+              columns={recentJobColumns}
+            />
+          </section>
+
+          {/* Right column */}
+          <div className='flex flex-col gap-4'>
+
+            {/* System Health */}
+            <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+              <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>System Health</Typography>
+              <div className='flex flex-col items-center gap-2'>
+                <HealthGauge score={Number(successRate)} />
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  Number(successRate) >= 90
+                    ? 'bg-green-100 text-green-700'
+                    : Number(successRate) >= 70
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
+                  }`} />
+                  {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
+                </span>
+              </div>
+              <ul className='mt-4 flex flex-col gap-2'>
+                {[
+                  `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
+                  `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
+                  failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
+                ].map((item, i) => (
+                  <li key={i} className='flex items-center gap-2 text-sm text-gray-700'>
+                    <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
+                      <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
+                      <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
+                    </svg>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {/* Jobs Summary */}
+            <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+              <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>Jobs Summary</Typography>
+              <div className='flex flex-col gap-2.5'>
+                {[
+                  { label: 'Completed', value: completedJobs, color: 'text-green-600' },
+                  { label: 'Running',   value: runningJobs,   color: 'text-blue-600'  },
+                  { label: 'Failed',    value: failedJobs,    color: 'text-red-600'   },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className='flex items-center justify-between'>
+                    <span className='text-sm text-gray-500'>{label}</span>
+                    <span className={`text-sm font-bold ${color}`}>{value}</span>
+                  </div>
+                ))}
+                <div className='border-t border-gray-100 pt-2.5 flex items-center justify-between'>
+                  <span className='text-sm text-gray-500'>Success Rate</span>
+                  <span className='text-sm font-bold text-gray-800'>{successRate}%</span>
+                </div>
+              </div>
+            </section>
+
           </div>
         </div>
+
       </div>
     </div>
 
