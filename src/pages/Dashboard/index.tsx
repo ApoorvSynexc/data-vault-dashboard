@@ -49,15 +49,15 @@ function KpiCard({ icon, label, value, sub, subColor = '#16A34A' }: {
   icon: ReactNode; label: string; value: string; sub?: string; subColor?: string;
 }) {
   return (
-    <div className='rounded-xl bg-white p-4 flex flex-col gap-2' style={{ border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-      <div className='flex items-center gap-2'>
-        <div className='w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(22,163,74,0.1)' }}>
-          {icon}
-        </div>
-        <p className='text-xs font-normal' style={{ color: '#64748B' }}>{label}</p>
+    <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3 min-w-0'>
+      <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(21,93,252,0.08)' }}>
+        {icon}
       </div>
-      <p className='text-3xl font-bold' style={{ color: '#33363F' }}>{value}</p>
-      {sub && <p className='text-xs font-semibold' style={{ color: subColor }}>{sub}</p>}
+      <div className='min-w-0'>
+        <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
+        <p className='mt-0.5 text-xs text-gray-500 leading-tight'>{label}</p>
+        {sub && <p className='text-xs font-semibold mt-0.5' style={{ color: subColor }}>{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -71,7 +71,7 @@ function HealthGauge({ score }: { score: number }) {
   const py = +(cy - r * Math.sin(rad)).toFixed(2);
   const la = progressAngle >= 180 ? 1 : 0;
   return (
-    <svg viewBox='0 0 160 90' className='w-40'>
+    <svg viewBox='0 0 160 90' className='w-28 flex-shrink-0'>
       <path d={`M ${cx - r},${cy} A ${r},${r} 0 0,1 ${cx + r},${cy}`} fill='none' stroke='#E2E8F0' strokeWidth='10' strokeLinecap='round' />
       <path d={`M ${cx - r},${cy} A ${r},${r} 0 ${la},1 ${px},${py}`} fill='none' stroke='#22C55E' strokeWidth='10' strokeLinecap='round' />
       <text x={cx} y={cy - 8} textAnchor='middle' fill='#0F172A' fontSize='22' fontWeight='bold'>{score}</text>
@@ -354,7 +354,7 @@ export default function Dashboard() {
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
 
       {/* Non-growing top area: header + KPIs */}
-      <div className='flex-shrink-0 flex flex-col gap-5 p-4 sm:p-6 pb-0'>
+      <div className='flex-shrink-0 flex flex-col gap-4 p-4 sm:p-6 pb-4'>
 
         {/* Page Header — matches Backup / Archive */}
         <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
@@ -385,34 +385,30 @@ export default function Dashboard() {
         {/* KPI Row */}
         <div className='grid grid-cols-4 gap-4'>
           <KpiCard
-            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
+            icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
             label='Protected Records'
             value={String(kpiProtectedRecords)}
-            sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
-            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
+            icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
             label='Storage Used'
             value={kpiStorageValue || '--'}
-            sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
-            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
+            icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
             label='Backup Success Rate'
             value={kpiSuccessRate || '--'}
-            sub={kpiSuccessPeriod ?? undefined}
           />
           <KpiCard
-            icon={<svg viewBox='0 0 24 24' className='w-4 h-4' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
+            icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
             label='Active Jobs'
             value={String(kpiActiveJobs)}
-            sub={`${kpiRunning} ${overview?.activeJobs?.period ?? 'Running'}`}
           />
         </div>
       </div>
 
       {/* Main two-column layout — flex-1 so it fills remaining height */}
-      <div className='grid gap-5 flex-1 min-h-0 p-4 sm:p-6 pt-5' style={{ gridTemplateColumns: '1fr 280px', gridTemplateRows: '1fr', alignItems: 'stretch' }}>
+      <div className='grid gap-4 flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6 pt-0' style={{ gridTemplateColumns: '1fr 280px', gridTemplateRows: '1fr', alignItems: 'stretch' }}>
 
         {/* Recent Jobs table — stretches to fill remaining page height */}
         <section className='flex flex-col min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
@@ -434,61 +430,61 @@ export default function Dashboard() {
           />
         </section>
 
-        {/* Right column — self-aligns to top so panels stay compact */}
-        <div className='flex flex-col gap-4 self-start overflow-y-auto' style={{ maxHeight: '100%' }}>
+        {/* Right column — stretches to match table height, cards split 50/50 */}
+        <div className='flex flex-col gap-4' style={{ minHeight: 0 }}>
 
           {/* System Health */}
-          <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col justify-center'>
             <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>System Health</Typography>
-            <div className='flex flex-col items-center gap-2'>
+            <div className='flex items-center gap-3'>
               <HealthGauge score={Number(successRate)} />
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                Number(successRate) >= 90
-                  ? 'bg-green-100 text-green-700'
-                  : Number(successRate) >= 70
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
-                }`} />
-                {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
-              </span>
+              <div className='flex flex-col gap-2'>
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  Number(successRate) >= 90
+                    ? 'bg-green-100 text-green-700'
+                    : Number(successRate) >= 70
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
+                  }`} />
+                  {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
+                </span>
+                {[
+                  `${kpiActiveJobs} active`,
+                  `${completedJobs} completed`,
+                  failedJobs === 0 ? 'No failures' : `${failedJobs} failed`,
+                ].map((item, i) => (
+                  <div key={i} className='flex items-center gap-1.5'>
+                    <svg viewBox='0 0 24 24' className='w-3.5 h-3.5 flex-shrink-0' fill='none'>
+                      <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
+                      <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' />
+                    </svg>
+                    <span className='text-xs text-gray-600'>{item}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <ul className='mt-4 flex flex-col gap-2'>
-              {[
-                `${kpiActiveJobs} active backup${kpiActiveJobs !== 1 ? 's' : ''}`,
-                `${completedJobs} completed job${completedJobs !== 1 ? 's' : ''}`,
-                failedJobs === 0 ? 'No failures' : `${failedJobs} failed job${failedJobs !== 1 ? 's' : ''}`,
-              ].map((item, i) => (
-                <li key={i} className='flex items-center gap-2 text-sm text-gray-700'>
-                  <svg viewBox='0 0 24 24' className='w-4 h-4 flex-shrink-0' fill='none'>
-                    <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
-                    <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' />
-                  </svg>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </section>
 
           {/* Jobs Summary */}
-          <section className='rounded-xl border border-gray-200 bg-white shadow-sm p-5'>
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col justify-center'>
             <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>Jobs Summary</Typography>
-            <div className='flex flex-col gap-2.5'>
+            <div className='flex flex-col gap-2'>
               {[
                 { label: 'Completed', value: completedJobs, color: 'text-green-600' },
                 { label: 'Running',   value: runningJobs,   color: 'text-blue-600'  },
                 { label: 'Failed',    value: failedJobs,    color: 'text-red-600'   },
               ].map(({ label, value, color }) => (
                 <div key={label} className='flex items-center justify-between'>
-                  <span className='text-sm text-gray-500'>{label}</span>
-                  <span className={`text-sm font-bold ${color}`}>{value}</span>
+                  <span className='text-xs text-gray-500'>{label}</span>
+                  <span className={`text-xs font-bold ${color}`}>{value}</span>
                 </div>
               ))}
-              <div className='border-t border-gray-100 pt-2.5 flex items-center justify-between'>
-                <span className='text-sm text-gray-500'>Success Rate</span>
-                <span className='text-sm font-bold text-gray-800'>{successRate}%</span>
+              <div className='border-t border-gray-100 pt-2 flex items-center justify-between'>
+                <span className='text-xs text-gray-500'>Success Rate</span>
+                <span className='text-xs font-bold text-gray-800'>{successRate}%</span>
               </div>
             </div>
           </section>
