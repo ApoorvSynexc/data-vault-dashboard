@@ -388,21 +388,26 @@ export default function Dashboard() {
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
             label='Protected Records'
             value={String(kpiProtectedRecords)}
+            sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
             label='Storage Used'
             value={kpiStorageValue || '--'}
+            sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
             label='Backup Success Rate'
             value={kpiSuccessRate || '--'}
+            sub={kpiSuccessPeriod ?? undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
             label='Active Jobs'
             value={String(kpiActiveJobs)}
+            sub={`${kpiRunning} ${overview?.activeJobs?.period ?? 'Running'}`}
+            subColor='#64748B'
           />
         </div>
       </div>
@@ -434,57 +439,50 @@ export default function Dashboard() {
         <div className='flex flex-col gap-4' style={{ minHeight: 0 }}>
 
           {/* System Health */}
-          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col justify-center'>
-            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>System Health</Typography>
-            <div className='flex items-center gap-3'>
-              <HealthGauge score={Number(successRate)} />
-              <div className='flex flex-col gap-2'>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  Number(successRate) >= 90
-                    ? 'bg-green-100 text-green-700'
-                    : Number(successRate) >= 70
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    Number(successRate) >= 90 ? 'bg-green-600' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-600'
-                  }`} />
-                  {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
-                </span>
-                {[
-                  `${kpiActiveJobs} active`,
-                  `${completedJobs} completed`,
-                  failedJobs === 0 ? 'No failures' : `${failedJobs} failed`,
-                ].map((item, i) => (
-                  <div key={i} className='flex items-center gap-1.5'>
-                    <svg viewBox='0 0 24 24' className='w-3.5 h-3.5 flex-shrink-0' fill='none'>
-                      <circle cx='12' cy='12' r='10' fill={i === 2 && failedJobs > 0 ? '#DC2626' : '#16A34A'} />
-                      <path d='M8 12l3 3 5-5' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' />
-                    </svg>
-                    <span className='text-xs text-gray-600'>{item}</span>
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col'>
+            <div className='flex items-center justify-between mb-3'>
+              <Typography as='h3' variant='sectionTitle' color='secondary'>System Health</Typography>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                Number(successRate) >= 90 ? 'bg-green-100 text-green-700' : Number(successRate) >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${Number(successRate) >= 90 ? 'bg-green-500' : Number(successRate) >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                {Number(successRate) >= 90 ? 'Healthy' : Number(successRate) >= 70 ? 'Degraded' : 'Critical'}
+              </span>
+            </div>
+            <div className='flex flex-col gap-2.5 flex-1 justify-center'>
+              {[
+                { label: 'Active Backups',   value: kpiActiveJobs,  color: 'text-blue-600',  dot: '#3B82F6' },
+                { label: 'Completed Jobs',   value: completedJobs,  color: 'text-green-600', dot: '#16A34A' },
+                { label: 'Failed Jobs',      value: failedJobs,     color: failedJobs > 0 ? 'text-red-600' : 'text-gray-400', dot: failedJobs > 0 ? '#DC2626' : '#9CA3AF' },
+              ].map(({ label, value, color, dot }) => (
+                <div key={label} className='flex items-center justify-between'>
+                  <div className='flex items-center gap-2'>
+                    <span className='w-2 h-2 rounded-full flex-shrink-0' style={{ background: dot }} />
+                    <span className='text-xs text-gray-500'>{label}</span>
                   </div>
-                ))}
-              </div>
+                  <span className={`text-sm font-bold ${color}`}>{value}</span>
+                </div>
+              ))}
             </div>
           </section>
 
           {/* Jobs Summary */}
-          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col justify-center'>
+          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-4 flex-1 flex flex-col'>
             <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-3'>Jobs Summary</Typography>
-            <div className='flex flex-col gap-2'>
+            <div className='flex flex-col gap-2.5 flex-1 justify-center'>
               {[
-                { label: 'Completed', value: completedJobs, color: 'text-green-600' },
-                { label: 'Running',   value: runningJobs,   color: 'text-blue-600'  },
-                { label: 'Failed',    value: failedJobs,    color: 'text-red-600'   },
-              ].map(({ label, value, color }) => (
+                { label: 'Completed', value: completedJobs, color: 'text-green-600', bg: 'bg-green-50' },
+                { label: 'Running',   value: runningJobs,   color: 'text-blue-600',  bg: 'bg-blue-50'  },
+                { label: 'Failed',    value: failedJobs,    color: 'text-red-600',   bg: 'bg-red-50'   },
+              ].map(({ label, value, color, bg }) => (
                 <div key={label} className='flex items-center justify-between'>
                   <span className='text-xs text-gray-500'>{label}</span>
-                  <span className={`text-xs font-bold ${color}`}>{value}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color} ${bg}`}>{value}</span>
                 </div>
               ))}
-              <div className='border-t border-gray-100 pt-2 flex items-center justify-between'>
+              <div className='border-t border-gray-100 pt-2.5 flex items-center justify-between'>
                 <span className='text-xs text-gray-500'>Success Rate</span>
-                <span className='text-xs font-bold text-gray-800'>{successRate}%</span>
+                <span className='text-sm font-bold text-gray-800'>{successRate}%</span>
               </div>
             </div>
           </section>
