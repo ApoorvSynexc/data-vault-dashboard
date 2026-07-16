@@ -193,7 +193,8 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
                                 {connection.name}
                               </p>
                               <p className='text-xs text-gray-500 truncate'>Provider: {connection.provider}</p>
-                              <p className='text-xs text-gray-500 truncate'>Status: {connection.status}</p>
+                              <p className='text-xs text-gray-500 truncate'>Bucket: {connection.bucketName ?? '--'}</p>
+                              <p className='text-xs text-gray-500 truncate'>Region: {connection.region ?? '--'}</p>
                             </div>
                           </div>
                         </div>

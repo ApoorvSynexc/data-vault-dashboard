@@ -60,7 +60,7 @@ export default function Step4({ onNext, onBack, initialStrategy = 'realtime', in
                 <div>
                   <p className='font-semibold text-gray-900'>Entire Dataset</p>
                   <p className='text-xs text-gray-500 mt-0.5 leading-snug'>
-                    Default all data modules are checked marked, selection can be made mannually
+                    By default, all data modules are selected. You can modify the selection manually.
                   </p>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export default function Step4({ onNext, onBack, initialStrategy = 'realtime', in
                 <div>
                   <p className='font-semibold' style={{ color: dataMode === 'partial' ? '#155DFC' : '#111827' }}>Partial Dataset</p>
                   <p className='text-xs text-gray-500 mt-0.5 leading-snug'>
-                    Select manually the objects to capture in backup process.
+                    Manually select the objects to include in the backup process.
                   </p>
                 </div>
               </div>

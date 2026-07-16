@@ -131,7 +131,9 @@ export default function AddBackup() {
   };
 
   const handleStrategySelected = (strategy: BackupStrategy, entireDataset: boolean) => {
-    if (entireDatasetSelected && !entireDataset) {
+    const strategyChanged = strategy !== selectedStrategy;
+    const entireDatasetToggled = entireDataset !== entireDatasetSelected;
+    if (strategyChanged || entireDatasetToggled) {
       setSelectedObjects([]);
     }
     setSelectedStrategy(strategy);
@@ -171,9 +173,13 @@ export default function AddBackup() {
         <Step1
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
-          onNext={(platformId, connectionName) => {
-            if (platformId) setSelectedPlatformId(platformId);
-            if (connectionName) setSelectedConnectionName(connectionName);
+          onNext={(platformId) => {
+            if (platformId && platformId !== selectedPlatformId) {
+              setSelectedPlatformId(platformId);
+              setSelectedObjects([]);
+            } else if (platformId) {
+              setSelectedPlatformId(platformId);
+            }
             handleNextStep();
           }}
         />
@@ -227,6 +233,12 @@ export default function AddBackup() {
           entireDatasetSelected={entireDatasetSelected}
           selectedObjectIds={selectedObjects.map((o) => o.id)}
           strategy={selectedStrategy}
+          onSelectionChange={(ids) => {
+            setSelectedObjects(ids.map((id) => {
+              const existing = selectedObjects.find((o) => o.id === id);
+              return existing ?? { id, type: 'STANDARD' as const };
+            }));
+          }}
           onNext={(objects) => {
             setSelectedObjects(objects);
             handleNextStep();
@@ -254,7 +266,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}
@@ -274,7 +285,6 @@ export default function AddBackup() {
           strategy={selectedStrategy}
           onBack={handlePrevStep}
           onEditStep={(step) => {
-            if (step === 1) setSelectedObjects([]);
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}

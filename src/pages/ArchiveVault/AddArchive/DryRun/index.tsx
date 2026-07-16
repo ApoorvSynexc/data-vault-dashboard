@@ -16,6 +16,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PermissionGate from '../../../../components/PermissionGate';
+import { useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
@@ -483,6 +484,7 @@ interface Step3DryRunProps {
 export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, initialCache, onNext, onBack }: Step3DryRunProps) {
   const archivalService = useArchivalService();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [dryRunState, setDryRunState] = useState<DryRunState>(initialCache ? 'results' : 'idle');
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -570,6 +572,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
     setDraftError(null);
     try {
       await archivalService.applyConfig({ ...archivalPayload, status: 'DRAFT' } as any);
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       navigate('/archive-vault');
     } catch (err: any) {
       setDraftError(err?.message ?? 'Failed to save draft. Please try again.');
@@ -920,6 +923,12 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                 {isSavingDraft ? 'Saving…' : 'Save as Draft'}
               </button>
             </PermissionGate>
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || !archivalPayload}
+              className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm disabled:opacity-50'>
+              {isSavingDraft ? 'Saving…' : 'Save as Draft'}
+            </button>
             <button
               onClick={() => onNext(
                 dryRunState === 'results' ? { totalRecords, totalDataSize } : undefined,
