@@ -10,7 +10,9 @@
 //   Changed-Since  — fields that differ between source and dest
 //   Bulk via CSV   — upload / paste ID list
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import Papa from 'papaparse';
+import Joi from 'joi';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
@@ -226,7 +228,61 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [changedDate,      setChangedDate]      = useState('2026-05-01');
 
   // csv state
-  const [csvText,          setCsvText]          = useState('0013a00001AbcDe\n0013a00001AbcDf\n0013a00001AbcDg');
+  const [csvText,          setCsvText]          = useState('');
+  const [csvParsedIds,     setCsvParsedIds]     = useState<string[]>([]);
+  const [csvFileName,      setCsvFileName]      = useState<string | null>(null);
+  const [csvErrors,        setCsvErrors]        = useState<{ row: number; message: string }[]>([]);
+  const [csvErrorOpen,     setCsvErrorOpen]     = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const idSchema = Joi.string().min(1).required().messages({
+    'string.empty': 'ID cannot be empty',
+    'any.required': 'ID is required',
+  });
+
+  const parseCsvFile = (file: File) => {
+    setCsvErrors([]);
+    setCsvParsedIds([]);
+    setCsvFileName(file.name);
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const errors: { row: number; message: string }[] = [];
+        const ids: string[] = [];
+
+        // Validate that first column is "Id"
+        const firstCol = results.meta.fields?.[0];
+        if (!firstCol || firstCol.trim() !== 'Id') {
+          errors.push({ row: 0, message: `First column must be "Id" but found "${firstCol ?? 'nothing'}"` });
+          setCsvErrors(errors);
+          setCsvErrorOpen(true);
+          return;
+        }
+
+        results.data.forEach((row, index) => {
+          const rowNum = index + 2; // +2 because row 1 is header
+          const id = row['Id']?.trim();
+          const { error } = idSchema.validate(id);
+          if (error) {
+            errors.push({ row: rowNum, message: error.message });
+          } else {
+            ids.push(id);
+          }
+        });
+
+        if (errors.length > 0) {
+          setCsvErrors(errors);
+          setCsvErrorOpen(true);
+        }
+        setCsvParsedIds(ids);
+      },
+      error: (err) => {
+        setCsvErrors([{ row: 0, message: `Failed to parse CSV: ${err.message}` }]);
+        setCsvErrorOpen(true);
+      },
+    });
+  };
 
   // related records state
   const [relPreset,        setRelPreset]        = useState<RelPreset>('standard');
@@ -337,7 +393,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // ── CSV stats ──────────────────────────────────────────────────────────────
 
-  const csvIds = csvText.split('\n').map((l) => l.trim()).filter(Boolean);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -846,26 +901,109 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               <Typography as='h3' variant='sectionTitle' color='secondary'>📋 Bulk Match via CSV</Typography>
             </div>
             <div className='p-5 space-y-4'>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='.csv'
+                className='hidden'
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) parseCsvFile(file);
+                  e.target.value = '';
+                }}
+              />
+
               {/* Drop zone */}
-              <div className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'>
-                <p className='text-3xl text-gray-300 mb-2'>⬆</p>
-                <p className='text-sm font-semibold text-gray-700'>Drop a CSV file here or click to browse</p>
-                <p className='text-xs text-gray-400 mt-1'>First column = record ID or external ID. UTF-8 encoded, max 200 MB.</p>
+              <div
+                className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) parseCsvFile(file);
+                }}
+              >
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='w-10 h-10 mx-auto mb-3 text-gray-300'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 16V4m0 0L8 8m4-4l4 4M4 20h16' />
+                </svg>
+                {csvFileName ? (
+                  <p className='text-sm font-semibold text-blue-600'>{csvFileName}</p>
+                ) : (
+                  <p className='text-sm font-semibold text-gray-700'>Drop a CSV file here or click to browse</p>
+                )}
+                <p className='text-xs text-gray-400 mt-1'>First column must be <code className='bg-gray-100 px-1 rounded'>Id</code>. UTF-8 encoded.</p>
               </div>
+
+              {/* Paste IDs */}
               <p className='text-xs font-semibold text-gray-700'>Or paste record IDs (one per line)</p>
               <textarea
-                value={csvText} onChange={(e) => setCsvText(e.target.value)}
+                value={csvText}
+                onChange={(e) => {
+                  setCsvText(e.target.value);
+                  const ids = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+                  const errors: { row: number; message: string }[] = [];
+                  const valid: string[] = [];
+                  ids.forEach((id, i) => {
+                    const { error } = idSchema.validate(id);
+                    if (error) errors.push({ row: i + 1, message: error.message });
+                    else valid.push(id);
+                  });
+                  setCsvParsedIds(valid);
+                  setCsvErrors(errors);
+                  setCsvFileName(null);
+                }}
                 rows={5}
+                placeholder={'001dN00000xECllQAG\n001dN00000xEClmQAG\n001dN00000xEClnQAG'}
                 className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
               />
-              {csvIds.length > 0 && (
+
+              {/* Summary */}
+              {csvParsedIds.length > 0 && (
                 <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                  <span>📊</span>
-                  <span>
-                    <strong>{csvIds.length} IDs</strong> detected · <strong>{csvIds.length} matched</strong> in source snapshot · 0 not found
-                  </span>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><path strokeLinecap='round' strokeLinejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M5 21h14a2 2 0 002-2V7l-5-5H5a2 2 0 00-2 2v14a2 2 0 002 2z'/></svg>
+                  <span><strong>{csvParsedIds.length} valid ID{csvParsedIds.length !== 1 ? 's' : ''}</strong> loaded{csvErrors.length > 0 ? ` · ` : ''}{csvErrors.length > 0 && <span className='text-red-600 font-semibold cursor-pointer underline' onClick={() => setCsvErrorOpen(true)}>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</span>}</span>
                 </div>
               )}
+
+              {csvErrors.length > 0 && csvParsedIds.length === 0 && (
+                <div className='flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 cursor-pointer' onClick={() => setCsvErrorOpen(true)}>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                  <span><strong>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</strong> found in CSV — <span className='underline'>click to view</span></span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── CSV Error Modal ───────────────────────────────────────────────── */}
+        {csvErrorOpen && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden' style={{ maxHeight: '80vh' }}>
+              <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+                <div className='flex items-center gap-2'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' className='w-5 h-5'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                  <h3 className='text-sm font-bold text-gray-900'>CSV Validation Errors</h3>
+                </div>
+                <button onClick={() => setCsvErrorOpen(false)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-5 h-5'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                </button>
+              </div>
+              <div className='overflow-y-auto flex-1 px-5 py-4 space-y-2'>
+                {csvErrors.map((err, i) => (
+                  <div key={i} className='flex items-start gap-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5'>
+                    <span className='text-xs font-bold text-red-400 w-14 shrink-0'>{err.row === 0 ? 'Header' : `Row ${err.row}`}</span>
+                    <span className='text-xs text-red-700'>{err.message}</span>
+                  </div>
+                ))}
+              </div>
+              <div className='px-5 py-3 border-t border-gray-100 flex justify-end'>
+                <button onClick={() => setCsvErrorOpen(false)} className='px-4 py-2 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
