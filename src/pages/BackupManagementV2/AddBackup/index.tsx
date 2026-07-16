@@ -173,13 +173,14 @@ export default function AddBackup() {
         <Step1
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
-          onNext={(platformId) => {
+          onNext={(platformId, connectionName) => {
             if (platformId && platformId !== selectedPlatformId) {
               setSelectedPlatformId(platformId);
               setSelectedObjects([]);
             } else if (platformId) {
               setSelectedPlatformId(platformId);
             }
+            if (connectionName !== undefined) setSelectedConnectionName(connectionName);
             handleNextStep();
           }}
         />
