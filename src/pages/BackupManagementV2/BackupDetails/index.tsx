@@ -74,7 +74,7 @@ export default function BackupDetails() {
         <div className='flex items-center justify-between mb-3'>
           <div className='flex items-center gap-4'>
             <button
-              onClick={() => navigate('/backup-management')}
+              onClick={() => navigate(-1)}
               className='flex items-center justify-center w-10 h-10 rounded-lg border border-gray-200 hover:bg-gray-50'
             >
               <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
