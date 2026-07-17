@@ -26,6 +26,8 @@ export type Destination = {
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
+  bucketName?: string;
+  region?: string;
   config?: DestinationConfig;
 };
 
