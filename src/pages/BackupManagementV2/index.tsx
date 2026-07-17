@@ -909,6 +909,8 @@ export default function BackupManagementV2() {
             showSerialNumber={true}
             serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
             hidePaginationSummary={false}
+            cursorMode={true}
+            cursorFirstPageFn={() => goToPage(1, null)}
           />
         )}
       </Panel>

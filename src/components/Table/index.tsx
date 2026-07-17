@@ -106,9 +106,13 @@ type TableProps<TRow> = {
   height?: string;
   /** Items per page for internal pagination. Default: 10 */
   itemsPerPage?: number;
-  showPageNumbers?: boolean;
+
   paginationClassName?: string;
   hidePaginationSummary?: boolean;
+  /** When true, hides page number buttons and shows only Prev / Page X of Y / Next — for cursor-based pagination */
+  cursorMode?: boolean;
+  /** Called when the user clicks the fixed page-1 circle in cursor mode — should reset cursor and go to page 1 */
+  cursorFirstPageFn?: () => void;
 
   // ── Serial number ──────────────────────────────────────────────────────────
   showSerialNumber?: boolean;
@@ -141,9 +145,11 @@ export default function Table<TRow>({
   showPagination = false,
   height = 'h-96',
   itemsPerPage = 10,
-  showPageNumbers = true,
+
   paginationClassName,
   hidePaginationSummary = false,
+  cursorMode = false,
+  cursorFirstPageFn,
   showCheckbox = false,
   selectedIds,
   onSelectionChange,
@@ -414,18 +420,41 @@ export default function Table<TRow>({
                     type='button'
                     onClick={() => handlePageChange(displayPage - 1)}
                     disabled={displayPage <= 1}
-                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                    className={cursorMode
+                      ? 'px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                      : 'px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'}
                   >
-                    &lt;
+                    {cursorMode ? '← Prev' : '<'}
                   </button>
 
-                  {showPageNumbers && (
+                  {cursorMode ? (
+                    <div className='flex items-center gap-1.5'>
+                      {/* Fixed page-1 circle — always visible, clicking resets to page 1 */}
+                      <button
+                        type='button'
+                        onClick={() => cursorFirstPageFn?.()}
+                        className={`w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors ${
+                          displayPage === 1
+                            ? 'bg-blue-600 text-white cursor-default'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                        }`}
+                        disabled={displayPage === 1}
+                      >
+                        1
+                      </button>
+                      {/* Current page circle — only shown when user is beyond page 1 */}
+                      {displayPage > 1 && (
+                        <span className='w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-medium flex items-center justify-center'>
+                          {displayPage}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
                     <div className='flex items-center gap-1'>
                       {(() => {
                         const pages: (number | string)[] = [];
                         const maxVis  = 5;
                         const halfVis = Math.floor(maxVis / 2);
-
                         if (totalPages <= maxVis) {
                           for (let i = 1; i <= totalPages; i++) pages.push(i);
                         } else {
@@ -439,7 +468,6 @@ export default function Table<TRow>({
                           if (displayPage < totalPages - halfVis - 1) pages.push('...');
                           if (!pages.includes(totalPages)) pages.push(totalPages);
                         }
-
                         return pages.map((p, idx) =>
                           p === '...' ? (
                             <span key={`dots-${idx}`} className='px-2 text-gray-400'>...</span>
@@ -466,9 +494,11 @@ export default function Table<TRow>({
                     type='button'
                     onClick={() => handlePageChange(displayPage + 1)}
                     disabled={displayPage >= totalPages}
-                    className='px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'
+                    className={cursorMode
+                      ? 'px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'
+                      : 'px-3 py-1 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:text-gray-900'}
                   >
-                    &gt;
+                    {cursorMode ? 'Next →' : '>'}
                   </button>
                 </div>
               </div>
