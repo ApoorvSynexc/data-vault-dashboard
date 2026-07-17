@@ -295,8 +295,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 <span className='font-medium'>{totalSelected} object selected</span>
               </div>
 
-              <button onClick={clearAll} className='text-sm font-medium text-gray-500 hover:text-gray-700 flex-shrink-0'>
-                Clear
+              <button onClick={clearAll} className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
+                Clear All
               </button>
             </div>
 
