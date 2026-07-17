@@ -25,7 +25,7 @@ export default function SocialLoginCallback() {
   useEffect(() => {
     if (isSuccess) {
       if (window.opener && !window.opener.closed) {
-        window.opener.postMessage({ type: 'SALESFORCE_LOGIN_SUCCESS' }, window.location.origin);
+        window.opener.postMessage({ type: 'SALESFORCE_LOGIN_SUCCESS' }, '*');
         window.close();
       } else {
         refreshProfile().then(() => {
@@ -38,14 +38,17 @@ export default function SocialLoginCallback() {
   useEffect(() => {
     if (error && window.opener && !window.opener.closed) {
       const message = error instanceof Error ? error.message : 'Unable to complete login. Please try again.';
-      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message }, window.location.origin);
+      // '*' because the opener may be a cross-origin Salesforce/LWC popup (the
+      // admin-authorization flow), not just this app's own origin — a
+      // same-origin targetOrigin here silently drops the message in that case.
+      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message }, '*');
       window.close();
     }
   }, [error]);
 
   useEffect(() => {
     if (!hasRequiredParams && window.opener && !window.opener.closed) {
-      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message: 'Login link expired or invalid. Please try again.' }, window.location.origin);
+      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message: 'Login link expired or invalid. Please try again.' }, '*');
       window.close();
     }
   }, [hasRequiredParams]);
