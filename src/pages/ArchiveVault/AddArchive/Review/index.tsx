@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PermissionGate from '../../../../components/PermissionGate';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import type { ArchiveScheduleConfig } from '../Schedule';
 import type { DryRunSummary } from '../DryRun';
@@ -47,6 +48,7 @@ export default function Step5({
 }: Step5Props) {
   const navigate = useNavigate();
   const archivalService = useArchivalService();
+  const queryClient = useQueryClient();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -73,9 +75,16 @@ const [confirmError, setConfirmError] = useState(false);
   const schedFreq = scheduleConfig
     ? (freqLabel[scheduleConfig.scheduling.frequency] ?? scheduleConfig.scheduling.frequency)
     : 'Daily';
-  const schedStartDate = scheduleConfig?.scheduling.startDate ?? '20-05-2026';
-  const schedStartTime = scheduleConfig?.scheduling.startTime ?? '06:00 PM';
-  const scheduleDisplay = `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`;
+  const schedStartDate = scheduleConfig?.scheduling.startDate;
+  const schedStartTime = scheduleConfig?.scheduling.startTime;
+  const isRunNow = scheduleConfig?.scheduling.frequency === 'ONCE' && !schedStartDate && !schedStartTime;
+  const scheduleDisplay = isRunNow
+    ? 'One Time (Archive Now)'
+    : schedStartTime && schedStartDate
+      ? `${schedFreq} at ${schedStartTime}, Starts from ${schedStartDate}`
+      : schedStartTime
+        ? `${schedFreq} at ${schedStartTime}`
+        : schedFreq;
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
@@ -105,6 +114,7 @@ const [confirmError, setConfirmError] = useState(false);
     setApiError(null);
     try {
       await fireApi('DRAFT');
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       navigate('/archive-vault');
     } catch (err: any) {
       setApiError(err?.message ?? 'Failed to save draft. Please try again.');
@@ -120,6 +130,7 @@ const [confirmError, setConfirmError] = useState(false);
     setApiError(null);
     try {
       await fireApi('ACTIVE');
+      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setIsSuccess(true);
     } catch (err: any) {
       setApiError(err?.message ?? 'Failed to start archive. Please try again.');

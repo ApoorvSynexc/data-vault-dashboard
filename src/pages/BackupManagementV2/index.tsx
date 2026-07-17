@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Table, { type TableColumn } from '../../components/Table';
 import type { CrmPlatform as PlatformType } from '../../constants/platforms';
@@ -524,6 +524,7 @@ type FilterState = {
 export default function BackupManagementV2() {
   const navigate = useNavigate();
   const { permissions } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', search: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -532,12 +533,60 @@ export default function BackupManagementV2() {
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({ 1: null });
+  // Page + cursor both live in the URL so back-navigation restores them exactly.
+  // URL shape: /backup-management?page=2&cursor=XXXXXX
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+  const currentCursor = searchParams.get('cursor') ?? null;
+
+  const goToPage = useCallback((page: number, cursor: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (page <= 1) {
+        next.delete('page');
+        next.delete('cursor');
+      } else {
+        next.set('page', String(page));
+        if (cursor) next.set('cursor', cursor);
+        else next.delete('cursor');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search. Only reset page when the user is actively typing (non-empty search).
+  // When search is empty we just sync debouncedSearch without touching the URL page/cursor,
+  // so back-navigation always lands on the correct page.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(filters.search);
+      if (filters.search) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('page');
+          next.delete('cursor');
+          return next;
+        }, { replace: true });
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [filters.search]);
+
+  // Reset to page 1 when dropdown filters change
+  const isFirstFilterRender = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('page');
+      next.delete('cursor');
+      return next;
+    }, { replace: true });
+  }, [filters.backupType, filters.status]);
 
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
-  const currentCursor = cursorMap[currentPage] ?? null;
 
   const deleteMutation = useMutation({
     mutationFn: (backupConfigId: string) => backupConfigService.deleteBackupConfig(backupConfigId),
@@ -568,13 +617,26 @@ export default function BackupManagementV2() {
     },
   });
 
+  // Derive API filter params from filter state
+  const apiStatus = !JOB_STATUS_VALUES.has(filters.status) && filters.status !== 'All' ? filters.status : undefined;
+  const apiBackupStatus = JOB_STATUS_VALUES.has(filters.status) ? (filters.status === 'RUNNING' ? undefined : filters.status) : undefined;
+  const apiRunningStatus = filters.status === 'RUNNING' ? 'RUNNING' : undefined;
+  const apiSchedule = filters.backupType === 'Realtime' ? 'REALTIME' : filters.backupType === 'Schedule' ? 'SCHEDULE' : undefined;
+
   const queryFn = useCallback(() =>
-    backupConfigService.listBackupConfigs(true, currentCursor ?? undefined),
-    [currentCursor]
+    backupConfigService.listBackupConfigs(
+      true,
+      currentCursor ?? undefined,
+      debouncedSearch || undefined,
+      apiStatus,
+      apiSchedule,
+      apiBackupStatus ?? apiRunningStatus,
+    ),
+    [currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus, apiRunningStatus]
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list-v2', currentCursor],
+    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus ?? apiRunningStatus],
     queryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -587,16 +649,6 @@ export default function BackupManagementV2() {
     totalRecords: apiDataArray.length,
     totalPages: 1,
   };
-
-  useEffect(() => {
-    if (!backupQuery.data) return;
-
-    const nextCursor = (backupQuery.data as any)?.meta?.nextCursor ?? null;
-
-    if (nextCursor && !Object.values(cursorMap).includes(nextCursor)) {
-      setCursorMap((prev) => ({ ...prev, [currentPage + 1]: nextCursor }));
-    }
-  }, [backupQuery.data, currentPage]);
 
   const getScheduleFrequencyDisplay = (frequency?: string): string => {
     if (!frequency) return '--';
@@ -637,22 +689,8 @@ export default function BackupManagementV2() {
     };
   });
 
-  const filteredBackups = parsedRows.filter((row) => {
-    if (filters.backupType !== 'All' && row.backupType !== filters.backupType) return false;
-    if (filters.status !== 'All') {
-      if (JOB_STATUS_VALUES.has(filters.status)) {
-        if (filters.status === 'RUNNING') {
-          if (row.backupStatus !== 'RUNNING' && row.backupStatus !== 'PENDING') return false;
-        } else {
-          if (row.backupStatus !== filters.status) return false;
-        }
-      } else {
-        if (row.configStatus !== filters.status) return false;
-      }
-    }
-    if (filters.search && !row.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  });
+  // Filters are applied server-side via API params — no client-side filtering needed.
+  const filteredBackups = parsedRows;
 
   const backupColumns: TableColumn<BackupRow>[] = [
     {
@@ -755,7 +793,8 @@ export default function BackupManagementV2() {
     },
   ];
 
-  if (!backupQuery.isLoading && !backupQuery.isFetching && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search) {
+  const isSearchPending = filters.search !== debouncedSearch;
+  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch) {
     return <BackupManagementWelcome />;
   }
 
@@ -839,18 +878,6 @@ export default function BackupManagementV2() {
               ]}
               onChange={(v) => setFilters((f) => ({ ...f, backupType: v as FilterState['backupType'] }))}
             />
-            {/* Divider */}
-            <div className='h-5 w-px bg-gray-200 mx-1' />
-            {/* Export CSV */}
-            <button
-              type='button'
-              className='flex h-7 items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:border-gray-300 whitespace-nowrap'
-            >
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='h-3.5 w-3.5'>
-                <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/>
-              </svg>
-              Export CSV
-            </button>
           </div>
         }
       >
@@ -895,25 +922,22 @@ export default function BackupManagementV2() {
               currentPage: 1,
               displayPage: currentPage,
               pageSize: apiMeta.limit ?? 10,
-              totalRecords: apiMeta.totalRecords ?? filteredBackups.length,
+              totalRecords: apiMeta.totalRecords ?? apiDataArray.length,
               onPageChange: (nextPage) => {
-                if (nextPage <= 0) return;
-                if (nextPage === currentPage) return;
-
-                const nextCursor = cursorMap[nextPage];
-                if (nextCursor !== undefined) {
-                  setCurrentPage(nextPage);
+                if (nextPage <= 0 || nextPage === currentPage) return;
+                if (nextPage === 1) {
+                  goToPage(1, null);
                   return;
                 }
-
-                const foundNextCursor = apiMeta.nextCursor;
-                if (foundNextCursor && nextPage === currentPage + 1) {
-                  setCursorMap((prev) => ({ ...prev, [nextPage]: foundNextCursor }));
-                  setCurrentPage(nextPage);
+                // Can only go forward one page at a time using the nextCursor from current response
+                if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+                  goToPage(nextPage, apiMeta.nextCursor);
                 }
               },
             }}
             showSerialNumber={true}
+            serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
+            hidePaginationSummary={false}
           />
         )}
       </Panel>
