@@ -113,6 +113,8 @@ type TableProps<TRow> = {
   cursorMode?: boolean;
   /** Called when the user clicks the fixed page-1 circle in cursor mode — should reset cursor and go to page 1 */
   cursorFirstPageFn?: () => void;
+  /** Called when the user clicks ← Prev in cursor mode — parent pops the cursor stack */
+  cursorOnPrev?: () => void;
 
   // ── Serial number ──────────────────────────────────────────────────────────
   showSerialNumber?: boolean;
@@ -150,6 +152,7 @@ export default function Table<TRow>({
   hidePaginationSummary = false,
   cursorMode = false,
   cursorFirstPageFn,
+  cursorOnPrev,
   showCheckbox = false,
   selectedIds,
   onSelectionChange,
@@ -418,7 +421,7 @@ export default function Table<TRow>({
                 <div className='flex items-center gap-2'>
                   <button
                     type='button'
-                    onClick={() => handlePageChange(displayPage - 1)}
+                    onClick={() => cursorMode ? cursorOnPrev?.() : handlePageChange(displayPage - 1)}
                     disabled={displayPage <= 1}
                     className={cursorMode
                       ? 'px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors'

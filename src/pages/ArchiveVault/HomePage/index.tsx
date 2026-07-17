@@ -341,6 +341,9 @@ export default function ArchiveVaultHomePage() {
   const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const currentCursor = searchParams.get('cursor') ?? null;
 
+  // Stack of { page, cursor } entries pushed on each Next — popped on Prev
+  const [cursorStack, setCursorStack] = useState<{ page: number; cursor: string }[]>([]);
+
   const goToPage = useCallback((page: number, cursor: string | null) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -410,6 +413,7 @@ export default function ArchiveVaultHomePage() {
     const t = setTimeout(() => {
       setDebouncedSearch(search);
       if (search) {
+        setCursorStack([]);
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
           next.delete('page');
@@ -426,6 +430,7 @@ export default function ArchiveVaultHomePage() {
   useEffect(() => {
     if (prevStatusFilter.current === statusFilter) return;
     prevStatusFilter.current = statusFilter;
+    setCursorStack([]);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('page');
@@ -693,13 +698,20 @@ export default function ArchiveVaultHomePage() {
                 totalRecords: apiMeta.totalRecords ?? filtered.length,
                 onPageChange: (nextPage) => {
                   if (nextPage <= 0 || nextPage === currentPage) return;
-                  if (nextPage === 1) { goToPage(1, null); return; }
                   if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+                    setCursorStack((prev) => [...prev, { page: currentPage, cursor: currentCursor ?? '' }]);
                     goToPage(nextPage, apiMeta.nextCursor);
                   }
                 },
               }}
-              cursorFirstPageFn={() => goToPage(1, null)}
+              cursorFirstPageFn={() => { setCursorStack([]); goToPage(1, null); }}
+              cursorOnPrev={() => {
+                const stack = [...cursorStack];
+                const prev = stack.pop();
+                setCursorStack(stack);
+                if (prev) goToPage(prev.page, prev.cursor);
+                else goToPage(1, null);
+              }}
             />
           );
         })()}

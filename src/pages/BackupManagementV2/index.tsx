@@ -535,6 +535,9 @@ export default function BackupManagementV2() {
   const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const currentCursor = searchParams.get('cursor') ?? null;
 
+  // Stack of { page, cursor } entries pushed on each Next — popped on Prev
+  const [cursorStack, setCursorStack] = useState<{ page: number; cursor: string }[]>([]);
+
   const goToPage = useCallback((page: number, cursor: string | null) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -559,6 +562,7 @@ export default function BackupManagementV2() {
     const t = setTimeout(() => {
       setDebouncedSearch(filters.search);
       if (filters.search) {
+        setCursorStack([]);
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
           next.delete('page');
@@ -574,6 +578,7 @@ export default function BackupManagementV2() {
   const isFirstFilterRender = useRef(true);
   useEffect(() => {
     if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    setCursorStack([]);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('page');
@@ -896,12 +901,9 @@ export default function BackupManagementV2() {
               totalRecords: apiMeta.totalRecords ?? apiDataArray.length,
               onPageChange: (nextPage) => {
                 if (nextPage <= 0 || nextPage === currentPage) return;
-                if (nextPage === 1) {
-                  goToPage(1, null);
-                  return;
-                }
-                // Can only go forward one page at a time using the nextCursor from current response
                 if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+                  // Push current page+cursor onto stack before moving forward
+                  setCursorStack((prev) => [...prev, { page: currentPage, cursor: currentCursor ?? '' }]);
                   goToPage(nextPage, apiMeta.nextCursor);
                 }
               },
@@ -910,7 +912,14 @@ export default function BackupManagementV2() {
             serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
             hidePaginationSummary={false}
             cursorMode={true}
-            cursorFirstPageFn={() => goToPage(1, null)}
+            cursorFirstPageFn={() => { setCursorStack([]); goToPage(1, null); }}
+            cursorOnPrev={() => {
+              const stack = [...cursorStack];
+              const prev = stack.pop();
+              setCursorStack(stack);
+              if (prev) goToPage(prev.page, prev.cursor);
+              else goToPage(1, null);
+            }}
           />
         )}
       </Panel>
