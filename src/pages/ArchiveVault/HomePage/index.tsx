@@ -685,6 +685,7 @@ export default function ArchiveVaultHomePage() {
               emptyState='No archive policies match your filters.'
               showSerialNumber
               serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
+              cursorMode={true}
               pagination={{
                 currentPage: 1,
                 displayPage: currentPage,
@@ -698,6 +699,7 @@ export default function ArchiveVaultHomePage() {
                   }
                 },
               }}
+              cursorFirstPageFn={() => goToPage(1, null)}
             />
           );
         })()}

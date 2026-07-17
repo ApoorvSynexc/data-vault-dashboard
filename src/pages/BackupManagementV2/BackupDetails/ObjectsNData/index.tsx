@@ -198,7 +198,7 @@ export default function ObjectsNData({ backup }: ObjectsNDataProps) {
         getRowKey={(obj) => String(obj.id)}
         showPagination={true}
         itemsPerPage={8}
-        showPageNumbers={true}
+
         emptyState='No objects found matching your search.'
         showSerialNumber={true}
       />
