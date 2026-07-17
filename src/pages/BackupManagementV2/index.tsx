@@ -910,7 +910,7 @@ export default function BackupManagementV2() {
             }}
             showSerialNumber={true}
             serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
-            hidePaginationSummary={false}
+            hidePaginationSummary={!!debouncedSearch}
             cursorMode={true}
             cursorFirstPageFn={() => { setCursorStack([]); goToPage(1, null); }}
             cursorOnPrev={() => {

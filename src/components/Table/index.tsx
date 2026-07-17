@@ -109,6 +109,8 @@ type TableProps<TRow> = {
 
   paginationClassName?: string;
   hidePaginationSummary?: boolean;
+  /** Overrides the default "Showing X to Y of Z" summary text */
+  paginationSummary?: string;
   /** When true, hides page number buttons and shows only Prev / Page X of Y / Next — for cursor-based pagination */
   cursorMode?: boolean;
   /** Called when the user clicks the fixed page-1 circle in cursor mode — should reset cursor and go to page 1 */
@@ -150,6 +152,7 @@ export default function Table<TRow>({
 
   paginationClassName,
   hidePaginationSummary = false,
+  paginationSummary,
   cursorMode = false,
   cursorFirstPageFn,
   cursorOnPrev,
@@ -413,8 +416,7 @@ export default function Table<TRow>({
             <>
               {hidePaginationSummary ? <span /> : (
                 <p className='text-sm text-gray-600'>
-                  Showing {(displayPage - 1) * safePageSize + 1} to{' '}
-                  {Math.min(displayPage * safePageSize, totalRecords)} of {totalRecords}
+                  {paginationSummary ?? `Showing ${(displayPage - 1) * safePageSize + 1} to ${Math.min(displayPage * safePageSize, totalRecords)} of ${totalRecords}`}
                 </p>
               )}
               <div className='flex items-center gap-4'>
