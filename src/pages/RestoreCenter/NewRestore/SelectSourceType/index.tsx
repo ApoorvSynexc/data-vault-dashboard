@@ -109,6 +109,23 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
   const [archivalConfigSelected, setArchivalConfigSelected] = useState(false);
   const [archivalSelection, setArchivalSelection] = useState<ArchivalSelection | null>(null);
 
+  // Whether a config has been locked in (disables the other type card)
+  const backupLocked  = configSelected || showJobsPhase;
+  const archiveLocked = archivalConfigSelected || showArchivalJobsPhase;
+  const anyLocked = backupLocked || archiveLocked;
+
+  const clearBackup = () => {
+    setConfigSelected(false);
+    setBackupSelection(null);
+    setShowJobsPhase(false);
+  };
+
+  const clearArchival = () => {
+    setArchivalConfigSelected(false);
+    setArchivalSelection(null);
+    setShowArchivalJobsPhase(false);
+  };
+
   const canProceed =
     sourceType === 'backup'
       ? (showJobsPhase ? !!backupSelection : configSelected)
@@ -163,26 +180,60 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
 
         {/* Source type cards */}
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-          <div className='flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
+          <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Source Type</Typography>
+            {anyLocked && (
+              <span className='inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1'>
+                <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                Only one source type per restore job
+              </span>
+            )}
           </div>
           <div className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-3'>
             {SOURCE_TYPES.map((s) => {
-              const active = sourceType === s.id;
+              const active   = sourceType === s.id;
+              const isLocked = s.id === 'backup' ? backupLocked : archiveLocked;
+              const otherLocked = s.id === 'backup' ? archiveLocked : backupLocked;
+              const disabled = !isLocked && otherLocked;
+
               return (
-                <button
-                  key={s.id}
-                  onClick={() => { setSourceType(s.id); setShowJobsPhase(false); setConfigSelected(false); setBackupSelection(null); setShowArchivalJobsPhase(false); setArchivalConfigSelected(false); setArchivalSelection(null); }}
-                  className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
-                    active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                  }`}
-                >
-                  <div className='flex items-center gap-2'>
-                    <span className={active ? 'text-blue-600' : 'text-gray-500'}>{s.icon}</span>
-                    <span className={`text-sm font-semibold ${active ? 'text-blue-600' : 'text-gray-800'}`}>{s.title}</span>
-                  </div>
-                  <p className='mt-1 text-xs text-gray-500'>{s.desc}</p>
-                </button>
+                <div key={s.id} className='relative'>
+                  <button
+                    disabled={disabled}
+                    onClick={() => {
+                      if (disabled) return;
+                      setSourceType(s.id);
+                    }}
+                    className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
+                      disabled
+                        ? 'border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed'
+                        : active
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+                    }`}
+                  >
+                    <div className='flex items-center gap-2'>
+                      <span className={disabled ? 'text-gray-300' : active ? 'text-blue-600' : 'text-gray-500'}>{s.icon}</span>
+                      <span className={`text-sm font-semibold ${disabled ? 'text-gray-300' : active ? 'text-blue-600' : 'text-gray-800'}`}>{s.title}</span>
+                    </div>
+                    <p className={`mt-1 text-xs ${disabled ? 'text-gray-300' : 'text-gray-500'}`}>{s.desc}</p>
+                  </button>
+
+                  {/* Deselect button — shown only on the active+locked card */}
+                  {active && isLocked && (
+                    <button
+                      onClick={() => {
+                        if (s.id === 'backup') clearBackup();
+                        else clearArchival();
+                      }}
+                      title='Clear selection'
+                      className='absolute top-2 right-2 flex items-center gap-1 text-[10px] font-semibold text-gray-500 hover:text-red-600 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-full px-2 py-0.5 transition-colors'
+                    >
+                      <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                      Clear
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
