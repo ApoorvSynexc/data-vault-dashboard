@@ -209,6 +209,32 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   // ── Backup table columns ──────────────────────────────────────────────────
   const backupColumns: TableColumn<any>[] = [
     {
+      key: 'checkbox',
+      header: '',
+      width: '40px',
+      render: (row) => (
+        <input
+          type='radio'
+          name='backup-select'
+          checked={selectedBackup.has(row.backupConfigId)}
+          onChange={() => {
+            const next = new Set([row.backupConfigId]);
+            setSelectedBackup(next);
+            setSelectedBackupRows([row]);
+            setSelectedBackupConfigId(row.backupConfigId);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className='w-4 h-4 accent-blue-600 cursor-pointer'
+        />
+      ),
+    },
+    {
+      key: 'slNo',
+      header: 'SL No.',
+      width: '60px',
+      render: (_row, index) => <span className='text-sm text-gray-600'>{(backupCurrentPage - 1) * (backupMeta.limit ?? 25) + index + 1}</span>,
+    },
+    {
       key: 'name',
       header: 'Backup Name',
       render: (row) => (
@@ -420,18 +446,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
                 skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-24', 'w-20', 'w-20', 'w-20'] }}
                 headerVariant='uppercase'
                 borderless
-                showSerialNumber
-                serialNumberStart={(backupCurrentPage - 1) * (backupMeta.limit ?? 25) + 1}
-                showCheckbox
-                selectedIds={selectedBackup}
-                getRowId={(row: any) => row.backupConfigId}
-                onSelectionChange={(ids) => {
-                  setSelectedBackup(ids);
-                  const rows = backupListRows.filter((r: any) => ids.has(r.backupConfigId));
-                  setSelectedBackupRows(rows);
-                  setSelectedBackupConfigId(rows[0]?.backupConfigId ?? '');
-                }}
-                getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                getRowClassName={(row: any) => `border-b border-gray-50 transition-colors ${selectedBackup.has(row.backupConfigId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                 emptyState='No backup configs found.'
                 cursorMode={true}
                 cursorFirstPageFn={goBackupToPage1}
