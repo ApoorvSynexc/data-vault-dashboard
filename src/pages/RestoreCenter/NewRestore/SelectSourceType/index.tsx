@@ -95,7 +95,7 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SelectSourceType({ onNext, onBack, selectedConnection }: Props) {
+export default function SelectSourceType({ onNext, onBack }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>('backup');
   const [showJobsPhase, setShowJobsPhase] = useState(false);
 
@@ -182,14 +182,12 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
             showJobsPhase={showJobsPhase}
             onConfigSelected={setConfigSelected}
             onSelectionChange={setBackupSelection}
-            onEnterJobsPhase={() => setShowJobsPhase(true)}
             onExitJobsPhase={() => { setShowJobsPhase(false); setBackupSelection(null); }}
           />
         )}
 
         {sourceType === 'archive' && (
           <ArchivalPicker
-            selectedConnection={selectedConnection}
             onSelectionChange={setArchivalSelection}
           />
         )}
