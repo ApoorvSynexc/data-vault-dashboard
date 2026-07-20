@@ -100,11 +100,11 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [showJobsPhase, setShowJobsPhase] = useState(false);
 
   // Selections lifted up from sub-pickers
+  const [configSelected, setConfigSelected] = useState(false);
   const [backupSelection, setBackupSelection] = useState<BackupSelection | null>(null);
   const [archivalSelection, setArchivalSelection] = useState<ArchivalSelection | null>(null);
-
   const canProceed =
-    sourceType === 'backup'  ? (showJobsPhase ? !!backupSelection : BackupPicker.canEnterJobs) :
+    sourceType === 'backup'  ? (showJobsPhase ? !!backupSelection : configSelected) :
     sourceType === 'archive' ? !!archivalSelection :
     false;
 
@@ -117,7 +117,6 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
       if (showJobsPhase && backupSelection) {
         onNext({ configType: 'BACKUP', backupConfigId: backupSelection.backupConfigId, backupJobIds: backupSelection.backupJobIds });
       } else {
-        BackupPicker.enterJobsPhase();
         setShowJobsPhase(true);
       }
     }
@@ -161,7 +160,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               return (
                 <button
                   key={s.id}
-                  onClick={() => { setSourceType(s.id); setShowJobsPhase(false); }}
+                  onClick={() => { setSourceType(s.id); setShowJobsPhase(false); setConfigSelected(false); setBackupSelection(null); }}
                   className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
                     active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
                   }`}
@@ -181,9 +180,10 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
         {sourceType === 'backup' && (
           <BackupPicker
             showJobsPhase={showJobsPhase}
+            onConfigSelected={setConfigSelected}
             onSelectionChange={setBackupSelection}
             onEnterJobsPhase={() => setShowJobsPhase(true)}
-            onExitJobsPhase={() => setShowJobsPhase(false)}
+            onExitJobsPhase={() => { setShowJobsPhase(false); setBackupSelection(null); }}
           />
         )}
 
