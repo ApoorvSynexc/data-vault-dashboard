@@ -17,13 +17,14 @@ export interface BackupSelection {
 }
 
 interface Props {
+  onConfigSelected: (selected: boolean) => void;
   onSelectionChange: (selection: BackupSelection | null) => void;
   onEnterJobsPhase: () => void;
   onExitJobsPhase: () => void;
   showJobsPhase: boolean;
 }
 
-export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onExitJobsPhase, showJobsPhase }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, onEnterJobsPhase, onExitJobsPhase, showJobsPhase }: Props) {
   const backupConfigService = useBackupConfigService();
 
   // ── Config list (phase 1) ────────────────────────────────────────────────
@@ -94,6 +95,17 @@ export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onEx
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
+  // Reset jobs state whenever we enter phase 2
+  useEffect(() => {
+    if (showJobsPhase) {
+      setSelectedJobIds(new Set());
+      setJobsCursor(null);
+      setJobsCurrentPage(1);
+      setJobsCursorStack([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showJobsPhase]);
+
   const selectedBackupSlug = selectedBackupRow?.slug ?? selectedBackupRow?.backupConfigId ?? '';
 
   const { data: jobsData, isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery({
@@ -153,6 +165,7 @@ export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onEx
             setSelectedBackupRow(row);
             setSelectedBackupConfigId(row.backupConfigId);
             onSelectionChange(null);
+            onConfigSelected(true);
           }}
           onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer'
@@ -312,22 +325,9 @@ export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onEx
     },
   ];
 
-  // ── Exposed helpers for parent footer ────────────────────────────────────
-  // Called by parent when "Select Backup Jobs To Restore →" is clicked
-  BackupPicker.enterJobsPhase = () => {
-    onEnterJobsPhase();
-    setSelectedJobIds(new Set());
-    goJobsToPage1();
-  };
-
-  BackupPicker.exitJobsPhase = () => {
+  const handleExitJobsPhase = () => {
     onExitJobsPhase();
-    setSelectedJobIds(new Set());
-    goJobsToPage1();
   };
-
-  BackupPicker.canEnterJobs = selectedBackup.size > 0;
-  BackupPicker.hasJobsSelected = selectedJobIds.size > 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -426,7 +426,7 @@ export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onEx
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
             <button
-              onClick={BackupPicker.exitJobsPhase}
+              onClick={handleExitJobsPhase}
               className='inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors'
             >
               <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
@@ -470,10 +470,3 @@ export default function BackupPicker({ onSelectionChange, onEnterJobsPhase, onEx
   );
 }
 
-// Static properties used by the parent to drive footer behaviour.
-// Assigned inside the component body on each render so the parent
-// always reads the freshest values without needing extra props/callbacks.
-BackupPicker.enterJobsPhase = () => {};
-BackupPicker.exitJobsPhase  = () => {};
-BackupPicker.canEnterJobs   = false;
-BackupPicker.hasJobsSelected = false;
