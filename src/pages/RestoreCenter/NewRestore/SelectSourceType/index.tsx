@@ -111,7 +111,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   // ── Jobs phase ────────────────────────────────────────────────────────────
   const [showJobsPhase, setShowJobsPhase] = useState(false);
   const [selectedBackupSlug, setSelectedBackupSlug] = useState<string>('');
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [jobsCursor, setJobsCursor] = useState<string | null>(null);
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
@@ -336,15 +336,21 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   // ── Jobs table columns (phase 2) ─────────────────────────────────────────
   const jobsColumns: TableColumn<any>[] = [
     {
-      key: 'radio',
+      key: 'checkbox',
       header: '',
       width: '40px',
       render: (job) => (
         <input
-          type='radio'
-          name='job-select'
-          checked={selectedJobId === job.backupJobId}
-          onChange={() => setSelectedJobId(job.backupJobId)}
+          type='checkbox'
+          checked={selectedJobIds.has(job.backupJobId)}
+          onChange={() => {
+            setSelectedJobIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(job.backupJobId)) next.delete(job.backupJobId);
+              else next.add(job.backupJobId);
+              return next;
+            });
+          }}
           onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer'
         />
@@ -477,7 +483,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [pitTime, setPitTime] = useState('14:23');
 
   const canProceed =
-    sourceType === 'backup'  ? (showJobsPhase ? !!selectedJobId : selectedBackup.size > 0) :
+    sourceType === 'backup'  ? (showJobsPhase ? selectedJobIds.size > 0 : selectedBackup.size > 0) :
     sourceType === 'archive' ? !!selectedArchiveKey :
     false;
 
@@ -632,7 +638,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
           <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
             <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
               <button
-                onClick={() => { setShowJobsPhase(false); setSelectedJobId(''); goJobsToPage1(); }}
+                onClick={() => { setShowJobsPhase(false); setSelectedJobIds(new Set()); goJobsToPage1(); }}
                 className='inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors'
               >
                 <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
@@ -658,8 +664,8 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               skeletonConfig={{ rows: 8, colWidths: ['w-8', 'w-12', 'w-36', 'w-24', 'w-16', 'w-20', 'w-12', 'w-20', 'w-32'] }}
               headerVariant='uppercase'
               borderless
-              getRowClassName={(job: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedJobId === job.backupJobId ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-              onRowClick={(job: any) => setSelectedJobId(job.backupJobId)}
+              getRowClassName={(job: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+              onRowClick={(job: any) => setSelectedJobIds((prev) => { const next = new Set(prev); if (next.has(job.backupJobId)) next.delete(job.backupJobId); else next.add(job.backupJobId); return next; })}
               emptyState='No backup jobs found for this backup config.'
               cursorMode={true}
               cursorFirstPageFn={goJobsToPage1}
@@ -743,13 +749,13 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               if (sourceType === 'archive') {
                 onNext({ configType: 'ARCHIVAL', backupConfigId: selectedArchiveKey, backupJobIds: [] });
               } else if (showJobsPhase) {
-                onNext({ configType: 'BACKUP', backupConfigId: selectedBackupConfigId, backupJobIds: [selectedJobId].filter(Boolean) });
+                onNext({ configType: 'BACKUP', backupConfigId: selectedBackupConfigId, backupJobIds: Array.from(selectedJobIds) });
               } else {
                 // Phase 1 → Phase 2: load jobs for selected backup config
                 const slug = selectedBackupRows[0]?.slug ?? selectedBackupRows[0]?.backupConfigId ?? '';
                 setSelectedBackupSlug(slug);
                 setShowJobsPhase(true);
-                setSelectedJobId('');
+                setSelectedJobIds(new Set());
                 goJobsToPage1();
               }
             }}
@@ -757,7 +763,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}
           >
-            {sourceType === 'backup' && !showJobsPhase ? 'Select Backup Jobs To Restore →' : 'Next →'}
+            {sourceType === 'backup' && !showJobsPhase ? 'Select Backup Jobs To Restore →' : 'Next: Choose Selection Scope →'}
           </button>
         </div>
       </div>
