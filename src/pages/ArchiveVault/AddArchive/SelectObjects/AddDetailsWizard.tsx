@@ -2,9 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { ChildRows, MAX_CHILD_DEPTH } from './ChildRows';
-import type { FilterCondition } from './FilterPopup';
-import type { ScheduleConfig } from './SchedulePopup';
-import type { ArchivalCondition, BuiltChildNode } from './types';
+import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import dayjs from 'dayjs';
 
@@ -257,7 +255,7 @@ export default function AddDetailsWizard({
   const canProceedFromStep1 =
     filterTab === 'SOQL'
       ? soqlUserClause.trim().length > 0 && soqlValidated
-      : conditions.some((c) => c.field);
+      : conditions.some((c) => c.field) && conditions.every((c) => !c.field || c.value.trim() !== '');
 
   // ── step 2: children ───────────────────────────────────────────────────────
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
