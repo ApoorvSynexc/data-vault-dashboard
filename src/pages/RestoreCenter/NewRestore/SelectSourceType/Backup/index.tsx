@@ -19,12 +19,11 @@ export interface BackupSelection {
 interface Props {
   onConfigSelected: (selected: boolean) => void;
   onSelectionChange: (selection: BackupSelection | null) => void;
-  onEnterJobsPhase: () => void;
   onExitJobsPhase: () => void;
   showJobsPhase: boolean;
 }
 
-export default function BackupPicker({ onConfigSelected, onSelectionChange, onEnterJobsPhase, onExitJobsPhase, showJobsPhase }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, onExitJobsPhase, showJobsPhase }: Props) {
   const backupConfigService = useBackupConfigService();
 
   // ── Config list (phase 1) ────────────────────────────────────────────────

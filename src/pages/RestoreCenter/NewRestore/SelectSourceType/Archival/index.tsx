@@ -1,85 +1,168 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Table from '../../../../../components/Table';
 import type { TableColumn } from '../../../../../components/Table';
 import Typography from '../../../../../components/Typography';
-import { useRestoreService } from '../../../../../services/restore/restore.service';
-import { formatBytes, formatDateTime } from '../../../../../utils';
-import type { Destination } from '../../../../../services/destination/destination.service';
+import { useArchivalService } from '../../../../../services/archival/archival.service';
+import { formatBytes } from '../../../../../utils';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ArchivalSelection {
   backupConfigId: string;
+  slug: string;
 }
 
 interface Props {
-  selectedConnection: Destination | null;
   onSelectionChange: (selection: ArchivalSelection | null) => void;
 }
 
-export default function ArchivalPicker({ selectedConnection, onSelectionChange }: Props) {
-  const restoreService = useRestoreService();
+type StatusFilter = 'All' | 'ACTIVE' | 'PAUSED' | 'DRAFT' | 'INACTIVE';
 
-  const [filterName, setFilterName] = useState('');
-  const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([undefined]);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageLogs, setPageLogs] = useState<any[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(iso?: string): string {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function normalizeStatus(raw?: string): string {
+  const map: Record<string, string> = {
+    ACTIVE: 'ACTIVE', RUNNING: 'RUNNING', SCHEDULED: 'SCHEDULED',
+    DRAFT: 'DRAFT', PAUSED: 'PAUSED', FAILED: 'FAILED',
+    ONE_TIME: 'ONE_TIME', PENDING: 'PENDING', SUCCESS: 'SUCCESS',
+    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'ACTIVE',
+  };
+  return map[raw?.toUpperCase() ?? ''] ?? raw ?? 'DRAFT';
+}
+
+function PlatformBadge({ name }: { name: string }) {
+  const letter = name?.charAt(0)?.toUpperCase() ?? '?';
+  const fill = name?.toLowerCase().includes('salesforce') ? '#0ea5e9'
+    : name?.toLowerCase().includes('hubspot') ? '#f97316'
+    : '#6b7280';
+  return (
+    <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50'>
+      <svg viewBox='0 0 40 40' className='h-7 w-7'>
+        <rect x='5' y='5' width='30' height='30' rx='9' fill={fill} fillOpacity='0.16' />
+        <text x='20' y='23' textAnchor='middle' fontSize='14' fontWeight='700' fill={fill}>{letter}</text>
+      </svg>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    ACTIVE: 'bg-blue-100 text-blue-700', RUNNING: 'bg-green-100 text-green-700',
+    SUCCESS: 'bg-green-100 text-green-700', PENDING: 'bg-indigo-100 text-indigo-700',
+    DRAFT: 'bg-yellow-100 text-yellow-700', PAUSED: 'bg-gray-100 text-gray-700',
+    INACTIVE: 'bg-gray-100 text-gray-500', FAILED: 'bg-red-100 text-red-700',
+    PARTIAL_FAILURE: 'bg-orange-100 text-orange-700',
+  };
+  const labels: Record<string, string> = {
+    ACTIVE: 'Active', RUNNING: 'Running', SUCCESS: 'Success', PENDING: 'Pending',
+    DRAFT: 'Draft', PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
+    PARTIAL_FAILURE: 'Partial Failure',
+  };
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-700'}`}>
+      {labels[status] ?? status}
+    </span>
+  );
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
+
+export default function ArchivalPicker({ onSelectionChange }: Props) {
+  const archivalService = useArchivalService();
+
   const [selectedKey, setSelectedKey] = useState<string>('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
 
-  const currentCursor = cursorStack[pageIndex];
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
-  const { isLoading, isFetching } = useQuery<unknown>({
-    queryKey: ['snapshot-logs-archive', selectedConnection?.destinationId, currentCursor],
-    queryFn: async () => {
-      const res = await restoreService.getSnapshotLogs({
-        snapshotType: 'ARCHIVAL',
-        destinationId: selectedConnection!.destinationId,
-        limit: 10,
-        cursor: currentCursor,
-      });
-      setPageLogs((res as any)?.data ?? []);
-      setNextCursor((res as any)?.meta?.nextCursor);
-      return res;
-    },
-    enabled: !!selectedConnection,
-  });
+  // Debounce search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCursorStack([]);
+      setCurrentPage(1);
+      setCurrentCursor(null);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
-  const goNext = () => {
-    if (!nextCursor) return;
-    setCursorStack((prev) => {
-      const next = [...prev];
-      if (next[pageIndex + 1] !== nextCursor) next[pageIndex + 1] = nextCursor;
-      return next;
-    });
-    setPageIndex((p) => p + 1);
+  // Reset pagination on filter change
+  const handleStatusFilter = (val: StatusFilter) => {
+    setStatusFilter(val);
+    setCursorStack([]);
+    setCurrentPage(1);
+    setCurrentCursor(null);
   };
 
-  const goPrev = () => {
-    if (pageIndex === 0) return;
-    setPageIndex((p) => p - 1);
+  const apiStatus = !JOB_STATUS_SET.has(statusFilter) && statusFilter !== 'All' ? statusFilter : undefined;
+  const apiBackupStatus = JOB_STATUS_SET.has(statusFilter) ? statusFilter : undefined;
+
+  const queryFn = useCallback(
+    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, apiStatus, apiBackupStatus),
+    [currentCursor, debouncedSearch, apiStatus, apiBackupStatus]
+  );
+
+  const { data: rawData, isLoading, isFetching } = useQuery({
+    queryKey: ['restore-archival-list', currentCursor, debouncedSearch, statusFilter],
+    queryFn,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const rawList: any[] = Array.isArray((rawData as any)?.data) ? (rawData as any).data : [];
+  const apiMeta = (rawData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: rawList.length };
+
+  const rows = rawList.map((item: any) => ({
+    ...item,
+    displayName: item.name ?? item.slug ?? '--',
+    displayStatus: normalizeStatus(item.status),
+    lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
+    displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
+  }));
+
+  const goToPrev = () => {
+    const stack = [...cursorStack];
+    const prev = stack.pop();
+    setCursorStack(stack);
+    setCurrentPage(prev ? prev.page : 1);
+    setCurrentCursor(prev ? (prev.cursor || null) : null);
   };
 
-  const filteredLogs = pageLogs.filter((log: any) => {
-    if (filterName.trim()) {
-      const q = filterName.trim().toLowerCase();
-      if (!(log.configName ?? '').toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
+  const goToPage1 = () => {
+    setCursorStack([]);
+    setCurrentPage(1);
+    setCurrentCursor(null);
+  };
 
   const columns: TableColumn<any>[] = [
     {
       key: 'radio',
       header: '',
       width: '40px',
-      render: (log) => (
+      render: (row) => (
         <input
           type='radio'
-          name='archive-row'
-          checked={selectedKey === (log.backupConfigId ?? '')}
+          name='archive-select'
+          checked={selectedKey === row.backupConfigId}
           onChange={() => {
-            setSelectedKey(log.backupConfigId ?? '');
-            onSelectionChange({ backupConfigId: log.backupConfigId ?? '' });
+            setSelectedKey(row.backupConfigId);
+            onSelectionChange({ backupConfigId: row.backupConfigId, slug: row.slug ?? row.backupConfigId });
           }}
           onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer'
@@ -87,79 +170,140 @@ export default function ArchivalPicker({ selectedConnection, onSelectionChange }
       ),
     },
     {
-      key: 'configName',
-      header: 'Config Name',
-      render: (log) => (
+      key: 'slNo',
+      header: 'SL No.',
+      width: '60px',
+      render: (_row, index) => <span className='text-sm text-gray-600'>{(currentPage - 1) * (apiMeta.limit ?? 25) + index + 1}</span>,
+    },
+    {
+      key: 'displayName',
+      header: 'Archive Policy',
+      render: (row) => (
         <div className='flex items-center gap-2'>
-          <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-50 border border-gray-100'>
-            <span className='text-[10px] font-bold text-purple-500'>A</span>
-          </div>
-          <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
+          <PlatformBadge name={row.crmName ?? 'Salesforce'} />
+          <span className='text-sm font-semibold text-gray-900'>{row.displayName}</span>
         </div>
       ),
     },
     {
-      key: 'sourceName',
-      header: 'Source',
-      render: (log) => <span className='text-xs text-gray-600'>{log.sourceName ?? '—'}</span>,
+      key: 'platform',
+      header: 'Platform',
+      render: (row) => <span className='text-xs text-gray-600'>{row.crmName ?? 'Salesforce'}</span>,
     },
     {
-      key: 'lastJobRunTime',
-      header: 'Last Job Run',
-      render: (log) => <span className='text-xs text-gray-600 whitespace-nowrap'>{log.lastJobRunTime ? formatDateTime(log.lastJobRunTime) : '—'}</span>,
+      key: 'displayStatus',
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.displayStatus} />,
     },
     {
-      key: 'selectedObjectCount',
-      header: 'Objects',
-      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.selectedObjectCount != null ? log.selectedObjectCount : '—'}</span>,
+      key: 'lastJobStatus',
+      header: 'Last Job',
+      render: (row) => row.lastJobStatus
+        ? <StatusBadge status={row.lastJobStatus} />
+        : <span className='text-xs text-gray-400'>--</span>,
     },
     {
-      key: 'dataSize',
+      key: 'displayDate',
+      header: 'Last Run',
+      render: (row) => <span className='text-xs text-gray-500 whitespace-nowrap'>{row.displayDate}</span>,
+    },
+    {
+      key: 'archivedRecordsCount',
+      header: 'Records',
+      render: (row) => <span className='text-xs text-gray-600 tabular-nums'>{row.archivedRecordsCount != null ? Number(row.archivedRecordsCount).toLocaleString() : '--'}</span>,
+    },
+    {
+      key: 'archivedSizeInBytes',
       header: 'Data Size',
-      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.dataSize != null ? formatBytes(log.dataSize) : '—'}</span>,
+      render: (row) => <span className='text-xs text-gray-600 tabular-nums'>{row.archivedSizeInBytes ? formatBytes(row.archivedSizeInBytes) : '--'}</span>,
     },
   ];
 
+  const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
+    { label: 'All',      value: 'All'      },
+    { label: 'Active',   value: 'ACTIVE'   },
+    { label: 'Paused',   value: 'PAUSED'   },
+    { label: 'Draft',    value: 'DRAFT'    },
+    { label: 'Inactive', value: 'INACTIVE' },
+  ];
+
   return (
-    <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '500px' }}>
-      <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
+    <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
+      {/* Header */}
+      <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>Choose an Archive Vault Entry</Typography>
       </div>
-      <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-        <span className='text-xs font-bold text-gray-600'>Filter:</span>
-        <input
-          value={filterName}
-          onChange={(e) => setFilterName(e.target.value)}
-          placeholder='Config name'
-          className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
-        />
+
+      {/* Filter bar */}
+      <div className='flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
+        {/* Search */}
+        <div className='relative'>
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8'
+            className='pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+            <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+          </svg>
+          <input
+            type='text'
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder='Search archive…'
+            className='h-8 w-48 rounded-lg border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-700 outline-none focus:border-blue-400 transition'
+          />
+        </div>
+
+        {/* Status pills */}
+        <div className='flex items-center gap-1 ml-auto'>
+          <span className='text-xs text-gray-500 font-medium mr-1'>Status:</span>
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => handleStatusFilter(opt.value)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                statusFilter === opt.value
+                  ? opt.value === 'ACTIVE'   ? 'bg-blue-100 text-blue-700 border-blue-200'
+                  : opt.value === 'PAUSED'   ? 'bg-gray-200 text-gray-700 border-gray-300'
+                  : opt.value === 'DRAFT'    ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                  : opt.value === 'INACTIVE' ? 'bg-gray-100 text-gray-500 border-gray-200'
+                  : 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Table */}
       <Table
         columns={columns}
-        rows={filteredLogs}
-        getRowKey={(log: any, i: number) => log.backupConfigId ?? `${i}`}
+        rows={rows}
+        getRowKey={(row: any) => row.backupConfigId}
         loading={isLoading || isFetching}
-        skeletonConfig={{ rows: 5, colWidths: ['w-8', 'w-40', 'w-28', 'w-28', 'w-16', 'w-20'] }}
+        skeletonConfig={{ rows: 6, colWidths: ['w-8', 'w-12', 'w-40', 'w-24', 'w-20', 'w-20', 'w-28', 'w-16', 'w-20'] }}
         headerVariant='uppercase'
         borderless
-        showSerialNumber
-        serialNumberStart={pageIndex * 10 + 1}
-        onRowClick={(log: any) => {
-          setSelectedKey(log.backupConfigId ?? '');
-          onSelectionChange({ backupConfigId: log.backupConfigId ?? '' });
-        }}
-        getRowClassName={(log: any) => {
-          const isSelected = selectedKey === (log.backupConfigId ?? '');
-          return `border-b border-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`;
+        getRowClassName={(row: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedKey === row.backupConfigId ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+        onRowClick={(row: any) => {
+          setSelectedKey(row.backupConfigId);
+          onSelectionChange({ backupConfigId: row.backupConfigId, slug: row.slug ?? row.backupConfigId });
         }}
         emptyState='No archive entries found.'
-        paginationConfig={{
-          type: 'cursor',
-          hasPrev: pageIndex > 0,
-          hasNext: !!nextCursor,
-          onPrev: goPrev,
-          onNext: goNext,
-          label: `Page ${pageIndex + 1} · ${filteredLogs.length} entries`,
+        cursorMode={true}
+        cursorFirstPageFn={goToPage1}
+        cursorOnPrev={goToPrev}
+        pagination={{
+          currentPage: 1,
+          displayPage: currentPage,
+          pageSize: apiMeta.limit ?? 25,
+          totalRecords: apiMeta.totalRecords ?? rows.length,
+          onPageChange: (nextPage) => {
+            if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+              setCursorStack((prev) => [...prev, { page: currentPage, cursor: currentCursor ?? '' }]);
+              setCurrentPage(nextPage);
+              setCurrentCursor(apiMeta.nextCursor);
+            }
+          },
         }}
       />
     </div>
