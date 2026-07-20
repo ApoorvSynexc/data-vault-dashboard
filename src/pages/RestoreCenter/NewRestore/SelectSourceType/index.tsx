@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useRestoreService } from '../../../../services/restore/restore.service';
+import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes, formatDateTime } from '../../../../utils';
 import type { Destination } from '../../../../services/destination/destination.service';
 
@@ -105,72 +106,54 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
   const [selectedBackupRows, setSelectedBackupRows] = useState<any[]>([]);
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>('');
-  const [mergeRule, setMergeRule] = useState('');
 
   const restoreService = useRestoreService();
+  const backupConfigService = useBackupConfigService();
 
+  // ── Backup config list state (cursor pagination) ──────────────────────────
+  const [backupSearch, setBackupSearch] = useState('');
+  const [backupCurrentPage, setBackupCurrentPage] = useState(1);
+  const [backupCurrentCursor, setBackupCurrentCursor] = useState<string | null>(null);
+  const [backupCursorStack, setBackupCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
-  // ── Snapshot logs state ───────────────────────────────────────────────────
-  const [jobsFilterName, setJobsFilterName] = useState('');
-  const [jobsFilterType, setJobsFilterType] = useState<'REALTIME' | 'SCHEDULE'>('SCHEDULE');
-  const [jobsCursorStack, setJobsCursorStack] = useState<(string | undefined)[]>([undefined]);
-  const [jobsPageIndex, setJobsPageIndex] = useState(0);
-  const [jobsPageLogs, setJobsPageLogs] = useState<any[]>([]);
-  const [jobsNextCursor, setJobsNextCursor] = useState<string | undefined>(undefined);
+  const backupQueryFn = useCallback(
+    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, backupSearch || undefined),
+    [backupCurrentCursor, backupSearch]
+  );
 
-  const jobsCurrentCursor = jobsCursorStack[jobsPageIndex];
-
-  useEffect(() => {
-    setSelectedBackup(new Set());
-    setMergeRule('');
-  }, [jobsFilterType]);
-
-  const { isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery<unknown>({
-    queryKey: ['snapshot-logs-inline', selectedConnection?.destinationId, jobsFilterType, jobsCurrentCursor],
-    queryFn: async () => {
-      const res = await restoreService.getSnapshotLogs({
-        snapshotType: 'BACKUP',
-        destinationId: selectedConnection!.destinationId,
-        scheduleType: jobsFilterType,
-        limit: 10,
-        cursor: jobsCurrentCursor,
-      });
-      setJobsPageLogs((res as any)?.data ?? []);
-      setJobsNextCursor((res as any)?.meta?.nextCursor);
-      return res;
-    },
-    enabled: !!selectedConnection && sourceType === 'backup',
+  const { data: backupListData, isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery({
+    queryKey: ['restore-backup-config-list', backupCurrentCursor, backupSearch],
+    queryFn: backupQueryFn,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  const goJobsNextPage = () => {
-    if (!jobsNextCursor) return;
-    setJobsCursorStack((prev) => {
-      const next = [...prev];
-      if (next[jobsPageIndex + 1] !== jobsNextCursor) next[jobsPageIndex + 1] = jobsNextCursor;
-      return next;
-    });
-    setJobsPageIndex((p) => p + 1);
+  const backupListRows: any[] = Array.isArray((backupListData as any)?.data) ? (backupListData as any).data : [];
+  const backupMeta = (backupListData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: backupListRows.length };
+
+  const goToBackupPage = useCallback((page: number, cursor: string | null) => {
+    setBackupCurrentPage(page);
+    setBackupCurrentCursor(cursor);
+  }, []);
+
+  const goBackupNext = () => {
+    if (!backupMeta.nextCursor) return;
+    setBackupCursorStack((prev) => [...prev, { page: backupCurrentPage, cursor: backupCurrentCursor ?? '' }]);
+    goToBackupPage(backupCurrentPage + 1, backupMeta.nextCursor);
   };
 
-  const goJobsPrevPage = () => {
-    if (jobsPageIndex === 0) return;
-    setJobsPageIndex((p) => p - 1);
+  const goBackupPrev = () => {
+    const stack = [...backupCursorStack];
+    const prev = stack.pop();
+    setBackupCursorStack(stack);
+    if (prev) goToBackupPage(prev.page, prev.cursor);
+    else goToBackupPage(1, null);
   };
 
-  const resetJobsPagination = () => {
-    setJobsCursorStack([undefined]);
-    setJobsPageIndex(0);
-    setJobsPageLogs([]);
-    setJobsNextCursor(undefined);
+  const goBackupToPage1 = () => {
+    setBackupCursorStack([]);
+    goToBackupPage(1, null);
   };
-
-  const filteredLogs = jobsPageLogs.filter((log: any) => {
-    if (jobsFilterName.trim()) {
-      const q = jobsFilterName.trim().toLowerCase();
-      if (!(log.configName ?? '').toLowerCase().includes(q)) return false;
-    }
-    return true;
-  });
 
   // ── Archive sub-picker state ──────────────────────────────────────────────
   const [archiveFilterName, setArchiveFilterName] = useState('');
@@ -228,37 +211,32 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     {
       key: 'name',
       header: 'Backup Name',
-      render: (log) => (
+      render: (row) => (
         <div className='flex items-center gap-2'>
           <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 border border-gray-100'>
-            <span className='text-[10px] font-bold text-sky-500'>S</span>
+            <span className='text-[10px] font-bold text-sky-500'>B</span>
           </div>
-          <span className='text-sm font-semibold text-gray-900'>{log.configName ?? '—'}</span>
+          <span className='text-sm font-semibold text-gray-900'>{row.name ?? '—'}</span>
         </div>
       ),
     },
     {
-      key: 'dateTime',
-      header: 'Date & Time',
-      render: (log) => <span className='text-xs text-gray-600 whitespace-nowrap'>{log.dateTime ? formatDateTime(log.dateTime) : '—'}</span>,
-    },
-    {
-      key: 'sourceName',
+      key: 'source',
       header: 'Source',
-      render: (log) => <span className='text-xs text-gray-600'>{log.sourceName ?? '—'}</span>,
+      render: (row) => <span className='text-xs text-gray-600'>{row.crm?.name ?? row.crm?.crmName ?? '—'}</span>,
     },
     {
-      key: 'backupType',
-      header: 'Backup Type',
-      render: (log) => {
-        const isRealtime = log.backupType === 'RealTime' || log.backupType === 'REALTIME';
-        if (!log.backupType) return <span className='text-gray-400 text-xs'>—</span>;
+      key: 'destination',
+      header: 'Destination',
+      render: (row) => <span className='text-xs text-gray-600'>{row.destination?.name ?? row.destination?.type ?? '—'}</span>,
+    },
+    {
+      key: 'schedule',
+      header: 'Type',
+      render: (row) => {
+        const isRealtime = row.schedule === 'REALTIME';
         return (
           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isRealtime ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
-            {isRealtime
-              ? <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><circle cx='12' cy='12' r='3' fill='currentColor' stroke='none'/></svg>
-              : <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
-            }
             {isRealtime ? 'Realtime' : 'Schedule'}
           </span>
         );
@@ -267,39 +245,23 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
     {
       key: 'status',
       header: 'Status',
-      render: (log) => {
-        if (!log.status) return <span className='text-gray-400 text-xs'>—</span>;
-        const s = log.status.toUpperCase();
-        const styles: Record<string, string> = { SUCCESS: 'bg-green-100 text-green-700', FAILED: 'bg-red-100 text-red-700', RUNNING: 'bg-blue-100 text-blue-700', PENDING: 'bg-indigo-100 text-indigo-700', PARTIAL: 'bg-yellow-100 text-yellow-700' };
-        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{log.status}</span>;
+      render: (row) => {
+        if (!row.status) return <span className='text-gray-400 text-xs'>—</span>;
+        const s = (row.status as string).toUpperCase();
+        const styles: Record<string, string> = { ACTIVE: 'bg-green-100 text-green-700', INACTIVE: 'bg-gray-100 text-gray-600', ERROR: 'bg-red-100 text-red-700' };
+        return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[s] ?? 'bg-gray-100 text-gray-600'}`}>{row.status}</span>;
       },
+    },
+    {
+      key: 'lastBackupAt',
+      header: 'Last Run',
+      render: (row) => <span className='text-xs text-gray-600 whitespace-nowrap'>{row.lastBackupAt ? formatDateTime(row.lastBackupAt) : '—'}</span>,
     },
     {
       key: 'dataSize',
       header: 'Data Size',
-      render: (log) => <span className='text-xs text-gray-600 tabular-nums'>{log.dataSize != null ? `${(log.dataSize / (1024 * 1024)).toFixed(2)} MB` : '—'}</span>,
+      render: (row) => <span className='text-xs text-gray-600 tabular-nums'>{row.sizeInBytes != null ? formatBytes(row.sizeInBytes) : '—'}</span>,
     },
-    ...(jobsFilterType === 'REALTIME' ? [
-      {
-        key: 'objectApiName',
-        header: 'Object',
-        render: (log: any) => <span className='text-xs text-gray-600'>{log.objectApiName ?? '—'}</span>,
-      },
-      {
-        key: 'operation',
-        header: 'Operation',
-        render: (log: any) => {
-          if (!log.operation) return <span className='text-gray-400 text-xs'>—</span>;
-          const opStyles: Record<string, string> = { INSERT: 'bg-green-100 text-green-700', UPDATE: 'bg-blue-100 text-blue-700', DELETE: 'bg-red-100 text-red-700', UPSERT: 'bg-orange-100 text-orange-700' };
-          return <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${opStyles[log.operation.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>{log.operation}</span>;
-        },
-      },
-      {
-        key: 'recordCount',
-        header: 'Records',
-        render: (log: any) => <span className='text-xs text-gray-600 tabular-nums'>{log.recordCount ?? '—'}</span>,
-      },
-    ] as TableColumn<any>[] : []),
   ];
 
   // ── Archive table columns ─────────────────────────────────────────────────
@@ -358,7 +320,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
   const [pitTime, setPitTime] = useState('14:23');
 
   const canProceed =
-    sourceType === 'backup'  ? selectedBackup.size > 0 && (selectedBackup.size < 2 || !!mergeRule) :
+    sourceType === 'backup'  ? selectedBackup.size > 0 :
     sourceType === 'archive' ? !!selectedArchiveKey :
     false;
 
@@ -421,33 +383,7 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
           <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
             {/* Header */}
             <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-              <Typography as='h3' variant='sectionTitle' color='secondary'>📸 Choose a Backup Snapshot</Typography>
-              <div className='flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
-                {(['SCHEDULE', 'REALTIME'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setJobsFilterType(t); resetJobsPagination(); setSelectedBackup(new Set()); setMergeRule(''); }}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
-                      jobsFilterType === t ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {t === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filter bar */}
-            <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-              {backupMode === 'list' && <>
-                <span className='text-xs font-bold text-gray-600'>Filter:</span>
-                <input
-                  value={jobsFilterName}
-                  onChange={(e) => { setJobsFilterName(e.target.value); }}
-                  placeholder='Backup name'
-                  className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-44'
-                />
-              </>}
+              <Typography as='h3' variant='sectionTitle' color='secondary'>Choose a Backup</Typography>
               <div className='ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
                 {(['list', 'pit'] as BackupMode[]).map((m) => (
                   <button
@@ -463,35 +399,54 @@ export default function SelectSourceType({ onNext, onBack, selectedConnection }:
               </div>
             </div>
 
+            {/* Search bar */}
+            {backupMode === 'list' && (
+              <div className='flex-shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
+                <input
+                  value={backupSearch}
+                  onChange={(e) => { setBackupSearch(e.target.value); goBackupToPage1(); }}
+                  placeholder='Search backup name…'
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-56'
+                />
+              </div>
+            )}
+
             {backupMode === 'list' ? (
               <Table
                 columns={backupColumns}
-                rows={filteredLogs}
-                getRowKey={(log: any, i: number) => `${log.dateTime ?? i}__${log.configName ?? i}`}
+                rows={backupListRows}
+                getRowKey={(row: any) => row.backupConfigId ?? row.name}
                 loading={isLoadingJobs || isFetchingJobs}
                 skeletonConfig={{ rows: 5, colWidths: ['w-40', 'w-28', 'w-24', 'w-20', 'w-20', 'w-20'] }}
                 headerVariant='uppercase'
                 borderless
                 showSerialNumber
-                serialNumberStart={jobsPageIndex * 10 + 1}
+                serialNumberStart={(backupCurrentPage - 1) * (backupMeta.limit ?? 25) + 1}
                 showCheckbox
                 selectedIds={selectedBackup}
-                getRowId={(log: any) => `${log.dateTime ?? ''}__${log.configName ?? ''}`}
+                getRowId={(row: any) => row.backupConfigId}
                 onSelectionChange={(ids) => {
                   setSelectedBackup(ids);
-                  const rows = filteredLogs.filter((l: any) => ids.has(`${l.dateTime ?? ''}__${l.configName ?? ''}`));
+                  const rows = backupListRows.filter((r: any) => ids.has(r.backupConfigId));
                   setSelectedBackupRows(rows);
                   setSelectedBackupConfigId(rows[0]?.backupConfigId ?? '');
                 }}
                 getRowClassName={(_, isSelected) => `border-b border-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-                emptyState='No snapshot jobs found.'
-                paginationConfig={{
-                  type: 'cursor',
-                  hasPrev: jobsPageIndex > 0,
-                  hasNext: !!jobsNextCursor,
-                  onPrev: goJobsPrevPage,
-                  onNext: goJobsNextPage,
-                  label: `Page ${jobsPageIndex + 1} · ${filteredLogs.length} entries`,
+                emptyState='No backup configs found.'
+                cursorMode={true}
+                cursorFirstPageFn={goBackupToPage1}
+                cursorOnPrev={goBackupPrev}
+                pagination={{
+                  currentPage: 1,
+                  displayPage: backupCurrentPage,
+                  pageSize: backupMeta.limit ?? 25,
+                  totalRecords: backupMeta.totalRecords ?? backupListRows.length,
+                  onPageChange: (nextPage) => {
+                    if (nextPage === backupCurrentPage + 1 && backupMeta.nextCursor) {
+                      setBackupCursorStack((prev) => [...prev, { page: backupCurrentPage, cursor: backupCurrentCursor ?? '' }]);
+                      goToBackupPage(nextPage, backupMeta.nextCursor);
+                    }
+                  },
                 }}
               />
             ) : (
