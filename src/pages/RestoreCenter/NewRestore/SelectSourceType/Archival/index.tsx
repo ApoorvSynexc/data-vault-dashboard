@@ -20,6 +20,12 @@ interface Props {
   onConfigSelected: (selected: boolean) => void;
   onSelectionChange: (selection: ArchivalSelection | null) => void;
   onExitJobsPhase: () => void;
+  initialSelectedRow?: any;
+  initialSelectedConfigId?: string;
+  initialSelectedJobIds?: string[];
+  onSelectedRowChange?: (row: any) => void;
+  onSelectedConfigIdChange?: (id: string) => void;
+  onSelectedJobIdsChange?: (ids: string[]) => void;
 }
 
 type StatusFilter = 'All' | 'ACTIVE' | 'PAUSED' | 'DRAFT' | 'INACTIVE';
@@ -142,13 +148,13 @@ function JobStatusBadge({ status }: { status: string }) {
 
 const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
 
-export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSelectionChange, onExitJobsPhase }: Props) {
+export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSelectionChange, onExitJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
   const archivalService = useArchivalService();
   const backupConfigService = useBackupConfigService();
 
   // ── Phase 1 — policy list ────────────────────────────────────────────────
-  const [selectedKey, setSelectedKey] = useState<string>('');
-  const [selectedRow, setSelectedRow] = useState<any>(null);
+  const [selectedKey, setSelectedKey] = useState<string>(initialSelectedConfigId);
+  const [selectedRow, setSelectedRow] = useState<any>(initialSelectedRow);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,19 +223,22 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
   };
 
   // ── Phase 2 — jobs list ──────────────────────────────────────────────────
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set(initialSelectedJobIds));
   const [jobsCursor, setJobsCursor] = useState<string | null>(null);
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
+  // Reset jobs state only when transitioning false→true (entering phase 2), not on initial mount
+  const prevShowJobsPhaseRef = useRef(showJobsPhase);
   useEffect(() => {
-    if (showJobsPhase) {
+    const wasInJobsPhase = prevShowJobsPhaseRef.current;
+    prevShowJobsPhaseRef.current = showJobsPhase;
+    if (showJobsPhase && !wasInJobsPhase) {
       setSelectedJobIds(new Set());
       setJobsCursor(null);
       setJobsCurrentPage(1);
       setJobsCursorStack([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showJobsPhase]);
 
   const selectedSlug = selectedRow?.slug ?? selectedRow?.backupConfigId ?? '';
@@ -270,8 +279,10 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      const ids = Array.from(next);
+      onSelectedJobIdsChange?.(ids);
       onSelectionChange(next.size > 0
-        ? { backupConfigId: selectedKey, slug: selectedSlug, backupJobIds: Array.from(next) }
+        ? { backupConfigId: selectedKey, slug: selectedSlug, backupJobIds: ids }
         : null
       );
       return next;
@@ -292,6 +303,8 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
           onChange={() => {
             setSelectedKey(row.backupConfigId);
             setSelectedRow(row);
+            onSelectedRowChange?.(row);
+            onSelectedConfigIdChange?.(row.backupConfigId);
             onSelectionChange(null);
             onConfigSelected(true);
           }}
@@ -486,6 +499,8 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
             onRowClick={(row: any) => {
               setSelectedKey(row.backupConfigId);
               setSelectedRow(row);
+              onSelectedRowChange?.(row);
+              onSelectedConfigIdChange?.(row.backupConfigId);
               onSelectionChange(null);
               onConfigSelected(true);
             }}

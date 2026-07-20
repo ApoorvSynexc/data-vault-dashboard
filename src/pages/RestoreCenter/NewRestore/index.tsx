@@ -36,6 +36,10 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
   const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [] });
 
+  // Persist step-2 sub-phase so Back from step 3 lands on jobs table, not config list
+  const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
+  const [step2ArchivalJobsPhase, setStep2ArchivalJobsPhase] = useState(false);
+
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
   const goBack = () => {
     if (currentStep === 1) { onBack(); return; }
@@ -74,6 +78,10 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onNext={(sel) => { setSourceSelection(sel); goNext(); }}
           onBack={goBack}
           selectedConnection={selectedConnection}
+          initialBackupJobsPhase={step2BackupJobsPhase}
+          initialArchivalJobsPhase={step2ArchivalJobsPhase}
+          onBackupJobsPhaseChange={setStep2BackupJobsPhase}
+          onArchivalJobsPhaseChange={setStep2ArchivalJobsPhase}
         />
       )}
       {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
