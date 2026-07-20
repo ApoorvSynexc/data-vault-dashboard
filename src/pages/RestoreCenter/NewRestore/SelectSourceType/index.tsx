@@ -22,6 +22,10 @@ interface Props {
   onNext: (selection: SourceSelection) => void;
   onBack: () => void;
   selectedConnection: Destination | null;
+  initialBackupJobsPhase?: boolean;
+  initialArchivalJobsPhase?: boolean;
+  onBackupJobsPhaseChange?: (v: boolean) => void;
+  onArchivalJobsPhaseChange?: (v: boolean) => void;
 }
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
@@ -96,18 +100,35 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SelectSourceType({ onNext, onBack }: Props) {
-  const [sourceType, setSourceType] = useState<SourceType>('backup');
-  const [showJobsPhase, setShowJobsPhase] = useState(false);
+export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, onArchivalJobsPhaseChange }: Props) {
+  const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
+  const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
   // Backup phase states
-  const [configSelected, setConfigSelected] = useState(false);
+  // configSelected starts true if we're restoring to jobs phase (a config was already chosen)
+  const [configSelected, setConfigSelected] = useState(initialBackupJobsPhase);
   const [backupSelection, setBackupSelection] = useState<BackupSelection | null>(null);
+  const [backupSelectedRow, setBackupSelectedRow] = useState<any>(null);
+  const [backupSelectedConfigId, setBackupSelectedConfigId] = useState<string>('');
+  const [backupSelectedJobIds, setBackupSelectedJobIds] = useState<string[]>([]);
 
   // Archival phase states
-  const [showArchivalJobsPhase, setShowArchivalJobsPhase] = useState(false);
-  const [archivalConfigSelected, setArchivalConfigSelected] = useState(false);
+  const [showArchivalJobsPhase, setShowArchivalJobsPhase] = useState(initialArchivalJobsPhase);
+  const [archivalConfigSelected, setArchivalConfigSelected] = useState(initialArchivalJobsPhase);
   const [archivalSelection, setArchivalSelection] = useState<ArchivalSelection | null>(null);
+  const [archivalSelectedRow, setArchivalSelectedRow] = useState<any>(null);
+  const [archivalSelectedConfigId, setArchivalSelectedConfigId] = useState<string>('');
+  const [archivalSelectedJobIds, setArchivalSelectedJobIds] = useState<string[]>([]);
+
+  const setBackupJobsPhase = (v: boolean) => {
+    setShowJobsPhase(v);
+    onBackupJobsPhaseChange?.(v);
+  };
+
+  const setArchivalJobsPhase = (v: boolean) => {
+    setShowArchivalJobsPhase(v);
+    onArchivalJobsPhaseChange?.(v);
+  };
 
   // Whether a config has been locked in (disables the other type card)
   const backupLocked  = configSelected || showJobsPhase;
@@ -117,13 +138,19 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
   const clearBackup = () => {
     setConfigSelected(false);
     setBackupSelection(null);
-    setShowJobsPhase(false);
+    setBackupJobsPhase(false);
+    setBackupSelectedRow(null);
+    setBackupSelectedConfigId('');
+    setBackupSelectedJobIds([]);
   };
 
   const clearArchival = () => {
     setArchivalConfigSelected(false);
     setArchivalSelection(null);
-    setShowArchivalJobsPhase(false);
+    setArchivalJobsPhase(false);
+    setArchivalSelectedRow(null);
+    setArchivalSelectedConfigId('');
+    setArchivalSelectedJobIds([]);
   };
 
   const canProceed =
@@ -138,7 +165,7 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
       if (showArchivalJobsPhase && archivalSelection) {
         onNext({ configType: 'ARCHIVAL', backupConfigId: archivalSelection.backupConfigId, backupJobIds: archivalSelection.backupJobIds });
       } else {
-        setShowArchivalJobsPhase(true);
+        setArchivalJobsPhase(true);
       }
       return;
     }
@@ -146,7 +173,7 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
       if (showJobsPhase && backupSelection) {
         onNext({ configType: 'BACKUP', backupConfigId: backupSelection.backupConfigId, backupJobIds: backupSelection.backupJobIds });
       } else {
-        setShowJobsPhase(true);
+        setBackupJobsPhase(true);
       }
     }
   };
@@ -203,6 +230,9 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
                     onClick={() => {
                       if (disabled) return;
                       setSourceType(s.id);
+                      // reset the other type's phase when switching
+                      if (s.id === 'backup') { setArchivalJobsPhase(false); setArchivalConfigSelected(false); setArchivalSelection(null); }
+                      else { setBackupJobsPhase(false); setConfigSelected(false); setBackupSelection(null); }
                     }}
                     className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
                       disabled
@@ -245,7 +275,13 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
             showJobsPhase={showJobsPhase}
             onConfigSelected={setConfigSelected}
             onSelectionChange={setBackupSelection}
-            onExitJobsPhase={() => { setShowJobsPhase(false); setBackupSelection(null); }}
+            onExitJobsPhase={() => { setBackupJobsPhase(false); setBackupSelection(null); setBackupSelectedJobIds([]); }}
+            initialSelectedRow={backupSelectedRow}
+            initialSelectedConfigId={backupSelectedConfigId}
+            initialSelectedJobIds={backupSelectedJobIds}
+            onSelectedRowChange={setBackupSelectedRow}
+            onSelectedConfigIdChange={setBackupSelectedConfigId}
+            onSelectedJobIdsChange={setBackupSelectedJobIds}
           />
         )}
 
@@ -254,7 +290,13 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
             showJobsPhase={showArchivalJobsPhase}
             onConfigSelected={setArchivalConfigSelected}
             onSelectionChange={setArchivalSelection}
-            onExitJobsPhase={() => { setShowArchivalJobsPhase(false); setArchivalSelection(null); }}
+            onExitJobsPhase={() => { setArchivalJobsPhase(false); setArchivalSelection(null); setArchivalSelectedJobIds([]); }}
+            initialSelectedRow={archivalSelectedRow}
+            initialSelectedConfigId={archivalSelectedConfigId}
+            initialSelectedJobIds={archivalSelectedJobIds}
+            onSelectedRowChange={setArchivalSelectedRow}
+            onSelectedConfigIdChange={setArchivalSelectedConfigId}
+            onSelectedJobIdsChange={setArchivalSelectedJobIds}
           />
         )}
 

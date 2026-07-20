@@ -21,16 +21,22 @@ interface Props {
   onSelectionChange: (selection: BackupSelection | null) => void;
   onExitJobsPhase: () => void;
   showJobsPhase: boolean;
+  initialSelectedRow?: any;
+  initialSelectedConfigId?: string;
+  initialSelectedJobIds?: string[];
+  onSelectedRowChange?: (row: any) => void;
+  onSelectedConfigIdChange?: (id: string) => void;
+  onSelectedJobIdsChange?: (ids: string[]) => void;
 }
 
-export default function BackupPicker({ onConfigSelected, onSelectionChange, onExitJobsPhase, showJobsPhase }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, onExitJobsPhase, showJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
   const backupConfigService = useBackupConfigService();
 
   // ── Config list (phase 1) ────────────────────────────────────────────────
   const [backupMode, setBackupMode] = useState<BackupMode>('list');
-  const [selectedBackup, setSelectedBackup] = useState<Set<string>>(new Set());
-  const [selectedBackupRow, setSelectedBackupRow] = useState<any>(null);
-  const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>('');
+  const [selectedBackup, setSelectedBackup] = useState<Set<string>>(initialSelectedConfigId ? new Set([initialSelectedConfigId]) : new Set());
+  const [selectedBackupRow, setSelectedBackupRow] = useState<any>(initialSelectedRow);
+  const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>(initialSelectedConfigId);
 
   const [backupSearch, setBackupSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -99,20 +105,22 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
   };
 
   // ── Jobs list (phase 2) ──────────────────────────────────────────────────
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set(initialSelectedJobIds));
   const [jobsCursor, setJobsCursor] = useState<string | null>(null);
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
-  // Reset jobs state whenever we enter phase 2
+  // Reset jobs state only when transitioning false→true (entering phase 2), not on initial mount
+  const prevShowJobsPhaseRef = useRef(showJobsPhase);
   useEffect(() => {
-    if (showJobsPhase) {
+    const wasInJobsPhase = prevShowJobsPhaseRef.current;
+    prevShowJobsPhaseRef.current = showJobsPhase;
+    if (showJobsPhase && !wasInJobsPhase) {
       setSelectedJobIds(new Set());
       setJobsCursor(null);
       setJobsCurrentPage(1);
       setJobsCursorStack([]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showJobsPhase]);
 
   const selectedBackupSlug = selectedBackupRow?.slug ?? selectedBackupRow?.backupConfigId ?? '';
@@ -153,7 +161,9 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      onSelectionChange(next.size > 0 ? { backupConfigId: selectedBackupConfigId, backupJobIds: Array.from(next) } : null);
+      const ids = Array.from(next);
+      onSelectedJobIdsChange?.(ids);
+      onSelectionChange(next.size > 0 ? { backupConfigId: selectedBackupConfigId, backupJobIds: ids } : null);
       return next;
     });
   };
@@ -173,6 +183,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
             setSelectedBackup(new Set([row.backupConfigId]));
             setSelectedBackupRow(row);
             setSelectedBackupConfigId(row.backupConfigId);
+            onSelectedRowChange?.(row);
+            onSelectedConfigIdChange?.(row.backupConfigId);
             onSelectionChange(null);
             onConfigSelected(true);
           }}
