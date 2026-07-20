@@ -17,6 +17,7 @@ export interface SourceSelection {
   backupJobIds: string[];
 }
 
+
 interface Props {
   onNext: (selection: SourceSelection) => void;
   onBack: () => void;
@@ -99,18 +100,29 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>('backup');
   const [showJobsPhase, setShowJobsPhase] = useState(false);
 
-  // Selections lifted up from sub-pickers
+  // Backup phase states
   const [configSelected, setConfigSelected] = useState(false);
   const [backupSelection, setBackupSelection] = useState<BackupSelection | null>(null);
+
+  // Archival phase states
+  const [showArchivalJobsPhase, setShowArchivalJobsPhase] = useState(false);
+  const [archivalConfigSelected, setArchivalConfigSelected] = useState(false);
   const [archivalSelection, setArchivalSelection] = useState<ArchivalSelection | null>(null);
+
   const canProceed =
-    sourceType === 'backup'  ? (showJobsPhase ? !!backupSelection : configSelected) :
-    sourceType === 'archive' ? !!archivalSelection :
-    false;
+    sourceType === 'backup'
+      ? (showJobsPhase ? !!backupSelection : configSelected)
+      : sourceType === 'archive'
+      ? (showArchivalJobsPhase ? !!archivalSelection : archivalConfigSelected)
+      : false;
 
   const handleNext = () => {
-    if (sourceType === 'archive' && archivalSelection) {
-      onNext({ configType: 'ARCHIVAL', backupConfigId: archivalSelection.backupConfigId, backupJobIds: [] });
+    if (sourceType === 'archive') {
+      if (showArchivalJobsPhase && archivalSelection) {
+        onNext({ configType: 'ARCHIVAL', backupConfigId: archivalSelection.backupConfigId, backupJobIds: archivalSelection.backupJobIds });
+      } else {
+        setShowArchivalJobsPhase(true);
+      }
       return;
     }
     if (sourceType === 'backup') {
@@ -160,7 +172,7 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
               return (
                 <button
                   key={s.id}
-                  onClick={() => { setSourceType(s.id); setShowJobsPhase(false); setConfigSelected(false); setBackupSelection(null); }}
+                  onClick={() => { setSourceType(s.id); setShowJobsPhase(false); setConfigSelected(false); setBackupSelection(null); setShowArchivalJobsPhase(false); setArchivalConfigSelected(false); setArchivalSelection(null); }}
                   className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
                     active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
                   }`}
@@ -188,7 +200,10 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
 
         {sourceType === 'archive' && (
           <ArchivalPicker
+            showJobsPhase={showArchivalJobsPhase}
+            onConfigSelected={setArchivalConfigSelected}
             onSelectionChange={setArchivalSelection}
+            onExitJobsPhase={() => { setShowArchivalJobsPhase(false); setArchivalSelection(null); }}
           />
         )}
 
@@ -212,8 +227,8 @@ export default function SelectSourceType({ onNext, onBack }: Props) {
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}
           >
-            {sourceType === 'backup' && !showJobsPhase
-              ? 'Select Backup Jobs To Restore →'
+            {(sourceType === 'backup' && !showJobsPhase) || (sourceType === 'archive' && !showArchivalJobsPhase)
+              ? (sourceType === 'backup' ? 'Select Backup Jobs To Restore →' : 'Select Archive Jobs To Restore →')
               : 'Next: Choose Selection Scope →'}
           </button>
         </div>
