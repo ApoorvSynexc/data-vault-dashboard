@@ -52,18 +52,6 @@ interface FilterRow {
 
 // ── Stub data ─────────────────────────────────────────────────────────────────
 
-const SF_OBJECTS: SFObject[] = [
-  { id: '1', apiName: 'Account',             label: 'Account',           type: 'Standard', records: '123,213', size: '5.2 GB' },
-  { id: '2', apiName: 'Contact',             label: 'Contact',           type: 'Standard', records: '3,213',   size: '1.2 GB' },
-  { id: '3', apiName: 'Lead',                label: 'Lead',              type: 'Standard', records: '2,133',   size: '1.0 GB' },
-  { id: '4', apiName: 'Opportunity',         label: 'Opportunity',       type: 'Standard', records: '6,343',   size: '1.5 GB' },
-  { id: '5', apiName: 'Case',                label: 'Case',              type: 'Standard', records: '9,210',   size: '2.1 GB' },
-  { id: '6', apiName: 'Task',                label: 'Task',              type: 'Standard', records: '23,140',  size: '1.4 GB' },
-  { id: '7', apiName: 'Custom_Audit_Log__c', label: 'Custom Audit Log',  type: 'Custom',   records: '8,401',   size: '0.8 GB' },
-];
-
-
-
 const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
 const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
 
