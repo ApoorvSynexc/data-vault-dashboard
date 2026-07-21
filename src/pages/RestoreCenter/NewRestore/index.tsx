@@ -85,7 +85,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       )}
       {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
-      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} crmId={sourceSelection.crmId} backupJobIds={sourceSelection.backupJobIds} />}
+      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} crmId={sourceSelection.crmId} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} />}
       {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
