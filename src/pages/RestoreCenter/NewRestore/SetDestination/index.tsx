@@ -3,10 +3,12 @@
 //   Same Org (Source) | Different Org | Sandbox (with Masking) | Export Only
 // The configuration panel below the type cards adapts to the selection.
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useRestoreService } from '../../../../services/restore/restore.service';
+import { usePlatformService } from '../../../../services/platform/platform.service';
+import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -136,10 +138,126 @@ function SameOrgConfig() {
   );
 }
 
+function SalesforceMiniLogo() {
+  return (
+    <svg viewBox='0 0 64 64' fill='none' className='h-4 w-4'>
+      <ellipse cx='24' cy='22' rx='13' ry='13' fill='#00A1E0' />
+      <ellipse cx='38' cy='18' rx='11' ry='11' fill='#00A1E0' />
+      <ellipse cx='48' cy='24' rx='9' ry='9' fill='#00A1E0' />
+      <ellipse cx='14' cy='28' rx='8' ry='8' fill='#00A1E0' />
+      <ellipse cx='32' cy='30' rx='16' ry='10' fill='#00A1E0' />
+    </svg>
+  );
+}
+
+function EnvBadge({ env }: { env: string }) {
+  const cls =
+    env === 'production' ? 'bg-green-100 text-green-700' :
+    env === 'sandbox'    ? 'bg-amber-100 text-amber-700' :
+                           'bg-blue-100 text-blue-700';
+  return (
+    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${cls}`}>{env}</span>
+  );
+}
+
+function CrmDropdown({ destinations, value, onChange, loading }: {
+  destinations: import('../../../../services/platform/platform.service').ConnectedPlatform[];
+  value: string;
+  onChange: (id: string) => void;
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const selected = destinations.find((d) => d.crmId === value);
+  const username = (d: typeof destinations[0]) => d.crmProfile?.username ?? d.contactEmail ?? d.crmId;
+
+  return (
+    <div ref={ref} className='relative'>
+      <button
+        type='button'
+        onClick={() => !loading && setOpen((o) => !o)}
+        disabled={loading}
+        className='w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-left transition hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60'
+      >
+        {loading ? (
+          <>
+            <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+            <span className='text-gray-400 flex-1'>Loading connections…</span>
+          </>
+        ) : selected ? (
+          <>
+            <SalesforceMiniLogo />
+            <span className='flex-1 font-medium text-gray-800 truncate'>{username(selected)}</span>
+            <EnvBadge env={selected.environment ?? 'production'} />
+          </>
+        ) : (
+          <>
+            <SalesforceMiniLogo />
+            <span className='flex-1 text-gray-400'>— Select a connection —</span>
+          </>
+        )}
+        <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className={`flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+
+      {open && (
+        <div className='absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden'>
+          {destinations.length === 0 ? (
+            <p className='text-xs text-gray-400 px-4 py-3 text-center'>No CRM connections found.</p>
+          ) : (
+            destinations.map((d) => {
+              const isSelected = d.crmId === value;
+              return (
+                <button
+                  key={d.crmId}
+                  type='button'
+                  onClick={() => { onChange(d.crmId); setOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition border-b border-gray-50 last:border-0 ${
+                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className='flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center' style={{ background: 'rgba(0,161,224,0.1)' }}>
+                    <SalesforceMiniLogo />
+                  </div>
+                  <span className={`flex-1 font-medium truncate ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>{username(d)}</span>
+                  <EnvBadge env={d.environment ?? 'production'} />
+                  {isSelected && (
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#2563EB' strokeWidth='2.5' className='flex-shrink-0'>
+                      <polyline points='20 6 9 17 4 12' />
+                    </svg>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DifferentOrgConfig({ crmId }: { crmId: string }) {
   const restoreService = useRestoreService();
-  const [tag, setTag]         = useState('Restored via DataVault {job-id}');
-  const [destOrg, setDestOrg] = useState('Sandbox Dev1');
+  const platformService = usePlatformService();
+  const [tag, setTag]           = useState('Restored via DataVault {job-id}');
+  const [destOrg, setDestOrg]   = useState('');
+
+  const { data: crmsData, isLoading: destLoading } = useQuery({
+    queryKey: ['crm-list'],
+    queryFn: () => platformService.getConnectedPlatforms(),
+    staleTime: 60_000,
+  });
+  const destinations: ConnectedPlatform[] = Array.isArray(crmsData) ? crmsData : [];
 
   useQuery({
     queryKey: ['crm-objects', crmId],
@@ -183,20 +301,12 @@ function DifferentOrgConfig({ crmId }: { crmId: string }) {
           <label className='text-sm font-medium text-gray-700'>
             Destination Org Connection <span className='text-red-500'>*</span>
           </label>
-          <select
+          <CrmDropdown
+            destinations={destinations}
             value={destOrg}
-            onChange={(e) => setDestOrg(e.target.value)}
-            className='w-full h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-          >
-            <option>Sandbox Dev1</option>
-            <option>UAT</option>
-            <option>+ Connect a new org…</option>
-          </select>
-          <p className='text-xs'>
-            <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700'>✓ Authenticated</span>
-            <span className='text-gray-400 ml-2'>Last verified 2 hours ago · 7 days until token refresh</span>
-          </p>
+            onChange={setDestOrg}
+            loading={destLoading}
+          />
         </div>
 
         {/* Tag Restored Records */}
