@@ -48,7 +48,6 @@ interface OrGroup {
 
 // ── Stub data ─────────────────────────────────────────────────────────────────
 
-const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
 const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
