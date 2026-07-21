@@ -3,6 +3,8 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 const RESTORE_ENDPOINTS = {
   fetchRecords:       '/v1/restore/retrieve/fetch-records',
   backupConfigsName:  '/v1/restore/get-backup-configs-name',
+  crmObjects:         '/v1/crm-metadata/objects/list',
+  crmFields:          '/v1/crm-metadata/fields/list',
 };
 
 export function useRestoreService() {
@@ -19,5 +21,11 @@ export function useRestoreService() {
         RESTORE_ENDPOINTS.backupConfigsName,
         { query: { destinationId } },
       ),
+
+    getCrmObjects: (crmId: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.crmObjects, { query: { crmId } }),
+
+    getCrmFields: (crmId: string, objectName: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.crmFields, { query: { crmId, objectName } }),
   };
 }

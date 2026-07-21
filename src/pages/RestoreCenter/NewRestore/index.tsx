@@ -34,7 +34,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [templateMode, setTemplateMode] = useState(isTemplateMode);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
-  const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [] });
+  const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [], crmId: '' });
 
   // Persist step-2 sub-phase so Back from step 3 lands on jobs table, not config list
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
@@ -85,7 +85,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       )}
       {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
-      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} />}
+      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} crmId={sourceSelection.crmId} />}
       {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
