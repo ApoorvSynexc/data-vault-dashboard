@@ -5,6 +5,8 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useRestoreService } from '../../../../services/restore/restore.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -134,9 +136,24 @@ function SameOrgConfig() {
   );
 }
 
-function DifferentOrgConfig() {
+function DifferentOrgConfig({ crmId }: { crmId: string }) {
+  const restoreService = useRestoreService();
   const [tag, setTag]         = useState('Restored via DataVault {job-id}');
   const [destOrg, setDestOrg] = useState('Sandbox Dev1');
+
+  useQuery({
+    queryKey: ['crm-objects', crmId],
+    queryFn: () => restoreService.getCrmObjects(crmId),
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  useQuery({
+    queryKey: ['crm-fields', crmId, 'Account'],
+    queryFn: () => restoreService.getCrmFields(crmId, 'Account'),
+    staleTime: 60_000,
+    retry: 1,
+  });
 
   const objectRows = [
     { src: 'Account',       dst: 'Account',       status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
@@ -504,9 +521,9 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; crmId: string; }
 
-export default function SetDestination({ onNext, onBack }: Props) {
+export default function SetDestination({ onNext, onBack, crmId }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
 
   return (
@@ -568,7 +585,7 @@ export default function SetDestination({ onNext, onBack }: Props) {
 
         {/* Sub-config panel */}
         {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig />}
+        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} />}
         {destType === 'sandbox' && <SandboxConfig />}
         {destType === 'export'  && <ExportOnlyConfig />}
 
