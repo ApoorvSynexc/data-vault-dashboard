@@ -68,14 +68,6 @@ const SF_RECORDS: SFRecord[] = [
   { id: '4', name: 'Stark Industries',     sfId: '0013a00001AbcDh', lastModified: 'May 15' },
 ];
 
-const FIELD_OPTIONS: Record<string, string[]> = {
-  Account:    ['Name', 'Type', 'Industry', 'AnnualRevenue', 'BillingCity', 'BillingCountry', 'Phone', 'Website', 'OwnerId', 'CreatedDate', 'LastModifiedDate', 'Description'],
-  Contact:    ['FirstName', 'LastName', 'Email', 'Phone', 'AccountId', 'Title', 'Department', 'OwnerId'],
-  Lead:       ['FirstName', 'LastName', 'Email', 'Phone', 'Company', 'Status', 'LeadSource', 'OwnerId'],
-  Opportunity:['Name', 'StageName', 'CloseDate', 'Amount', 'AccountId', 'OwnerId', 'Probability', 'Type'],
-  Case:       ['CaseNumber', 'Subject', 'Status', 'Priority', 'AccountId', 'ContactId', 'OwnerId', 'Description'],
-  Task:       ['Subject', 'Status', 'Priority', 'ActivityDate', 'WhoId', 'WhatId', 'OwnerId'],
-};
 
 const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
 const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
@@ -148,13 +140,7 @@ const SCOPE_MODES: { id: ScopeMode; icon: string; title: string; desc: string }[
   { id: 'csv',     icon: '📋', title: 'Bulk via CSV',   desc: 'Paste or upload IDs / external IDs' },
 ];
 
-// ── Tiny helpers ──────────────────────────────────────────────────────────────
 
-function TypeBadge({ type }: { type: 'Standard' | 'Custom' }) {
-  return type === 'Custom'
-    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>Custom</span>
-    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600'>Standard</span>;
-}
 
 function InfoCallout({ children }: { children: React.ReactNode }) {
   return (
@@ -173,6 +159,18 @@ interface Props { onNext: () => void; onBack: () => void; sourceSelection: Sourc
 
 export default function SelectScope({ onNext, onBack, sourceSelection }: Props) {
   const restoreService = useRestoreService();
+
+  const { data: sourceObjectsData, isLoading: sourceObjectsLoading } = useQuery({
+    queryKey: ['source-objects', sourceSelection.backupConfigId, sourceSelection.configType],
+    queryFn: () => restoreService.getObjectListByConfigId(sourceSelection.backupConfigId, sourceSelection.configType),
+    enabled: !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const sourceObjectNames: string[] = [
+    ...new Set(Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]),
+  ];
 
   // scope selection
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
@@ -207,11 +205,9 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // by-field state
   const [fieldObjSearch,   setFieldObjSearch]   = useState('');
-  const [fieldSelectedObjs,setFieldSelectedObjs]= useState<Set<string>>(new Set(['1', '2']));
-  const [activeFieldObj,   setActiveFieldObj]   = useState('Account');
-  const [selectedFields,   setSelectedFields]   = useState<Record<string, Set<string>>>({
-    Account: new Set(['Name', 'Industry', 'AnnualRevenue']),
-  });
+  const [fieldSelectedObjs,setFieldSelectedObjs]= useState<Set<string>>(new Set());
+  const [activeFieldObj,   setActiveFieldObj]   = useState('');
+  const [selectedFields,   setSelectedFields]   = useState<Record<string, Set<string>>>({});
   const [fieldFilter,      setFieldFilter]      = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
   const [fieldSearch,      setFieldSearch]      = useState('');
 
@@ -300,7 +296,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     setSelectedObjects((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const toggleAllObjs = () =>
-    setSelectedObjects(selectedObjects.size === SF_OBJECTS.length ? new Set() : new Set(SF_OBJECTS.map((o) => o.id)));
+    setSelectedObjects(selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? new Set() : new Set(sourceObjectNames));
 
   const toggleRecord = (id: string) =>
     setSelectedRecords((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -337,34 +333,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     if (preset === 'everything') { setIncludeParents(true);  setIncludeChildren(true);  setIncludeChatter(true);  setIncludeEmail(true);  }
   };
 
-  // ── Object table columns ───────────────────────────────────────────────────
-
-  const filteredObjs = SF_OBJECTS.filter(
-    (o) => o.label.toLowerCase().includes(objSearch.toLowerCase()) || o.apiName.toLowerCase().includes(objSearch.toLowerCase()),
-  );
-
-  const objectColumns: TableColumn<SFObject>[] = [
-    {
-      key: 'check', header: '', width: '40px',
-      render: (row) => (
-        <input type='checkbox' checked={selectedObjects.has(row.id)} onChange={() => toggleObj(row.id)}
-          className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
-      ),
-    },
-    {
-      key: 'label', header: 'Object',
-      render: (row) => (
-        <div>
-          <p className='text-sm font-semibold text-gray-900'>{row.label}</p>
-          <p className='text-xs text-gray-400 font-mono mt-0.5'>{row.apiName}</p>
-        </div>
-      ),
-    },
-    { key: 'type',    header: 'Type',    render: (row) => <TypeBadge type={row.type} /> },
-    { key: 'records', header: 'Records', render: (row) => <span className='text-sm tabular-nums text-gray-700'>{row.records}</span> },
-    { key: 'size',    header: 'Est. Size', render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-  ];
-
   // ── Record table columns ───────────────────────────────────────────────────
 
   const filteredRecords = SF_RECORDS.filter(
@@ -384,9 +352,20 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     { key: 'lastModified', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{row.lastModified}</span> },
   ];
 
+  // ── Field options API ──────────────────────────────────────────────────────
+
+  const { data: fieldOptionsData, isLoading: fieldOptionsLoading } = useQuery({
+    queryKey: ['source-object-fields', activeFieldObj, sourceSelection.backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(activeFieldObj, sourceSelection.backupConfigId),
+    enabled: scopeMode === 'field' && !!activeFieldObj && !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const sourceFields: string[] = (fieldOptionsData as any)?.data ?? [];
+
   // ── Derived field data ─────────────────────────────────────────────────────
 
-  const availableFields = (FIELD_OPTIONS[activeFieldObj] ?? []).filter(
+  const availableFields = sourceFields.filter(
     (f) => f.toLowerCase().includes(fieldSearch.toLowerCase()),
   );
   const activeFieldSet = selectedFields[activeFieldObj] ?? new Set<string>();
@@ -519,25 +498,37 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   />
                 </div>
                 <button onClick={toggleAllObjs} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors whitespace-nowrap'>
-                  {selectedObjects.size === SF_OBJECTS.length ? 'Deselect all' : 'Select all'}
+                  {selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? 'Deselect all' : 'Select all'}
                 </button>
                 <span className='inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
                   {selectedObjects.size} Selected
                 </span>
               </div>
             </div>
-            <Table
-              columns={objectColumns}
-              rows={filteredObjs}
-              getRowKey={(r) => r.id}
-              borderless
-              headerVariant='uppercase'
-              cellPaddingClassName='px-5 py-3'
-              rowClassName={(row) =>
-                `border-b border-gray-50 transition-colors cursor-pointer ${selectedObjects.has(row.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-              }
-              onRowClick={(row) => toggleObj(row.id)}
-            />
+            {sourceObjectsLoading ? (
+              <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading objects…
+              </div>
+            ) : sourceObjectNames.length === 0 ? (
+              <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
+            ) : (
+              <div className='divide-y divide-gray-50'>
+                {sourceObjectNames
+                  .filter((name) => name.toLowerCase().includes(objSearch.toLowerCase()))
+                  .map((name) => (
+                    <div
+                      key={name}
+                      onClick={() => toggleObj(name)}
+                      className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selectedObjects.has(name) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    >
+                      <input type='checkbox' checked={selectedObjects.has(name)} onChange={() => toggleObj(name)}
+                        className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
+                      <span className='text-sm font-semibold text-gray-900 font-mono'>{name}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -640,35 +631,40 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                     <p className='text-[10px] font-bold text-gray-500 uppercase tracking-wide px-2 py-1'>Selected objects <span className='font-normal'>(tick to include)</span></p>
                   </div>
                   <div className='divide-y divide-gray-50 max-h-64 overflow-y-auto'>
-                    {SF_OBJECTS
-                      .filter((o) => o.label.toLowerCase().includes(fieldObjSearch.toLowerCase()))
-                      .map((o) => {
-                        const isTicked  = fieldSelectedObjs.has(o.apiName);
-                        const isActive  = activeFieldObj === o.apiName;
-                        const fieldCount = selectedFields[o.apiName]?.size ?? 0;
-                        const total      = (FIELD_OPTIONS[o.apiName] ?? []).length;
+                    {sourceObjectsLoading ? (
+                      <div className='flex items-center justify-center py-6 gap-2 text-xs text-gray-400'>
+                        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                        Loading objects…
+                      </div>
+                    ) : sourceObjectNames.length === 0 ? (
+                      <p className='text-xs text-gray-400 py-6 text-center'>No objects found.</p>
+                    ) : sourceObjectNames
+                      .filter((name) => name.toLowerCase().includes(fieldObjSearch.toLowerCase()))
+                      .map((name) => {
+                        const isTicked   = fieldSelectedObjs.has(name);
+                        const isActive   = activeFieldObj === name;
+                        const fieldCount = selectedFields[name]?.size ?? 0;
                         return (
                           <div
-                            key={o.id}
-                            onClick={() => { toggleFieldObj(o.apiName); setActiveFieldObj(o.apiName); }}
+                            key={name}
+                            onClick={() => { toggleFieldObj(name); setActiveFieldObj(name); }}
                             className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                           >
                             <input
                               type='checkbox' checked={isTicked}
-                              onChange={(e) => { e.stopPropagation(); toggleFieldObj(o.apiName); }}
+                              onChange={(e) => { e.stopPropagation(); toggleFieldObj(name); }}
                               className='w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0'
                             />
-                            <span className={`text-sm flex-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{o.label}</span>
+                            <span className={`text-sm font-mono flex-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{name}</span>
                             <span className='text-xs text-gray-400 flex-shrink-0'>
-                              {isTicked ? `${fieldCount}/${total}` : '—'}
+                              {isTicked ? `${fieldCount} fields` : '—'}
                             </span>
                           </div>
                         );
                       })}
                   </div>
                   <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>Showing {SF_OBJECTS.length} of {SF_OBJECTS.length}</span>
-                    <button className='text-blue-500 hover:underline'>Load more ↓</button>
+                    <span>Showing {sourceObjectNames.filter((n) => n.toLowerCase().includes(fieldObjSearch.toLowerCase())).length} of {sourceObjectNames.length}</span>
                   </div>
                 </div>
 
@@ -707,7 +703,16 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   </div>
 
                   <div className='p-3 flex flex-wrap gap-2 max-h-52 overflow-y-auto'>
-                    {availableFields.map((f) => {
+                    {fieldOptionsLoading ? (
+                      <div className='flex items-center gap-2 text-xs text-gray-400 w-full justify-center py-4'>
+                        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                        Loading fields…
+                      </div>
+                    ) : availableFields.length === 0 ? (
+                      <p className='text-xs text-gray-400'>
+                        {activeFieldObj ? 'No fields match your search.' : 'Select an object to see its fields.'}
+                      </p>
+                    ) : availableFields.map((f) => {
                       const on = activeFieldSet.has(f);
                       return (
                         <button
@@ -720,14 +725,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                         </button>
                       );
                     })}
-                    {availableFields.length === 0 && (
-                      <p className='text-xs text-gray-400'>No fields match your search.</p>
-                    )}
                   </div>
 
                   <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>{activeFieldSet.size} of {(FIELD_OPTIONS[activeFieldObj] ?? []).length} fields selected · showing {availableFields.length}</span>
-                    <button className='text-blue-500 hover:underline'>Load more ↓</button>
+                    <span>{activeFieldSet.size} of {sourceFields.length} fields selected · showing {availableFields.length}</span>
                   </div>
                 </div>
 
