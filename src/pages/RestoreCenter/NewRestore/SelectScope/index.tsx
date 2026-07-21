@@ -361,12 +361,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     staleTime: 60_000,
     retry: 1,
   });
-  const sourceFields: string[] = (fieldOptionsData as any)?.data ?? [];
+  interface FieldOption { label: string; apiName: string; dataType: string; isUpdateable: boolean; isCreateable: boolean; }
+  const sourceFields: FieldOption[] = (fieldOptionsData as any)?.data ?? [];
 
   // ── Derived field data ─────────────────────────────────────────────────────
 
   const availableFields = sourceFields.filter(
-    (f) => f.toLowerCase().includes(fieldSearch.toLowerCase()),
+    (f) => f.label.toLowerCase().includes(fieldSearch.toLowerCase()),
   );
   const activeFieldSet = selectedFields[activeFieldObj] ?? new Set<string>();
 
@@ -696,7 +697,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   <div className='px-3 py-2 border-b border-gray-100 flex items-center justify-between'>
                     <p className='text-xs font-semibold text-gray-700'>{activeFieldObj} — pick fields to restore</p>
                     <div className='flex gap-2 text-xs'>
-                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields) }))} className='text-blue-500 hover:underline'>Select all</button>
+                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields.map((f) => f.apiName)) }))} className='text-blue-500 hover:underline'>Select all</button>
                       <span className='text-gray-300'>·</span>
                       <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set() }))} className='text-blue-500 hover:underline'>Deselect all</button>
                     </div>
@@ -713,15 +714,15 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                         {activeFieldObj ? 'No fields match your search.' : 'Select an object to see its fields.'}
                       </p>
                     ) : availableFields.map((f) => {
-                      const on = activeFieldSet.has(f);
+                      const on = activeFieldSet.has(f.apiName);
                       return (
                         <button
-                          key={f} onClick={() => toggleField(f)}
+                          key={f.apiName} onClick={() => toggleField(f.apiName)}
                           className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                             on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
                           }`}
                         >
-                          {f}
+                          {f.label}
                         </button>
                       );
                     })}
