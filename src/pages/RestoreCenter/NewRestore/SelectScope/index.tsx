@@ -41,6 +41,11 @@ interface FilterRow {
   value: string;
 }
 
+interface OrGroup {
+  id: string;
+  rows: FilterRow[];
+}
+
 // ── Stub data ─────────────────────────────────────────────────────────────────
 
 const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
@@ -191,6 +196,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     { id: '1', field: 'Status',           op: 'equals', value: 'Closed' },
     { id: '2', field: 'LastModifiedDate', op: 'after',  value: '2026-01-01' },
   ]);
+  const [orGroups,         setOrGroups]         = useState<OrGroup[]>([]);
   const [filterLogic,      setFilterLogic]      = useState('1 AND 2');
   const [soqlText,         setSoqlText]         = useState("SELECT Id, Name, Industry, AnnualRevenue\nFROM Account\nWHERE Status = 'Closed'\n  AND LastModifiedDate > 2026-01-01\n  AND BillingCountry = 'US'");
 
@@ -299,6 +305,21 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const updateFilterRow = (id: string, patch: Partial<FilterRow>) =>
     setFilterRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+
+  const addOrGroup = () =>
+    setOrGroups((p) => [...p, { id: String(Date.now()), rows: [{ id: String(Date.now() + 1), field: 'Status', op: 'equals', value: '' }] }]);
+
+  const removeOrGroup = (groupId: string) =>
+    setOrGroups((p) => p.filter((g) => g.id !== groupId));
+
+  const addOrGroupRow = (groupId: string) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, { id: String(Date.now()), field: 'Status', op: 'equals', value: '' }] }));
+
+  const removeOrGroupRow = (groupId: string, rowId: string) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }));
+
+  const updateOrGroupRow = (groupId: string, rowId: string, patch: Partial<FilterRow>) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }));
 
   const applyRelPreset = (preset: RelPreset) => {
     setRelPreset(preset);
@@ -774,9 +795,45 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                       </div>
                     ))}
                   </div>
+                  {/* OR groups */}
+                  {orGroups.map((group) => (
+                    <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
+                      {/* Floating OR badge */}
+                      <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
+                      {group.rows.map((row) => (
+                        <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                          <select
+                            value={row.field} onChange={(e) => updateOrGroupRow(group.id, row.id, { field: e.target.value })}
+                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-40'
+                          >
+                            {FILTER_FIELDS.map((f) => <option key={f}>{f}</option>)}
+                          </select>
+                          <select
+                            value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value })}
+                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
+                          >
+                            {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
+                          </select>
+                          <input
+                            value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                          />
+                          <button
+                            onClick={() => group.rows.length === 1 ? removeOrGroup(group.id) : removeOrGroupRow(group.id, row.id)}
+                            className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'
+                          >×</button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => addOrGroupRow(group.id)}
+                        className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'
+                      >+ Add filter to this OR group</button>
+                    </div>
+                  ))}
+
                   <div className='flex gap-2'>
                     <button onClick={addFilterRow} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
-                    <button className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
+                    <button onClick={addOrGroup} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
                   </div>
 
                   {/* Filter logic */}
