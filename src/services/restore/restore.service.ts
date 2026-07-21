@@ -6,6 +6,7 @@ const RESTORE_ENDPOINTS = {
   crmObjects:         '/v1/crm-metadata/objects/list',
   crmFields:          '/v1/crm-metadata/fields/list',
   objectListByConfigId: '/v1/restore/get-objectlist-by-configid',
+  fetchObjectFields:    '/v1/restore/fetch-object-fields',
 };
 
 export function useRestoreService() {
@@ -31,5 +32,8 @@ export function useRestoreService() {
 
     getObjectListByConfigId: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL') =>
       api.get<unknown>(RESTORE_ENDPOINTS.objectListByConfigId, { query: { backupConfigId, configType } }),
+
+    fetchObjectFields: (objectApiName: string, backupConfigId: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId } }),
   };
 }
