@@ -36,10 +36,11 @@ interface SFObject {
 }
 
 interface SFRecord {
-  id: string;
-  name: string;
-  sfId: string;
-  lastModified: string;
+  Id: string;
+  Name: string;
+  LastModifiedDate: string;
+  backup_job_id: string;
+  change_type: string;
 }
 
 interface FilterRow {
@@ -61,12 +62,6 @@ const SF_OBJECTS: SFObject[] = [
   { id: '7', apiName: 'Custom_Audit_Log__c', label: 'Custom Audit Log',  type: 'Custom',   records: '8,401',   size: '0.8 GB' },
 ];
 
-const SF_RECORDS: SFRecord[] = [
-  { id: '1', name: 'Acme Corp Industries', sfId: '0013a00001AbcDe', lastModified: 'May 22' },
-  { id: '2', name: 'Globex Inc',           sfId: '0013a00001AbcDf', lastModified: 'May 21' },
-  { id: '3', name: 'Initech',              sfId: '0013a00001AbcDg', lastModified: 'May 18' },
-  { id: '4', name: 'Stark Industries',     sfId: '0013a00001AbcDh', lastModified: 'May 15' },
-];
 
 
 const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
@@ -175,19 +170,19 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   // scope selection
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
 
-  // by-record: object + columns picked by user before fetching
-  const [recordObj, setRecordObj] = useState('Account');
+  // by-record: object picked by user triggers fetch
+  const [recordObj, setRecordObj] = useState('');
 
-  const fetchPayload = scopeMode === 'record'
+  const fetchPayload = scopeMode === 'record' && !!recordObj
     ? sourceSelection.configType === 'ARCHIVAL'
       ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupConfigId: sourceSelection.backupConfigId }
       : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupJobIds: sourceSelection.backupJobIds }
     : null;
 
-  const { data: _fetchedRecordsData, isLoading: _isLoadingRecords } = useQuery({
+  const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
     queryKey: ['restore-fetch-records', sourceSelection, recordObj],
     queryFn: () => restoreService.fetchRecords(fetchPayload!),
-    enabled: scopeMode === 'record' && !!fetchPayload && (
+    enabled: !!fetchPayload && (
       sourceSelection.configType === 'ARCHIVAL' ? !!sourceSelection.backupConfigId : sourceSelection.backupJobIds.length > 0
     ),
     staleTime: 60_000,
@@ -335,21 +330,22 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // ── Record table columns ───────────────────────────────────────────────────
 
-  const filteredRecords = SF_RECORDS.filter(
-    (r) => r.name.toLowerCase().includes(recordSearch.toLowerCase()) || r.sfId.includes(recordSearch),
+  const fetchedRecords: SFRecord[] = Array.isArray((fetchedRecordsData as any)?.data?.rows) ? (fetchedRecordsData as any).data.rows : [];
+  const filteredRecords = fetchedRecords.filter(
+    (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
   );
 
   const recordColumns: TableColumn<SFRecord>[] = [
     {
       key: 'check', header: '', width: '40px',
       render: (row) => (
-        <input type='checkbox' checked={selectedRecords.has(row.id)} onChange={() => toggleRecord(row.id)}
+        <input type='checkbox' checked={selectedRecords.has(row.Id)} onChange={() => toggleRecord(row.Id)}
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
       ),
     },
-    { key: 'name',         header: 'Record',        render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.name}</span> },
-    { key: 'sfId',         header: 'ID',            render: (row) => <span className='text-xs font-mono text-gray-500'>{row.sfId}</span> },
-    { key: 'lastModified', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{row.lastModified}</span> },
+    { key: 'Name',             header: 'Record',        render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.Name}</span> },
+    { key: 'Id',               header: 'ID',            render: (row) => <span className='text-xs font-mono text-gray-500'>{row.Id}</span> },
+    { key: 'LastModifiedDate', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{new Date(row.LastModifiedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
   ];
 
   // ── Field options API ──────────────────────────────────────────────────────
@@ -545,10 +541,12 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               </InfoCallout>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <select
-                  value={recordObj} onChange={(e) => setRecordObj(e.target.value)}
+                  value={recordObj}
+                  onChange={(e) => { setRecordObj(e.target.value); setSelectedRecords(new Set()); setRecordSearch(''); }}
                   className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
                 >
-                  {SF_OBJECTS.map((o) => <option key={o.id} value={o.apiName}>{o.label}</option>)}
+                  <option value=''>— Select an object —</option>
+                  {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
                 <div className='relative'>
                   <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
@@ -557,23 +555,33 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   <input
                     value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
                     placeholder='Search records by name or ID…'
-                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                    disabled={!recordObj}
+                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400'
                   />
                 </div>
               </div>
 
-              <Table
-                columns={recordColumns}
-                rows={filteredRecords}
-                getRowKey={(r) => r.id}
-                borderless
-                headerVariant='uppercase'
-                cellPaddingClassName='px-5 py-3'
-                rowClassName={(row) =>
-                  `border-b border-gray-50 transition-colors cursor-pointer ${selectedRecords.has(row.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-                }
-                onRowClick={(row) => toggleRecord(row.id)}
-              />
+              {!recordObj ? (
+                <p className='text-sm text-gray-400 text-center py-6'>Select an object above to load its records.</p>
+              ) : isLoadingRecords ? (
+                <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
+                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  Loading records…
+                </div>
+              ) : (
+                <Table
+                  columns={recordColumns}
+                  rows={filteredRecords}
+                  getRowKey={(r) => r.Id}
+                  borderless
+                  headerVariant='uppercase'
+                  cellPaddingClassName='px-5 py-3'
+                  rowClassName={(row) =>
+                    `border-b border-gray-50 transition-colors cursor-pointer ${selectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
+                  }
+                  onRowClick={(row) => toggleRecord(row.Id)}
+                />
+              )}
 
               <div className='flex items-center gap-2 text-sm text-gray-500'>
                 <span>{selectedRecords.size} records selected</span>
