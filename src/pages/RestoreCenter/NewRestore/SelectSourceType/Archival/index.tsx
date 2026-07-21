@@ -505,21 +505,20 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
               onConfigSelected(true);
             }}
             emptyState='No archive entries found.'
-            cursorMode={true}
-            cursorFirstPageFn={goToPage1}
-            cursorOnPrev={goToPrev}
-            pagination={{
-              currentPage: 1,
-              displayPage: currentPage,
-              pageSize: apiMeta.limit ?? 25,
-              totalRecords: apiMeta.totalRecords ?? rows.length,
-              onPageChange: (nextPage) => {
-                if (nextPage === currentPage + 1 && apiMeta.nextCursor) {
+            height='auto'
+            paginationConfig={{
+              type: 'cursor',
+              hasPrev: currentPage > 1,
+              hasNext: !!apiMeta.nextCursor,
+              onPrev: goToPrev,
+              onNext: () => {
+                if (apiMeta.nextCursor) {
                   setCursorStack((prev) => [...prev, { page: currentPage, cursor: currentCursor ?? '' }]);
-                  setCurrentPage(nextPage);
+                  setCurrentPage(currentPage + 1);
                   setCurrentCursor(apiMeta.nextCursor);
                 }
               },
+              label: `Showing ${rows.length > 0 ? (currentPage - 1) * (apiMeta.limit ?? 25) + 1 : 0} to ${(currentPage - 1) * (apiMeta.limit ?? 25) + rows.length} of ${apiMeta.totalRecords ?? rows.length}`,
             }}
           />
         </div>
@@ -555,17 +554,14 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
             getRowClassName={(job: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
             onRowClick={(job: any) => toggleJob(job.backupJobId)}
             emptyState='No archive jobs found for this policy.'
-            cursorMode={true}
-            cursorFirstPageFn={goJobsToPage1}
-            cursorOnPrev={goJobsPrev}
-            pagination={{
-              currentPage: 1,
-              displayPage: jobsCurrentPage,
-              pageSize: JOBS_PAGE_SIZE,
-              totalRecords: jobsMeta.totalRecords ?? jobsRows.length,
-              onPageChange: (nextPage) => {
-                if (nextPage === jobsCurrentPage + 1 && jobsMeta.nextCursor) goJobsNext();
-              },
+            height='auto'
+            paginationConfig={{
+              type: 'cursor',
+              hasPrev: jobsCurrentPage > 1,
+              hasNext: !!jobsMeta.nextCursor,
+              onPrev: goJobsPrev,
+              onNext: goJobsNext,
+              label: `Showing ${jobsRows.length > 0 ? (jobsCurrentPage - 1) * JOBS_PAGE_SIZE + 1 : 0} to ${(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + jobsRows.length} of ${jobsMeta.totalRecords ?? jobsRows.length}`,
             }}
           />
         </div>

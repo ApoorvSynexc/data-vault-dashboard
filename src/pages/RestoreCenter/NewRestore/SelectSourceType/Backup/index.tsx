@@ -415,20 +415,19 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
               borderless
               getRowClassName={(row: any) => `border-b border-gray-50 transition-colors ${selectedBackup.has(row.backupConfigId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
               emptyState='No backup configs found.'
-              cursorMode={true}
-              cursorFirstPageFn={goBackupToPage1}
-              cursorOnPrev={goBackupPrev}
-              pagination={{
-                currentPage: 1,
-                displayPage: backupCurrentPage,
-                pageSize: backupMeta.limit ?? 25,
-                totalRecords: backupMeta.totalRecords ?? backupListRows.length,
-                onPageChange: (nextPage) => {
-                  if (nextPage === backupCurrentPage + 1 && backupMeta.nextCursor) {
+              height='auto'
+              paginationConfig={{
+                type: 'cursor',
+                hasPrev: backupCurrentPage > 1,
+                hasNext: !!backupMeta.nextCursor,
+                onPrev: goBackupPrev,
+                onNext: () => {
+                  if (backupMeta.nextCursor) {
                     setBackupCursorStack((prev) => [...prev, { page: backupCurrentPage, cursor: backupCurrentCursor ?? '' }]);
-                    goToBackupPage(nextPage, backupMeta.nextCursor);
+                    goToBackupPage(backupCurrentPage + 1, backupMeta.nextCursor);
                   }
                 },
+                label: `Showing ${backupListRows.length > 0 ? (backupCurrentPage - 1) * (backupMeta.limit ?? 25) + 1 : 0} to ${(backupCurrentPage - 1) * (backupMeta.limit ?? 25) + backupListRows.length} of ${backupMeta.totalRecords ?? backupListRows.length}`,
               }}
             />
           ) : (
@@ -492,17 +491,14 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
             getRowClassName={(job: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
             onRowClick={(job: any) => toggleJob(job.backupJobId)}
             emptyState='No backup jobs found for this backup config.'
-            cursorMode={true}
-            cursorFirstPageFn={goJobsToPage1}
-            cursorOnPrev={goJobsPrev}
-            pagination={{
-              currentPage: 1,
-              displayPage: jobsCurrentPage,
-              pageSize: JOBS_PAGE_SIZE,
-              totalRecords: jobsMeta.totalRecords ?? jobsRows.length,
-              onPageChange: (nextPage) => {
-                if (nextPage === jobsCurrentPage + 1 && jobsMeta.nextCursor) goJobsNext();
-              },
+            height='auto'
+            paginationConfig={{
+              type: 'cursor',
+              hasPrev: jobsCurrentPage > 1,
+              hasNext: !!jobsMeta.nextCursor,
+              onPrev: goJobsPrev,
+              onNext: goJobsNext,
+              label: `Showing ${jobsRows.length > 0 ? (jobsCurrentPage - 1) * JOBS_PAGE_SIZE + 1 : 0} to ${(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + jobsRows.length} of ${jobsMeta.totalRecords ?? jobsRows.length}`,
             }}
           />
         </div>
