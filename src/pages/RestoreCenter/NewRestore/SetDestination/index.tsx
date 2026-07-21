@@ -246,7 +246,7 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
   );
 }
 
-function DifferentOrgConfig({ crmId, backupJobIds }: { crmId: string; backupJobIds: string[] }) {
+function DifferentOrgConfig({ crmId, backupConfigId, configType }: { crmId: string; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
   const [tag, setTag]           = useState('Restored via DataVault {job-id}');
@@ -260,9 +260,9 @@ function DifferentOrgConfig({ crmId, backupJobIds }: { crmId: string; backupJobI
   const destinations: ConnectedPlatform[] = Array.isArray(crmsData) ? crmsData : [];
 
   const { data: sourceObjectsData, isLoading: sourceObjectsLoading } = useQuery({
-    queryKey: ['source-objects', backupJobIds],
-    queryFn: () => restoreService.getObjectListByJobIds(backupJobIds),
-    enabled: backupJobIds.length > 0,
+    queryKey: ['source-objects', backupConfigId, configType],
+    queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType),
+    enabled: !!backupConfigId,
     staleTime: 60_000,
     retry: 1,
   });
@@ -668,9 +668,9 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; crmId: string; backupJobIds: string[]; }
+interface Props { onNext: () => void; onBack: () => void; crmId: string; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; }
 
-export default function SetDestination({ onNext, onBack, crmId, backupJobIds }: Props) {
+export default function SetDestination({ onNext, onBack, crmId, backupConfigId, configType }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
 
   return (
@@ -732,7 +732,7 @@ export default function SetDestination({ onNext, onBack, crmId, backupJobIds }: 
 
         {/* Sub-config panel */}
         {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} backupJobIds={backupJobIds} />}
+        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} backupConfigId={backupConfigId} configType={configType} />}
         {destType === 'sandbox' && <SandboxConfig />}
         {destType === 'export'  && <ExportOnlyConfig />}
 
