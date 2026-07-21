@@ -25,6 +25,8 @@ import type { SourceSelection } from '../SelectSourceType';
 type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'changed' | 'csv';
 type FilterTab = 'visual' | 'soql';
 type RelPreset = 'none' | 'standard' | 'everything' | 'custom';
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+type FilterOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE';
 
 interface SFRecord {
   Id: string;
@@ -37,7 +39,8 @@ interface SFRecord {
 interface FilterRow {
   id: string;
   field: string;
-  op: string;
+  dataType: FieldDataType;
+  op: FilterOperator;
   value: string;
 }
 
@@ -46,9 +49,22 @@ interface OrGroup {
   rows: FilterRow[];
 }
 
-// ── Stub data ─────────────────────────────────────────────────────────────────
+// ── Filter operators (same as ArchiveVault AddDetailsWizard) ──────────────────
 
-const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
+const OP_LABELS: Record<FilterOperator, string> = {
+  '=': 'equals', '!=': 'not equals', '>': 'greater than', '<': 'less than',
+  '>=': 'greater than or equal', '<=': 'less than or equal', 'IN': 'in', 'LIKE': 'contains',
+};
+
+const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
+  string:   ['=', '!=', 'LIKE', 'IN'],
+  number:   ['=', '!=', '>', '<', '>=', '<='],
+  boolean:  ['=', '!='],
+  date:     ['=', '!=', '>', '<', '>=', '<='],
+  datetime: ['=', '!=', '>', '<', '>=', '<='],
+  id:       ['=', '!=', 'IN'],
+  picklist: ['=', '!='],
+};
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -294,8 +310,20 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     });
   };
 
+  const makeBlankRow = (fields: { apiName: string; dataType: string }[]): FilterRow => {
+    const first = fields[0];
+    const rawType = first?.dataType?.toLowerCase();
+    const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string';
+    return { id: String(Date.now()), field: first?.apiName ?? '', dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' };
+  };
+
+  const resolveDataType = (apiName: string, fields: { apiName: string; dataType: string }[]): FieldDataType => {
+    const rawType = fields.find((f) => f.apiName === apiName)?.dataType?.toLowerCase();
+    return rawType && rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string';
+  };
+
   const addFilterRow = () =>
-    setFilterRows((p) => [...p, { id: String(Date.now()), field: 'Status', op: 'equals', value: '' }]);
+    setFilterRows((p) => [...p, makeBlankRow(filterFields)]);
 
   const removeFilterRow = (id: string) =>
     setFilterRows((p) => p.filter((r) => r.id !== id));
@@ -303,20 +331,30 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const updateFilterRow = (id: string, patch: Partial<FilterRow>) =>
     setFilterRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
 
+  const handleFilterFieldChange = (id: string, apiName: string) => {
+    const dataType = resolveDataType(apiName, filterFields);
+    updateFilterRow(id, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' });
+  };
+
   const addOrGroup = () =>
-    setOrGroups((p) => [...p, { id: String(Date.now()), rows: [{ id: String(Date.now() + 1), field: 'Status', op: 'equals', value: '' }] }]);
+    setOrGroups((p) => [...p, { id: String(Date.now()), rows: [makeBlankRow(filterFields)] }]);
 
   const removeOrGroup = (groupId: string) =>
     setOrGroups((p) => p.filter((g) => g.id !== groupId));
 
   const addOrGroupRow = (groupId: string) =>
-    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, { id: String(Date.now()), field: 'Status', op: 'equals', value: '' }] }));
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, makeBlankRow(filterFields)] }));
 
   const removeOrGroupRow = (groupId: string, rowId: string) =>
     setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }));
 
   const updateOrGroupRow = (groupId: string, rowId: string, patch: Partial<FilterRow>) =>
     setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }));
+
+  const handleOrGroupFieldChange = (groupId: string, rowId: string, apiName: string) => {
+    const dataType = resolveDataType(apiName, filterFields);
+    updateOrGroupRow(groupId, rowId, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' });
+  };
 
   const applyRelPreset = (preset: RelPreset) => {
     setRelPreset(preset);
@@ -805,16 +843,16 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                           <div key={row.id} className='flex items-center gap-2 flex-wrap'>
                             <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
                             <select
-                              value={row.field} onChange={(e) => updateFilterRow(row.id, { field: e.target.value })}
+                              value={row.field} onChange={(e) => handleFilterFieldChange(row.id, e.target.value)}
                               className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
                             >
                               {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
                             </select>
                             <select
-                              value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value })}
-                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
+                              value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value as FilterOperator })}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'
                             >
-                              {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
+                              {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
                             </select>
                             <input
                               value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
@@ -832,16 +870,16 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                           {group.rows.map((row) => (
                             <div key={row.id} className='flex items-center gap-2 flex-wrap'>
                               <select
-                                value={row.field} onChange={(e) => updateOrGroupRow(group.id, row.id, { field: e.target.value })}
+                                value={row.field} onChange={(e) => handleOrGroupFieldChange(group.id, row.id, e.target.value)}
                                 className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
                               >
                                 {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
                               </select>
                               <select
-                                value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value })}
-                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
+                                value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value as FilterOperator })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'
                               >
-                                {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
+                                {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
                               </select>
                               <input
                                 value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
@@ -879,10 +917,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                       </div>
 
                       {/* Live count */}
-                      <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                        <span>📊</span>
-                        <span>Live preview: <strong>1,243</strong> records match this filter</span>
-                      </div>
                       <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-mono text-gray-600'>
                         Resolved SOQL: <span className='text-blue-600'>SELECT Id FROM Account WHERE Status = 'Closed' AND LastModifiedDate &gt; 2026-01-01</span>
                       </div>
