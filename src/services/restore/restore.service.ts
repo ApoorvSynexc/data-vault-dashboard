@@ -5,6 +5,7 @@ const RESTORE_ENDPOINTS = {
   backupConfigsName:  '/v1/restore/get-backup-configs-name',
   crmObjects:         '/v1/crm-metadata/objects/list',
   crmFields:          '/v1/crm-metadata/fields/list',
+  objectListByJobIds: '/v1/restore/get-objectlist-by-backup-jobids',
 };
 
 export function useRestoreService() {
@@ -27,5 +28,8 @@ export function useRestoreService() {
 
     getCrmFields: (crmId: string, objectName: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.crmFields, { query: { crmId, objectName } }),
+
+    getObjectListByJobIds: (backupJobIds: string[]) =>
+      api.get<{ data: Record<string, string[]> }>(RESTORE_ENDPOINTS.objectListByJobIds, { query: { backupJobIds } }),
   };
 }

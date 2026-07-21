@@ -246,7 +246,7 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
   );
 }
 
-function DifferentOrgConfig({ crmId }: { crmId: string }) {
+function DifferentOrgConfig({ crmId, backupJobIds }: { crmId: string; backupJobIds: string[] }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
   const [tag, setTag]           = useState('Restored via DataVault {job-id}');
@@ -259,9 +259,24 @@ function DifferentOrgConfig({ crmId }: { crmId: string }) {
   });
   const destinations: ConnectedPlatform[] = Array.isArray(crmsData) ? crmsData : [];
 
-  useQuery({
-    queryKey: ['crm-objects', crmId],
-    queryFn: () => restoreService.getCrmObjects(crmId),
+  const { data: sourceObjectsData, isLoading: sourceObjectsLoading } = useQuery({
+    queryKey: ['source-objects', backupJobIds],
+    queryFn: () => restoreService.getObjectListByJobIds(backupJobIds),
+    enabled: backupJobIds.length > 0,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const sourceObjects: string[] = [
+    ...new Set(
+      Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]
+    ),
+  ];
+
+  const { data: crmObjectsData, isLoading: crmObjectsLoading } = useQuery({
+    queryKey: ['crm-objects', destOrg],
+    queryFn: () => restoreService.getCrmObjects(destOrg),
+    enabled: !!destOrg,
     staleTime: 60_000,
     retry: 1,
   });
@@ -273,13 +288,16 @@ function DifferentOrgConfig({ crmId }: { crmId: string }) {
     retry: 1,
   });
 
-  const objectRows = [
-    { src: 'Account',       dst: 'Account',       status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Contact',       dst: 'Contact',       status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Opportunity',   dst: 'Opportunity',   status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Engagement__c', dst: '',              status: 'warn', statusLabel: '⚠ No auto-match',     needsAction: true },
-    { src: 'LegacyNote__c', dst: '',              status: 'warn', statusLabel: '⚠ Missing in dest',   needsAction: true },
-  ];
+  const crmObjectNames: string[] = ((crmObjectsData as any)?.data ?? []).map((o: any) => o.apiName as string);
+
+  const objectRows = sourceObjects.map((src) => {
+    const matched = crmObjectNames.includes(src);
+    return {
+      src,
+      dst: matched ? src : '',
+      matched,
+    };
+  });
 
   const fieldRows = [
     { src: 'Account.Name',           dst: 'Account.Name',      type: 'Text(255)', status: 'ok',   statusLabel: 'Match',                 warn: false },
@@ -324,7 +342,12 @@ function DifferentOrgConfig({ crmId }: { crmId: string }) {
           />
         </div>
 
-        {/* Object Mapping */}
+        {/* Object Mapping — only shown after a destination CRM is selected */}
+        {!destOrg ? (
+          <div className='rounded-xl border border-dashed border-gray-200 px-5 py-6 text-center'>
+            <p className='text-sm text-gray-400'>Select a destination org connection above to configure object mapping.</p>
+          </div>
+        ) : (
         <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
           <div className='flex items-center gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
             <span className='text-base'>🔁</span>
@@ -332,56 +355,68 @@ function DifferentOrgConfig({ crmId }: { crmId: string }) {
             <Tip text="When the destination is a different org, the same object might have a different API name. Object mapping runs FIRST — auto-detects matches by API name and lets you map (or skip) unmapped ones." />
           </div>
           <div className='p-4'>
-            <div className='flex items-start gap-3 rounded-lg px-4 py-3 text-xs mb-4' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-              <svg width='13' height='13' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/>
-              </svg>
-              <p className='text-blue-800 leading-relaxed'><strong>How this works:</strong> Object mapping happens before field mapping. If the destination has no equivalent object, choose to Skip / Block / Create the object on the fly.</p>
-            </div>
-            <div className='overflow-x-auto'>
-              <table className='w-full text-xs'>
-                <thead>
-                  <tr className='border-b border-gray-100'>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
-                    <th className='w-8'></th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If unmapped</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {objectRows.map((row) => (
-                    <tr key={row.src} className={`border-b border-gray-50 ${row.needsAction ? 'bg-orange-50' : ''}`}>
-                      <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
-                      <td className='text-center text-gray-400 font-bold'>→</td>
-                      <td className='py-2.5 px-3'>
-                        <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
-                          {row.dst ? <option>{row.dst}</option> : <><option>— Pick destination object —</option><option>CustomerActivity__c</option></>}
-                        </select>
-                      </td>
-                      <td className='py-2.5 px-3'>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          row.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                        }`}>{row.statusLabel}</span>
-                      </td>
-                      <td className='py-2.5 px-3'>
-                        {row.needsAction ? (
-                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
-                            <option>Map manually</option>
-                            <option>Skip object</option>
-                            <option>Block job (until mapped)</option>
-                            <option>Create object + fields</option>
-                          </select>
-                        ) : <span className='text-gray-300'>—</span>}
-                      </td>
+            {sourceObjectsLoading || crmObjectsLoading ? (
+              <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading objects…
+              </div>
+            ) : sourceObjects.length === 0 ? (
+              <p className='text-xs text-gray-400 py-4 text-center'>No objects found in the selected backup jobs.</p>
+            ) : (
+              <div className='overflow-x-auto'>
+                <table className='w-full text-xs'>
+                  <thead>
+                    <tr className='border-b border-gray-100'>
+                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
+                      <th className='w-8' />
+                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
+                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
+                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If Unmapped</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className='text-xs text-gray-400 mt-3'>3 of 5 objects auto-matched · 2 need attention</p>
+                  </thead>
+                  <tbody>
+                    {objectRows.map((row) => (
+                      <tr key={row.src} className={`border-b border-gray-50 ${!row.matched ? 'bg-orange-50' : ''}`}>
+                        <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
+                        <td className='text-center text-gray-400 font-bold'>→</td>
+                        <td className='py-2.5 px-3'>
+                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
+                            {row.matched
+                              ? <option value={row.dst}>{row.dst}</option>
+                              : <option value=''>— Pick destination object —</option>
+                            }
+                          </select>
+                        </td>
+                        <td className='py-2.5 px-3'>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            row.matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {row.matched ? 'Auto-matched' : '⚠ No auto-match'}
+                          </span>
+                        </td>
+                        <td className='py-2.5 px-3'>
+                          {!row.matched ? (
+                            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
+                              <option>Map manually</option>
+                              <option>Skip object</option>
+                              <option>Block job (until mapped)</option>
+                              <option>Create object + fields</option>
+                            </select>
+                          ) : <span className='text-gray-300'>—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className='text-xs text-gray-400 mt-3'>
+                  {objectRows.filter((r) => r.matched).length} of {objectRows.length} object{objectRows.length !== 1 ? 's' : ''} auto-matched
+                  {objectRows.filter((r) => !r.matched).length > 0 && ` · ${objectRows.filter((r) => !r.matched).length} need attention`}
+                </p>
+              </div>
+            )}
           </div>
         </div>
+        )}
 
         {/* Field Mapping */}
         <div className='rounded-xl border border-gray-200 overflow-hidden'>
@@ -631,9 +666,9 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; crmId: string; }
+interface Props { onNext: () => void; onBack: () => void; crmId: string; backupJobIds: string[]; }
 
-export default function SetDestination({ onNext, onBack, crmId }: Props) {
+export default function SetDestination({ onNext, onBack, crmId, backupJobIds }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
 
   return (
@@ -695,7 +730,7 @@ export default function SetDestination({ onNext, onBack, crmId }: Props) {
 
         {/* Sub-config panel */}
         {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} />}
+        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} backupJobIds={backupJobIds} />}
         {destType === 'sandbox' && <SandboxConfig />}
         {destType === 'export'  && <ExportOnlyConfig />}
 
