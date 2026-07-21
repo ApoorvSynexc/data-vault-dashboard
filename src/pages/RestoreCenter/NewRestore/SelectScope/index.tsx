@@ -26,15 +26,6 @@ type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' |
 type FilterTab = 'visual' | 'soql';
 type RelPreset = 'none' | 'standard' | 'everything' | 'custom';
 
-interface SFObject {
-  id: string;
-  apiName: string;
-  label: string;
-  type: 'Standard' | 'Custom';
-  records: string;
-  size: string;
-}
-
 interface SFRecord {
   Id: string;
   Name: string;
