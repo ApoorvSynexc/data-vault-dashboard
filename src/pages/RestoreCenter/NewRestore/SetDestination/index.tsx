@@ -427,7 +427,9 @@ function DifferentOrgConfig({ crmId, backupJobIds }: { crmId: string; backupJobI
               <Tip text="For each mapped object, line up source fields with destination fields. The system auto-suggests matches by exact API name, label match, and type compatibility." />
             </div>
             <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
-              <option>Account</option><option>Contact</option><option>Opportunity</option>
+              {sourceObjects.map((obj) => (
+                <option key={obj} value={obj}>{obj}</option>
+              ))}
             </select>
           </div>
           <div className='p-4 overflow-x-auto'>
