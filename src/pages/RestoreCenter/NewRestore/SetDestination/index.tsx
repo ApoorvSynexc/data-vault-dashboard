@@ -281,34 +281,41 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     retry: 1,
   });
 
-  const [selectedFieldObject, setSelectedFieldObject] = useState('');
-  const activeFieldObject = selectedFieldObject || sourceObjects[0] || '';
+  // step gate: object mapping is "confirmed" once the user clicks Confirm
+  const [objectMappingConfirmed, setObjectMappingConfirmed] = useState(false);
 
-  useQuery({
+  // field mapping: user picks which mapped object to inspect
+  const [selectedFieldObject, setSelectedFieldObject] = useState('');
+
+  interface ApiField { label: string; apiName: string; dataType: string; }
+  const crmObjectNames: string[] = ((crmObjectsData as any)?.data ?? []).map((o: any) => o.apiName as string);
+  const objectRows = sourceObjects.map((src) => {
+    const matched = crmObjectNames.includes(src);
+    return { src, dst: matched ? src : '', matched };
+  });
+  const mappedObjects = objectRows.filter((r) => r.matched).map((r) => r.src);
+
+  const activeFieldObject = selectedFieldObject || mappedObjects[0] || '';
+
+  const { data: sourceFieldsData, isLoading: sourceFieldsLoading } = useQuery({
     queryKey: ['source-fields', backupConfigId, activeFieldObject],
     queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId),
-    enabled: !!backupConfigId && !!activeFieldObject,
+    enabled: objectMappingConfirmed && !!activeFieldObject && !!backupConfigId,
     staleTime: 60_000,
     retry: 1,
   });
 
-  const crmObjectNames: string[] = ((crmObjectsData as any)?.data ?? []).map((o: any) => o.apiName as string);
-
-  const objectRows = sourceObjects.map((src) => {
-    const matched = crmObjectNames.includes(src);
-    return {
-      src,
-      dst: matched ? src : '',
-      matched,
-    };
+  const { data: destFieldsData, isLoading: destFieldsLoading } = useQuery({
+    queryKey: ['dest-fields', destOrg, activeFieldObject],
+    queryFn: () => restoreService.getCrmFields(destOrg, activeFieldObject),
+    enabled: objectMappingConfirmed && !!activeFieldObject && !!destOrg,
+    staleTime: 60_000,
+    retry: 1,
   });
 
-  const fieldRows = [
-    { src: 'Account.Name',           dst: 'Account.Name',      type: 'Text(255)', status: 'ok',   statusLabel: 'Match',                 warn: false },
-    { src: 'Account.Industry',       dst: 'Account.Industry',  type: 'Picklist',  status: 'ok',   statusLabel: 'Match',                 warn: false },
-    { src: 'Account.AnnualRevenue',  dst: 'Account.Revenue__c',type: 'Currency',  status: 'warn', statusLabel: 'Renamed in destination', warn: true  },
-    { src: 'Account.Legacy_ID__c',   dst: '— Skip field —',    type: 'Text(40)',  status: 'err',  statusLabel: '⚠ Not in destination',  warn: true  },
-  ];
+  const sourceFieldList: ApiField[] = Array.isArray((sourceFieldsData as any)?.data) ? (sourceFieldsData as any).data : [];
+  const destFieldList: ApiField[]   = Array.isArray((destFieldsData as any)?.data)   ? (destFieldsData as any).data   : [];
+  const destFieldApiNames = new Set(destFieldList.map((f) => f.apiName));
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -346,83 +353,111 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
           />
         </div>
 
-        {/* Object Mapping — only shown after a destination CRM is selected */}
+        {/* Step 2 — Object Mapping (shown only after CRM selected) */}
         {!destOrg ? (
           <div className='rounded-xl border border-dashed border-gray-200 px-5 py-6 text-center'>
             <p className='text-sm text-gray-400'>Select a destination org connection above to configure object mapping.</p>
           </div>
         ) : (
-        <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
-          <div className='flex items-center gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
-            <span className='text-base'>🔁</span>
-            <span className='text-sm font-semibold text-gray-800'>Object Mapping</span>
-            <Tip text="When the destination is a different org, the same object might have a different API name. Object mapping runs FIRST — auto-detects matches by API name and lets you map (or skip) unmapped ones." />
-          </div>
-          <div className='p-4'>
-            {sourceObjectsLoading || crmObjectsLoading ? (
-              <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
-                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                Loading objects…
+          <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
+            <div className='flex items-center justify-between gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
+              <div className='flex items-center gap-2'>
+                <span className='text-base'>🔁</span>
+                <span className='text-sm font-semibold text-gray-800'>Step 2 — Object Mapping</span>
+                <Tip text="When the destination is a different org, the same object might have a different API name. Object mapping runs FIRST — auto-detects matches by API name and lets you map (or skip) unmapped ones." />
               </div>
-            ) : sourceObjects.length === 0 ? (
-              <p className='text-xs text-gray-400 py-4 text-center'>No objects found in the selected backup jobs.</p>
-            ) : (
-              <div className='overflow-x-auto'>
-                <table className='w-full text-xs'>
-                  <thead>
-                    <tr className='border-b border-gray-100'>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
-                      <th className='w-8' />
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If Unmapped</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {objectRows.map((row) => (
-                      <tr key={row.src} className={`border-b border-gray-50 ${!row.matched ? 'bg-orange-50' : ''}`}>
-                        <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
-                        <td className='text-center text-gray-400 font-bold'>→</td>
-                        <td className='py-2.5 px-3'>
-                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
-                            {row.matched
-                              ? <option value={row.dst}>{row.dst}</option>
-                              : <option value=''>— Pick destination object —</option>
-                            }
-                          </select>
-                        </td>
-                        <td className='py-2.5 px-3'>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            row.matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                          }`}>
-                            {row.matched ? 'Auto-matched' : '⚠ No auto-match'}
-                          </span>
-                        </td>
-                        <td className='py-2.5 px-3'>
-                          {!row.matched ? (
-                            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
-                              <option>Map manually</option>
-                              <option>Skip object</option>
-                              <option>Block job (until mapped)</option>
-                              <option>Create object + fields</option>
-                            </select>
-                          ) : <span className='text-gray-300'>—</span>}
-                        </td>
+              {objectMappingConfirmed && (
+                <button
+                  onClick={() => { setObjectMappingConfirmed(false); setSelectedFieldObject(''); }}
+                  className='text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors'
+                >
+                  Edit mapping
+                </button>
+              )}
+            </div>
+            <div className='p-4'>
+              {sourceObjectsLoading || crmObjectsLoading ? (
+                <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
+                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  Loading objects…
+                </div>
+              ) : sourceObjects.length === 0 ? (
+                <p className='text-xs text-gray-400 py-4 text-center'>No objects found in the selected backup jobs.</p>
+              ) : objectMappingConfirmed ? (
+                <div className='flex items-center gap-2 text-xs text-green-700'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='w-4 h-4 flex-shrink-0'><polyline points='20 6 9 17 4 12'/></svg>
+                  <span><strong>{mappedObjects.length}</strong> of <strong>{objectRows.length}</strong> objects mapped and confirmed.</span>
+                </div>
+              ) : (
+                <div className='overflow-x-auto space-y-3'>
+                  <table className='w-full text-xs'>
+                    <thead>
+                      <tr className='border-b border-gray-100'>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
+                        <th className='w-8' />
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If Unmapped</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className='text-xs text-gray-400 mt-3'>
-                  {objectRows.filter((r) => r.matched).length} of {objectRows.length} object{objectRows.length !== 1 ? 's' : ''} auto-matched
-                  {objectRows.filter((r) => !r.matched).length > 0 && ` · ${objectRows.filter((r) => !r.matched).length} need attention`}
-                </p>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {objectRows.map((row) => (
+                        <tr key={row.src} className={`border-b border-gray-50 ${!row.matched ? 'bg-orange-50' : ''}`}>
+                          <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
+                          <td className='text-center text-gray-400 font-bold'>→</td>
+                          <td className='py-2.5 px-3'>
+                            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
+                              {row.matched
+                                ? <option value={row.dst}>{row.dst}</option>
+                                : <option value=''>— Pick destination object —</option>
+                              }
+                            </select>
+                          </td>
+                          <td className='py-2.5 px-3'>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              row.matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {row.matched ? 'Auto-matched' : '⚠ No auto-match'}
+                            </span>
+                          </td>
+                          <td className='py-2.5 px-3'>
+                            {!row.matched ? (
+                              <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
+                                <option>Map manually</option>
+                                <option>Skip object</option>
+                                <option>Block job (until mapped)</option>
+                                <option>Create object + fields</option>
+                              </select>
+                            ) : <span className='text-gray-300'>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className='flex items-center justify-between'>
+                    <p className='text-xs text-gray-400'>
+                      {mappedObjects.length} of {objectRows.length} object{objectRows.length !== 1 ? 's' : ''} auto-matched
+                      {objectRows.filter((r) => !r.matched).length > 0 && ` · ${objectRows.filter((r) => !r.matched).length} need attention`}
+                    </p>
+                    <button
+                      onClick={() => setObjectMappingConfirmed(true)}
+                      className='text-xs font-semibold px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+                    >
+                      Confirm Object Mapping →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         )}
 
-        {/* Field Mapping */}
+        {/* Step 3 — Field Mapping (shown only after object mapping confirmed) */}
+        {!objectMappingConfirmed ? (
+          <div className='rounded-xl border border-dashed border-gray-200 px-5 py-6 text-center'>
+            <p className='text-sm text-gray-400'>Confirm object mapping above to configure field mapping.</p>
+          </div>
+        ) : (
         <div className='rounded-xl border border-gray-200 overflow-hidden'>
           <div className='flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-3'>
             <div className='flex items-center gap-2'>
@@ -441,40 +476,60 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
             </select>
           </div>
           <div className='p-4 overflow-x-auto'>
-            <table className='w-full text-xs'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Field</th>
-                  <th className='w-8'></th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Field</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fieldRows.map((row) => (
-                  <tr key={row.src} className={`border-b border-gray-50 ${row.status === 'warn' ? 'bg-orange-50' : row.status === 'err' ? 'bg-red-50' : ''}`}>
-                    <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
-                    <td className='text-center text-gray-400 font-bold'>→</td>
-                    <td className='py-2.5 px-3'>
-                      <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[200px]'>
-                        <option>{row.dst}</option>
-                      </select>
-                    </td>
-                    <td className='py-2.5 px-3 text-gray-500'>{row.type}</td>
-                    <td className='py-2.5 px-3'>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        row.status === 'ok'   ? 'bg-green-100 text-green-700'  :
-                        row.status === 'warn' ? 'bg-orange-100 text-orange-700' :
-                                               'bg-red-100 text-red-700'
-                      }`}>{row.statusLabel}</span>
-                    </td>
+            {sourceFieldsLoading || destFieldsLoading ? (
+              <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading fields…
+              </div>
+            ) : sourceFieldList.length === 0 ? (
+              <p className='text-xs text-gray-400 py-4 text-center'>No fields found for <strong>{activeFieldObject}</strong>.</p>
+            ) : (
+              <table className='w-full text-xs'>
+                <thead>
+                  <tr className='border-b border-gray-100'>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Field</th>
+                    <th className='w-8'></th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Field</th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sourceFieldList.map((sf) => {
+                    const matched = destFieldApiNames.has(sf.apiName);
+                    return (
+                      <tr key={sf.apiName} className={`border-b border-gray-50 ${!matched ? 'bg-orange-50' : ''}`}>
+                        <td className='py-2.5 px-3 font-mono text-gray-700'>{sf.apiName}<span className='ml-1 text-gray-400 font-sans'>({sf.label})</span></td>
+                        <td className='text-center text-gray-400 font-bold'>→</td>
+                        <td className='py-2.5 px-3'>
+                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[220px]'>
+                            {matched
+                              ? <option value={sf.apiName}>{sf.apiName}</option>
+                              : <option value=''>— Skip field —</option>
+                            }
+                            {destFieldList
+                              .filter((df) => df.apiName !== sf.apiName)
+                              .map((df) => <option key={df.apiName} value={df.apiName}>{df.apiName} ({df.label})</option>)
+                            }
+                          </select>
+                        </td>
+                        <td className='py-2.5 px-3 text-gray-500'>{sf.dataType}</td>
+                        <td className='py-2.5 px-3'>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {matched ? 'Auto-matched' : '⚠ Not in destination'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
+        )}
 
       </div>
     </div>
