@@ -192,12 +192,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // custom filter state
   const [filterTab,        setFilterTab]        = useState<FilterTab>('visual');
-  const [filterRows,       setFilterRows]       = useState<FilterRow[]>([
-    { id: '1', field: 'Status',           op: 'equals', value: 'Closed' },
-    { id: '2', field: 'LastModifiedDate', op: 'after',  value: '2026-01-01' },
-  ]);
+  const [filterObj,        setFilterObj]        = useState('');
+  const [filterRows,       setFilterRows]       = useState<FilterRow[]>([]);
   const [orGroups,         setOrGroups]         = useState<OrGroup[]>([]);
-  const [filterLogic,      setFilterLogic]      = useState('1 AND 2');
+  const [filterLogic,      setFilterLogic]      = useState('');
   const [soqlText,         setSoqlText]         = useState("SELECT Id, Name, Industry, AnnualRevenue\nFROM Account\nWHERE Status = 'Closed'\n  AND LastModifiedDate > 2026-01-01\n  AND BillingCountry = 'US'");
 
   // changed-since state
@@ -366,6 +364,17 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     (f) => f.label.toLowerCase().includes(fieldSearch.toLowerCase()),
   );
   const activeFieldSet = selectedFields[activeFieldObj] ?? new Set<string>();
+
+  // ── Custom filter fields API ───────────────────────────────────────────────
+
+  const { data: filterFieldsData, isLoading: filterFieldsLoading } = useQuery({
+    queryKey: ['filter-object-fields', filterObj, sourceSelection.backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(filterObj, sourceSelection.backupConfigId),
+    enabled: scopeMode === 'filter' && !!filterObj && !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
 
   // ── CSV stats ──────────────────────────────────────────────────────────────
 
@@ -770,93 +779,116 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               {/* Visual builder */}
               {filterTab === 'visual' && (
                 <div className='space-y-4'>
-                  <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>Account</strong> · All filters in a group combine with AND.</p>
-                  <div className='space-y-2'>
-                    {filterRows.map((row, idx) => (
-                      <div key={row.id} className='flex items-center gap-2 flex-wrap'>
-                        <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
-                        <select
-                          value={row.field} onChange={(e) => updateFilterRow(row.id, { field: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-40'
-                        >
-                          {FILTER_FIELDS.map((f) => <option key={f}>{f}</option>)}
-                        </select>
-                        <select
-                          value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
-                        >
-                          {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
-                        </select>
-                        <input
-                          value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
-                        />
-                        <button onClick={() => removeFilterRow(row.id)} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
-                      </div>
-                    ))}
+
+                  {/* Object picker */}
+                  <div className='flex items-center gap-3 flex-wrap'>
+                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
+                    <select
+                      value={filterObj}
+                      onChange={(e) => { setFilterObj(e.target.value); setFilterRows([]); setOrGroups([]); }}
+                      className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+                    >
+                      <option value=''>— Select an object —</option>
+                      {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    {filterFieldsLoading && (
+                      <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                    )}
                   </div>
-                  {/* OR groups */}
-                  {orGroups.map((group) => (
-                    <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
-                      {/* Floating OR badge */}
-                      <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
-                      {group.rows.map((row) => (
-                        <div key={row.id} className='flex items-center gap-2 flex-wrap'>
-                          <select
-                            value={row.field} onChange={(e) => updateOrGroupRow(group.id, row.id, { field: e.target.value })}
-                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-40'
-                          >
-                            {FILTER_FIELDS.map((f) => <option key={f}>{f}</option>)}
-                          </select>
-                          <select
-                            value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value })}
-                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
-                          >
-                            {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
-                          </select>
-                          <input
-                            value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
-                            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
-                          />
+
+                  {!filterObj ? (
+                    <p className='text-xs text-gray-400 py-2'>Select an object above to start building filters.</p>
+                  ) : (
+                    <>
+                      <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>{filterObj}</strong> · All filters in a group combine with AND. Use OR groups to express alternatives.</p>
+                      <div className='space-y-2'>
+                        {filterRows.map((row, idx) => (
+                          <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                            <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
+                            <select
+                              value={row.field} onChange={(e) => updateFilterRow(row.id, { field: e.target.value })}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
+                            >
+                              {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
+                            </select>
+                            <select
+                              value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value })}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
+                            >
+                              {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
+                            </select>
+                            <input
+                              value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                            />
+                            <button onClick={() => removeFilterRow(row.id)} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* OR groups */}
+                      {orGroups.map((group) => (
+                        <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
+                          <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
+                          {group.rows.map((row) => (
+                            <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                              <select
+                                value={row.field} onChange={(e) => updateOrGroupRow(group.id, row.id, { field: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
+                              >
+                                {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
+                              </select>
+                              <select
+                                value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
+                              >
+                                {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
+                              </select>
+                              <input
+                                value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                              />
+                              <button
+                                onClick={() => group.rows.length === 1 ? removeOrGroup(group.id) : removeOrGroupRow(group.id, row.id)}
+                                className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'
+                              >×</button>
+                            </div>
+                          ))}
                           <button
-                            onClick={() => group.rows.length === 1 ? removeOrGroup(group.id) : removeOrGroupRow(group.id, row.id)}
-                            className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'
-                          >×</button>
+                            onClick={() => addOrGroupRow(group.id)}
+                            className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'
+                          >+ Add filter to this OR group</button>
                         </div>
                       ))}
-                      <button
-                        onClick={() => addOrGroupRow(group.id)}
-                        className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'
-                      >+ Add filter to this OR group</button>
-                    </div>
-                  ))}
 
-                  <div className='flex gap-2'>
-                    <button onClick={addFilterRow} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
-                    <button onClick={addOrGroup} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
-                  </div>
+                      <div className='flex gap-2'>
+                        <button onClick={addFilterRow} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
+                        <button onClick={addOrGroup} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
+                      </div>
 
-                  {/* Filter logic */}
-                  <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-1.5'>
-                    <div className='flex items-center gap-3 flex-wrap'>
-                      <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
-                      <input
-                        value={filterLogic} onChange={(e) => setFilterLogic(e.target.value)}
-                        placeholder='e.g. (1 OR 2) AND (3 OR 4)'
-                        className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none'
-                      />
-                    </div>
-                    <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
-                  </div>
+                      {/* Filter logic */}
+                      <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-1.5'>
+                        <div className='flex items-center gap-3 flex-wrap'>
+                          <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
+                          <input
+                            value={filterLogic} onChange={(e) => setFilterLogic(e.target.value)}
+                            placeholder='e.g. (1 OR 2) AND (3 OR 4)'
+                            className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none'
+                          />
+                        </div>
+                        <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
+                      </div>
 
-                  {/* Live count */}
-                  <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                    <span>📊</span>
-                    <span>Live preview: <strong>1,243</strong> records match this filter</span>
-                  </div>
-                  <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-mono text-gray-600'>
-                    Resolved SOQL: <span className='text-blue-600'>SELECT Id FROM Account WHERE Status = 'Closed' AND LastModifiedDate &gt; 2026-01-01</span>
-                  </div>
+                      {/* Live count */}
+                      <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
+                        <span>📊</span>
+                        <span>Live preview: <strong>1,243</strong> records match this filter</span>
+                      </div>
+                      <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-mono text-gray-600'>
+                        Resolved SOQL: <span className='text-blue-600'>SELECT Id FROM Account WHERE Status = 'Closed' AND LastModifiedDate &gt; 2026-01-01</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
