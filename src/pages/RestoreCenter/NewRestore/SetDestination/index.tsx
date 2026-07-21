@@ -246,7 +246,7 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
   );
 }
 
-function DifferentOrgConfig({ crmId, backupConfigId, configType }: { crmId: string; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
+function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
   const [tag, setTag]           = useState('Restored via DataVault {job-id}');
@@ -281,9 +281,13 @@ function DifferentOrgConfig({ crmId, backupConfigId, configType }: { crmId: stri
     retry: 1,
   });
 
+  const [selectedFieldObject, setSelectedFieldObject] = useState('');
+  const activeFieldObject = selectedFieldObject || sourceObjects[0] || '';
+
   useQuery({
-    queryKey: ['crm-fields', crmId, 'Account'],
-    queryFn: () => restoreService.getCrmFields(crmId, 'Account'),
+    queryKey: ['source-fields', backupConfigId, activeFieldObject],
+    queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId),
+    enabled: !!backupConfigId && !!activeFieldObject,
     staleTime: 60_000,
     retry: 1,
   });
@@ -426,7 +430,11 @@ function DifferentOrgConfig({ crmId, backupConfigId, configType }: { crmId: stri
               <span className='text-sm font-semibold text-gray-800'>Field Mapping</span>
               <Tip text="For each mapped object, line up source fields with destination fields. The system auto-suggests matches by exact API name, label match, and type compatibility." />
             </div>
-            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
+            <select
+              value={activeFieldObject}
+              onChange={(e) => setSelectedFieldObject(e.target.value)}
+              className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'
+            >
               {sourceObjects.map((obj) => (
                 <option key={obj} value={obj}>{obj}</option>
               ))}
@@ -668,9 +676,9 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; crmId: string; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; }
+interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; }
 
-export default function SetDestination({ onNext, onBack, crmId, backupConfigId, configType }: Props) {
+export default function SetDestination({ onNext, onBack, backupConfigId, configType }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
 
   return (
@@ -732,7 +740,7 @@ export default function SetDestination({ onNext, onBack, crmId, backupConfigId, 
 
         {/* Sub-config panel */}
         {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig crmId={crmId} backupConfigId={backupConfigId} configType={configType} />}
+        {destType === 'diff'    && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
         {destType === 'sandbox' && <SandboxConfig />}
         {destType === 'export'  && <ExportOnlyConfig />}
 
