@@ -15,6 +15,7 @@ export interface SourceSelection {
   configType: 'BACKUP' | 'ARCHIVAL';
   backupConfigId: string;
   backupJobIds: string[];
+  crmId?: string;
 }
 
 

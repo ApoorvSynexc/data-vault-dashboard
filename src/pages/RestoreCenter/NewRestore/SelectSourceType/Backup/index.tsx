@@ -99,10 +99,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
     else goToBackupPage(1, null);
   };
 
-  const goBackupToPage1 = () => {
-    setBackupCursorStack([]);
-    goToBackupPage(1, null);
-  };
 
   // ── Jobs list (phase 2) ──────────────────────────────────────────────────
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set(initialSelectedJobIds));
@@ -150,11 +146,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
     setJobsCursor(prev ? (prev.cursor || null) : null);
   };
 
-  const goJobsToPage1 = () => {
-    setJobsCursorStack([]);
-    setJobsCurrentPage(1);
-    setJobsCursor(null);
-  };
 
   const toggleJob = (id: string) => {
     setSelectedJobIds((prev) => {
