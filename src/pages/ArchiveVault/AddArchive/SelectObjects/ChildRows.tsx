@@ -101,9 +101,8 @@ export function ChildRows({
     });
     // Auto-select MasterDetail children — Salesforce enforces cascade delete on them.
     // Skip polymorphic ones that are hidden from the list (same condition as visibleRawRows).
-    const hidePolymorphicInEffect = depth >= 2 || (typeof relationshipDepth === 'number' && relationshipDepth >= 1);
     const toSelect = rawRows
-      .filter((r: any) => r.relationshipType === 'MasterDetail' && !(hidePolymorphicInEffect && r.isPolymorphic))
+      .filter((r: any) => r.relationshipType === 'MasterDetail')
       .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !autoSelectedRef.current.has(k));
     if (toSelect.length === 0) return;
@@ -112,13 +111,7 @@ export function ChildRows({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
 
-  // Hide polymorphic children at tier 2+ always.
-  // Also hide them at tier 1 when relationshipDepth >= 1 (SOQL query uses a relationship
-  // traversal, so polymorphic lookups cannot be reliably scoped at any tier).
-  const hidePolymorphic = depth >= 2 || (typeof relationshipDepth === 'number' && relationshipDepth >= 1);
-  const visibleRawRows = hidePolymorphic
-    ? rawRows.filter((r: any) => !r.isPolymorphic)
-    : rawRows;
+  const visibleRawRows = rawRows;
 
   const rows = [...visibleRawRows].sort((a, b) => {
     const amd = a.relationshipType === 'MasterDetail' ? 0 : 1;
