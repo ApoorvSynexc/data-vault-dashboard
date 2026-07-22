@@ -314,7 +314,7 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   });
 
   const sourceFieldList: ApiField[] = Array.isArray((sourceFieldsData as any)?.data) ? (sourceFieldsData as any).data : [];
-  const destFieldList: ApiField[]   = Array.isArray((destFieldsData as any)?.data)   ? (destFieldsData as any).data   : [];
+  const destFieldList: ApiField[]   = Array.isArray((destFieldsData as any)?.data?.fields)   ? (destFieldsData as any).data.fields   : [];
   const destFieldApiNames = new Set(destFieldList.map((f) => f.apiName));
 
   return (
