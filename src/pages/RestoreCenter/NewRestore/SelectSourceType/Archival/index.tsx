@@ -216,11 +216,6 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
     setCurrentCursor(prev ? (prev.cursor || null) : null);
   };
 
-  const goToPage1 = () => {
-    setCursorStack([]);
-    setCurrentPage(1);
-    setCurrentCursor(null);
-  };
 
   // ── Phase 2 — jobs list ──────────────────────────────────────────────────
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set(initialSelectedJobIds));
@@ -268,11 +263,6 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
     setJobsCursor(prev ? (prev.cursor || null) : null);
   };
 
-  const goJobsToPage1 = () => {
-    setJobsCursorStack([]);
-    setJobsCurrentPage(1);
-    setJobsCursor(null);
-  };
 
   const toggleJob = (id: string) => {
     setSelectedJobIds((prev) => {

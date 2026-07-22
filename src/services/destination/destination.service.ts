@@ -36,6 +36,7 @@ export type CreateDestinationPayload = {
   provider: 'AWS' | 'AZURE' | 'GCP';
   type: string;
   config: DestinationConfig;
+  is_already_granted?: boolean;
 };
 
 export type UpdateDestinationPayload = Partial<Omit<CreateDestinationPayload, 'config'>> & {
