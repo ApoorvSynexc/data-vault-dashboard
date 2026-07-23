@@ -10,7 +10,7 @@
 //   Changed-Since  — fields that differ between source and dest
 //   Bulk via CSV   — upload / paste ID list
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Papa from 'papaparse';
 import Joi from 'joi';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +42,7 @@ interface FilterRow {
   dataType: FieldDataType;
   op: FilterOperator;
   value: string;
+  picklistValues?: { value: string; label: string }[];
 }
 
 interface OrGroup {
@@ -333,7 +334,12 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const handleFilterFieldChange = (id: string, apiName: string) => {
     const dataType = resolveDataType(apiName, filterFields);
-    updateFilterRow(id, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' });
+    updateFilterRow(id, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ rowId: id, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
   };
 
   const addOrGroup = () =>
@@ -353,7 +359,12 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const handleOrGroupFieldChange = (groupId: string, rowId: string, apiName: string) => {
     const dataType = resolveDataType(apiName, filterFields);
-    updateOrGroupRow(groupId, rowId, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' });
+    updateOrGroupRow(groupId, rowId, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ rowId, groupId, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
   };
 
   const applyRelPreset = (preset: RelPreset) => {
@@ -412,6 +423,32 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
   const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
+
+  // ── Picklist values API ────────────────────────────────────────────────────
+
+  const [pendingPicklist, setPendingPicklist] = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
+
+  const { data: picklistData } = useQuery({
+    queryKey: ['restore-picklist', filterObj, pendingPicklist?.fieldApiName],
+    queryFn: async () => {
+      const result = await restoreService.getPicklistValues(filterObj, pendingPicklist!.fieldApiName);
+      const payload = (result as any)?.data ?? result;
+      const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
+      return values as { value: string; label: string }[];
+    },
+    enabled: !!pendingPicklist && !!filterObj,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!picklistData || !pendingPicklist) return;
+    if (pendingPicklist.groupId) {
+      updateOrGroupRow(pendingPicklist.groupId, pendingPicklist.rowId, { picklistValues: picklistData });
+    } else {
+      updateFilterRow(pendingPicklist.rowId, { picklistValues: picklistData });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picklistData]);
 
   // ── CSV stats ──────────────────────────────────────────────────────────────
 
@@ -854,10 +891,20 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                             >
                               {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
                             </select>
-                            <input
-                              value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
-                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
-                            />
+                            {row.dataType === 'picklist' ? (
+                              <select
+                                value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                              >
+                                <option value=''>Select value</option>
+                                {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                              />
+                            )}
                             <button onClick={() => removeFilterRow(row.id)} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
                           </div>
                         ))}
@@ -881,10 +928,20 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                               >
                                 {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
                               </select>
-                              <input
-                                value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
-                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
-                              />
+                              {row.dataType === 'picklist' ? (
+                                <select
+                                  value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                                >
+                                  <option value=''>Select value</option>
+                                  {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                                />
+                              )}
                               <button
                                 onClick={() => group.rows.length === 1 ? removeOrGroup(group.id) : removeOrGroupRow(group.id, row.id)}
                                 className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'
