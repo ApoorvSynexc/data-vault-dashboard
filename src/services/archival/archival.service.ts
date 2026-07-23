@@ -126,9 +126,9 @@ export function useArchivalService() {
     getFields: (crmId: string, objectName: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName, mode: 'ARCHIVAL' } }),
 
-    // GET /v1/archival-config/get-picklist-field-values?objectApiName=&fieldApiName=
-    getPicklistValues: (objectApiName: string, fieldApiName: string): Promise<any> =>
-      http.get(ARCHIVAL_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName } }),
+    // GET /v1/archival-config/get-picklist-field-values?crmId=&objectApiName=&fieldApiName=
+    getPicklistValues: (crmId: string, objectApiName: string, fieldApiName: string): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.picklistValues, { query: { crmId, objectApiName, fieldApiName } }),
 
     // GET /v1/archival-config/object-childs?crmId=&objectName=&mode=ARCHIVAL
     // Returns child relationship objects. UUIDs are generated client-side because

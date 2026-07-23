@@ -169,9 +169,9 @@ export default function AddDetailsWizard({
   const [pendingPicklist, setPendingPicklist] = useState<{ conditionId: string; fieldApiName: string } | null>(null);
 
   const { data: picklistData } = useQuery({
-    queryKey: ['archival-picklist', objectName, pendingPicklist?.fieldApiName],
+    queryKey: ['archival-picklist', crmId, objectName, pendingPicklist?.fieldApiName],
     queryFn: async () => {
-      const result = await archivalService.getPicklistValues(objectName, pendingPicklist!.fieldApiName);
+      const result = await archivalService.getPicklistValues(crmId ?? '', objectName, pendingPicklist!.fieldApiName);
       const payload = (result as any)?.data ?? result;
       const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
       return values as { value: string; label: string }[];
