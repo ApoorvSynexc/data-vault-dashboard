@@ -37,7 +37,7 @@ export function useRestoreService() {
     fetchObjectFields: (objectApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId } }),
 
-    getPicklistValues: (objectApiName: string, fieldApiName: string) =>
-      api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName } }),
+    getPicklistValues: (objectApiName: string, fieldApiName: string, backupConfigId: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName, backupConfigId } }),
   };
 }
