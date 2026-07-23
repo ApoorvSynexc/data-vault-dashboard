@@ -990,9 +990,17 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                     rows={6}
                     className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
                   />
-                  <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                    <span>📊</span>
-                    <span>SOQL parsed successfully · <strong>892</strong> records match · <button className='text-blue-600 hover:underline'>Preview first 10</button></span>
+                  <div className='flex justify-end'>
+                    <button
+                      type='button'
+                      disabled={!soqlText.trim()}
+                      className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                    >
+                      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='20 6 9 17 4 12' />
+                      </svg>
+                      Validate Query
+                    </button>
                   </div>
                 </div>
               )}
