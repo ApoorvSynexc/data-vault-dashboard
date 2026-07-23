@@ -403,14 +403,18 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     staleTime: 60_000,
     retry: 1,
   });
-  interface FieldOption { label: string; apiName: string; dataType: string; isUpdateable: boolean; isCreateable: boolean; }
+  interface FieldOption { label: string; apiName: string; dataType: string; isUpdateable: boolean; isCreateable: boolean; isCustom?: boolean; isRequired?: boolean; }
   const sourceFields: FieldOption[] = (fieldOptionsData as any)?.data ?? [];
 
   // ── Derived field data ─────────────────────────────────────────────────────
 
-  const availableFields = sourceFields.filter(
-    (f) => f.label.toLowerCase().includes(fieldSearch.toLowerCase()),
-  );
+  const availableFields = sourceFields.filter((f) => {
+    if (fieldSearch && !f.label.toLowerCase().includes(fieldSearch.toLowerCase())) return false;
+    if (fieldFilter === 'Custom')   return f.isCustom === true;
+    if (fieldFilter === 'Standard') return f.isCustom === false;
+    if (fieldFilter === 'Required') return f.isRequired === true;
+    return true; // 'All'
+  });
   const activeFieldSet = selectedFields[activeFieldObj] ?? new Set<string>();
 
   // ── Custom filter fields API ───────────────────────────────────────────────
