@@ -165,6 +165,27 @@ export default function AddDetailsWizard({
   });
   const fields: any[] = Array.isArray(fieldsData) ? fieldsData : [];
 
+  // Tracks the condition+field that needs picklist values fetched
+  const [pendingPicklist, setPendingPicklist] = useState<{ conditionId: string; fieldApiName: string } | null>(null);
+
+  const { data: picklistData } = useQuery({
+    queryKey: ['archival-picklist', objectName, pendingPicklist?.fieldApiName],
+    queryFn: async () => {
+      const result = await archivalService.getPicklistValues(objectName, pendingPicklist!.fieldApiName);
+      const payload = (result as any)?.data ?? result;
+      const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
+      return values as { value: string; label: string }[];
+    },
+    enabled: !!pendingPicklist,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!picklistData || !pendingPicklist) return;
+    updateCondition(pendingPicklist.conditionId, { picklistValues: picklistData });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picklistData]);
+
   const validateMutation = useMutation({
     mutationFn: ({ soqlClause }: { soqlClause: string }) =>
       archivalService.validateSoql({
@@ -217,8 +238,12 @@ export default function AddDetailsWizard({
     const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
     const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
     const operator = OPERATORS_BY_TYPE[dataType][0];
-    const picklistValues = dataType === 'picklist' ? ((matched as any)?.picklistValues ?? []) : undefined;
-    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues });
+    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ conditionId: id, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
   };
 
   const getConditionLabel = (idx: number) => {
