@@ -41,14 +41,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
   const [backupSearch, setBackupSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [typeFilter, setTypeFilter] = useState<'All' | 'Realtime' | 'Schedule'>('All');
-
-  const handleTypeFilter = (val: 'All' | 'Realtime' | 'Schedule') => {
-    setTypeFilter(val);
-    setBackupCursorStack([]);
-    setBackupCurrentPage(1);
-    setBackupCurrentCursor(null);
-  };
 
   const [backupCurrentPage, setBackupCurrentPage] = useState(1);
   const [backupCurrentCursor, setBackupCurrentCursor] = useState<string | null>(null);
@@ -69,15 +61,13 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [backupSearch]);
 
-  const apiSchedule = typeFilter === 'Realtime' ? 'REALTIME' : typeFilter === 'Schedule' ? 'SCHEDULE' : undefined;
-
   const backupQueryFn = useCallback(
-    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, apiSchedule),
-    [backupCurrentCursor, debouncedSearch, apiSchedule]
+    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, 'SCHEDULE'),
+    [backupCurrentCursor, debouncedSearch]
   );
 
   const { data: backupListData, isLoading: isLoadingConfigs, isFetching: isFetchingConfigs } = useQuery({
-    queryKey: ['restore-backup-config-list', backupCurrentCursor, debouncedSearch, apiSchedule],
+    queryKey: ['restore-backup-config-list', backupCurrentCursor, debouncedSearch],
     queryFn: backupQueryFn,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -372,26 +362,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
                 placeholder='Search backup name…'
                 className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-56'
               />
-              <div className='flex items-center gap-1 ml-auto'>
-                <span className='text-xs text-gray-500 font-medium mr-1'>Type:</span>
-                {(['All', 'Realtime', 'Schedule'] as const).map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => handleTypeFilter(opt)}
-                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                      typeFilter === opt
-                        ? opt === 'Realtime'
-                          ? 'bg-violet-100 text-violet-700 border-violet-200'
-                          : opt === 'Schedule'
-                          ? 'bg-blue-100 text-blue-700 border-blue-200'
-                          : 'bg-gray-800 text-white border-gray-800'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
