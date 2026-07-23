@@ -19,7 +19,6 @@ export interface BackupSelection {
 interface Props {
   onConfigSelected: (selected: boolean) => void;
   onSelectionChange: (selection: BackupSelection | null) => void;
-  onExitJobsPhase: () => void;
   showJobsPhase: boolean;
   initialSelectedRow?: any;
   initialSelectedConfigId?: string;
@@ -29,7 +28,7 @@ interface Props {
   onSelectedJobIdsChange?: (ids: string[]) => void;
 }
 
-export default function BackupPicker({ onConfigSelected, onSelectionChange, onExitJobsPhase, showJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
   const backupConfigService = useBackupConfigService();
 
   // ── Config list (phase 1) ────────────────────────────────────────────────
@@ -96,18 +95,17 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
-  // Reset jobs state only when transitioning false→true (entering phase 2), not on initial mount
-  const prevShowJobsPhaseRef = useRef(showJobsPhase);
+  // Reset jobs selection only when the backup config changes, not every time jobs phase is entered
+  const prevConfigIdRef = useRef(selectedBackupConfigId);
   useEffect(() => {
-    const wasInJobsPhase = prevShowJobsPhaseRef.current;
-    prevShowJobsPhaseRef.current = showJobsPhase;
-    if (showJobsPhase && !wasInJobsPhase) {
+    if (prevConfigIdRef.current !== selectedBackupConfigId) {
+      prevConfigIdRef.current = selectedBackupConfigId;
       setSelectedJobIds(new Set());
       setJobsCursor(null);
       setJobsCurrentPage(1);
       setJobsCursorStack([]);
     }
-  }, [showJobsPhase]);
+  }, [selectedBackupConfigId]);
 
   const selectedBackupSlug = selectedBackupRow?.slug ?? selectedBackupRow?.backupConfigId ?? '';
 
@@ -327,10 +325,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
     },
   ];
 
-  const handleExitJobsPhase = () => {
-    onExitJobsPhase();
-  };
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -426,16 +420,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, onEx
       {showJobsPhase && (
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
-            <button
-              onClick={handleExitJobsPhase}
-              className='inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors'
-            >
-              <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                <polyline points='15 18 9 12 15 6' />
-              </svg>
-              Back to Backups
-            </button>
-            <span className='text-gray-300 select-none'>|</span>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Select a Backup Job</Typography>
             {selectedBackupRow?.name && (
               <span className='ml-1 text-xs font-medium text-gray-500'>— {selectedBackupRow.name}</span>
