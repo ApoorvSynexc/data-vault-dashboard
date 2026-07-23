@@ -995,7 +995,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                     rows={6}
                     className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
                   />
-                  <InfoCallout>Editing the SOQL directly resets the visual builder.</InfoCallout>
                   <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
                     <span>📊</span>
                     <span>SOQL parsed successfully · <strong>892</strong> records match · <button className='text-blue-600 hover:underline'>Preview first 10</button></span>
@@ -1022,11 +1021,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   <p className='text-xs text-amber-700 mt-1'>
                     The system auto-compares the source snapshot to the destination and surfaces records that exist in the source but are missing (or in the recycle bin) in the destination. Records that were never deleted will not be touched.
                   </p>
-                  <div className='flex flex-wrap gap-5 mt-3 text-xs text-amber-700'>
-                    <span><span className='font-bold text-amber-900'>~218</span> deleted records detected</span>
-                    <span>across <span className='font-bold text-amber-900'>5</span> objects</span>
-                    <span>Last computed: just now · <button className='text-blue-600 hover:underline'>Recompute</button></span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1048,10 +1042,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                     className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
                   />
                 </div>
-                <p className='text-xs text-gray-600 pb-1'>
-                  ⚡ Live: <strong>1,420 records</strong> have at least one differing field since{' '}
-                  {changedDate ? new Date(changedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
-                </p>
               </div>
               <div className='flex items-start gap-4 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4'>
                 <div className='w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5 text-gray-600 font-bold'>Δ</div>
