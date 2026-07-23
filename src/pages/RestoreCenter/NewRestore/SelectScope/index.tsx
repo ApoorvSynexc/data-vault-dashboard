@@ -984,7 +984,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               {/* SOQL editor */}
               {filterTab === 'soql' && (
                 <div className='space-y-3'>
-                  <p className='text-xs text-gray-500'>Paste a raw SOQL query. The system parses it, validates against the source schema, and shows the live match count.</p>
+                  <p className='text-xs text-gray-500'>Paste a raw SOQL query. The system parses it, validates against the source schema.</p>
                   <textarea
                     value={soqlText} onChange={(e) => setSoqlText(e.target.value)}
                     rows={6}
