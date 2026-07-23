@@ -7,6 +7,7 @@ const RESTORE_ENDPOINTS = {
   crmFields:          '/v1/crm-metadata/fields/list',
   objectListByConfigId: '/v1/restore/get-objectlist-by-configid',
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
+  picklistValues:       '/v1/restore/get-picklist-field-values',
 };
 
 export function useRestoreService() {
@@ -35,5 +36,8 @@ export function useRestoreService() {
 
     fetchObjectFields: (objectApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId } }),
+
+    getPicklistValues: (objectApiName: string, fieldApiName: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName } }),
   };
 }
