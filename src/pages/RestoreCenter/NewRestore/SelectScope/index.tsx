@@ -433,9 +433,9 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [pendingPicklist, setPendingPicklist] = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
 
   const { data: picklistData } = useQuery({
-    queryKey: ['restore-picklist', filterObj, pendingPicklist?.fieldApiName],
+    queryKey: ['restore-picklist', sourceSelection.backupConfigId, filterObj, pendingPicklist?.fieldApiName],
     queryFn: async () => {
-      const result = await restoreService.getPicklistValues(filterObj, pendingPicklist!.fieldApiName);
+      const result = await restoreService.getPicklistValues(filterObj, pendingPicklist!.fieldApiName, sourceSelection.backupConfigId);
       const payload = (result as any)?.data ?? result;
       const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
       return values as { value: string; label: string }[];
