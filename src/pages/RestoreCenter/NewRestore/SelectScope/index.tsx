@@ -976,11 +976,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                         </div>
                         <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
                       </div>
-
-                      {/* Live count */}
-                      <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-mono text-gray-600'>
-                        Resolved SOQL: <span className='text-blue-600'>SELECT Id FROM Account WHERE Status = 'Closed' AND LastModifiedDate &gt; 2026-01-01</span>
-                      </div>
                     </>
                   )}
                 </div>
