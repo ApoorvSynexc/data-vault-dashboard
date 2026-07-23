@@ -238,7 +238,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             showJobsPhase={showJobsPhase}
             onConfigSelected={setConfigSelected}
             onSelectionChange={setBackupSelection}
-            onExitJobsPhase={() => { setBackupJobsPhase(false); setBackupSelection(null); setBackupSelectedJobIds([]); }}
             initialSelectedRow={backupSelectedRow}
             initialSelectedConfigId={backupSelectedConfigId}
             initialSelectedJobIds={backupSelectedJobIds}
@@ -253,7 +252,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             showJobsPhase={showArchivalJobsPhase}
             onConfigSelected={setArchivalConfigSelected}
             onSelectionChange={setArchivalSelection}
-            onExitJobsPhase={() => { setArchivalJobsPhase(false); setArchivalSelection(null); setArchivalSelectedJobIds([]); }}
             initialSelectedRow={archivalSelectedRow}
             initialSelectedConfigId={archivalSelectedConfigId}
             initialSelectedJobIds={archivalSelectedJobIds}
@@ -268,7 +266,11 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
       {/* Footer */}
       <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (sourceType === 'backup' && showJobsPhase) { setBackupJobsPhase(false); }
+            else if (sourceType === 'archive' && showArchivalJobsPhase) { setArchivalJobsPhase(false); }
+            else { onBack(); }
+          }}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
         >
           ← Back

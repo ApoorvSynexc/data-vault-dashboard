@@ -19,7 +19,6 @@ interface Props {
   showJobsPhase: boolean;
   onConfigSelected: (selected: boolean) => void;
   onSelectionChange: (selection: ArchivalSelection | null) => void;
-  onExitJobsPhase: () => void;
   initialSelectedRow?: any;
   initialSelectedConfigId?: string;
   initialSelectedJobIds?: string[];
@@ -148,7 +147,7 @@ function JobStatusBadge({ status }: { status: string }) {
 
 const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
 
-export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSelectionChange, onExitJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
+export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSelectionChange, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
   const archivalService = useArchivalService();
   const backupConfigService = useBackupConfigService();
 
@@ -518,16 +517,6 @@ export default function ArchivalPicker({ showJobsPhase, onConfigSelected, onSele
       {showJobsPhase && (
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
-            <button
-              onClick={onExitJobsPhase}
-              className='inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors'
-            >
-              <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                <polyline points='15 18 9 12 15 6' />
-              </svg>
-              Back to Archives
-            </button>
-            <span className='text-gray-300 select-none'>|</span>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Select Archive Jobs</Typography>
             {selectedRow?.displayName && (
               <span className='ml-1 text-xs font-medium text-gray-500'>— {selectedRow.displayName}</span>
