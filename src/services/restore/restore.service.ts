@@ -7,6 +7,7 @@ export interface RestoreRetrievePayload {
 
   source: {
     backupJobIds: string[];
+    backupConfigId?: string;
   };
 
   selection: {

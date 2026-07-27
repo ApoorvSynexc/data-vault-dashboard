@@ -2,7 +2,7 @@
 // Summarises all settings and provides Run Restore / Schedule for Later actions.
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
@@ -73,16 +73,15 @@ interface Props {
 
 export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
   const restoreService = useRestoreService();
-  const navigate = useNavigate();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => navigate('/restore-center'), 2000);
+      const timer = setTimeout(() => onComplete(), 2000);
       return () => clearTimeout(timer);
     }
-  }, [isSuccess, navigate]);
+  }, [isSuccess]);
 
   const createJobMutation = useMutation({
     mutationFn: () => restoreService.createRestoreJob(restorePayload),
