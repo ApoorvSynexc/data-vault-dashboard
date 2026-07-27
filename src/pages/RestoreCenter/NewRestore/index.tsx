@@ -21,6 +21,7 @@ import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SourceSelection } from './SelectSourceType';
+import type { RestoreRetrievePayload } from '../../../services/restore/restore.service';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
@@ -30,11 +31,23 @@ interface NewRestoreProps {
   isTemplateMode?: boolean;
 }
 
+const INITIAL_PAYLOAD: RestoreRetrievePayload = {
+  source: { backupJobIds: [] },
+  selection: { restoreScope: { type: 'ALL' } },
+  destination: { type: 'SAME' },
+  conflict: { restoreMode: 'OVERWRITE' },
+  schedule: { type: 'ONE_TIME', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+};
+
 export default function NewRestore({ onBack, onComplete, isTemplateMode = false }: NewRestoreProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [templateMode, setTemplateMode] = useState(isTemplateMode);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
   const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [], crmId: '' });
+  const [restorePayload, setRestorePayload] = useState<RestoreRetrievePayload>(INITIAL_PAYLOAD);
+
+  const updatePayload = (patch: Partial<RestoreRetrievePayload>) =>
+    setRestorePayload((prev) => ({ ...prev, ...patch }));
 
   // Persist step-2 sub-phase so Back from step 3 lands on jobs table, not config list
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
@@ -75,7 +88,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       </div>
       <div className={currentStep === 2 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <SelectSourceType
-          onNext={(sel) => { setSourceSelection(sel); goNext(); }}
+          onNext={(sel) => { setSourceSelection(sel); updatePayload({ source: { backupJobIds: sel.backupJobIds } }); goNext(); }}
           onBack={goBack}
           selectedConnection={selectedConnection}
           initialBackupJobsPhase={step2BackupJobsPhase}
@@ -89,7 +102,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
-      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} />}
     </div>
   );
 }

@@ -3,6 +3,9 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -61,10 +64,33 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onBack: () => void; onComplete: () => void; }
+interface Props {
+  onBack: () => void;
+  onComplete: () => void;
+  restorePayload: RestoreRetrievePayload;
+  updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
+}
 
-export default function ReviewSubmit({ onBack, onComplete }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
+  const restoreService = useRestoreService();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+
+  const createJobMutation = useMutation({
+    mutationFn: () => restoreService.createRestoreJob(restorePayload),
+    onSuccess: () => onComplete(),
+    onError: (err) => console.error('[RestoreJob] createRestoreJob failed:', err),
+  });
+
+  const handleRun = () => {
+    updatePayload({
+      jobDetail: {
+        name: jobName,
+        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+      },
+    });
+    console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
+    createJobMutation.mutate();
+  };
   const [jobName, setJobName]               = useState('INC-4711 Emergency Recovery – Accounts');
   const [tags, setTags]                     = useState('');
   const [ticket, setTicket]                 = useState('INC-4711');
@@ -259,14 +285,15 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
 
                 {/* Run Restore */}
                 <button
-                  onClick={onComplete}
-                  className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90'
+                  onClick={handleRun}
+                  disabled={createJobMutation.isPending}
+                  className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
                   style={{ background: '#155DFC' }}
                 >
                   <svg width='14' height='14' viewBox='0 0 24 24' fill='currentColor'>
                     <polygon points='5 3 19 12 5 21 5 3'/>
                   </svg>
-                  Run Restore
+                  {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
                 </button>
 
                 {/* Schedule for Later */}
@@ -292,14 +319,15 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
           ← Back
         </button>
         <button
-          onClick={onComplete}
-          className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90'
+          onClick={handleRun}
+          disabled={createJobMutation.isPending}
+          className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
           style={{ background: '#155DFC' }}
         >
           <svg width='13' height='13' viewBox='0 0 24 24' fill='currentColor'>
             <polygon points='5 3 19 12 5 21 5 3'/>
           </svg>
-          Run Restore
+          {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
         </button>
       </div>
     </div>
