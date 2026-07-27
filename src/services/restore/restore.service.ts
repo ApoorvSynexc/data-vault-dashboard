@@ -1,13 +1,87 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
+// ── Restore-retrieve payload types ────────────────────────────────────────────
+
+export interface RestoreRetrievePayload {
+  crmId?: string;
+
+  source: {
+    backupJobIds: string[];
+  };
+
+  selection: {
+    restoreScope: RestoreScope;
+  };
+
+  destination: {
+    type: 'SAME' | 'DIFFERENT';
+    crmId?: string;
+    tagRestoredRecord?: string;
+  };
+
+  conflict: {
+    restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP';
+  };
+
+  restoreType?: 'RESTORE_ONLY_CHANGED_FIELDS' | 'RESTORE_ENTIRE_RECORD';
+
+  jobDetail?: {
+    name: string;
+    description?: string;
+    tags?: string[];
+  };
+
+  schedule: RestoreSchedule;
+}
+
+export type RestoreScope =
+  | { type: 'ALL' }
+  | { type: 'OBJECT'; objects: string[] }
+  | { type: 'RECORD'; records: { objectName: string; recordIds: string[] }[] }
+  | { type: 'FIELD'; fields: { objectName: string; fieldNames: string[] }[] }
+  | { type: 'FILTER'; filters: RestoreFilter }
+  | { type: 'CHNAGE_SINCE'; chnageSince: { date: string } }
+  | { type: 'BULK_CSV'; bulkCsvIds: string[] }
+  | { type: 'DELETED_ONLY'; deletedOnly: true };
+
+export type RestoreFilter =
+  | { type: 'SOQL'; soqlQuery: string }
+  | {
+      type: 'AND' | 'OR';
+      fields: {
+        name: string;
+        dataType: string;
+        operator: '>' | '<' | '>=' | '<=' | '=' | '!=' | 'IN' | 'LIKE';
+        value: string;
+      }[];
+    };
+
+export interface RestoreSchedule {
+  type: 'ONE_TIME' | 'INCREMENTAL';
+  timeZone: string;
+  scheduling?: {
+    frequency: 'HOURLY' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM' | 'ONCE';
+    interval?: number;
+    weekDays?: ('MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN')[];
+    monthDate?: number;
+    selectedMonths?: ('JAN' | 'FEB' | 'MAR' | 'APR' | 'MAY' | 'JUN' | 'JUL' | 'AUG' | 'SEP' | 'OCT' | 'NOV' | 'DEC')[];
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+  };
+}
+
+// ── Endpoints ─────────────────────────────────────────────────────────────────
+
 const RESTORE_ENDPOINTS = {
-  fetchRecords:       '/v1/restore/retrieve/fetch-records',
-  backupConfigsName:  '/v1/restore/get-backup-configs-name',
-  crmObjects:         '/v1/crm-metadata/objects/list',
-  crmFields:          '/v1/crm-metadata/fields/list',
+  fetchRecords:         '/v1/restore/retrieve/fetch-records',
+  backupConfigsName:    '/v1/restore/get-backup-configs-name',
+  crmObjects:           '/v1/crm-metadata/objects/list',
+  crmFields:            '/v1/crm-metadata/fields/list',
   objectListByConfigId: '/v1/restore/get-objectlist-by-configid',
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
   picklistValues:       '/v1/restore/get-picklist-field-values',
+  createRestoreJob:     '/v1/restore',
 };
 
 export function useRestoreService() {
@@ -39,5 +113,8 @@ export function useRestoreService() {
 
     getPicklistValues: (objectApiName: string, fieldApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName, backupConfigId } }),
+
+    createRestoreJob: (payload: RestoreRetrievePayload) =>
+      api.post<{ success: boolean; message: string }>(RESTORE_ENDPOINTS.createRestoreJob, payload),
   };
 }
