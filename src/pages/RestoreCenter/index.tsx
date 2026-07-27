@@ -47,7 +47,7 @@ export default function RestoreCenter() {
       {screen === 'new-restore' && (
         <NewRestore
           onBack={() => goTo('home')}
-          onComplete={() => goTo('progress')}
+          onComplete={() => goTo('home')}
           isTemplateMode={isTemplateMode}
         />
       )}
