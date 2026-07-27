@@ -1,8 +1,8 @@
 // ReviewSubmit — Step 8 of 8 (Final Step) in the New Restore wizard.
 // Summarises all settings and provides Run Restore / Schedule for Later actions.
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
@@ -73,11 +73,20 @@ interface Props {
 
 export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
   const restoreService = useRestoreService();
+  const navigate = useNavigate();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => navigate('/restore-center'), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, navigate]);
 
   const createJobMutation = useMutation({
     mutationFn: () => restoreService.createRestoreJob(restorePayload),
-    onSuccess: () => onComplete(),
+    onSuccess: () => setIsSuccess(true),
     onError: (err) => console.error('[RestoreJob] createRestoreJob failed:', err),
   });
 
@@ -97,6 +106,27 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, updat
   const [justification, setJustification]   = useState(
     "Accounts accidentally overwritten during bulk data load INC-4711. Restoring to state as of this morning's backup."
   );
+
+  if (isSuccess) {
+    return (
+      <div className='flex-1 min-h-0 bg-gray-50 flex flex-col items-center justify-center'>
+        <div className='text-center'>
+          <div className='relative mb-6'>
+            <div className='absolute inset-0 flex items-center justify-center'>
+              <div className='w-24 h-24 bg-green-100 rounded-full animate-pulse' />
+            </div>
+            <div className='relative w-24 h-24 mx-auto bg-green-500 rounded-full flex items-center justify-center'>
+              <svg className='w-12 h-12 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+              </svg>
+            </div>
+          </div>
+          <h1 className='text-3xl font-bold text-green-600 mb-2'>Restore Job Created Successfully</h1>
+          <p className='text-gray-500 text-sm'>Redirecting to Restore Center in 2s…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
