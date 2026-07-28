@@ -22,6 +22,7 @@ export default function RestoreCenter() {
   const [screen, setScreen] = useState<Screen>('home');
   const [historyFilter, setHistoryFilter] = useState<'All' | 'Drafts'>('All');
   const [isTemplateMode, setIsTemplateMode] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | undefined>();
 
   const goTo = (s: Screen) => setScreen(s);
   const goToHistory = (filter: 'All' | 'Drafts' = 'All') => {
@@ -38,6 +39,7 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
+          onViewHistory={(jobId) => { setSelectedJobId(jobId); goTo('history'); }}
         />
       )}
       {screen === 'new-restore' && (
@@ -54,7 +56,7 @@ export default function RestoreCenter() {
         <RestoreCompletion />
       )}
       {screen === 'history' && (
-        <RestoreHistory onBack={() => goTo('home')} onNewRestore={() => goTo('new-restore')} initialFilter={historyFilter} />
+        <RestoreHistory onBack={() => goTo('home')} jobId={selectedJobId} />
       )}
       {screen === 'templates' && (
         <RestoreTemplates onBack={() => goTo('home')} onNewTemplate={() => goToNewRestore(true)} onRun={() => goToNewRestore(false)} />

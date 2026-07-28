@@ -25,6 +25,7 @@ function MetricCard({ label, value, icon }: { label: string; value: string | num
 
 interface Props {
   onNewRestore: () => void;
+  onViewHistory?: (jobId?: string) => void;
 }
 
 function Dropdown({
@@ -132,7 +133,7 @@ type FilterChip = 'All' | 'Success' | 'Failed' | 'Partial' | 'Drafts' | 'Pending
 
 const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed', 'Partial', 'Drafts'];
   
-export default function RestoreCenterHomePage({ onNewRestore }: Props) {
+export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: Props) {
   const restoreService = useRestoreService();
   const [search, setSearch] = useState('');
   const [activeChip, setActiveChip] = useState<FilterChip>('All');
@@ -270,7 +271,7 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
               <Dropdown
                 label='Status'
                 value={activeChip}
-                options={CHIPS.map((chip) => ({ value: chip, label: chip === 'Drafts' ? `📝 ${chip}` : chip }))}
+                options={CHIPS.map((chip) => ({ value: chip, label: chip }))}
                 onChange={(value) => { setActiveChip(value as FilterChip); }}
               />
             </div>
@@ -280,7 +281,7 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
             <table className='w-full text-sm'>
               <thead>
                 <tr className='border-b border-gray-100'>
-                  {['Job Name', 'Source', 'Destination', 'Records', 'Status', 'Started'].map((col) => (
+                  {['Job Name', 'Source', 'Destination', 'Records', 'Status', 'Started', 'Actions'].map((col) => (
                     <th key={col} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>
                       {col}
                     </th>
@@ -290,11 +291,11 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className='px-5 py-8 text-center text-sm text-gray-400'>Loading restores...</td>
+                    <td colSpan={7} className='px-5 py-8 text-center text-sm text-gray-400'>Loading restores...</td>
                   </tr>
                 ) : allRestores.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className='px-5 py-8 text-center text-sm text-gray-400'>No restores yet.</td>
+                    <td colSpan={7} className='px-5 py-8 text-center text-sm text-gray-400'>No restores yet.</td>
                   </tr>
                 ) : allRestores.map((job: any) => {
                   const { label, cls } = STATUS_CONFIG[job.status];
@@ -311,6 +312,16 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>
                       </td>
                       <td className='px-5 py-3 text-gray-500 whitespace-nowrap'>{job.started}</td>
+                      <td className='px-5 py-3'>
+                        {onViewHistory && (
+                          <button
+                            onClick={() => onViewHistory(job.id)}
+                            className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'
+                          >
+                            View
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
