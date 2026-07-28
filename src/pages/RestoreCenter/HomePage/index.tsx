@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Typography from '../../../components/Typography';
 import { useQuery } from '@tanstack/react-query';
 import { useRestoreService } from '../../../services/restore/restore.service';
@@ -25,6 +27,91 @@ interface Props {
   onNewRestore: () => void;
 }
 
+function Dropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isFiltered = value !== 'All';
+  const activeLabel = options.find((o) => o.value === value)?.label ?? value;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }
+    setOpen((v) => !v);
+  }
+
+  return (
+    <div>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={handleOpen}
+        className={`flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+          isFiltered
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        }`}
+      >
+        <span className='text-[10px] font-semibold uppercase tracking-wide opacity-60'>{label}:</span>
+        <span>{isFiltered ? activeLabel : 'All'}</span>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-2.5 w-2.5 opacity-50'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'absolute', top: coords.top, left: coords.left, zIndex: 9999 }}
+          className='min-w-[130px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type='button'
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-medium transition hover:bg-gray-50 ${
+                value === opt.value ? 'text-blue-600' : 'text-gray-700'
+              }`}
+            >
+              {opt.label}
+              {value === opt.value && (
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-3 w-3 text-blue-600'>
+                  <polyline points='20 6 9 17 4 12' />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
   return type === 'Backup'
     ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>Backup</span>
@@ -35,18 +122,24 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   DONE:        { label: '✓ Done',        cls: 'bg-green-100 text-green-700' },
   PARTIAL:     { label: '⚠ Partial',     cls: 'bg-yellow-100 text-yellow-700' },
   FAILED:      { label: '✗ Failed',      cls: 'bg-red-100 text-red-700' },
-  ROLLED_BACK: { label: '↩ Rolled Back', cls: 'bg-gray-100 text-gray-600' },
   DRAFT:       { label: '📝 Draft',      cls: 'bg-orange-100 text-orange-700' },
   PENDING:     { label: '⏳ Pending',    cls: 'bg-blue-100 text-blue-700' },
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+type FilterChip = 'All' | 'Success' | 'Failed' | 'Partial' | 'Drafts' | 'Pending';
+
+const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed', 'Partial', 'Drafts'];
+  
 export default function RestoreCenterHomePage({ onNewRestore }: Props) {
   const restoreService = useRestoreService();
+  const [search, setSearch] = useState('');
+  const [activeChip, setActiveChip] = useState<FilterChip>('All');
+
   const { data: jobsData, isLoading } = useQuery({
-    queryKey: ['restore-jobs-list'],
-    queryFn: () => restoreService.listRestoreJobs(),
+    queryKey: ['restore-jobs-list-home', search, activeChip],
+    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip),
   });
 
   function formatDate(dateString: string): string {
@@ -67,7 +160,7 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  const allRestores = !isLoading && jobsData
+  const allRestoresRaw = !isLoading && jobsData
     ? ((jobsData as any)?.data ?? []).map((item: any) => ({
         id: item.restoreId,
         name: item.jobDetail?.name || 'Untitled Restore',
@@ -79,6 +172,8 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
         started: formatDate(item.createdAt),
       }))
     : [];
+
+  const allRestores = allRestoresRaw;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -155,6 +250,32 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
           <div className='flex items-center justify-between px-5 py-3 border-b border-gray-100'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>All Restores</Typography>
           </div>
+
+          {/* Filter Bar */}
+          <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100'>
+            <div className='relative flex-1'>
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400'>
+                <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' strokeLinecap='round' />
+              </svg>
+              <input
+                type='text'
+                placeholder='Search jobs...'
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); }}
+                className='pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-full max-w-xs'
+              />
+            </div>
+
+            <div className='flex items-center gap-2 ml-auto'>
+              <Dropdown
+                label='Status'
+                value={activeChip}
+                options={CHIPS.map((chip) => ({ value: chip, label: chip === 'Drafts' ? `📝 ${chip}` : chip }))}
+                onChange={(value) => { setActiveChip(value as FilterChip); }}
+              />
+            </div>
+          </div>
+
           <div className='overflow-x-auto'>
             <table className='w-full text-sm'>
               <thead>

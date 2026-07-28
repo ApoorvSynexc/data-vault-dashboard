@@ -27,15 +27,11 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   PENDING:     { label: '⏳ Pending',    cls: 'bg-blue-100 text-blue-700' },
 };
 
-type FilterChip = 'All' | 'Succeeded' | 'Failed' | 'Rolled Back' | 'Partial' | 'Drafts' | 'Pending';
+type FilterChip = 'All' | 'Success' | 'Failed' | 'Rolled Back' | 'Partial' | 'Drafts' | 'Pending';
 
-const CHIPS: FilterChip[] = ['All', 'Pending', 'Succeeded', 'Failed', 'Rolled Back', 'Partial', 'Drafts'];
+const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed', 'Rolled Back', 'Partial', 'Drafts'];
 
 // ── Helper functions ──────────────────────────────────────────────────────────
-
-function mapStatus(apiStatus: string): JobStatus {
-  return apiStatus;
-}
 
 function calculateRuntime(createdAt: string, updatedAt: string): string {
   if (!createdAt || !updatedAt) return '—';
@@ -76,17 +72,6 @@ function formatDate(dateString: string): string {
   }
 
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function chipMatchesJob(chip: FilterChip, job: RestoreJob) {
-  if (chip === 'All') return true;
-  if (chip === 'Pending') return job.status === 'PENDING';
-  if (chip === 'Succeeded') return job.status === 'DONE';
-  if (chip === 'Failed') return job.status === 'FAILED';
-  if (chip === 'Rolled Back') return job.status === 'ROLLED_BACK';
-  if (chip === 'Partial') return job.status === 'PARTIAL';
-  if (chip === 'Drafts') return job.status === 'DRAFT';
-  return false;
 }
 
 function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
@@ -195,8 +180,8 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
   const [page, setPage] = useState(1);
 
   const { data: jobsData, isLoading } = useQuery({
-    queryKey: ['restore-jobs-list'],
-    queryFn: () => restoreService.listRestoreJobs(),
+    queryKey: ['restore-jobs-list', search, activeChip],
+    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip),
   });
 
   const JOBS: RestoreJob[] = !isLoading && jobsData
@@ -207,18 +192,13 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
         source: item.source?.backupConfigId ? 'Backup' : 'Archive',
         destination: item.destination?.type === 'SAME' ? 'Same Org' : item.destination?.crmId || 'Unknown',
         records: '—',
-        status: mapStatus(item.status),
+        status: item.status,
         runtime: calculateRuntime(item.createdAt, item.updatedAt),
         started: formatDate(item.createdAt),
       }))
     : [];
 
-  const filtered = JOBS.filter((job) => {
-    if (!job) return false;
-    const matchesChip = chipMatchesJob(activeChip, job);
-    const matchesSearch = (job.name ?? '').toLowerCase().includes(search.toLowerCase());
-    return matchesChip && matchesSearch;
-  });
+  const filtered = JOBS;
 
   const ITEMS_PER_PAGE = 7;
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
