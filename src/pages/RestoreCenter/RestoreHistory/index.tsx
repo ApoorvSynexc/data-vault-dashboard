@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { useRestoreService } from '../../../services/restore/restore.service';
@@ -94,6 +95,91 @@ function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
     : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700'>Archive</span>;
 }
 
+function Dropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { label: string; value: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isFiltered = value !== 'All';
+  const activeLabel = options.find((o) => o.value === value)?.label ?? value;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setCoords({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }
+    setOpen((v) => !v);
+  }
+
+  return (
+    <div>
+      <button
+        ref={btnRef}
+        type='button'
+        onClick={handleOpen}
+        className={`flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors whitespace-nowrap ${
+          isFiltered
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        }`}
+      >
+        <span className='text-[10px] font-semibold uppercase tracking-wide opacity-60'>{label}:</span>
+        <span>{isFiltered ? activeLabel : 'All'}</span>
+        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-2.5 w-2.5 opacity-50'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'absolute', top: coords.top, left: coords.left, zIndex: 9999 }}
+          className='min-w-[130px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg'
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type='button'
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-medium transition hover:bg-gray-50 ${
+                value === opt.value ? 'text-blue-600' : 'text-gray-700'
+              }`}
+            >
+              {opt.label}
+              {value === opt.value && (
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='h-3 w-3 text-blue-600'>
+                  <polyline points='20 6 9 17 4 12' />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 interface Props {
   onBack?: () => void;
   onNewRestore?: () => void;
@@ -127,8 +213,6 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
       }))
     : [];
 
-  const draftsCount = JOBS.filter((j) => j?.status === 'DRAFT').length;
-
   const filtered = JOBS.filter((job) => {
     if (!job) return false;
     const matchesChip = chipMatchesJob(activeChip, job);
@@ -157,30 +241,12 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
           />
         </div>
 
-        <div className='flex items-center gap-2 flex-wrap'>
-          {CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => { setActiveChip(chip); setPage(1); }}
-              className={[
-                'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition',
-                activeChip === chip
-                  ? chip === 'Drafts'
-                    ? 'bg-orange-50 border-orange-300 text-orange-700'
-                    : 'bg-blue-600 border-blue-600 text-white'
-                  : chip === 'Drafts'
-                    ? 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'
-                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
-              ].join(' ')}
-            >
-              {chip === 'Drafts' && '📝 '}
-              {chip}
-              {chip === 'Drafts' && draftsCount > 0 && (
-                <span className='ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white'>{draftsCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Dropdown
+          label='Status'
+          value={activeChip}
+          options={CHIPS.map((chip) => ({ value: chip, label: chip === 'Drafts' ? `📝 ${chip}` : chip }))}
+          onChange={(value) => { setActiveChip(value as FilterChip); setPage(1); }}
+        />
 
         <div className='ml-auto'>
           <select
