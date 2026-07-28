@@ -21,6 +21,7 @@ interface Props {
 
 export default function RestoreHistory({ onBack, jobId }: Props) {
   const restoreService = useRestoreService();
+  const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['restore-job-detail', jobId],
@@ -86,8 +87,6 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const totalProcessed = objects.reduce((s: number, o: any) => s + (o.processedRecordCount ?? 0), 0);
   const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
   const totalSuccess   = totalProcessed - totalFailed;
-
-  const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
 
   const objectColumns: TableColumn<any>[] = [
     {
