@@ -74,19 +74,6 @@ function Tip({ text }: { text: string }) {
   );
 }
 
-// ── Toggle helper ─────────────────────────────────────────────────────────────
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors ${value ? 'bg-blue-600 border-blue-600' : 'bg-gray-200 border-gray-200'}`}
-    >
-      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
-    </button>
-  );
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type RestoreMode = 'overwrite' | 'append' | 'merge' | 'skip' | 'replace';
@@ -107,19 +94,6 @@ const FIELD_DEFAULTS = [
   { field: 'Case.Status',           sub: 'Picklist · Required', type: 'Picklist', options: ['New', 'Working', 'Escalated', 'Closed'] },
 ];
 
-const AUTOMATION_TOGGLES: { key: string; label: string; desc?: string; tip: string; default: boolean }[] = [
-  { key: 'triggers',       label: 'Disable Triggers',                   tip: 'Suppress all Apex triggers during the restore. Triggers re-enable automatically when the job completes.',                                                                                 default: true  },
-  { key: 'validation',     label: 'Disable Validation Rules',           tip: 'Validation rules can reject restored records that were valid at backup time but no longer satisfy new rules. Disable for clean restore.',                                                  default: true  },
-  { key: 'workflow',       label: 'Disable Workflow Rules',             tip: 'Stops legacy workflow rules from firing on each restored record (field updates, outbound messages, email alerts).',                                                                        default: true  },
-  { key: 'flow',           label: 'Disable Process Builder / Flow',     tip: 'Disables all auto-launched Flows and Process Builder processes that would fire on insert/update of restored records.',                                                                     default: true  },
-  { key: 'assignment',     label: 'Disable Assignment Rules',           tip: 'Prevents Lead/Case assignment rules from re-routing restored records to whoever\'s on the current rotation.',                                                                              default: false },
-  { key: 'duplicate',      label: 'Disable Duplicate Rules',            tip: 'Suppresses duplicate-management rules so restored records aren\'t blocked or flagged as duplicates of their own pre-deletion versions.',                                                  default: true  },
-  { key: 'email',          label: 'Suppress Email Notifications',       tip: 'Stops "your case has been updated" style emails firing on every restored record. Important when restoring thousands of Cases.',                                                            default: true  },
-  { key: 'auditFields',    label: 'Preserve Audit Fields',              desc: 'Requires "Set Audit Fields" permission', tip: 'Preserve CreatedDate, CreatedById, LastModifiedDate, LastModifiedById exactly as they were in the source. Requires the "Set Audit Fields" permission on the destination.', default: false },
-  { key: 'rollup',         label: 'Defer Roll-Up Summary Recalc',       tip: 'Pause roll-up summary recalculation until after the job completes — avoids thrashing the database with rollup calcs on every restored child record.',                                     default: true  },
-  { key: 'reenable',       label: 'Re-enable Automation Post-Job',      desc: 'With verification step before re-enabling', tip: 'After the job ends successfully, automatically turn everything you disabled back on. With a verification step before re-enabling.',     default: true  },
-  { key: 'auditChange',    label: 'Record changed values to audit field', desc: 'Writes previous values as JSON to a dedicated audit field', tip: 'For each overwritten record, write a JSON of the previous field values into a dedicated audit field on the record.',  default: false },
-];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -137,12 +111,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
   const [ecRecordType,  setEcRecordType]  = useState('Map to default ✓ Recommended');
   const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field ✓ Recommended');
   const [fallbackOwner, setFallbackOwner] = useState('DataVault Service Account');
-
-  // Automation toggles
-  const [automation, setAutomation] = useState<Record<string, boolean>>(
-    Object.fromEntries(AUTOMATION_TOGGLES.map((t) => [t.key, t.default]))
-  );
-  const setToggle = (key: string, v: boolean) => setAutomation((prev) => ({ ...prev, [key]: v }));
 
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
@@ -182,13 +150,10 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
           </div>
         </div>
 
-        {/* Two-column layout */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
+        {/* Single-column layout */}
+        <div className='flex flex-col gap-4'>
 
-          {/* ── LEFT COLUMN ── */}
-          <div className='flex flex-col gap-4'>
-
-            {/* Restore Mode */}
+          {/* Restore Mode */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Restore Mode (per job)</span>
@@ -423,42 +388,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
               </div>
             </div>
-
-          </div>
-
-          {/* ── RIGHT COLUMN — CRM Automation Controls ── */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-              <div className='flex items-center gap-1.5'>
-                <span className='text-base'>⚡</span>
-                <span className='text-sm font-semibold text-gray-800'>CRM Automation Controls</span>
-                <Tip text="Disable triggers, validation rules, flows and other automation during the restore to prevent the destination's logic from corrupting your restored data. All choices are recorded in the Audit Log." />
-              </div>
-              <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-600'>High Risk</span>
-            </div>
-            <div className='p-4 flex flex-col gap-0'>
-              {/* Warning callout */}
-              <div className='flex items-start gap-3 rounded-lg px-4 py-3 text-xs mb-4' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                <svg width='14' height='14' fill='none' stroke='#D97706' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-                  <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
-                </svg>
-                <p className='text-amber-800 leading-relaxed'>Restoring with automation active is the #1 way to re-corrupt data. All settings are audit-logged.</p>
-              </div>
-              {/* Toggle rows */}
-              {AUTOMATION_TOGGLES.map((t) => (
-                <div key={t.key} className='flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-0'>
-                  <div className='min-w-0'>
-                    <p className='text-sm text-gray-700'>
-                      {t.label}
-                      <Tip text={t.tip} />
-                    </p>
-                    {t.desc && <p className='text-xs text-gray-400 mt-0.5'>{t.desc}</p>}
-                  </div>
-                  <Toggle value={automation[t.key]} onChange={(v) => setToggle(t.key, v)} />
-                </div>
-              ))}
-            </div>
-          </div>
 
         </div>
       </div>
