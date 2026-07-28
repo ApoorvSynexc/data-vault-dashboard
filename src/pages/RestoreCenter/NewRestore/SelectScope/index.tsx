@@ -24,7 +24,6 @@ import type { SourceSelection } from '../SelectSourceType';
 
 type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'changed' | 'csv';
 type FilterTab = 'visual' | 'soql';
-type RelPreset = 'none' | 'standard' | 'everything' | 'custom';
 type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
 type FilterOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE';
 
@@ -274,15 +273,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     });
   };
 
-  // related records state
-  const [relPreset,        setRelPreset]        = useState<RelPreset>('standard');
-  const [includeParents,   setIncludeParents]   = useState(true);
-  const [includeChildren,  setIncludeChildren]  = useState(true);
-  const [relDepth,         setRelDepth]         = useState('2 levels');
-  const [includeChatter,   setIncludeChatter]   = useState(false);
-  const [includeEmail,     setIncludeEmail]     = useState(false);
-
-  const showRelated = scopeMode !== 'full';
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -367,12 +357,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     }
   };
 
-  const applyRelPreset = (preset: RelPreset) => {
-    setRelPreset(preset);
-    if (preset === 'none')       { setIncludeParents(false); setIncludeChildren(false); setIncludeChatter(false); setIncludeEmail(false); }
-    if (preset === 'standard')   { setIncludeParents(true);  setIncludeChildren(false); setIncludeChatter(false); setIncludeEmail(false); }
-    if (preset === 'everything') { setIncludeParents(true);  setIncludeChildren(true);  setIncludeChatter(true);  setIncludeEmail(true);  }
-  };
 
   // ── Record table columns ───────────────────────────────────────────────────
 
@@ -553,12 +537,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   <p className='text-xs text-green-700 mt-1'>
                     Every record of every object in the chosen source. No further selection or filtering needed.
                   </p>
-                  <div className='flex flex-wrap gap-5 mt-3 text-xs text-green-700'>
-                    <span><span className='font-bold text-green-900'>12</span> objects</span>
-                    <span><span className='font-bold text-green-900'>8,435</span> records</span>
-                    <span><span className='font-bold text-green-900'>320 MB</span> data</span>
-                    <span><span className='font-bold text-green-900'>~4 min</span> estimated</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1168,99 +1146,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                 <button onClick={() => setCsvErrorOpen(false)} className='px-4 py-2 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'>
                   Close
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Related Records & Attachments (universal, not on Full) ────── */}
-        {showRelated && (
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100'>
-              <Typography as='h3' variant='sectionTitle' color='secondary'>🔗 Related Records &amp; Attachments</Typography>
-            </div>
-            <div className='p-5 space-y-4'>
-              {/* Preset buttons */}
-              <div className='flex flex-wrap gap-2'>
-                {([
-                  { id: 'none',      label: 'None',      sub: '(this selection only)' },
-                  { id: 'standard',  label: 'Standard',  sub: '(parents only)' },
-                  { id: 'everything',label: 'Everything', sub: '(all content + chatter)' },
-                  { id: 'custom',    label: 'Custom',    sub: '' },
-                ] as { id: RelPreset; label: string; sub: string }[]).map((p) => (
-                  <button
-                    key={p.id} onClick={() => applyRelPreset(p.id)}
-                    className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg border-2 transition-colors ${
-                      relPreset === p.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {p.label}
-                    {p.sub && <span className='text-xs font-normal text-gray-400'>{p.sub}</span>}
-                  </button>
-                ))}
-              </div>
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {/* Family Records */}
-                <div className='rounded-lg border border-gray-200 p-4 space-y-3'>
-                  <p className='text-sm font-semibold text-gray-800'>👪 Family Records</p>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400 text-base'>↑</span>
-                      <span className='text-sm text-gray-700'>Include Parent Records</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeParents} onChange={(e) => setIncludeParents(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400 text-base'>↓</span>
-                      <span className='text-sm text-gray-700'>Include Child Records</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeChildren} onChange={(e) => setIncludeChildren(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center gap-3'>
-                    <span className='text-xs text-gray-600'>Relationship depth:</span>
-                    <select
-                      value={relDepth} onChange={(e) => setRelDepth(e.target.value)}
-                      className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none'
-                    >
-                      <option>1 level (direct only)</option>
-                      <option>2 levels</option>
-                      <option>3 levels</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Attached Content */}
-                <div className='rounded-lg border border-gray-200 p-4 space-y-3'>
-                  <p className='text-sm font-semibold text-gray-800'>📎 Attached Content</p>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400'>💬</span>
-                      <span className='text-sm text-gray-700'>Chatter / FeedItems</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeChatter} onChange={(e) => setIncludeChatter(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400'>✉</span>
-                      <span className='text-sm text-gray-700'>EmailMessage</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeEmail} onChange={(e) => setIncludeEmail(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
