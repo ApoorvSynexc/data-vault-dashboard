@@ -227,8 +227,8 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
   const tableCard = (
     <div className='flex-1 min-h-0 flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
       {/* Filter Bar */}
-      <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-wrap'>
-        <div className='relative'>
+      <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100'>
+        <div className='relative flex-1'>
           <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400'>
             <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' strokeLinecap='round' />
           </svg>
@@ -237,28 +237,29 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
             placeholder='Search jobs...'
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className='pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-44'
+            className='pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-full max-w-xs'
           />
         </div>
 
-        <Dropdown
-          label='Status'
-          value={activeChip}
-          options={CHIPS.map((chip) => ({ value: chip, label: chip === 'Drafts' ? `📝 ${chip}` : chip }))}
-          onChange={(value) => { setActiveChip(value as FilterChip); setPage(1); }}
-        />
+        <div className='flex items-center gap-2 ml-auto'>
+          <Dropdown
+            label='Status'
+            value={activeChip}
+            options={CHIPS.map((chip) => ({ value: chip, label: chip === 'Drafts' ? `📝 ${chip}` : chip }))}
+            onChange={(value) => { setActiveChip(value as FilterChip); setPage(1); }}
+          />
 
-        <div className='ml-auto'>
-          <select
+          <Dropdown
+            label='Duration'
             value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className='text-sm rounded-lg border border-gray-200 px-3 py-1.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white text-gray-700'
-          >
-            <option>This Month</option>
-            <option>Last 7 Days</option>
-            <option>Last 30 Days</option>
-            <option>All Time</option>
-          </select>
+            options={[
+              { value: 'This Month', label: 'This Month' },
+              { value: 'Last 7 Days', label: 'Last 7 Days' },
+              { value: 'Last 30 Days', label: 'Last 30 Days' },
+              { value: 'All Time', label: 'All Time' },
+            ]}
+            onChange={(value) => setDateRange(value)}
+          />
         </div>
       </div>
 
