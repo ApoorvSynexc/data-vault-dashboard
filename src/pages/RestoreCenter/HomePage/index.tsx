@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Typography from '../../../components/Typography';
+import Table from '../../../components/Table';
+import type { TableColumn } from '../../../components/Table';
 import { useQuery } from '@tanstack/react-query';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
@@ -133,15 +135,104 @@ type FilterChip = 'All' | 'Success' | 'Failed' | 'Partial' | 'Drafts' | 'Pending
 
 const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed', 'Partial', 'Drafts'];
   
+type RestoreRow = {
+  id: string;
+  name: string;
+  tags: string;
+  source: 'Backup' | 'Archive';
+  destination: string;
+  records: string;
+  status: string;
+  started: string;
+};
+
 export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: Props) {
   const restoreService = useRestoreService();
   const [search, setSearch] = useState('');
   const [activeChip, setActiveChip] = useState<FilterChip>('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
 
   const { data: jobsData, isLoading } = useQuery({
-    queryKey: ['restore-jobs-list-home', search, activeChip],
+    queryKey: ['restore-jobs-list-home', search, activeChip, currentCursor],
     queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip),
   });
+
+  const apiMeta = (jobsData as any)?.meta ?? {};
+  const nextCursor: string | null = apiMeta?.nextCursor ?? null;
+  const totalRecords: number = apiMeta?.totalRecords ?? 0;
+  const pageSize: number = apiMeta?.limit ?? 25;
+
+  const handleNext = () => {
+    if (!nextCursor) return;
+    setCursorHistory((h) => [...h, nextCursor]);
+    setCurrentCursor(nextCursor);
+    setCurrentPage((p) => p + 1);
+  };
+
+  const handlePrev = () => {
+    if (currentPage <= 1) return;
+    const newHistory = cursorHistory.slice(0, -1);
+    setCursorHistory(newHistory);
+    setCurrentCursor(newHistory[newHistory.length - 1] ?? null);
+    setCurrentPage((p) => p - 1);
+  };
+
+  const restoreColumns: TableColumn<RestoreRow>[] = [
+    {
+      key: 'name',
+      header: 'Job Name',
+      render: (row) => (
+        <div>
+          <p className='font-semibold text-gray-900'>{row.name}</p>
+          {row.tags && <p className='text-xs text-gray-400 mt-0.5'>{row.tags}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'source',
+      header: 'Source',
+      render: (row) => <SourceBadge type={row.source} />,
+    },
+    {
+      key: 'destination',
+      header: 'Destination',
+      render: (row) => <span className='text-gray-600'>{row.destination}</span>,
+    },
+    {
+      key: 'records',
+      header: 'Records',
+      render: (row) => <span className='tabular-nums text-gray-700'>{row.records}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => {
+        const cfg = STATUS_CONFIG[row.status] ?? { label: row.status, cls: 'bg-gray-100 text-gray-600' };
+        return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cfg.cls}`}>{cfg.label}</span>;
+      },
+    },
+    {
+      key: 'started',
+      header: 'Started',
+      render: (row) => <span className='text-gray-500 whitespace-nowrap'>{row.started}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (row) => (
+        onViewHistory ? (
+          <button
+            onClick={() => onViewHistory(row.id)}
+            className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'
+          >
+            View
+          </button>
+        ) : null
+      ),
+    },
+  ];
 
   function formatDate(dateString: string): string {
     if (!dateString) return '—';
@@ -174,7 +265,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
       }))
     : [];
 
-  const allRestores = allRestoresRaw;
+  const allRestores: RestoreRow[] = allRestoresRaw;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -277,57 +368,26 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
             </div>
           </div>
 
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  {['Job Name', 'Source', 'Destination', 'Records', 'Status', 'Started', 'Actions'].map((col) => (
-                    <th key={col} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className='px-5 py-8 text-center text-sm text-gray-400'>Loading restores...</td>
-                  </tr>
-                ) : allRestores.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className='px-5 py-8 text-center text-sm text-gray-400'>No restores yet.</td>
-                  </tr>
-                ) : allRestores.map((job: any) => {
-                  const { label, cls } = STATUS_CONFIG[job.status];
-                  return (
-                    <tr key={job.id} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                      <td className='px-5 py-3'>
-                        <p className='font-semibold text-gray-900'>{job.name}</p>
-                        {job.tags && <p className='text-xs text-gray-400 mt-0.5'>{job.tags}</p>}
-                      </td>
-                      <td className='px-5 py-3'><SourceBadge type={job.source} /></td>
-                      <td className='px-5 py-3 text-gray-600'>{job.destination}</td>
-                      <td className='px-5 py-3 tabular-nums text-gray-700'>{job.records}</td>
-                      <td className='px-5 py-3'>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>
-                      </td>
-                      <td className='px-5 py-3 text-gray-500 whitespace-nowrap'>{job.started}</td>
-                      <td className='px-5 py-3'>
-                        {onViewHistory && (
-                          <button
-                            onClick={() => onViewHistory(job.id)}
-                            className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'
-                          >
-                            View
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <Table<RestoreRow>
+            columns={restoreColumns}
+            rows={allRestores}
+            getRowKey={(row) => row.id}
+            loading={isLoading}
+            rowClassName='border-t border-gray-100 hover:bg-gray-50'
+            borderless
+            cellPaddingClassName='px-5 py-3'
+            paginationClassName='px-5 py-2'
+            emptyState='No restores yet.'
+            serialNumberStart={(currentPage - 1) * pageSize + 1}
+            paginationConfig={{
+              type: 'cursor',
+              hasPrev: currentPage > 1,
+              hasNext: !!nextCursor,
+              onPrev: handlePrev,
+              onNext: handleNext,
+              label: `Showing ${(currentPage - 1) * pageSize + 1}–${(currentPage - 1) * pageSize + allRestores.length} of ${totalRecords}`,
+            }}
+          />
         </div>
 
       </div>
