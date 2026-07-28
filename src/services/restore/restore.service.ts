@@ -84,6 +84,7 @@ const RESTORE_ENDPOINTS = {
   picklistValues:       '/v1/restore/get-picklist-field-values',
   createRestoreJob:     '/v1/restore',
   listRestoreJobs:      '/v1/restore/config/list',
+  getRestoreJob:        '/v1/restore/job',
 };
 
 export function useRestoreService() {
@@ -128,5 +129,8 @@ export function useRestoreService() {
           ...(status && status !== 'All' && { status }),
         },
       }),
+
+    getRestoreJob: (restoreId: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.getRestoreJob, { query: { restoreId } }),
   };
 }
