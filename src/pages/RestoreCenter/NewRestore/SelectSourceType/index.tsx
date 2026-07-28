@@ -201,7 +201,8 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           </div>
         </div>
 
-        {/* Source type cards */}
+        {/* Source type cards — hidden for demo; backup is selected by default */}
+        {/* DEMO_HIDDEN: uncomment below to restore source type selection UI
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
           <div className='border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Source Type</Typography>
@@ -231,6 +232,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             })}
           </div>
         </div>
+        END DEMO_HIDDEN */}
 
         {/* Sub-pickers */}
         {sourceType === 'backup' && (
