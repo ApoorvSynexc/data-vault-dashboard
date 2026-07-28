@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Typography from '../../../components/Typography';
-import RestoreHistory from '../RestoreHistory';
+import { useQuery } from '@tanstack/react-query';
+import { useRestoreService } from '../../../services/restore/restore.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,9 +25,61 @@ interface Props {
   onNewRestore: () => void;
 }
 
+function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
+  return type === 'Backup'
+    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>Backup</span>
+    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700'>Archive</span>;
+}
+
+const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
+  DONE:        { label: '✓ Done',        cls: 'bg-green-100 text-green-700' },
+  PARTIAL:     { label: '⚠ Partial',     cls: 'bg-yellow-100 text-yellow-700' },
+  FAILED:      { label: '✗ Failed',      cls: 'bg-red-100 text-red-700' },
+  ROLLED_BACK: { label: '↩ Rolled Back', cls: 'bg-gray-100 text-gray-600' },
+  DRAFT:       { label: '📝 Draft',      cls: 'bg-orange-100 text-orange-700' },
+  PENDING:     { label: '⏳ Pending',    cls: 'bg-blue-100 text-blue-700' },
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function RestoreCenterHomePage({ onNewRestore }: Props) {
+  const restoreService = useRestoreService();
+  const { data: jobsData, isLoading } = useQuery({
+    queryKey: ['restore-jobs-list'],
+    queryFn: () => restoreService.listRestoreJobs(),
+  });
+
+  function formatDate(dateString: string): string {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    const now = new Date();
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayOnly = new Date(todayOnly);
+    yesterdayOnly.setDate(yesterdayOnly.getDate() - 1);
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+      return 'Yesterday';
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  const allRestores = !isLoading && jobsData
+    ? ((jobsData as any)?.data ?? []).map((item: any) => ({
+        id: item.restoreId,
+        name: item.jobDetail?.name || 'Untitled Restore',
+        tags: item.jobDetail?.tags?.join(', ') || '',
+        source: item.source?.backupConfigId ? 'Backup' : 'Archive',
+        destination: item.destination?.type === 'SAME' ? 'Same Org' : item.destination?.crmId || 'Unknown',
+        records: '—',
+        status: item.status,
+        started: formatDate(item.createdAt),
+      }))
+    : [];
+
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
@@ -97,10 +150,54 @@ export default function RestoreCenterHomePage({ onNewRestore }: Props) {
           </div>
         </div>
 
-        {/* ── Restore History ── */}
-        <div className='flex-shrink-0 min-h-[500px] flex flex-col'>
-          <RestoreHistory embedded onNewRestore={onNewRestore} />
+        {/* ── All Restores ── */}
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col'>
+          <div className='flex items-center justify-between px-5 py-3 border-b border-gray-100'>
+            <Typography as='h3' variant='sectionTitle' color='secondary'>All Restores</Typography>
+          </div>
+          <div className='overflow-x-auto'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='border-b border-gray-100'>
+                  {['Job Name', 'Source', 'Destination', 'Records', 'Status', 'Started'].map((col) => (
+                    <th key={col} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className='px-5 py-8 text-center text-sm text-gray-400'>Loading restores...</td>
+                  </tr>
+                ) : allRestores.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className='px-5 py-8 text-center text-sm text-gray-400'>No restores yet.</td>
+                  </tr>
+                ) : allRestores.map((job: any) => {
+                  const { label, cls } = STATUS_CONFIG[job.status];
+                  return (
+                    <tr key={job.id} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                      <td className='px-5 py-3'>
+                        <p className='font-semibold text-gray-900'>{job.name}</p>
+                        {job.tags && <p className='text-xs text-gray-400 mt-0.5'>{job.tags}</p>}
+                      </td>
+                      <td className='px-5 py-3'><SourceBadge type={job.source} /></td>
+                      <td className='px-5 py-3 text-gray-600'>{job.destination}</td>
+                      <td className='px-5 py-3 tabular-nums text-gray-700'>{job.records}</td>
+                      <td className='px-5 py-3'>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>
+                      </td>
+                      <td className='px-5 py-3 text-gray-500 whitespace-nowrap'>{job.started}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
     </div>
   );
