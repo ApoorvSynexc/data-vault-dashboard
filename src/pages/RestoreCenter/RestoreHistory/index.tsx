@@ -57,9 +57,10 @@ interface Props {
   onBack?: () => void;
   onNewRestore?: () => void;
   initialFilter?: FilterChip;
+  embedded?: boolean;
 }
 
-export default function RestoreHistory({ onBack, onNewRestore, initialFilter = 'All' }: Props) {
+export default function RestoreHistory({ onBack, onNewRestore, initialFilter = 'All', embedded = false }: Props) {
   const [search, setSearch] = useState('');
   const [activeChip, setActiveChip] = useState<FilterChip>(initialFilter);
   const [dateRange, setDateRange] = useState('This Month');
@@ -77,40 +78,8 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  return (
-    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
-
-        {/* Header */}
-        <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex-shrink-0'>
-          <div className='flex items-center gap-3'>
-            {onBack && (
-              <button
-                onClick={onBack}
-                className='rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition'
-              >
-                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5'>
-                  <path d='M19 12H5M12 19l-7-7 7-7' strokeLinecap='round' strokeLinejoin='round' />
-                </svg>
-              </button>
-            )}
-            <div>
-              <Typography as='h2' variant='pageTitle'>Restore History</Typography>
-              <Typography variant='bodySm' color='muted' className='mt-0.5'>All past restore jobs with drill-down and rollback</Typography>
-            </div>
-          </div>
-          {onNewRestore && (
-            <button
-              onClick={onNewRestore}
-              className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition whitespace-nowrap'
-            >
-              + New Restore
-            </button>
-          )}
-        </div>
-
-        {/* Main Table Card */}
-        <div className='flex-1 min-h-0 flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+  const tableCard = (
+    <div className='flex-1 min-h-0 flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
 
           {/* Filter Bar */}
           <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-wrap'>
@@ -268,6 +237,43 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
             </div>
           </div>
         </div>
+  );
+
+  if (embedded) return tableCard;
+
+  return (
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
+
+        {/* Header */}
+        <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex-shrink-0'>
+          <div className='flex items-center gap-3'>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className='rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition'
+              >
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-5 w-5'>
+                  <path d='M19 12H5M12 19l-7-7 7-7' strokeLinecap='round' strokeLinejoin='round' />
+                </svg>
+              </button>
+            )}
+            <div>
+              <Typography as='h2' variant='pageTitle'>Restore History</Typography>
+              <Typography variant='bodySm' color='muted' className='mt-0.5'>All past restore jobs with drill-down and rollback</Typography>
+            </div>
+          </div>
+          {onNewRestore && (
+            <button
+              onClick={onNewRestore}
+              className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition whitespace-nowrap'
+            >
+              + New Restore
+            </button>
+          )}
+        </div>
+
+        {tableCard}
 
       </div>
     </div>
