@@ -94,6 +94,7 @@ const router = createBrowserRouter([
           { path: '/storage',                            element: <PermissionRoute permissions={['storage']}><Storage /></PermissionRoute> },
           { path: '/notifications',                      element: <Notifications /> },
           { path: '/restore-center',                     element: <PermissionRoute permissions={['restore']}><RestoreCenter /></PermissionRoute> },
+          { path: '/restore-center/history/:jobId',      element: <PermissionRoute permissions={['restore']}><RestoreCenter /></PermissionRoute> },
           { path: '/activity-logs',                      element: <PermissionRoute permissions={['activitylogs']}><ActivityLogs /></PermissionRoute> },
           { path: '/audit-logs',                         element: <PermissionRoute permissions={['activitylogs']}><AuditLogs /></PermissionRoute> },
           { path: '/reports',                            element: <PermissionRoute permissions={['report']}><Reports /></PermissionRoute> },

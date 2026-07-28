@@ -10,6 +10,7 @@
 //
 
 import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import HomePage from './HomePage';
 import NewRestore from './NewRestore';
 import JobProgress from './JobProgress';
@@ -19,19 +20,27 @@ import RestoreTemplates from './Templates';
 type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | 'templates';
 
 export default function RestoreCenter() {
-  const [screen, setScreen] = useState<Screen>('home');
-  const [historyFilter, setHistoryFilter] = useState<'All' | 'Drafts'>('All');
-  const [isTemplateMode, setIsTemplateMode] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string | undefined>();
+  const { jobId: jobIdParam } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
 
-  const goTo = (s: Screen) => setScreen(s);
-  const goToHistory = (filter: 'All' | 'Drafts' = 'All') => {
-    setHistoryFilter(filter);
-    setScreen('history');
+  const [screen, setScreen] = useState<Screen>(jobIdParam ? 'history' : 'home');
+  const [isTemplateMode, setIsTemplateMode] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | undefined>(jobIdParam);
+
+  const goTo = (s: Screen) => {
+    if (s === 'home') navigate('/restore-center');
+    setScreen(s);
   };
+
   const goToNewRestore = (templateMode = false) => {
     setIsTemplateMode(templateMode);
     setScreen('new-restore');
+  };
+
+  const goToHistory = (jobId: string) => {
+    setSelectedJobId(jobId);
+    navigate(`/restore-center/history/${jobId}`);
+    setScreen('history');
   };
 
   return (
@@ -39,7 +48,7 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
-          onViewHistory={(jobId) => { setSelectedJobId(jobId); goTo('history'); }}
+          onViewHistory={goToHistory}
         />
       )}
       {screen === 'new-restore' && (
