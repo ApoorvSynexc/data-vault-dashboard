@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import Table from '../../../components/Table';
@@ -81,6 +82,8 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const updatedAt = job.updatedAt || job.completedAt;
   const objects: any[] = job.destination?.objects || [];
 
+  const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
+
   const objectColumns: TableColumn<any>[] = [
     {
       key: 'name',
@@ -96,9 +99,27 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
       },
     },
     {
-      key: 'records',
-      header: 'Records',
-      render: () => <span className='text-gray-500'>—</span>,
+      key: 'successRecords',
+      header: 'Success Records',
+      render: () => <span className='text-sm font-semibold text-green-600'>—</span>,
+    },
+    {
+      key: 'failedRecords',
+      header: 'Failed Records',
+      render: () => <span className='text-sm font-semibold text-red-500'>—</span>,
+    },
+    {
+      key: 'errors',
+      header: 'Errors',
+      render: (row) => (
+        <button
+          onClick={() => setErrorPanel({ obj: row })}
+          className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
+          style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
+        >
+          View Errors
+        </button>
+      ),
     },
   ];
 
@@ -115,6 +136,66 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+
+      {/* ── Error Records Popup ─────────────────────────────────────────── */}
+      {errorPanel && (
+        <div
+          className='fixed inset-0 z-[70] flex items-center justify-center p-4'
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+          onClick={() => setErrorPanel(null)}
+        >
+          <div
+            className='bg-white rounded-2xl w-full flex flex-col overflow-hidden'
+            style={{ maxWidth: '660px', maxHeight: '75vh', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className='flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0'
+              style={{ background: 'linear-gradient(135deg,#FFF5F5 0%,#FFF 60%)', borderBottom: '1px solid #FFE4E1' }}
+            >
+              <div className='flex items-center gap-3'>
+                <div className='w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(242,68,0,0.1)' }}>
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className='font-bold text-sm' style={{ color: '#111827' }}>
+                    Record Errors
+                    <span className='ml-2 font-normal text-xs px-2 py-0.5 rounded-full' style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400' }}>
+                      {errorPanel.obj.name}
+                    </span>
+                  </h3>
+                  <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>Failed records for this object</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setErrorPanel(null)}
+                className='w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition'
+                style={{ color: '#94A3B8' }}
+              >
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                  <path d='M18 6L6 18M6 6l12 12'/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Records list — placeholder until API is wired */}
+            <div className='overflow-y-auto flex-1 px-5 py-4'>
+              <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
+                  <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                </div>
+                <p className='text-sm font-medium' style={{ color: '#64748B' }}>No error records loaded yet</p>
+                <p className='text-xs' style={{ color: '#94A3B8' }}>API will be wired here</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* Header */}
@@ -186,52 +267,6 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
             itemsPerPage={10}
           />
         </div>
-
-        {/* Failed Records */}
-        <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
-          <div className='flex items-center justify-between px-6 py-4 border-b border-gray-100'>
-            <h3 className='font-semibold text-gray-900'>Failed Records</h3>
-            {status === 'PARTIAL' && (
-              <button className='flex items-center gap-2 bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition'>
-                <svg viewBox='0 0 24 24' fill='currentColor' className='w-3.5 h-3.5'>
-                  <polygon points='5 3 19 12 5 21 5 3' />
-                </svg>
-                Re-run Failed Only
-              </button>
-            )}
-          </div>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr className='border-b border-gray-100 bg-gray-50'>
-                  {['Record ID', 'Object', 'Reason'].map((col) => (
-                    <th key={col} className='px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide'>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>001xx042</td>
-                  <td className='px-6 py-3 text-gray-700'>Account</td>
-                  <td className='px-6 py-3 text-gray-700'>Validation: Phone required</td>
-                </tr>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>001xx071</td>
-                  <td className='px-6 py-3 text-gray-700'>Account</td>
-                  <td className='px-6 py-3 text-gray-700'>Missing: BillingCountry</td>
-                </tr>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>003xx142</td>
-                  <td className='px-6 py-3 text-gray-700'>Contact</td>
-                  <td className='px-6 py-3 text-gray-700'>Owner mapping failed</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
       </div>
     </div>
   );
