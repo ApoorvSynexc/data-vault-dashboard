@@ -181,7 +181,7 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
               </div>
             </div>
 
-            {/* Validation & Trigger Impact */}
+            {/* DEMO_HIDDEN: Validation & Trigger Impact — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Validation &amp; Trigger Impact</span>
@@ -204,6 +204,7 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
                 ))}
               </div>
             </div>
+            END DEMO_HIDDEN */}
 
           </div>
 
