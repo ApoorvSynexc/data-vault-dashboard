@@ -67,13 +67,12 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type DestType = 'same' | 'diff' | 'sandbox' | 'export';
+type DestType = 'same' | 'diff' | 'export';
 
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
-  { id: 'same',    title: 'Same Org (Source)',      desc: 'Default — disaster recovery to original org' },
-  { id: 'diff',    title: 'Different Org',           desc: 'Cross-org migration, DR drill, or seeding' },
-  { id: 'sandbox', title: 'Sandbox (with Masking)',  desc: 'PII auto-masked — sandbox seeding' },
-  { id: 'export',  title: 'Export Only',             desc: 'CSV / Parquet / JSON — no restore to org' },
+  { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
+  { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
+  { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
 ];
 
 // ── Tooltip helper ────────────────────────────────────────────────────────────
@@ -536,105 +535,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   );
 }
 
-function SandboxConfig() {
-  const [sampleMode, setSampleMode] = useState('10% sample');
-  const [rowCap, setRowCap]         = useState('5000');
-
-  const maskingRows = [
-    { field: 'Contact.Email',          classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake email (preserve domain)', 'Replace with fake email (random domain)'] },
-    { field: 'Contact.Phone',          classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake phone', 'Hash', 'Null out'] },
-    { field: 'Contact.FirstName',      classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake name', 'Initials only', 'Null out'] },
-    { field: 'Account.AnnualRevenue',  classification: 'Sensitive', classColor: 'bg-orange-100 text-orange-700', strategy: ['No masking', 'Add ±20% noise', 'Round to nearest 100k'] },
-  ];
-
-  return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
-        <span className='text-base'>🧪</span>
-        <span className='text-sm font-semibold text-gray-800'>Sandbox (with Masking) Configuration</span>
-      </div>
-      <div className='p-5 flex flex-col gap-5'>
-
-        {/* Sandbox Org */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='text-sm font-medium text-gray-700'>Sandbox Org <span className='text-red-500'>*</span></label>
-          <select className='w-full h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-            <option>UAT — Sandbox</option>
-            <option>DevOrg-Alpha</option>
-            <option>QA — Sandbox</option>
-          </select>
-        </div>
-
-        {/* Sample size */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='text-sm font-medium text-gray-700'>
-            Sample size
-            <Tip text="For sandbox seeding, you often want a subset rather than the full dataset. Pick a percentage or fixed row cap." />
-          </label>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            <select
-              value={sampleMode}
-              onChange={(e) => setSampleMode(e.target.value)}
-              className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-            >
-              <option>100% (full)</option>
-              <option>10% sample</option>
-              <option>1% sample</option>
-              <option>Fixed row cap…</option>
-            </select>
-            <input
-              type='number'
-              value={rowCap}
-              onChange={(e) => setRowCap(e.target.value)}
-              disabled={sampleMode !== 'Fixed row cap…'}
-              placeholder='Row cap (e.g. 5000)'
-              className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50'
-              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-            />
-          </div>
-        </div>
-
-        {/* PII Masking Rules */}
-        <div className='rounded-xl border border-gray-200 overflow-hidden'>
-          <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
-            <span className='text-base'>🎭</span>
-            <span className='text-sm font-semibold text-gray-800'>PII Masking Rules</span>
-            <Tip text="PII is automatically replaced with safe synthetic values before landing in the sandbox. Pick the masking strategy per field." />
-          </div>
-          <div className='p-4 overflow-x-auto'>
-            <table className='w-full text-xs'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Classification</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Masking Strategy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {maskingRows.map((row) => (
-                  <tr key={row.field} className='border-b border-gray-50'>
-                    <td className='py-2.5 px-3 font-mono text-gray-700'>{row.field}</td>
-                    <td className='py-2.5 px-3'>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${row.classColor}`}>{row.classification}</span>
-                    </td>
-                    <td className='py-2.5 px-3'>
-                      <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[260px]'>
-                        {row.strategy.map((s) => <option key={s}>{s}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className='mt-3 text-xs font-semibold text-blue-600 hover:underline'>+ Add field rule</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
 
 function ExportOnlyConfig() {
   const [splitByObject,      setSplitByObject]      = useState(true);
@@ -794,10 +694,9 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
         </div>
 
         {/* Sub-config panel */}
-        {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
-        {destType === 'sandbox' && <SandboxConfig />}
-        {destType === 'export'  && <ExportOnlyConfig />}
+        {destType === 'same'   && <SameOrgConfig />}
+        {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
+        {destType === 'export' && <ExportOnlyConfig />}
 
       </div>
 
