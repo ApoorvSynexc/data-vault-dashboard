@@ -82,6 +82,11 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const updatedAt = job.updatedAt || job.completedAt;
   const objects: any[] = job.destination?.objects || [];
 
+  // Summary stats derived from objects array
+  const totalProcessed = objects.reduce((s: number, o: any) => s + (o.processedRecordCount ?? 0), 0);
+  const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
+  const totalSuccess   = totalProcessed - totalFailed;
+
   const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
 
   const objectColumns: TableColumn<any>[] = [
@@ -94,32 +99,60 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
       key: 'status',
       header: 'Status',
       render: (row) => {
-        const cfg = STATUS_CONFIG[row.status] || { label: row.status, cls: 'bg-gray-100 text-gray-600' };
-        return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cfg.cls}`}>{cfg.label}</span>;
+        const s = (row.status as string)?.toUpperCase();
+        const style =
+          s === 'SUCCESS'  ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
+          s === 'FAILED'   ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
+          s === 'PENDING'  ? { bg: 'rgba(234,179,8,0.1)',  color: '#A16207' } :
+          s === 'RUNNING'  ? { bg: 'rgba(21,93,252,0.1)',  color: '#155DFC' } :
+                             { bg: '#F3F4F6',               color: '#374151' };
+        const label = s === 'SUCCESS' ? 'Success' : s === 'FAILED' ? 'Failed' : s === 'PENDING' ? 'Pending' : s === 'RUNNING' ? 'Running' : (row.status || '—');
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold'
+            style={{ background: style.bg, color: style.color }}>
+            {label}
+          </span>
+        );
       },
     },
     {
       key: 'successRecords',
       header: 'Success Records',
-      render: () => <span className='text-sm font-semibold text-green-600'>—</span>,
+      render: (row) => {
+        const processed = row.processedRecordCount ?? 0;
+        const failed    = row.failedRecordCount ?? 0;
+        const success   = processed - failed;
+        return <span className='text-sm font-semibold text-green-600'>{success}</span>;
+      },
     },
     {
       key: 'failedRecords',
       header: 'Failed Records',
-      render: () => <span className='text-sm font-semibold text-red-500'>—</span>,
+      render: (row) => {
+        const n = row.failedRecordCount ?? 0;
+        return <span className='text-sm font-semibold' style={{ color: n > 0 ? '#F24400' : '#94A3B8' }}>{n}</span>;
+      },
     },
     {
       key: 'errors',
       header: 'Errors',
-      render: (row) => (
-        <button
-          onClick={() => setErrorPanel({ obj: row })}
-          className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
-          style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
-        >
-          View Errors
-        </button>
-      ),
+      render: (row) => {
+        const hasErrors = Array.isArray(row.errors) && row.errors.length > 0;
+        if (!hasErrors) return <span className='text-xs text-gray-400'>—</span>;
+        return (
+          <button
+            onClick={() => setErrorPanel({ obj: row })}
+            className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
+            style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
+          >
+            View Errors
+            <span className='ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold'
+              style={{ background: '#F24400', color: '#fff' }}>
+              {row.errors.length}
+            </span>
+          </button>
+        );
+      },
     },
   ];
 
@@ -167,7 +200,9 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
                       {errorPanel.obj.name}
                     </span>
                   </h3>
-                  <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>Failed records for this object</p>
+                  <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>
+                    {errorPanel.obj.errors.length} error{errorPanel.obj.errors.length !== 1 ? 's' : ''} · {errorPanel.obj.failedRecordCount ?? 0} failed record{(errorPanel.obj.failedRecordCount ?? 0) !== 1 ? 's' : ''}
+                  </p>
                 </div>
               </div>
               <button
@@ -181,17 +216,33 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               </button>
             </div>
 
-            {/* Records list — placeholder until API is wired */}
+            {/* Error list */}
             <div className='overflow-y-auto flex-1 px-5 py-4'>
-              <div className='flex flex-col items-center justify-center py-12 gap-2'>
-                <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
-                  <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                  </svg>
+              {(errorPanel.obj.errors as string[]).length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                  <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><polyline points='20 6 9 17 4 12'/>
+                    </svg>
+                  </div>
+                  <p className='text-sm font-medium' style={{ color: '#64748B' }}>No errors for this object</p>
                 </div>
-                <p className='text-sm font-medium' style={{ color: '#64748B' }}>No error records loaded yet</p>
-                <p className='text-xs' style={{ color: '#94A3B8' }}>API will be wired here</p>
-              </div>
+              ) : (
+                <div className='flex flex-col gap-2'>
+                  {(errorPanel.obj.errors as string[]).map((err, i) => (
+                    <div key={i} className='rounded-xl p-4' style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Error</span>
+                        <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
+                          style={{ background: 'rgba(242,68,0,0.08)', color: '#F24400' }}>
+                          #{i + 1}
+                        </span>
+                      </div>
+                      <p className='text-xs leading-relaxed font-mono break-all' style={{ color: '#374151' }}>{err}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -235,19 +286,19 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
         <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
           <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
             <p className='text-xs text-gray-600 font-semibold'>Records Restored</p>
-            <p className='mt-2 text-lg font-bold text-green-600'>—</p>
+            <p className='mt-2 text-lg font-bold text-green-600'>{totalSuccess.toLocaleString()}</p>
           </div>
           <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
             <p className='text-xs text-gray-600 font-semibold'>Failed</p>
-            <p className='mt-2 text-lg font-bold text-red-600'>—</p>
+            <p className='mt-2 text-lg font-bold text-red-600'>{totalFailed.toLocaleString()}</p>
           </div>
           <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>Skipped</p>
-            <p className='mt-2 text-lg font-bold text-gray-600'>—</p>
+            <p className='text-xs text-gray-600 font-semibold'>Total Processed</p>
+            <p className='mt-2 text-lg font-bold text-gray-900'>{totalProcessed.toLocaleString()}</p>
           </div>
           <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>API Calls Used</p>
-            <p className='mt-2 text-lg font-bold text-gray-900'>—</p>
+            <p className='text-xs text-gray-600 font-semibold'>Objects</p>
+            <p className='mt-2 text-lg font-bold text-gray-900'>{objects.length}</p>
           </div>
         </div>
 
