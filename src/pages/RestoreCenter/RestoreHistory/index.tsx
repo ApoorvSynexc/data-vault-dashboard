@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import { useRestoreService } from '../../../services/restore/restore.service';
@@ -16,12 +17,15 @@ interface Props {
   jobId?: string;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function RestoreHistory({ onBack, jobId }: Props) {
   const restoreService = useRestoreService();
+  const [page, setPage] = useState(1);
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['restore-job-detail', jobId],
-    queryFn: () => jobId ? restoreService.listRestoreJobs() : null,
+    queryFn: () => jobId ? restoreService.getRestoreJob(jobId) : null,
     enabled: !!jobId,
   });
 
@@ -51,8 +55,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
     );
   }
 
-  const jobs = ((jobData as any)?.data ?? []);
-  const job = jobs.find((j: any) => j.restoreId === jobId);
+  const job = (jobData as any)?.data;
 
   if (!job) {
     return (
@@ -72,12 +75,19 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
     );
   }
 
-  const status = job.status;
+  const status = job.status || 'PENDING';
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
   const jobName = job.jobDetail?.name || 'Untitled Restore';
-  const runtime = job.updatedAt && job.createdAt
+  const jobId_display = job.restoreId;
+  const createdAt = job.createdAt;
+  const updatedAt = job.updatedAt || job.completedAt;
+  const objects: any[] = job.destination?.objects || [];
+  const totalPages = Math.max(1, Math.ceil(objects.length / ITEMS_PER_PAGE));
+  const paginatedObjects = objects.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const runtime = updatedAt && createdAt
     ? (() => {
-        const ms = new Date(job.updatedAt).getTime() - new Date(job.createdAt).getTime();
+        const ms = new Date(updatedAt).getTime() - new Date(createdAt).getTime();
         const s = Math.floor(ms / 1000);
         if (s < 60) return `${s}s`;
         const m = Math.floor(s / 60);
@@ -119,7 +129,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
             Restore {statusConfig.label.split(' ')[1]}
           </h3>
           <p className='mt-2 text-sm text-gray-600 text-center'>
-            Job ID: {job.restoreId} · Runtime: {runtime} · {new Date(job.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
           </p>
         </div>
 
@@ -160,30 +170,41 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
                 </tr>
               </thead>
               <tbody>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>Account</td>
-                  <td className='px-6 py-3 text-gray-700'>3,210</td>
-                  <td className='px-6 py-3 text-gray-700'>1,800</td>
-                  <td className='px-6 py-3 text-red-600 font-semibold'>5</td>
-                  <td className='px-6 py-3 text-gray-700'>3</td>
-                </tr>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>Contact</td>
-                  <td className='px-6 py-3 text-gray-700'>1,100</td>
-                  <td className='px-6 py-3 text-gray-700'>900</td>
-                  <td className='px-6 py-3 text-red-600 font-semibold'>2</td>
-                  <td className='px-6 py-3 text-gray-700'>2</td>
-                </tr>
-                <tr className='border-b border-gray-100 hover:bg-gray-50'>
-                  <td className='px-6 py-3 font-medium text-gray-900'>Opportunity</td>
-                  <td className='px-6 py-3 text-gray-700'>800</td>
-                  <td className='px-6 py-3 text-gray-700'>613</td>
-                  <td className='px-6 py-3 text-gray-700'>0</td>
-                  <td className='px-6 py-3 text-gray-700'>0</td>
-                </tr>
+                {paginatedObjects.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className='px-6 py-4 text-center text-sm text-gray-400'>No objects data available</td>
+                  </tr>
+                ) : paginatedObjects.map((obj: any) => (
+                  <tr key={obj.id || obj.name} className='border-b border-gray-100 hover:bg-gray-50'>
+                    <td className='px-6 py-3 font-medium text-gray-900'>{obj.name}</td>
+                    <td className='px-6 py-3 text-gray-700'>—</td>
+                    <td className='px-6 py-3 text-gray-700'>—</td>
+                    <td className='px-6 py-3 text-red-600 font-semibold'>—</td>
+                    <td className='px-6 py-3 text-gray-700'>—</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className='flex items-center justify-between border-t border-gray-100 px-5 py-3'>
+              <p className='text-xs text-gray-500'>Showing {paginatedObjects.length} of {objects.length} objects</p>
+              <div className='flex items-center gap-1'>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={[
+                      'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition',
+                      page === p ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100',
+                    ].join(' ')}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Failed Records */}
