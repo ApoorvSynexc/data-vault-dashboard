@@ -1,6 +1,7 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
+import Table from '../../../components/Table';
+import type { TableColumn } from '../../../components/Table';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
@@ -17,11 +18,8 @@ interface Props {
   jobId?: string;
 }
 
-const ITEMS_PER_PAGE = 10;
-
 export default function RestoreHistory({ onBack, jobId }: Props) {
   const restoreService = useRestoreService();
-  const [page, setPage] = useState(1);
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['restore-job-detail', jobId],
@@ -82,8 +80,27 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const createdAt = job.createdAt;
   const updatedAt = job.updatedAt || job.completedAt;
   const objects: any[] = job.destination?.objects || [];
-  const totalPages = Math.max(1, Math.ceil(objects.length / ITEMS_PER_PAGE));
-  const paginatedObjects = objects.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const objectColumns: TableColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (row) => <span className='font-medium text-gray-900'>{row.name}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => {
+        const cfg = STATUS_CONFIG[row.status] || { label: row.status, cls: 'bg-gray-100 text-gray-600' };
+        return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cfg.cls}`}>{cfg.label}</span>;
+      },
+    },
+    {
+      key: 'records',
+      header: 'Records',
+      render: () => <span className='text-gray-500'>—</span>,
+    },
+  ];
 
   const runtime = updatedAt && createdAt
     ? (() => {
@@ -158,53 +175,16 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
           <div className='px-6 py-4 border-b border-gray-100'>
             <h3 className='font-semibold text-gray-900'>Per-Object Breakdown</h3>
           </div>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr className='border-b border-gray-100 bg-gray-50'>
-                  {['Object', 'Created', 'Updated', 'Failed', 'Skipped'].map((col) => (
-                    <th key={col} className='px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide'>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedObjects.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className='px-6 py-4 text-center text-sm text-gray-400'>No objects data available</td>
-                  </tr>
-                ) : paginatedObjects.map((obj: any) => (
-                  <tr key={obj.id || obj.name} className='border-b border-gray-100 hover:bg-gray-50'>
-                    <td className='px-6 py-3 font-medium text-gray-900'>{obj.name}</td>
-                    <td className='px-6 py-3 text-gray-700'>—</td>
-                    <td className='px-6 py-3 text-gray-700'>—</td>
-                    <td className='px-6 py-3 text-red-600 font-semibold'>—</td>
-                    <td className='px-6 py-3 text-gray-700'>—</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 1 && (
-            <div className='flex items-center justify-between border-t border-gray-100 px-5 py-3'>
-              <p className='text-xs text-gray-500'>Showing {paginatedObjects.length} of {objects.length} objects</p>
-              <div className='flex items-center gap-1'>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={[
-                      'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition',
-                      page === p ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100',
-                    ].join(' ')}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <Table
+            columns={objectColumns}
+            rows={objects}
+            getRowKey={(row) => row.id || row.name}
+            emptyState='No objects data available.'
+            rowClassName='border-b border-gray-100 hover:bg-gray-50'
+            cellPaddingClassName='px-6 py-3'
+            showPagination
+            itemsPerPage={10}
+          />
         </div>
 
         {/* Failed Records */}
