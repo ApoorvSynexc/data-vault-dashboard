@@ -83,6 +83,7 @@ const RESTORE_ENDPOINTS = {
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
   picklistValues:       '/v1/restore/get-picklist-field-values',
   createRestoreJob:     '/v1/restore',
+  listRestoreJobs:      '/v1/restore/config/list',
 };
 
 export function useRestoreService() {
@@ -117,5 +118,8 @@ export function useRestoreService() {
 
     createRestoreJob: (payload: RestoreRetrievePayload) =>
       api.post<{ success: boolean; message: string }>(RESTORE_ENDPOINTS.createRestoreJob, payload),
+
+    listRestoreJobs: () =>
+      api.get<unknown>(RESTORE_ENDPOINTS.listRestoreJobs, { query: { pagination: true, limit: 25 } }),
   };
 }
