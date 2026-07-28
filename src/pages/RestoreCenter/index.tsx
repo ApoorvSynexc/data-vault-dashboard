@@ -38,10 +38,6 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
-          onViewHistory={() => goToHistory('All')}
-          onViewDrafts={() => goToHistory('Drafts')}
-          onViewTemplates={() => goTo('templates')}
-          onViewJob={() => goTo('completion')}
         />
       )}
       {screen === 'new-restore' && (
