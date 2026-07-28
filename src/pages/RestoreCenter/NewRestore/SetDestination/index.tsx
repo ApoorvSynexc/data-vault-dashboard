@@ -1,6 +1,5 @@
 // SetDestination — Step 4 of 8 in the New Restore wizard.
 // Lets the user pick where the restored data should land:
-//   Same Org (Source) | Different Org | Sandbox (with Masking) | Export Only
 // The configuration panel below the type cards adapts to the selection.
 
 import { useState, useRef, useEffect } from 'react';
@@ -674,7 +673,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
             <Tip text="Pick where the restored data goes. The configuration changes based on your selection." />
           </div>
-          <div className='p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+          <div className='p-4 grid grid-cols-1 sm:grid-cols-3 gap-3'>
             {DEST_TYPES.map((dt) => {
               const active = destType === dt.id;
               return (
