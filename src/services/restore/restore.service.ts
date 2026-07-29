@@ -6,8 +6,11 @@ export interface RestoreRetrievePayload {
   crmId?: string;
 
   source: {
-    backupJobIds: string[];
+    backupJobIds?: string[];
     backupConfigId?: string;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
   };
 
   selection: {
