@@ -66,11 +66,13 @@ interface Props { onNext: () => void; onBack: () => void; }
 
 // ── Static mock data ──────────────────────────────────────────────────────────
 
+/* DEMO_HIDDEN
 const SCHEMA_ISSUES = [
   { msg: 'Account.Industry — picklist value "Aerospace" not in destination. Will be set to null.' },
   { msg: 'Contact.Legacy_ID__c — field exists in source but not destination. Will be skipped.' },
   { msg: '3 inactive owners — will be reassigned to queue per conflict rule.' },
 ];
+END DEMO_HIDDEN */
 
 /* DEMO_HIDDEN
 const TRIGGER_ROWS = [
@@ -150,68 +152,59 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
           ))}
         </div>
 
-        {/* Two-column body */}
-        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
+        {/* Cards */}
+        <div className='flex flex-col gap-4'>
 
-          {/* ── LEFT COLUMN ── */}
-          <div className='flex flex-col gap-4'>
-
-            {/* Schema Mismatch Report */}
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <div className='flex items-center gap-2'>
-                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
-                    <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-                  </svg>
-                  <span className='text-sm font-semibold text-gray-800'>Schema Mismatch Report</span>
-                </div>
-                <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700'>
-                  {SCHEMA_ISSUES.length} Issues
-                </span>
+          {/* Schema Mismatch Report — no issues */}
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
+              <div className='flex items-center gap-2'>
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <polyline points='20 6 9 17 4 12'/>
+                </svg>
+                <span className='text-sm font-semibold text-gray-800'>Schema Mismatch Report</span>
               </div>
-              <div className='p-4 flex flex-col gap-2'>
-                {SCHEMA_ISSUES.map((issue, i) => (
-                  <div key={i} className='flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-xs' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
-                      <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
-                      <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-                    </svg>
-                    <span className='text-amber-900 leading-relaxed'>{issue.msg}</span>
-                  </div>
-                ))}
-              </div>
+              <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-700'>
+                No Issues
+              </span>
             </div>
-
-            {/* DEMO_HIDDEN: Validation & Trigger Impact — uncomment to restore
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Validation &amp; Trigger Impact</span>
+            <div className='px-5 py-6 flex items-center gap-3'>
+              <div className='w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                  <polyline points='20 6 9 17 4 12'/>
+                </svg>
               </div>
-              <div className='divide-y divide-gray-100'>
-                {TRIGGER_ROWS.map((row) => (
-                  <div key={row.label} className='flex items-center justify-between gap-4 px-5 py-3.5'>
-                    <div>
-                      <p className='text-sm text-gray-700'>{row.label}</p>
-                      {row.sub && <p className='text-xs text-gray-400 mt-0.5'>{row.sub}</p>}
-                    </div>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
-                      row.color === 'green' ? 'bg-green-100 text-green-700' :
-                      row.color === 'blue'  ? 'bg-blue-100 text-blue-700'  :
-                                              'bg-gray-100 text-gray-600'
-                    }`}>
-                      {row.badge}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <p className='text-sm text-gray-600'>All fields and record types match between source and destination. No schema mismatches detected.</p>
             </div>
-            END DEMO_HIDDEN */}
-
           </div>
 
-          {/* ── RIGHT COLUMN ── */}
-          <div className='flex flex-col gap-4'>
+          {/* DEMO_HIDDEN: Validation & Trigger Impact — uncomment to restore
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+            <div className='border-b border-gray-100 px-5 py-3'>
+              <span className='text-sm font-semibold text-gray-800'>Validation &amp; Trigger Impact</span>
+            </div>
+            <div className='divide-y divide-gray-100'>
+              {TRIGGER_ROWS.map((row) => (
+                <div key={row.label} className='flex items-center justify-between gap-4 px-5 py-3.5'>
+                  <div>
+                    <p className='text-sm text-gray-700'>{row.label}</p>
+                    {row.sub && <p className='text-xs text-gray-400 mt-0.5'>{row.sub}</p>}
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+                    row.color === 'green' ? 'bg-green-100 text-green-700' :
+                    row.color === 'blue'  ? 'bg-blue-100 text-blue-700'  :
+                                            'bg-gray-100 text-gray-600'
+                  }`}>
+                    {row.badge}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          END DEMO_HIDDEN */}
+
+          {/* Two-column: Diff + Dry-Run */}
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
 
             {/* Snapshot vs Current Diff */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
