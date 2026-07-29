@@ -68,11 +68,13 @@ function ProgressBar({ active }: { active: number }) {
 
 type DestType = 'same' | 'diff' | 'export';
 
+/* DEMO_HIDDEN
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
   { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
   { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
   { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
 ];
+END DEMO_HIDDEN */
 
 // ── Tooltip helper ────────────────────────────────────────────────────────────
 
@@ -89,8 +91,10 @@ function Tip({ text }: { text: string }) {
 
 // ── Sub-configs ───────────────────────────────────────────────────────────────
 
-function SameOrgConfig() {
+function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername?: string }) {
+  // @ts-expect-error tag/setTag used by DEMO_HIDDEN Tag Restored Records section
   const [tag, setTag] = useState('Restored via DataVault {job-id}');
+
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
       <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
@@ -111,11 +115,15 @@ function SameOrgConfig() {
           <label className='text-sm font-medium text-gray-700'>Destination Org</label>
           <div className='flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm' style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
             <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700 flex-shrink-0'>🔒 Locked</span>
-            <span className='text-gray-600'>Same as source: <strong className='text-gray-800'>Production (live CRM org)</strong></span>
+            <span className='text-gray-600'>
+              Same as source:{' '}
+              <strong className='text-gray-800 capitalize'>{crmName ?? '—'}</strong>
+              {crmUsername && <span className='ml-2 text-xs text-gray-500'>({crmUsername})</span>}
+            </span>
           </div>
         </div>
 
-        {/* Tag Restored Records */}
+        {/* DEMO_HIDDEN: Tag Restored Records — uncomment to restore
         <div className='flex flex-col gap-1.5'>
           <label className='text-sm font-medium text-gray-700'>
             Tag Restored Records
@@ -131,6 +139,7 @@ function SameOrgConfig() {
           />
           <p className='text-xs text-gray-400'>Written to a custom field on each restored record</p>
         </div>
+        END DEMO_HIDDEN */}
       </div>
     </div>
   );
@@ -630,14 +639,15 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; }
+interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmName?: string; crmUsername?: string; }
 
-export default function SetDestination({ onNext, onBack, backupConfigId, configType }: Props) {
-  const [destType, setDestType] = useState<DestType>('same');
+export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername }: Props) {
+  // DEMO_HIDDEN: hardcoded to 'same'; setDestType used by Destination Type cards when restored
+  const [destType, _setDestType] = useState<DestType>('same');
 
   return (
-    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col'>
-      <div className='flex flex-col p-4 sm:p-6 gap-4'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* Breadcrumb */}
         <div className='flex items-center gap-2 flex-shrink-0'>
@@ -667,7 +677,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           </div>
         </div>
 
-        {/* Destination Type cards */}
+        {/* DEMO_HIDDEN: Destination Type cards — uncomment to restore
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
           <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
@@ -691,16 +701,17 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
             })}
           </div>
         </div>
+        END DEMO_HIDDEN */}
 
         {/* Sub-config panel */}
-        {destType === 'same'   && <SameOrgConfig />}
+        {destType === 'same'   && <SameOrgConfig crmName={crmName} crmUsername={crmUsername} />}
         {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
         {destType === 'export' && <ExportOnlyConfig />}
 
       </div>
 
       {/* Footer */}
-      <div className='sticky bottom-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white z-10'>
+      <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
         <button
           onClick={onBack}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
@@ -708,9 +719,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
-            💾 Save as Draft
-          </button>
+          {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
           <button
             onClick={onNext}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
