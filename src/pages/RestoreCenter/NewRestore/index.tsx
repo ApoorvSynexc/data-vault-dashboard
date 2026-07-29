@@ -106,7 +106,15 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       </div>
       {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
       {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />}
-      {currentStep === 5 && <DefineRestorePolicy onNext={(_n, _d, _t) => goNext()} onBack={goBack} />}
+      {currentStep === 5 && (
+        <DefineRestorePolicy
+          onNext={(jobDetail) => { updatePayload({ jobDetail: { name: jobDetail.name, description: jobDetail.description, tags: jobDetail.tags } }); goNext(); }}
+          onBack={goBack}
+          crmName={sourceSelection.crmName}
+          crmUsername={sourceSelection.crmUsername}
+          connectionName={selectedConnection?.name}
+        />
+      )}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
       {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} />}
