@@ -646,8 +646,8 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
   const [destType, _setDestType] = useState<DestType>('same');
 
   return (
-    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col'>
-      <div className='flex flex-col p-4 sm:p-6 gap-4'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* Breadcrumb */}
         <div className='flex items-center gap-2 flex-shrink-0'>
@@ -711,7 +711,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
       </div>
 
       {/* Footer */}
-      <div className='sticky bottom-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white z-10'>
+      <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
         <button
           onClick={onBack}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
