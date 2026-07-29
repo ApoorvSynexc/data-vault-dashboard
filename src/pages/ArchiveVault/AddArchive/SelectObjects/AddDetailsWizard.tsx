@@ -2,9 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { ChildRows, MAX_CHILD_DEPTH } from './ChildRows';
-import type { FilterCondition } from './FilterPopup';
-import type { ScheduleConfig } from './SchedulePopup';
-import type { ArchivalCondition, BuiltChildNode } from './types';
+import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import dayjs from 'dayjs';
 
@@ -167,6 +165,27 @@ export default function AddDetailsWizard({
   });
   const fields: any[] = Array.isArray(fieldsData) ? fieldsData : [];
 
+  // Tracks the condition+field that needs picklist values fetched
+  const [pendingPicklist, setPendingPicklist] = useState<{ conditionId: string; fieldApiName: string } | null>(null);
+
+  const { data: picklistData } = useQuery({
+    queryKey: ['archival-picklist', crmId, objectName, pendingPicklist?.fieldApiName],
+    queryFn: async () => {
+      const result = await archivalService.getPicklistValues(crmId ?? '', objectName, pendingPicklist!.fieldApiName);
+      const payload = (result as any)?.data ?? result;
+      const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
+      return values as { value: string; label: string }[];
+    },
+    enabled: !!pendingPicklist,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!picklistData || !pendingPicklist) return;
+    updateCondition(pendingPicklist.conditionId, { picklistValues: picklistData });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picklistData]);
+
   const validateMutation = useMutation({
     mutationFn: ({ soqlClause }: { soqlClause: string }) =>
       archivalService.validateSoql({
@@ -219,8 +238,12 @@ export default function AddDetailsWizard({
     const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
     const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
     const operator = OPERATORS_BY_TYPE[dataType][0];
-    const picklistValues = dataType === 'picklist' ? ((matched as any)?.picklistValues ?? []) : undefined;
-    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues });
+    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ conditionId: id, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
   };
 
   const getConditionLabel = (idx: number) => {
@@ -257,7 +280,7 @@ export default function AddDetailsWizard({
   const canProceedFromStep1 =
     filterTab === 'SOQL'
       ? soqlUserClause.trim().length > 0 && soqlValidated
-      : conditions.some((c) => c.field);
+      : conditions.some((c) => c.field) && conditions.every((c) => !c.field || c.value.trim() !== '');
 
   // ── step 2: children ───────────────────────────────────────────────────────
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
@@ -549,14 +572,14 @@ export default function AddDetailsWizard({
                   </div>
                   <div className='flex flex-col gap-2'>
                     <div className='flex items-center gap-3'>
-                      <button
-                        disabled={!soqlUserClause.trim() || validateMutation.isPending}
-                        onClick={() => { setValidateStatus('loading'); setValidateMessage(''); setRelationshipDepth(null); validateMutation.mutate({ soqlClause: soqlUserClause }); }}
-                        className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                        {validateMutation.isPending
-                          ? <><span className='h-3.5 w-3.5 rounded-full border-2 border-gray-400 border-t-blue-600 animate-spin' />Validating…</>
-                          : 'Validate Query →'}
-                      </button>
+                        <button
+                          disabled={!soqlUserClause.trim() || validateMutation.isPending}
+                          onClick={() => { setValidateStatus('loading'); setValidateMessage(''); setRelationshipDepth(null); validateMutation.mutate({ soqlClause: soqlUserClause }); }}
+                          className='flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                          {validateMutation.isPending
+                            ? <><span className='h-3.5 w-3.5 rounded-full border-2 border-gray-400 border-t-blue-600 animate-spin' />Validating…</>
+                            : 'Validate Query →'}
+                        </button>
                       {validateStatus === 'valid' && (
                         <span className='flex items-center gap-1.5 text-xs font-medium text-green-600'>
                           <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12' /></svg>

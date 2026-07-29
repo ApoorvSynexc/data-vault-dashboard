@@ -1,84 +1,251 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
+import Table from '../../../components/Table';
+import type { TableColumn } from '../../../components/Table';
+import { useRestoreService } from '../../../services/restore/restore.service';
 
-type JobStatus = 'DONE' | 'PARTIAL' | 'FAILED' | 'ROLLED_BACK' | 'DRAFT';
-
-type RestoreJob = {
-  id: string;
-  name: string;
-  tags?: string;
-  source: 'Backup' | 'Archive';
-  destination: string;
-  records: string;
-  status: JobStatus;
-  runtime: string;
-  started: string;
+const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
+  DONE:        { label: '✓ Done',        cls: 'text-green-600', icon: '✓' },
+  PARTIAL:     { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
+  FAILED:      { label: '✗ Failed',      cls: 'text-red-600', icon: '✗' },
+  ROLLED_BACK: { label: '↩ Rolled Back', cls: 'text-gray-600', icon: '↩' },
+  DRAFT:       { label: '📝 Draft',      cls: 'text-orange-600', icon: '📝' },
+  PENDING:     { label: '⏳ Pending',    cls: 'text-blue-600', icon: '⏳' },
 };
-
-const JOBS: RestoreJob[] = [
-  { id: '1', name: 'Untitled — May 27, 10:30 AM', tags: 'No tags',         source: 'Backup',  destination: '—',          records: '—',      status: 'DRAFT',      runtime: '—',      started: 'Today 10:30 · edited 12 min ago' },
-  { id: '2', name: 'Q1 Cleanup Restore',           tags: 'cleanup, audit',  source: 'Archive', destination: '—',          records: '—',      status: 'DRAFT',      runtime: '—',      started: 'May 24 · edited 3 days ago' },
-  { id: '3', name: 'INC-4711 Emergency Recovery',  source: 'Backup',  destination: 'Production', records: '8,423',  status: 'DONE',       runtime: '4m 12s',  started: 'Today 10:24' },
-  { id: '4', name: 'Weekly Archive Pull',           source: 'Archive', destination: 'Production', records: '2,100',  status: 'DONE',       runtime: '2m 05s',  started: 'Yesterday' },
-  { id: '5', name: 'Leads Restore Q1',              source: 'Backup',  destination: 'Production', records: '15,000', status: 'PARTIAL',    runtime: '8m 44s',  started: 'May 25' },
-  { id: '6', name: 'Sandbox Refresh UAT',           source: 'Backup',  destination: 'Sandbox',    records: '0',      status: 'FAILED',     runtime: '0m 12s',  started: 'May 22' },
-  { id: '7', name: 'INC-3900 Contact Recovery',     source: 'Backup',  destination: 'Production', records: '422',    status: 'ROLLED_BACK',runtime: '1m 30s',  started: 'May 18' },
-];
-
-const STATUS_CONFIG: Record<JobStatus, { label: string; cls: string }> = {
-  DONE:        { label: '✓ Done',        cls: 'bg-green-100 text-green-700' },
-  PARTIAL:     { label: '⚠ Partial',     cls: 'bg-yellow-100 text-yellow-700' },
-  FAILED:      { label: '✗ Failed',      cls: 'bg-red-100 text-red-700' },
-  ROLLED_BACK: { label: '↩ Rolled Back', cls: 'bg-gray-100 text-gray-600' },
-  DRAFT:       { label: '📝 Draft',      cls: 'bg-orange-100 text-orange-700' },
-};
-
-type FilterChip = 'All' | 'Succeeded' | 'Failed' | 'Rolled Back' | 'Partial' | 'Drafts';
-
-const CHIPS: FilterChip[] = ['All', 'Succeeded', 'Failed', 'Rolled Back', 'Partial', 'Drafts'];
-
-function chipMatchesJob(chip: FilterChip, job: RestoreJob) {
-  if (chip === 'All') return true;
-  if (chip === 'Succeeded') return job.status === 'DONE';
-  if (chip === 'Failed') return job.status === 'FAILED';
-  if (chip === 'Rolled Back') return job.status === 'ROLLED_BACK';
-  if (chip === 'Partial') return job.status === 'PARTIAL';
-  if (chip === 'Drafts') return job.status === 'DRAFT';
-  return true;
-}
-
-function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
-  return type === 'Backup'
-    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>Backup</span>
-    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700'>Archive</span>;
-}
 
 interface Props {
   onBack?: () => void;
-  onNewRestore?: () => void;
-  initialFilter?: FilterChip;
+  jobId?: string;
 }
 
-export default function RestoreHistory({ onBack, onNewRestore, initialFilter = 'All' }: Props) {
-  const [search, setSearch] = useState('');
-  const [activeChip, setActiveChip] = useState<FilterChip>(initialFilter);
-  const [dateRange, setDateRange] = useState('This Month');
-  const [page, setPage] = useState(1);
+export default function RestoreHistory({ onBack, jobId }: Props) {
+  const restoreService = useRestoreService();
+  const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
 
-  const draftsCount = JOBS.filter((j) => j.status === 'DRAFT').length;
-
-  const filtered = JOBS.filter((job) => {
-    const matchesChip = chipMatchesJob(activeChip, job);
-    const matchesSearch = job.name.toLowerCase().includes(search.toLowerCase());
-    return matchesChip && matchesSearch;
+  const { data: jobData, isLoading } = useQuery({
+    queryKey: ['restore-job-detail', jobId],
+    queryFn: () => jobId ? restoreService.getRestoreJob(jobId) : null,
+    enabled: !!jobId,
   });
 
-  const ITEMS_PER_PAGE = 7;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  if (!jobId) {
+    return (
+      <div className='flex-1 min-h-0 bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <Typography as='h2' variant='pageTitle' className='mb-2'>No job selected</Typography>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className='text-blue-600 hover:text-blue-700 transition'
+            >
+              ← Back to Restore Center
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className='flex-1 min-h-0 bg-gray-50 flex items-center justify-center'>
+        <div className='h-8 w-8 animate-spin rounded-full border-[3px] border-gray-200 border-t-blue-600' />
+      </div>
+    );
+  }
+
+  const job = (jobData as any)?.data;
+
+  if (!job) {
+    return (
+      <div className='flex-1 min-h-0 bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <Typography as='h2' variant='pageTitle' className='mb-2'>Job not found</Typography>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className='text-blue-600 hover:text-blue-700 transition'
+            >
+              ← Back to Restore Center
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const status = job.status || 'PENDING';
+  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
+  const jobName = job.jobDetail?.name || 'Untitled Restore';
+  const jobId_display = job.restoreId;
+  const createdAt = job.createdAt;
+  const updatedAt = job.updatedAt || job.completedAt;
+  const objects: any[] = job.destination?.objects || [];
+
+  // Summary stats derived from objects array
+  const totalProcessed = objects.reduce((s: number, o: any) => s + (o.processedRecordCount ?? 0), 0);
+  const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
+  const totalSuccess   = totalProcessed - totalFailed;
+
+  const objectColumns: TableColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (row) => <span className='font-medium text-gray-900'>{row.name}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => {
+        const s = (row.status as string)?.toUpperCase();
+        const style =
+          s === 'SUCCESS'  ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
+          s === 'FAILED'   ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
+          s === 'PENDING'  ? { bg: 'rgba(234,179,8,0.1)',  color: '#A16207' } :
+          s === 'RUNNING'  ? { bg: 'rgba(21,93,252,0.1)',  color: '#155DFC' } :
+                             { bg: '#F3F4F6',               color: '#374151' };
+        const label = s === 'SUCCESS' ? 'Success' : s === 'FAILED' ? 'Failed' : s === 'PENDING' ? 'Pending' : s === 'RUNNING' ? 'Running' : (row.status || '—');
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold'
+            style={{ background: style.bg, color: style.color }}>
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'successRecords',
+      header: 'Success Records',
+      render: (row) => {
+        const processed = row.processedRecordCount ?? 0;
+        const failed    = row.failedRecordCount ?? 0;
+        const success   = processed - failed;
+        return <span className='text-sm font-semibold text-green-600'>{success}</span>;
+      },
+    },
+    {
+      key: 'failedRecords',
+      header: 'Failed Records',
+      render: (row) => {
+        const n = row.failedRecordCount ?? 0;
+        return <span className='text-sm font-semibold' style={{ color: n > 0 ? '#F24400' : '#94A3B8' }}>{n}</span>;
+      },
+    },
+    {
+      key: 'errors',
+      header: 'Errors',
+      render: (row) => {
+        const hasErrors = Array.isArray(row.errors) && row.errors.length > 0;
+        if (!hasErrors) return <span className='text-xs text-gray-400'>—</span>;
+        return (
+          <button
+            onClick={() => setErrorPanel({ obj: row })}
+            className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
+            style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
+          >
+            View Errors
+            <span className='ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold'
+              style={{ background: '#F24400', color: '#fff' }}>
+              {row.errors.length}
+            </span>
+          </button>
+        );
+      },
+    },
+  ];
+
+  const runtime = updatedAt && createdAt
+    ? (() => {
+        const ms = new Date(updatedAt).getTime() - new Date(createdAt).getTime();
+        const s = Math.floor(ms / 1000);
+        if (s < 60) return `${s}s`;
+        const m = Math.floor(s / 60);
+        const rem = s % 60;
+        return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+      })()
+    : '—';
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+
+      {/* ── Error Records Popup ─────────────────────────────────────────── */}
+      {errorPanel && (
+        <div
+          className='fixed inset-0 z-[70] flex items-center justify-center p-4'
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }}
+          onClick={() => setErrorPanel(null)}
+        >
+          <div
+            className='bg-white rounded-2xl w-full flex flex-col overflow-hidden'
+            style={{ maxWidth: '660px', maxHeight: '75vh', boxShadow: '0 32px 80px rgba(0,0,0,0.22)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className='flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0'
+              style={{ background: 'linear-gradient(135deg,#FFF5F5 0%,#FFF 60%)', borderBottom: '1px solid #FFE4E1' }}
+            >
+              <div className='flex items-center gap-3'>
+                <div className='w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(242,68,0,0.1)' }}>
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className='font-bold text-sm' style={{ color: '#111827' }}>
+                    Record Errors
+                    <span className='ml-2 font-normal text-xs px-2 py-0.5 rounded-full' style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400' }}>
+                      {errorPanel.obj.name}
+                    </span>
+                  </h3>
+                  <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>
+                    {errorPanel.obj.errors.length} error{errorPanel.obj.errors.length !== 1 ? 's' : ''} · {errorPanel.obj.failedRecordCount ?? 0} failed record{(errorPanel.obj.failedRecordCount ?? 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setErrorPanel(null)}
+                className='w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition'
+                style={{ color: '#94A3B8' }}
+              >
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                  <path d='M18 6L6 18M6 6l12 12'/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Error list */}
+            <div className='overflow-y-auto flex-1 px-5 py-4'>
+              {(errorPanel.obj.errors as string[]).length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                  <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><polyline points='20 6 9 17 4 12'/>
+                    </svg>
+                  </div>
+                  <p className='text-sm font-medium' style={{ color: '#64748B' }}>No errors for this object</p>
+                </div>
+              ) : (
+                <div className='flex flex-col gap-2'>
+                  {(errorPanel.obj.errors as string[]).map((err, i) => (
+                    <div key={i} className='rounded-xl p-4' style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Error</span>
+                        <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
+                          style={{ background: 'rgba(242,68,0,0.08)', color: '#F24400' }}>
+                          #{i + 1}
+                        </span>
+                      </div>
+                      <p className='text-xs leading-relaxed font-mono break-all' style={{ color: '#374151' }}>{err}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* Header */}
@@ -95,180 +262,61 @@ export default function RestoreHistory({ onBack, onNewRestore, initialFilter = '
               </button>
             )}
             <div>
-              <Typography as='h2' variant='pageTitle'>Restore History</Typography>
-              <Typography variant='bodySm' color='muted' className='mt-0.5'>All past restore jobs with drill-down and rollback</Typography>
-            </div>
-          </div>
-          {onNewRestore && (
-            <button
-              onClick={onNewRestore}
-              className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition whitespace-nowrap'
-            >
-              + New Restore
-            </button>
-          )}
-        </div>
-
-        {/* Main Table Card */}
-        <div className='flex-1 min-h-0 flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-
-          {/* Filter Bar */}
-          <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-wrap'>
-            {/* Search */}
-            <div className='relative'>
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400'>
-                <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' strokeLinecap='round' />
-              </svg>
-              <input
-                type='text'
-                placeholder='Search jobs...'
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className='pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-44'
-              />
-            </div>
-
-            {/* Filter chips */}
-            <div className='flex items-center gap-2 flex-wrap'>
-              {CHIPS.map((chip) => (
-                <button
-                  key={chip}
-                  onClick={() => { setActiveChip(chip); setPage(1); }}
-                  className={[
-                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition',
-                    activeChip === chip
-                      ? chip === 'Drafts'
-                        ? 'bg-orange-50 border-orange-300 text-orange-700'
-                        : 'bg-blue-600 border-blue-600 text-white'
-                      : chip === 'Drafts'
-                        ? 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
-                  ].join(' ')}
-                >
-                  {chip === 'Drafts' && '📝 '}
-                  {chip}
-                  {chip === 'Drafts' && draftsCount > 0 && (
-                    <span className='ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white'>{draftsCount}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Date range */}
-            <div className='ml-auto'>
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className='text-sm rounded-lg border border-gray-200 px-3 py-1.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-white text-gray-700'
-              >
-                <option>This Month</option>
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
-                <option>All Time</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className='flex-1 overflow-y-auto'>
-            <table className='w-full text-sm'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  {['Job Name', 'Source', 'Destination', 'Records', 'Status', 'Runtime', 'Started', 'Actions'].map((col) => (
-                    <th key={col} className='px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap'>
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className='px-5 py-12 text-center text-sm text-gray-400'>No jobs found.</td>
-                  </tr>
-                ) : paginated.map((job) => {
-                  const { label, cls } = STATUS_CONFIG[job.status];
-                  return (
-                    <tr key={job.id} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                      {/* Job Name */}
-                      <td className='px-5 py-3'>
-                        <p className='font-semibold text-gray-900'>{job.name}</p>
-                        {job.tags && <p className='text-xs text-gray-400 mt-0.5'>{job.tags}</p>}
-                      </td>
-                      {/* Source */}
-                      <td className='px-5 py-3'><SourceBadge type={job.source} /></td>
-                      {/* Destination */}
-                      <td className='px-5 py-3 text-gray-600'>{job.destination}</td>
-                      {/* Records */}
-                      <td className='px-5 py-3 tabular-nums text-gray-700'>{job.records}</td>
-                      {/* Status */}
-                      <td className='px-5 py-3'>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>
-                      </td>
-                      {/* Runtime */}
-                      <td className='px-5 py-3 text-gray-600 whitespace-nowrap'>{job.runtime}</td>
-                      {/* Started */}
-                      <td className='px-5 py-3 text-gray-500 whitespace-nowrap'>{job.started}</td>
-                      {/* Actions */}
-                      <td className='px-5 py-3'>
-                        <div className='flex items-center gap-2 whitespace-nowrap'>
-                          {job.status === 'DRAFT' && (
-                            <>
-                              <button className='text-xs font-semibold px-3 py-1.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition'>Resume →</button>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>Discard</button>
-                            </>
-                          )}
-                          {job.status === 'DONE' && (
-                            <>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>View</button>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>Re-run</button>
-                              <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition'>Rollback</button>
-                            </>
-                          )}
-                          {job.status === 'PARTIAL' && (
-                            <>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>View</button>
-                              <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition'>Re-run Failed</button>
-                            </>
-                          )}
-                          {job.status === 'FAILED' && (
-                            <>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>View</button>
-                              <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>Re-run</button>
-                            </>
-                          )}
-                          {job.status === 'ROLLED_BACK' && (
-                            <button className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'>View</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className='flex-shrink-0 flex items-center justify-between border-t border-gray-100 px-5 py-3'>
-            <p className='text-xs text-gray-500'>Showing {paginated.length} of {filtered.length} jobs</p>
-            <div className='flex items-center gap-1'>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={[
-                    'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-semibold transition',
-                    page === p ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100',
-                  ].join(' ')}
-                >
-                  {p}
-                </button>
-              ))}
+              <Typography as='h2' variant='pageTitle'>Restore Details</Typography>
+              <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
         </div>
 
+        {/* Success/Status Card */}
+        <div className='rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm flex-shrink-0 flex flex-col items-center'>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${status === 'DONE' ? 'bg-green-100' : status === 'FAILED' ? 'bg-red-100' : 'bg-yellow-100'}`}>
+            <span className={`text-3xl font-bold ${statusConfig.cls}`}>{statusConfig.icon}</span>
+          </div>
+          <h3 className={`mt-4 text-xl font-bold ${statusConfig.cls}`}>
+            Restore {statusConfig.label.split(' ')[1]}
+          </h3>
+          <p className='mt-2 text-sm text-gray-600 text-center'>
+            Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+          </p>
+        </div>
+
+        {/* Summary Stats */}
+        <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
+          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+            <p className='text-xs text-gray-600 font-semibold'>Records Restored</p>
+            <p className='mt-2 text-lg font-bold text-green-600'>{totalSuccess.toLocaleString()}</p>
+          </div>
+          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+            <p className='text-xs text-gray-600 font-semibold'>Failed</p>
+            <p className='mt-2 text-lg font-bold text-red-600'>{totalFailed.toLocaleString()}</p>
+          </div>
+          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+            <p className='text-xs text-gray-600 font-semibold'>Total Processed</p>
+            <p className='mt-2 text-lg font-bold text-gray-900'>{totalProcessed.toLocaleString()}</p>
+          </div>
+          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+            <p className='text-xs text-gray-600 font-semibold'>Objects</p>
+            <p className='mt-2 text-lg font-bold text-gray-900'>{objects.length}</p>
+          </div>
+        </div>
+
+        {/* Per-Object Breakdown */}
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
+          <div className='px-6 py-4 border-b border-gray-100'>
+            <h3 className='font-semibold text-gray-900'>Per-Object Breakdown</h3>
+          </div>
+          <Table
+            columns={objectColumns}
+            rows={objects}
+            getRowKey={(row) => row.id || row.name}
+            emptyState='No objects data available.'
+            rowClassName='border-b border-gray-100 hover:bg-gray-50'
+            cellPaddingClassName='px-6 py-3'
+            showPagination
+            itemsPerPage={10}
+          />
+        </div>
       </div>
     </div>
   );

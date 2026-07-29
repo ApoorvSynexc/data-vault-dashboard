@@ -68,7 +68,7 @@ export default function AddArchive() {
       )}
       {currentStep === 2 && (
         <Step2
-          archiveSource={selectedConnection?.name || selectedConnection?.crmProfile?.name || 'Salesforce Production'}
+          archiveSource={selectedConnection?.name ?? selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? ''}
           destination={selectedDestConnection?.name || 'AWS S3'}
           initialPolicyName={policyName}
           initialDescription={description}
@@ -125,8 +125,8 @@ export default function AddArchive() {
         <Step5
           archivalPayload={archivalPayload}
           dryRunSummary={dryRunSummary}
-          crmName={selectedConnection?.crmProfile?.name ?? selectedConnection?.name ?? 'Salesforce Production'}
-          crmConnectionName={selectedConnection?.name ?? 'Salesforce Org'}
+          crmName={selectedConnection?.name ?? selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.organizationId ?? 'Salesforce Production'}
+          crmConnectionName={selectedConnection?.name ?? selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? 'Salesforce Org'}
           destinationProvider={selectedDestConnection?.provider ?? 'AWS S3'}
           destinationName={selectedDestConnection?.name ?? 'Production Bucket'}
           policyName={policyName}

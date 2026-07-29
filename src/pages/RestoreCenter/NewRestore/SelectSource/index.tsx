@@ -12,33 +12,54 @@ const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Confl
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
-
 // ── Available storage providers ───────────────────────────────────────────────
 
 const STORAGE_PROVIDERS = [
@@ -137,7 +158,7 @@ function CloudSourcePicker({
                     <div
                       key={conn.destinationId}
                       onClick={() => setSelectedConnection(conn)}
-                      className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
+                      className={`p-4 border-2 rounded-lg transition-all cursor-pointer select-none ${
                         isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
                     >

@@ -1,10 +1,25 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
-import type {
-  CreateBackupPayload,
-  DataScopeRow,
-  FieldDataType,
-  ObjectField,
-} from '../../pages/BackupManagement/AddBackupModal/types';
+
+export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id';
+
+export type ObjectField = {
+  name: string;
+  label: string;
+  dataType: FieldDataType;
+};
+
+export type DataScopeRow = {
+  id: string;
+  name: string;
+  type: string;
+  estimatedSize: string;
+  backupMode: 'both' | 'schedule' | 'realtime';
+  isCustom: boolean;
+  isBackedUp?: boolean;
+  schedule?: 'schedule' | 'realtime';
+};
+
+export type CreateBackupPayload = Record<string, unknown>;
 
 export const BACKUP_CONFIG_ENDPOINTS = {
   create: '/v1/backup-config',
@@ -293,11 +308,11 @@ export function useBackupConfigService() {
     },
     updateBackupConfig: (backupConfigId: string, payload: Record<string, unknown>) =>
       api.put<void>(BACKUP_CONFIG_ENDPOINTS.update, payload, { query: { backupConfigId } }),
-    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
+    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string, startTime?: string, endTime?: string) => {
       const query: any = { slug, pagination, cursor, limit };
-      if (status) {
-        query.status = status.toUpperCase();
-      }
+      if (status) query.status = status.toUpperCase();
+      if (startTime) query.startTime = startTime;
+      if (endTime) query.endTime = endTime;
       const response = await api.get<BackupJobListApiResponse>(BACKUP_CONFIG_ENDPOINTS.jobs, {
         query,
       });

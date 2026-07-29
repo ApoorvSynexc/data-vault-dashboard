@@ -186,6 +186,7 @@ export default function EditAWSBucket() {
                     value={secretAccessKey}
                     onChange={(e) => setSecretAccessKey(e.target.value)}
                     placeholder='Enter your AWS secret key'
+                    autoComplete='new-password'
                     className='w-full rounded-lg border border-gray-200 px-4 py-2.5 pr-10 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                   />
                   <button
@@ -235,6 +236,7 @@ export default function EditAWSBucket() {
                   value={accessKeyId}
                   onChange={(e) => setAccessKeyId(e.target.value)}
                   placeholder='Enter your AWS access key ID'
+                  autoComplete='off'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
                 />
               </div>

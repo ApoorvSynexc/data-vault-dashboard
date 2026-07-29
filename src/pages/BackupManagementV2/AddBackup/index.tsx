@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Step1 from './steps/Step1';
 import Step2 from './steps/Step2';
@@ -18,24 +18,61 @@ type SelectedObject = {
   type: 'STANDARD' | 'CUSTOM';
 };
 
+const WIZARD_STORAGE_KEY = 'addBackupWizardState';
+
+function loadWizardState() {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(WIZARD_STORAGE_KEY);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function AddBackup() {
   const [searchParams] = useSearchParams();
   const editSlug = searchParams.get('edit') ?? null;
   const isEditMode = !!editSlug;
 
-  const initialStep = Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step;
+  const restored = !isEditMode ? loadWizardState() : null;
+
+  const initialStep = isEditMode
+    ? (Math.min(Math.max(parseInt(searchParams.get('step') || '1'), 1), 7) as Step)
+    : ((restored?.currentStep ?? 1) as Step);
   const [currentStep, setCurrentStep] = useState<Step>(initialStep);
-  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>('realtime');
-  const [entireDatasetSelected, setEntireDatasetSelected] = useState(false);
-  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(null);
-  const [policyName, setPolicyName] = useState('');
-  const [description, setDescription] = useState('');
+  const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>(restored?.selectedStrategy ?? 'realtime');
+  const [entireDatasetSelected, setEntireDatasetSelected] = useState<boolean>(restored?.entireDatasetSelected ?? false);
+  const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(restored?.selectedPlatformId ?? null);
+  const [selectedConnectionName, setSelectedConnectionName] = useState<string>(restored?.selectedConnectionName ?? '');
+  const [selectedDestinationName, setSelectedDestinationName] = useState<string>(restored?.selectedDestinationName ?? '');
+  const [policyName, setPolicyName] = useState<string>(restored?.policyName ?? '');
+  const [description, setDescription] = useState<string>(restored?.description ?? '');
   const environment = 'Production';
-  const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>([]);
-  const [destinationId, setDestinationId] = useState<string | null>(null);
+  const [selectedObjects, setSelectedObjects] = useState<SelectedObject[]>(restored?.selectedObjects ?? []);
+  const [destinationId, setDestinationId] = useState<string | null>(restored?.destinationId ?? null);
   const [editConfigId, setEditConfigId] = useState<string | null>(null);
   const [editConfigStatus, setEditConfigStatus] = useState<string | null>(null);
   const [prefilled, setPrefilled] = useState(false);
+
+  const navigate = useNavigate();
+
+  const saveStateAndNavigate = (to: string) => {
+    sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
+      currentStep,
+      selectedStrategy,
+      entireDatasetSelected,
+      selectedPlatformId,
+      selectedConnectionName,
+      selectedDestinationName,
+      policyName,
+      description,
+      selectedObjects,
+      destinationId,
+    }));
+    navigate(to);
+  };
 
   const backupConfigService = useBackupConfigService();
 
@@ -54,6 +91,10 @@ export default function AddBackup() {
     setEditConfigStatus(item.status ?? item.backupStatus ?? null);
     setSelectedPlatformId(item.crmId ?? null);
     setDestinationId(item.destinationId ?? null);
+    const datasetValue = item.dataset ?? item.datasetType ?? item.dataSet;
+    setEntireDatasetSelected(
+      datasetValue === 'ENTIRE' || datasetValue === 'entire' || datasetValue === true
+    );
     setPolicyName(item.name ?? '');
     setDescription(item.description ?? '');
     const strat: BackupStrategy = item.schedule === 'REALTIME' ? 'realtime' : 'scheduled';
@@ -132,13 +173,14 @@ export default function AddBackup() {
         <Step1
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
-          onNext={(platformId) => {
+          onNext={(platformId, connectionName) => {
             if (platformId && platformId !== selectedPlatformId) {
               setSelectedPlatformId(platformId);
               setSelectedObjects([]);
             } else if (platformId) {
               setSelectedPlatformId(platformId);
             }
+            if (connectionName !== undefined) setSelectedConnectionName(connectionName);
             handleNextStep();
           }}
         />
@@ -151,14 +193,18 @@ export default function AddBackup() {
             if (destination?.destinationId) {
               setDestinationId(destination.destinationId);
             }
+            if (destination?.name) setSelectedDestinationName(destination.name);
             handleNextStep();
           }}
           onBack={handlePrevStep}
+          onAddNewDestination={() => saveStateAndNavigate('/connections/aws/connect?returnTo=/backup-management/add?step=2')}
         />
       )}
       {currentStep === 3 && (
         <Step3
           strategy={selectedStrategy}
+          sourceName={selectedConnectionName}
+          destinationName={selectedDestinationName}
           policyName={policyName}
           description={description}
           onNext={(name, desc) => {
@@ -232,6 +278,7 @@ export default function AddBackup() {
           destinationId={destinationId}
           editConfigId={editConfigId}
           editConfigStatus={editConfigStatus}
+          entireDatasetSelected={entireDatasetSelected}
         />
       )}
       {currentStep === 7 && selectedStrategy === 'scheduled' && (
@@ -250,6 +297,7 @@ export default function AddBackup() {
           destinationId={destinationId}
           editConfigId={editConfigId}
           editConfigStatus={editConfigStatus}
+          entireDatasetSelected={entireDatasetSelected}
         />
       )}
     </div>

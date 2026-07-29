@@ -1,4 +1,4 @@
-// DefineRestorePolicy — Step 4 of 7 in the New Restore wizard.
+// DefineRestorePolicy — Step 5 of 8 in the New Restore wizard.
 // Captures the restore job name, description, and tags before the user
 // selects a source. Mirrors the pattern used by DefineArchive in AddArchive.
 
@@ -7,33 +7,55 @@ import { Link } from 'react-router-dom';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -73,16 +95,16 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of 7</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 5 of 8</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Define Restore Policy</h1>
               <p className='text-gray-500 mt-1 text-sm'>Name this restore job and add optional context.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>4</span> of 7
+              Step <span className='text-blue-600'>5</span> of 8
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={4} />
+            <ProgressBar active={5} />
           </div>
         </div>
 

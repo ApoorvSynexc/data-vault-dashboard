@@ -15,6 +15,7 @@
 // Save as Draft: calls POST /v1/archival-config with status "DRAFT" — saves without scheduling.
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import PermissionGate from '../../../../components/PermissionGate';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
@@ -914,6 +915,14 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                 ↺ Re-run
               </button>
             )}
+            <PermissionGate permission={['archival.write', 'archival.execute']}>
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft || !archivalPayload}
+                className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm disabled:opacity-50'>
+                {isSavingDraft ? 'Saving…' : 'Save as Draft'}
+              </button>
+            </PermissionGate>
             <button
               onClick={handleSaveDraft}
               disabled={isSavingDraft || !archivalPayload}

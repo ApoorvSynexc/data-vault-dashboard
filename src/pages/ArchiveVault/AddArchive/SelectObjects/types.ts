@@ -12,3 +12,29 @@ export interface BuiltChildNode {
   field: never[];
   children?: BuiltChildNode[];
 }
+
+export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+
+export type FilterCondition = {
+  id: string;
+  field: string;
+  dataType: FieldDataType | null;
+  operator: string;
+  value: string;
+  picklistValues?: { value: string; label: string }[];
+};
+
+export type ScheduleConfig = {
+  timeZone: string;
+  type: string;
+  scheduling: {
+    frequency: string;
+    interval: number;
+    weekDays?: string[];
+    monthDate?: number;
+    selectedMonths?: string[];
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+  };
+};

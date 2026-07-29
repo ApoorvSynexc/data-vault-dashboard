@@ -10,27 +10,39 @@ export const PLATFORM_ENDPOINTS = {
   delete:     '/v1/crm',
 } as const;
 
-export type CrmProfile = {
-  organizationId: string;
-  photoUrl: string;
-  name: string;
-  userId: string;
-  email: string;
-  instanceUrl: string;
-  username: string;
-};
-
 export type ConnectedPlatform = {
   crmId: string;
   crmName: string;
-  name: string;
-  isConnected: boolean;
-  status: 'ACTIVE' | 'INACTIVE' | 'ERROR';
-  crmProfile: CrmProfile;
+  name?: string;
+  organizationId: string;
+  userId: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
+  environment?: string;
   createdAt: string;
   updatedAt: string;
-  userId: string;
-  environment?: string;
+  // nested profile from new API shape
+  crmProfile?: {
+    organizationId: string;
+    email: string;
+    username: string;
+    instanceUrl: string;
+    photoUrl?: string;
+    userId: string;
+  };
+  crm?: {
+    crmId: string;
+    crmName: string;
+    status: string;
+    environment?: string;
+    organizationId: string;
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+  };
+  firstName?: string;
+  lastName?: string;
+  contactEmail?: string;
+  isCrmConnected?: boolean;
 };
 
 export type ConnectPlatformResponse = {
@@ -47,8 +59,26 @@ export function usePlatformService() {
   const api = useHttpRequest();
 
   return {
-    getConnectedPlatforms: async () =>
-      (await api.get<ConnectedPlatform[]>(PLATFORM_ENDPOINTS.list)).data,
+    getConnectedPlatforms: async () => {
+      const raw = (await api.get<any[]>(PLATFORM_ENDPOINTS.list)).data ?? [];
+      return raw.map((item): ConnectedPlatform => ({
+        crmId:          item.crmId          ?? item.crm?.crmId,
+        crmName:        item.crm?.crmName   ?? item.crmName   ?? '',
+        name:           item.name,
+        organizationId: item.crm?.organizationId ?? item.organizationId ?? item.crmProfile?.organizationId ?? '',
+        userId:         item.userId,
+        status:         item.crm?.status    ?? item.status    ?? 'ACTIVE',
+        environment:    item.crm?.environment ?? item.environment,
+        createdAt:      item.createdAt,
+        updatedAt:      item.updatedAt,
+        crmProfile:     item.crmProfile,
+        crm:            item.crm,
+        firstName:      item.firstName,
+        lastName:       item.lastName,
+        contactEmail:   item.contactEmail,
+        isCrmConnected: item.isCrmConnected,
+      }));
+    },
     connectPlatform: async (crmType: CrmPlatform, options?: ConnectOptions) => {
       const query: Record<string, string | undefined> = { crmName: crmType.toLowerCase() };
       if (options?.environment) query.environment = options.environment;
@@ -56,8 +86,8 @@ export function usePlatformService() {
       if (options?.name) query.name = options.name;
       return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
     },
-    reconnectPlatform: async (crmId: string, options?: ConnectOptions) => {
-      const query: Record<string, string | undefined> = { crmId };
+    reconnectPlatform: async (orgId: string, options?: ConnectOptions) => {
+      const query: Record<string, string | undefined> = { userId: orgId };
       if (options?.environment) query.environment = options.environment;
       if (options?.customUrl) query.customUrl = options.customUrl;
       return (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.connect, { query })).data;
@@ -66,9 +96,9 @@ export function usePlatformService() {
       (await api.get<ConnectPlatformResponse | string>(PLATFORM_ENDPOINTS.callback, {
         query: { crmName: payload.crmName.toLowerCase(), code: payload.code, state: payload.state },
       })).data,
-    disconnectPlatform: async (crmId: string) =>
+    disconnectPlatform: async (orgId: string) =>
       (await api.delete<void>(PLATFORM_ENDPOINTS.disconnect, {
-        query: { crmId },
+        query: { userId: orgId },
       })).data,
     deletePlatform: async (crmId: string) =>
       (await api.delete<void>(PLATFORM_ENDPOINTS.delete, {

@@ -1,53 +1,77 @@
-// SetDestination — Step 3 of 7 in the New Restore wizard.
+// SetDestination — Step 4 of 8 in the New Restore wizard.
 // Lets the user pick where the restored data should land:
-//   Same Org (Source) | Different Org | Sandbox (with Masking) | Export Only
 // The configuration panel below the type cards adapts to the selection.
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import { usePlatformService } from '../../../../services/platform/platform.service';
+import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type DestType = 'same' | 'diff' | 'sandbox' | 'export';
+type DestType = 'same' | 'diff' | 'export';
 
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
-  { id: 'same',    title: 'Same Org (Source)',      desc: 'Default — disaster recovery to original org' },
-  { id: 'diff',    title: 'Different Org',           desc: 'Cross-org migration, DR drill, or seeding' },
-  { id: 'sandbox', title: 'Sandbox (with Masking)',  desc: 'PII auto-masked — sandbox seeding' },
-  { id: 'export',  title: 'Export Only',             desc: 'CSV / Parquet / JSON — no restore to org' },
+  { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
+  { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
+  { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
 ];
 
 // ── Tooltip helper ────────────────────────────────────────────────────────────
@@ -56,7 +80,7 @@ function Tip({ text }: { text: string }) {
   return (
     <span className='relative group inline-flex items-center ml-1 cursor-help align-middle'>
       <span className='w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold flex items-center justify-center'>i</span>
-      <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-56 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-50 shadow-lg pointer-events-none'>
+      <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-56 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-[9999] shadow-lg pointer-events-none'>
         {text}
       </span>
     </span>
@@ -112,24 +136,184 @@ function SameOrgConfig() {
   );
 }
 
-function DifferentOrgConfig() {
-  const [tag, setTag]         = useState('Restored via DataVault {job-id}');
-  const [destOrg, setDestOrg] = useState('Sandbox Dev1');
+function SalesforceMiniLogo() {
+  return (
+    <svg viewBox='0 0 64 64' fill='none' className='h-4 w-4'>
+      <ellipse cx='24' cy='22' rx='13' ry='13' fill='#00A1E0' />
+      <ellipse cx='38' cy='18' rx='11' ry='11' fill='#00A1E0' />
+      <ellipse cx='48' cy='24' rx='9' ry='9' fill='#00A1E0' />
+      <ellipse cx='14' cy='28' rx='8' ry='8' fill='#00A1E0' />
+      <ellipse cx='32' cy='30' rx='16' ry='10' fill='#00A1E0' />
+    </svg>
+  );
+}
 
-  const objectRows = [
-    { src: 'Account',       dst: 'Account',       status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Contact',       dst: 'Contact',       status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Opportunity',   dst: 'Opportunity',   status: 'ok',   statusLabel: 'Auto-matched',        needsAction: false },
-    { src: 'Engagement__c', dst: '',              status: 'warn', statusLabel: '⚠ No auto-match',     needsAction: true },
-    { src: 'LegacyNote__c', dst: '',              status: 'warn', statusLabel: '⚠ Missing in dest',   needsAction: true },
+function EnvBadge({ env }: { env: string }) {
+  const cls =
+    env === 'production' ? 'bg-green-100 text-green-700' :
+    env === 'sandbox'    ? 'bg-amber-100 text-amber-700' :
+                           'bg-blue-100 text-blue-700';
+  return (
+    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${cls}`}>{env}</span>
+  );
+}
+
+function CrmDropdown({ destinations, value, onChange, loading }: {
+  destinations: import('../../../../services/platform/platform.service').ConnectedPlatform[];
+  value: string;
+  onChange: (id: string) => void;
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const selected = destinations.find((d) => d.crmId === value);
+  const username = (d: typeof destinations[0]) => d.crmProfile?.username ?? d.contactEmail ?? d.crmId;
+
+  return (
+    <div ref={ref} className='relative'>
+      <button
+        type='button'
+        onClick={() => !loading && setOpen((o) => !o)}
+        disabled={loading}
+        className='w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-left transition hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60'
+      >
+        {loading ? (
+          <>
+            <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+            <span className='text-gray-400 flex-1'>Loading connections…</span>
+          </>
+        ) : selected ? (
+          <>
+            <SalesforceMiniLogo />
+            <span className='flex-1 font-medium text-gray-800 truncate'>{username(selected)}</span>
+            <EnvBadge env={selected.environment ?? 'production'} />
+          </>
+        ) : (
+          <>
+            <SalesforceMiniLogo />
+            <span className='flex-1 text-gray-400'>— Select a connection —</span>
+          </>
+        )}
+        <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className={`flex-shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+
+      {open && (
+        <div className='absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden'>
+          {destinations.length === 0 ? (
+            <p className='text-xs text-gray-400 px-4 py-3 text-center'>No CRM connections found.</p>
+          ) : (
+            destinations.map((d) => {
+              const isSelected = d.crmId === value;
+              return (
+                <button
+                  key={d.crmId}
+                  type='button'
+                  onClick={() => { onChange(d.crmId); setOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition border-b border-gray-50 last:border-0 ${
+                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className='flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center' style={{ background: 'rgba(0,161,224,0.1)' }}>
+                    <SalesforceMiniLogo />
+                  </div>
+                  <span className={`flex-1 font-medium truncate ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>{username(d)}</span>
+                  <EnvBadge env={d.environment ?? 'production'} />
+                  {isSelected && (
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#2563EB' strokeWidth='2.5' className='flex-shrink-0'>
+                      <polyline points='20 6 9 17 4 12' />
+                    </svg>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
+  const restoreService = useRestoreService();
+  const platformService = usePlatformService();
+  const [tag, setTag]           = useState('Restored via DataVault {job-id}');
+  const [destOrg, setDestOrg]   = useState('');
+
+  const { data: crmsData, isLoading: destLoading } = useQuery({
+    queryKey: ['crm-list'],
+    queryFn: () => platformService.getConnectedPlatforms(),
+    staleTime: 60_000,
+  });
+  const destinations: ConnectedPlatform[] = Array.isArray(crmsData) ? crmsData : [];
+
+  const { data: sourceObjectsData, isLoading: sourceObjectsLoading } = useQuery({
+    queryKey: ['source-objects', backupConfigId, configType],
+    queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType),
+    enabled: !!backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const sourceObjects: string[] = [
+    ...new Set(
+      Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]
+    ),
   ];
 
-  const fieldRows = [
-    { src: 'Account.Name',           dst: 'Account.Name',      type: 'Text(255)', status: 'ok',   statusLabel: 'Match',                 warn: false },
-    { src: 'Account.Industry',       dst: 'Account.Industry',  type: 'Picklist',  status: 'ok',   statusLabel: 'Match',                 warn: false },
-    { src: 'Account.AnnualRevenue',  dst: 'Account.Revenue__c',type: 'Currency',  status: 'warn', statusLabel: 'Renamed in destination', warn: true  },
-    { src: 'Account.Legacy_ID__c',   dst: '— Skip field —',    type: 'Text(40)',  status: 'err',  statusLabel: '⚠ Not in destination',  warn: true  },
-  ];
+  const { data: crmObjectsData, isLoading: crmObjectsLoading } = useQuery({
+    queryKey: ['crm-objects', destOrg],
+    queryFn: () => restoreService.getCrmObjects(destOrg),
+    enabled: !!destOrg,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  // step gate: object mapping is "confirmed" once the user clicks Confirm
+  const [objectMappingConfirmed, setObjectMappingConfirmed] = useState(false);
+
+  // field mapping: user picks which mapped object to inspect
+  const [selectedFieldObject, setSelectedFieldObject] = useState('');
+
+  interface ApiField { label: string; apiName: string; dataType: string; }
+  const crmObjectNames: string[] = ((crmObjectsData as any)?.data ?? []).map((o: any) => o.apiName as string);
+  const objectRows = sourceObjects.map((src) => {
+    const matched = crmObjectNames.includes(src);
+    return { src, dst: matched ? src : '', matched };
+  });
+  const mappedObjects = objectRows.filter((r) => r.matched).map((r) => r.src);
+
+  const activeFieldObject = selectedFieldObject || mappedObjects[0] || '';
+
+  const { data: sourceFieldsData, isLoading: sourceFieldsLoading } = useQuery({
+    queryKey: ['source-fields', backupConfigId, activeFieldObject],
+    queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId),
+    enabled: objectMappingConfirmed && !!activeFieldObject && !!backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const { data: destFieldsData, isLoading: destFieldsLoading } = useQuery({
+    queryKey: ['dest-fields', destOrg, activeFieldObject],
+    queryFn: () => restoreService.getCrmFields(destOrg, activeFieldObject),
+    enabled: objectMappingConfirmed && !!activeFieldObject && !!destOrg,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const sourceFieldList: ApiField[] = Array.isArray((sourceFieldsData as any)?.data) ? (sourceFieldsData as any).data : [];
+  const destFieldList: ApiField[]   = Array.isArray((destFieldsData as any)?.data?.fields)   ? (destFieldsData as any).data.fields   : [];
+  const destFieldApiNames = new Set(destFieldList.map((f) => f.apiName));
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -144,20 +328,12 @@ function DifferentOrgConfig() {
           <label className='text-sm font-medium text-gray-700'>
             Destination Org Connection <span className='text-red-500'>*</span>
           </label>
-          <select
+          <CrmDropdown
+            destinations={destinations}
             value={destOrg}
-            onChange={(e) => setDestOrg(e.target.value)}
-            className='w-full h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-          >
-            <option>Sandbox Dev1</option>
-            <option>UAT</option>
-            <option>+ Connect a new org…</option>
-          </select>
-          <p className='text-xs'>
-            <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700'>✓ Authenticated</span>
-            <span className='text-gray-400 ml-2'>Last verified 2 hours ago · 7 days until token refresh</span>
-          </p>
+            onChange={setDestOrg}
+            loading={destLoading}
+          />
         </div>
 
         {/* Tag Restored Records */}
@@ -175,66 +351,111 @@ function DifferentOrgConfig() {
           />
         </div>
 
-        {/* Object Mapping */}
-        <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
-          <div className='flex items-center gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
-            <span className='text-base'>🔁</span>
-            <span className='text-sm font-semibold text-gray-800'>Object Mapping</span>
-            <Tip text="When the destination is a different org, the same object might have a different API name. Object mapping runs FIRST — auto-detects matches by API name and lets you map (or skip) unmapped ones." />
+        {/* Step 2 — Object Mapping (shown only after CRM selected) */}
+        {!destOrg ? (
+          <div className='rounded-xl border border-dashed border-gray-200 px-5 py-6 text-center'>
+            <p className='text-sm text-gray-400'>Select a destination org connection above to configure object mapping.</p>
           </div>
-          <div className='p-4'>
-            <div className='flex items-start gap-3 rounded-lg px-4 py-3 text-xs mb-4' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-              <svg width='13' height='13' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/>
-              </svg>
-              <p className='text-blue-800 leading-relaxed'><strong>How this works:</strong> Object mapping happens before field mapping. If the destination has no equivalent object, choose to Skip / Block / Create the object on the fly.</p>
+        ) : (
+          <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
+            <div className='flex items-center justify-between gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
+              <div className='flex items-center gap-2'>
+                <span className='text-base'>🔁</span>
+                <span className='text-sm font-semibold text-gray-800'>Step 2 — Object Mapping</span>
+                <Tip text="When the destination is a different org, the same object might have a different API name. Object mapping runs FIRST — auto-detects matches by API name and lets you map (or skip) unmapped ones." />
+              </div>
+              {objectMappingConfirmed && (
+                <button
+                  onClick={() => { setObjectMappingConfirmed(false); setSelectedFieldObject(''); }}
+                  className='text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors'
+                >
+                  Edit mapping
+                </button>
+              )}
             </div>
-            <div className='overflow-x-auto'>
-              <table className='w-full text-xs'>
-                <thead>
-                  <tr className='border-b border-gray-100'>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
-                    <th className='w-8'></th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If unmapped</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {objectRows.map((row) => (
-                    <tr key={row.src} className={`border-b border-gray-50 ${row.needsAction ? 'bg-orange-50' : ''}`}>
-                      <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
-                      <td className='text-center text-gray-400 font-bold'>→</td>
-                      <td className='py-2.5 px-3'>
-                        <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
-                          {row.dst ? <option>{row.dst}</option> : <><option>— Pick destination object —</option><option>CustomerActivity__c</option></>}
-                        </select>
-                      </td>
-                      <td className='py-2.5 px-3'>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          row.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                        }`}>{row.statusLabel}</span>
-                      </td>
-                      <td className='py-2.5 px-3'>
-                        {row.needsAction ? (
-                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
-                            <option>Map manually</option>
-                            <option>Skip object</option>
-                            <option>Block job (until mapped)</option>
-                            <option>Create object + fields</option>
-                          </select>
-                        ) : <span className='text-gray-300'>—</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className='p-4'>
+              {sourceObjectsLoading || crmObjectsLoading ? (
+                <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
+                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  Loading objects…
+                </div>
+              ) : sourceObjects.length === 0 ? (
+                <p className='text-xs text-gray-400 py-4 text-center'>No objects found in the selected backup jobs.</p>
+              ) : objectMappingConfirmed ? (
+                <div className='flex items-center gap-2 text-xs text-green-700'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' className='w-4 h-4 flex-shrink-0'><polyline points='20 6 9 17 4 12'/></svg>
+                  <span><strong>{mappedObjects.length}</strong> of <strong>{objectRows.length}</strong> objects mapped and confirmed.</span>
+                </div>
+              ) : (
+                <div className='overflow-x-auto space-y-3'>
+                  <table className='w-full text-xs'>
+                    <thead>
+                      <tr className='border-b border-gray-100'>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Object</th>
+                        <th className='w-8' />
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Object</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>If Unmapped</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {objectRows.map((row) => (
+                        <tr key={row.src} className={`border-b border-gray-50 ${!row.matched ? 'bg-orange-50' : ''}`}>
+                          <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
+                          <td className='text-center text-gray-400 font-bold'>→</td>
+                          <td className='py-2.5 px-3'>
+                            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[180px]'>
+                              {row.matched
+                                ? <option value={row.dst}>{row.dst}</option>
+                                : <option value=''>— Pick destination object —</option>
+                              }
+                            </select>
+                          </td>
+                          <td className='py-2.5 px-3'>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              row.matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {row.matched ? 'Auto-matched' : '⚠ No auto-match'}
+                            </span>
+                          </td>
+                          <td className='py-2.5 px-3'>
+                            {!row.matched ? (
+                              <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
+                                <option>Map manually</option>
+                                <option>Skip object</option>
+                                <option>Block job (until mapped)</option>
+                                <option>Create object + fields</option>
+                              </select>
+                            ) : <span className='text-gray-300'>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className='flex items-center justify-between'>
+                    <p className='text-xs text-gray-400'>
+                      {mappedObjects.length} of {objectRows.length} object{objectRows.length !== 1 ? 's' : ''} auto-matched
+                      {objectRows.filter((r) => !r.matched).length > 0 && ` · ${objectRows.filter((r) => !r.matched).length} need attention`}
+                    </p>
+                    <button
+                      onClick={() => setObjectMappingConfirmed(true)}
+                      className='text-xs font-semibold px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+                    >
+                      Confirm Object Mapping →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <p className='text-xs text-gray-400 mt-3'>3 of 5 objects auto-matched · 2 need attention</p>
           </div>
-        </div>
+        )}
 
-        {/* Field Mapping */}
+        {/* Step 3 — Field Mapping (shown only after object mapping confirmed) */}
+        {!objectMappingConfirmed ? (
+          <div className='rounded-xl border border-dashed border-gray-200 px-5 py-6 text-center'>
+            <p className='text-sm text-gray-400'>Confirm object mapping above to configure field mapping.</p>
+          </div>
+        ) : (
         <div className='rounded-xl border border-gray-200 overflow-hidden'>
           <div className='flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-3'>
             <div className='flex items-center gap-2'>
@@ -242,150 +463,77 @@ function DifferentOrgConfig() {
               <span className='text-sm font-semibold text-gray-800'>Field Mapping</span>
               <Tip text="For each mapped object, line up source fields with destination fields. The system auto-suggests matches by exact API name, label match, and type compatibility." />
             </div>
-            <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'>
-              <option>Account</option><option>Contact</option><option>Opportunity</option>
-            </select>
-          </div>
-          <div className='p-4 overflow-x-auto'>
-            <table className='w-full text-xs'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Field</th>
-                  <th className='w-8'></th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Field</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fieldRows.map((row) => (
-                  <tr key={row.src} className={`border-b border-gray-50 ${row.status === 'warn' ? 'bg-orange-50' : row.status === 'err' ? 'bg-red-50' : ''}`}>
-                    <td className='py-2.5 px-3 font-mono text-gray-700'>{row.src}</td>
-                    <td className='text-center text-gray-400 font-bold'>→</td>
-                    <td className='py-2.5 px-3'>
-                      <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[200px]'>
-                        <option>{row.dst}</option>
-                      </select>
-                    </td>
-                    <td className='py-2.5 px-3 text-gray-500'>{row.type}</td>
-                    <td className='py-2.5 px-3'>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        row.status === 'ok'   ? 'bg-green-100 text-green-700'  :
-                        row.status === 'warn' ? 'bg-orange-100 text-orange-700' :
-                                               'bg-red-100 text-red-700'
-                      }`}>{row.statusLabel}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function SandboxConfig() {
-  const [sampleMode, setSampleMode] = useState('10% sample');
-  const [rowCap, setRowCap]         = useState('5000');
-
-  const maskingRows = [
-    { field: 'Contact.Email',          classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake email (preserve domain)', 'Replace with fake email (random domain)'] },
-    { field: 'Contact.Phone',          classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake phone', 'Hash', 'Null out'] },
-    { field: 'Contact.FirstName',      classification: 'PII',       classColor: 'bg-red-100 text-red-700',    strategy: ['Replace with fake name', 'Initials only', 'Null out'] },
-    { field: 'Account.AnnualRevenue',  classification: 'Sensitive', classColor: 'bg-orange-100 text-orange-700', strategy: ['No masking', 'Add ±20% noise', 'Round to nearest 100k'] },
-  ];
-
-  return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
-        <span className='text-base'>🧪</span>
-        <span className='text-sm font-semibold text-gray-800'>Sandbox (with Masking) Configuration</span>
-      </div>
-      <div className='p-5 flex flex-col gap-5'>
-
-        {/* Sandbox Org */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='text-sm font-medium text-gray-700'>Sandbox Org <span className='text-red-500'>*</span></label>
-          <select className='w-full h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-            <option>UAT — Sandbox</option>
-            <option>DevOrg-Alpha</option>
-            <option>QA — Sandbox</option>
-          </select>
-        </div>
-
-        {/* Sample size */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='text-sm font-medium text-gray-700'>
-            Sample size
-            <Tip text="For sandbox seeding, you often want a subset rather than the full dataset. Pick a percentage or fixed row cap." />
-          </label>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             <select
-              value={sampleMode}
-              onChange={(e) => setSampleMode(e.target.value)}
-              className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              value={activeFieldObject}
+              onChange={(e) => setSelectedFieldObject(e.target.value)}
+              className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none'
             >
-              <option>100% (full)</option>
-              <option>10% sample</option>
-              <option>1% sample</option>
-              <option>Fixed row cap…</option>
+              {sourceObjects.map((obj) => (
+                <option key={obj} value={obj}>{obj}</option>
+              ))}
             </select>
-            <input
-              type='number'
-              value={rowCap}
-              onChange={(e) => setRowCap(e.target.value)}
-              disabled={sampleMode !== 'Fixed row cap…'}
-              placeholder='Row cap (e.g. 5000)'
-              className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-50'
-              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-            />
-          </div>
-        </div>
-
-        {/* PII Masking Rules */}
-        <div className='rounded-xl border border-gray-200 overflow-hidden'>
-          <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
-            <span className='text-base'>🎭</span>
-            <span className='text-sm font-semibold text-gray-800'>PII Masking Rules</span>
-            <Tip text="PII is automatically replaced with safe synthetic values before landing in the sandbox. Pick the masking strategy per field." />
           </div>
           <div className='p-4 overflow-x-auto'>
-            <table className='w-full text-xs'>
-              <thead>
-                <tr className='border-b border-gray-100'>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Classification</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Masking Strategy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {maskingRows.map((row) => (
-                  <tr key={row.field} className='border-b border-gray-50'>
-                    <td className='py-2.5 px-3 font-mono text-gray-700'>{row.field}</td>
-                    <td className='py-2.5 px-3'>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${row.classColor}`}>{row.classification}</span>
-                    </td>
-                    <td className='py-2.5 px-3'>
-                      <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[260px]'>
-                        {row.strategy.map((s) => <option key={s}>{s}</option>)}
-                      </select>
-                    </td>
+            {sourceFieldsLoading || destFieldsLoading ? (
+              <div className='flex items-center justify-center py-8 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading fields…
+              </div>
+            ) : sourceFieldList.length === 0 ? (
+              <p className='text-xs text-gray-400 py-4 text-center'>No fields found for <strong>{activeFieldObject}</strong>.</p>
+            ) : (
+              <table className='w-full text-xs'>
+                <thead>
+                  <tr className='border-b border-gray-100'>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Source Field</th>
+                    <th className='w-8'></th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Destination Field</th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className='mt-3 text-xs font-semibold text-blue-600 hover:underline'>+ Add field rule</button>
+                </thead>
+                <tbody>
+                  {sourceFieldList.map((sf) => {
+                    const matched = destFieldApiNames.has(sf.apiName);
+                    return (
+                      <tr key={sf.apiName} className={`border-b border-gray-50 ${!matched ? 'bg-orange-50' : ''}`}>
+                        <td className='py-2.5 px-3 font-mono text-gray-700'>{sf.apiName}<span className='ml-1 text-gray-400 font-sans'>({sf.label})</span></td>
+                        <td className='text-center text-gray-400 font-bold'>→</td>
+                        <td className='py-2.5 px-3'>
+                          <select className='h-7 text-xs border border-gray-200 rounded-md px-2 bg-white text-gray-700 outline-none w-full max-w-[220px]'>
+                            {matched
+                              ? <option value={sf.apiName}>{sf.apiName}</option>
+                              : <option value=''>— Skip field —</option>
+                            }
+                            {destFieldList
+                              .filter((df) => df.apiName !== sf.apiName)
+                              .map((df) => <option key={df.apiName} value={df.apiName}>{df.apiName} ({df.label})</option>)
+                            }
+                          </select>
+                        </td>
+                        <td className='py-2.5 px-3 text-gray-500'>{sf.dataType}</td>
+                        <td className='py-2.5 px-3'>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            matched ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {matched ? 'Auto-matched' : '⚠ Not in destination'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
+        )}
 
       </div>
     </div>
   );
 }
+
 
 function ExportOnlyConfig() {
   const [splitByObject,      setSplitByObject]      = useState(true);
@@ -482,14 +630,14 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; }
 
-export default function SetDestination({ onNext, onBack }: Props) {
+export default function SetDestination({ onNext, onBack, backupConfigId, configType }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
 
   return (
-    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
+    <div className='flex-1 min-h-0 bg-gray-50 flex flex-col'>
+      <div className='flex flex-col p-4 sm:p-6 gap-4'>
 
         {/* Breadcrumb */}
         <div className='flex items-center gap-2 flex-shrink-0'>
@@ -506,16 +654,16 @@ export default function SetDestination({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 3 of 7</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of 8</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Set Destination &amp; Mapping</h1>
               <p className='text-gray-500 mt-1 text-sm'>Pick a destination type — the fields below adapt to your choice.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>3</span> of 7
+              Step <span className='text-blue-600'>4</span> of 8
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={3} />
+            <ProgressBar active={4} />
           </div>
         </div>
 
@@ -525,7 +673,7 @@ export default function SetDestination({ onNext, onBack }: Props) {
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
             <Tip text="Pick where the restored data goes. The configuration changes based on your selection." />
           </div>
-          <div className='p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+          <div className='p-4 grid grid-cols-1 sm:grid-cols-3 gap-3'>
             {DEST_TYPES.map((dt) => {
               const active = destType === dt.id;
               return (
@@ -545,15 +693,14 @@ export default function SetDestination({ onNext, onBack }: Props) {
         </div>
 
         {/* Sub-config panel */}
-        {destType === 'same'    && <SameOrgConfig />}
-        {destType === 'diff'    && <DifferentOrgConfig />}
-        {destType === 'sandbox' && <SandboxConfig />}
-        {destType === 'export'  && <ExportOnlyConfig />}
+        {destType === 'same'   && <SameOrgConfig />}
+        {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
+        {destType === 'export' && <ExportOnlyConfig />}
 
       </div>
 
-      {/* Sticky footer */}
-      <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
+      {/* Footer */}
+      <div className='sticky bottom-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white z-10'>
         <button
           onClick={onBack}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'

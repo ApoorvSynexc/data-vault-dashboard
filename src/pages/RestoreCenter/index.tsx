@@ -10,6 +10,7 @@
 //
 
 import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import HomePage from './HomePage';
 import NewRestore from './NewRestore';
 import JobProgress from './JobProgress';
@@ -19,18 +20,27 @@ import RestoreTemplates from './Templates';
 type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | 'templates';
 
 export default function RestoreCenter() {
-  const [screen, setScreen] = useState<Screen>('home');
-  const [historyFilter, setHistoryFilter] = useState<'All' | 'Drafts'>('All');
-  const [isTemplateMode, setIsTemplateMode] = useState(false);
+  const { jobId: jobIdParam } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
 
-  const goTo = (s: Screen) => setScreen(s);
-  const goToHistory = (filter: 'All' | 'Drafts' = 'All') => {
-    setHistoryFilter(filter);
-    setScreen('history');
+  const [screen, setScreen] = useState<Screen>(jobIdParam ? 'history' : 'home');
+  const [isTemplateMode, setIsTemplateMode] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string | undefined>(jobIdParam);
+
+  const goTo = (s: Screen) => {
+    if (s === 'home') navigate('/restore-center');
+    setScreen(s);
   };
+
   const goToNewRestore = (templateMode = false) => {
     setIsTemplateMode(templateMode);
     setScreen('new-restore');
+  };
+
+  const goToHistory = (jobId: string) => {
+    setSelectedJobId(jobId);
+    navigate(`/restore-center/history/${jobId}`);
+    setScreen('history');
   };
 
   return (
@@ -38,16 +48,13 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
-          onViewHistory={() => goToHistory('All')}
-          onViewDrafts={() => goToHistory('Drafts')}
-          onViewTemplates={() => goTo('templates')}
-          onViewJob={() => goTo('completion')}
+          onViewHistory={(jobId) => { if (jobId) goToHistory(jobId); }}
         />
       )}
       {screen === 'new-restore' && (
         <NewRestore
           onBack={() => goTo('home')}
-          onComplete={() => goTo('progress')}
+          onComplete={() => goTo('home')}
           isTemplateMode={isTemplateMode}
         />
       )}
@@ -58,7 +65,7 @@ export default function RestoreCenter() {
         <RestoreCompletion />
       )}
       {screen === 'history' && (
-        <RestoreHistory onBack={() => goTo('home')} onNewRestore={() => goTo('new-restore')} initialFilter={historyFilter} />
+        <RestoreHistory onBack={() => goTo('home')} jobId={selectedJobId} />
       )}
       {screen === 'templates' && (
         <RestoreTemplates onBack={() => goTo('home')} onNewTemplate={() => goToNewRestore(true)} onRun={() => goToNewRestore(false)} />

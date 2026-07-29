@@ -115,7 +115,7 @@ type TableProps<TRow> = {
   cursorMode?: boolean;
   /** Called when the user clicks the fixed page-1 circle in cursor mode — should reset cursor and go to page 1 */
   cursorFirstPageFn?: () => void;
-  /** Called when the user clicks ← Prev in cursor mode — parent pops the cursor stack */
+  /** Called when ← Prev is clicked in cursor mode — parent pops the cursor stack */
   cursorOnPrev?: () => void;
 
   // ── Serial number ──────────────────────────────────────────────────────────
@@ -241,9 +241,6 @@ export default function Table<TRow>({
             {/* ── Head ── */}
             <thead className='sticky top-0 z-20 bg-white'>
               <tr className='border-b border-gray-200 shadow-sm'>
-                {showSerialNumber && (
-                  <th className={headerCellClass}>SL No.</th>
-                )}
                 {showCheckbox && (
                   <th className={`${cellPaddingClassName} text-left`}>
                     <input
@@ -275,6 +272,9 @@ export default function Table<TRow>({
                     />
                   </th>
                 )}
+                {showSerialNumber && (
+                  <th className={headerCellClass}>SL No.</th>
+                )}
                 {columns.map((col) => (
                   <th
                     key={col.key}
@@ -293,14 +293,14 @@ export default function Table<TRow>({
                 /* Skeleton */
                 Array.from({ length: skeletonRows }).map((_, ri) => (
                   <tr key={`skel-${ri}`} className='border-b border-gray-100'>
-                    {showSerialNumber && (
-                      <td className={cellPaddingClassName}>
-                        <div className='h-3 w-6 rounded bg-gray-100 animate-pulse' />
-                      </td>
-                    )}
                     {showCheckbox && (
                       <td className={cellPaddingClassName}>
                         <div className='h-4 w-4 rounded bg-gray-100 animate-pulse' />
+                      </td>
+                    )}
+                    {showSerialNumber && (
+                      <td className={cellPaddingClassName}>
+                        <div className='h-3 w-6 rounded bg-gray-100 animate-pulse' />
                       </td>
                     )}
                     {columns.map((col, ci) => (
@@ -329,9 +329,6 @@ export default function Table<TRow>({
                       style={rowStyle}
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
                     >
-                      {showSerialNumber && (
-                        <td className={`${cellPaddingClassName} text-sm text-gray-600`}>{serial}</td>
-                      )}
                       {showCheckbox && (
                         <td
                           className={cellPaddingClassName}
@@ -349,6 +346,9 @@ export default function Table<TRow>({
                             className='w-5 h-5 rounded accent-blue-600 cursor-pointer disabled:cursor-not-allowed'
                           />
                         </td>
+                      )}
+                      {showSerialNumber && (
+                        <td className={`${cellPaddingClassName} text-sm text-gray-600`}>{serial}</td>
                       )}
                       {columns.map((col) => (
                         <td
