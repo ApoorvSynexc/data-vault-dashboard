@@ -71,7 +71,7 @@ interface Props {
   updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
 }
 
-export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Props) {
   const restoreService = useRestoreService();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
