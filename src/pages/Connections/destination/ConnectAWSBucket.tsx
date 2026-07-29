@@ -58,8 +58,7 @@ export default function ConnectAWSBucket() {
   const [secretAccessKey, setSecretAccessKey] = useState('');
   const [region, setRegion] = useState('us-east-1');
   const [s3Bucket, setS3Bucket] = useState('');
-  const [folderPath, setFolderPath] = useState('');
-
+  const [folderPath, _setFolderPath] = useState('');
   const [showAck, setShowAck] = useState(false);
   const [ackOption, setAckOption] = useState<AckOption>('auto');
   const [copied, setCopied] = useState(false);
