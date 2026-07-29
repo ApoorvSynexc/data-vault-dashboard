@@ -19,6 +19,8 @@ export interface SourceSelection {
   startDate?: string;
   endDate?: string;
   crmId?: string;
+  crmName?: string;
+  crmUsername?: string;
 }
 
 
@@ -181,6 +183,8 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           type: backupSelection.type,
           startDate: backupSelection.startDate,
           endDate: backupSelection.endDate,
+          crmName: backupSelectedRow?.crm?.crmName ?? backupSelectedRow?.crm?.name ?? undefined,
+          crmUsername: backupSelectedRow?.crm?.username ?? undefined,
         });
       } else {
         setBackupJobsPhase(true);
