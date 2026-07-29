@@ -95,7 +95,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Pro
   };
   const [jobName, setJobName]               = useState('INC-4711 Emergency Recovery – Accounts');
   const [tags, setTags]                     = useState('');
-  const [ticket, setTicket]                 = useState('INC-4711');
   const [justification, setJustification]   = useState(
     "Accounts accidentally overwritten during bulk data load INC-4711. Restoring to state as of this morning's backup."
   );
@@ -236,17 +235,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Pro
                     value={tags}
                     onChange={(e) => setTags(e.target.value)}
                     placeholder='e.g. Incident, production, Q2'
-                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                  />
-                </div>
-                {/* External Ticket */}
-                <div className='flex flex-col gap-1.5'>
-                  <label className='text-sm font-medium text-gray-700'>External Ticket (Jira / ServiceNow)</label>
-                  <input
-                    type='text'
-                    value={ticket}
-                    onChange={(e) => setTicket(e.target.value)}
                     className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
                     style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   />
