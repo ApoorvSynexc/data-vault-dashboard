@@ -15,6 +15,9 @@ export interface SourceSelection {
   configType: 'BACKUP' | 'ARCHIVAL';
   backupConfigId: string;
   backupJobIds: string[];
+  type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+  startDate?: string;
+  endDate?: string;
   crmId?: string;
 }
 
@@ -167,7 +170,14 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     }
     if (sourceType === 'backup') {
       if (showJobsPhase && backupSelection) {
-        onNext({ configType: 'BACKUP', backupConfigId: backupSelection.backupConfigId, backupJobIds: backupSelection.backupJobIds });
+        onNext({
+          configType: 'BACKUP',
+          backupConfigId: backupSelection.backupConfigId,
+          backupJobIds: backupSelection.backupJobIds,
+          type: backupSelection.type,
+          startDate: backupSelection.startDate,
+          endDate: backupSelection.endDate,
+        });
       } else {
         setBackupJobsPhase(true);
       }
