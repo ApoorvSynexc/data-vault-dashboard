@@ -22,7 +22,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
+import { useAuth } from '../../../context/AuthContext';
 import Typography from '../../../components/Typography';
+import PermissionGate from '../../../components/PermissionGate';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { formatBytes } from '../../../utils';
@@ -333,6 +335,7 @@ function FilterDropdown({
 
 export default function ArchiveVaultHomePage() {
   const navigate = useNavigate();
+  const { permissions } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const archivalService = useArchivalService();
   const platformService = usePlatformService();
@@ -511,10 +514,12 @@ export default function ArchiveVaultHomePage() {
             Track schedules, status, and archived records across every connected platform.
           </Typography>
         </div>
-        <button type='button' onClick={() => navigate('/archive-vault/new')}
-          className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'>
-          + New Archive
-        </button>
+        <PermissionGate permission='archival.write'>
+          <button type='button' onClick={() => navigate('/archive-vault/new')}
+            className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'>
+            + New Archive
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Stats Section */}
@@ -658,24 +663,53 @@ export default function ArchiveVaultHomePage() {
                   </button>
                   <ActionDropdown
                     items={[
-                      ...(policy.displayStatus === 'DRAFT' ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
-                      {
+                      ...(policy.displayStatus === 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Run Now', onClick: () => setConfirmRunNow(policy) }] : []),
+                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.write') ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
+                      ...(permissions.includes('archival.write') ? [{
                         label: 'Edit Policy',
                         disabled: policy.scheduleConfig?.scheduling?.frequency === 'ONCE',
                         title: policy.scheduleConfig?.scheduling?.frequency === 'ONCE' ? 'One-time archives cannot be edited' : undefined,
                         onClick: policy.scheduleConfig?.scheduling?.frequency === 'ONCE'
                           ? undefined
                           : () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`),
-                      },
-                      { label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) },
+                      }] : []),
+                      ...(permissions.includes('archival.delete') ? [{ label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) }] : []),
                     ]}
                   />
                 </div>
               ),
             },
           ];
+
+          if (!isLoading && filtered.length === 0) {
+            return (
+              <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
+                <div className='flex items-center justify-center rounded-full mb-4' style={{ width: 56, height: 56, background: 'rgba(21, 93, 252, 0.07)' }}>
+                  <svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.6' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
+                  </svg>
+                </div>
+                <p className='text-sm font-semibold text-gray-700 mb-1'>No archives found</p>
+                <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>
+                  {search || statusFilter !== 'All'
+                    ? 'No archives match the current filters. Try clearing them.'
+                    : permissions.includes('archival.write')
+                      ? 'No archive configurations exist yet. Create one to get started.'
+                      : 'No archive configurations exist yet.'}
+                </p>
+                {(search || statusFilter !== 'All') && (
+                  <button
+                    type='button'
+                    onClick={() => { setSearch(''); setStatusFilter('All'); }}
+                    className='mt-4 text-xs font-medium text-blue-600 hover:underline'
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            );
+          }
 
           return (
             <Table<EnrichedPolicy>

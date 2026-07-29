@@ -6,6 +6,7 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 // All archival endpoint paths in one place so URL changes only need to happen here
 export const ARCHIVAL_ENDPOINTS = {
   fields: '/v1/archival-config/fields',
+  picklistValues: '/v1/archival-config/get-picklist-field-values',
   objectChilds: '/v1/archival-config/object-childs',
   config: '/v1/archival-config',
   list: '/v1/archival-config/list',
@@ -124,6 +125,10 @@ export function useArchivalService() {
     // Returns all fields on a Salesforce object for building filter conditions
     getFields: (crmId: string, objectName: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.fields, { query: { crmId, objectName: objectName, mode: 'ARCHIVAL' } }),
+
+    // GET /v1/archival-config/get-picklist-field-values?crmId=&objectApiName=&fieldApiName=
+    getPicklistValues: (crmId: string, objectApiName: string, fieldApiName: string): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.picklistValues, { query: { crmId, objectApiName, fieldApiName } }),
 
     // GET /v1/archival-config/object-childs?crmId=&objectName=&mode=ARCHIVAL
     // Returns child relationship objects. UUIDs are generated client-side because

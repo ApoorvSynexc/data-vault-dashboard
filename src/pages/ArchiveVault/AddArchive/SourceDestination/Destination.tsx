@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
 import type { Destination } from '../../../../services/destination/destination.service';
+import PermissionGate from '../../../../components/PermissionGate';
 
 const DEFAULT_DESTINATION = { name: 'AWS', provider: 'AWS', status: 'ACTIVE' as const };
 
@@ -117,19 +118,9 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
                 );
               })}
               {destConnections.length === 0 && (
-                <div className='space-y-3'>
-                  <p className='text-center text-gray-500 py-4'>No connections available</p>
-                  <div className='flex justify-center'>
-                    <button
-                      onClick={() => navigate('/connections/aws/connect?returnTo=/archive-vault/new')}
-                      className='px-5 py-2 text-sm rounded-full text-white font-medium bg-blue-600 hover:bg-blue-700 transition-all'
-                    >
-                      + Add New Destination
-                    </button>
-                  </div>
-                </div>
+                <p className='text-center text-gray-500 py-4'>No connections available</p>
               )}
-              {destConnections.length > 0 && (
+              <PermissionGate permission='destinationConnection.write'>
                 <div className='flex justify-center pt-2'>
                   <button
                     onClick={() => navigate('/connections/aws/connect?returnTo=/archive-vault/new')}
@@ -138,7 +129,7 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
                     + Add New Destination
                   </button>
                 </div>
-              )}
+              </PermissionGate>
             </div>
           )}
         </div>

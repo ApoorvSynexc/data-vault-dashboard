@@ -34,12 +34,14 @@ export default function BackupDetails() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const backupConfigService = useBackupConfigService();
+  // @ts-expect-error isProcessingBackup/refetchProcessBackup used by DEMO_HIDDEN buttons
   const { isFetching: isProcessingBackup, refetch: refetchProcessBackup } = useQuery({
     queryKey: ['process-backup', slug],
     queryFn: () => backupConfigService.processBackup(slug!),
     enabled: false,
   });
 
+  // @ts-expect-error isSyncingSchema/refetchSyncSchema used by DEMO_HIDDEN buttons
   const { isFetching: isSyncingSchema, refetch: refetchSyncSchema } = useQuery({
     queryKey: ['sync-schema', slug],
     queryFn: () => backupConfigService.syncSchema(slug!),
@@ -103,7 +105,7 @@ export default function BackupDetails() {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* DEMO_HIDDEN: Sync Schema + Process Backup buttons — uncomment to restore
           <div className='flex items-center gap-3'>
             <button
               type='button'
@@ -141,6 +143,7 @@ export default function BackupDetails() {
               {isProcessingBackup ? 'Processing...' : 'Process Backup'}
             </button>
           </div>
+          END DEMO_HIDDEN */}
         </div>
 
         {/* Tabs */}

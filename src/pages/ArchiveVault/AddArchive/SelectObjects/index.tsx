@@ -6,8 +6,7 @@ import ProgressBar from '../ProgressBar';
 import { parseSalesforceError } from '../../../../utils';
 import AddDetailsWizard from './AddDetailsWizard';
 import type { ObjectConfig } from './AddDetailsWizard';
-import type { ScheduleConfig } from './SchedulePopup';
-import type { ArchivalCondition, BuiltChildNode } from './types';
+import type { ArchivalCondition, BuiltChildNode, ScheduleConfig } from './types';
 
 export type { ArchivalCondition };
 

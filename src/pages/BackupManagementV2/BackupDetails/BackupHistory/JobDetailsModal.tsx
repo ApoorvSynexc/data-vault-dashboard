@@ -8,11 +8,13 @@ type JobDetailsModalProps = {
   onRefresh?: () => Promise<void>;
 };
 
+const IN_PROGRESS_STATUSES = ['RUNNING', 'COMPRESSION_JOB_IN_PROGRESS', 'IN_PROGRESS', 'PROCESSING'];
+
 const getStatusStyle = (status: string) => {
   const s = status?.toUpperCase();
   if (s === 'SUCCESS' || s === 'COMPLETED') return { bg: 'rgba(55,197,91,0.15)', color: '#008020' };
   if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
-  if (s === 'RUNNING') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
+  if (IN_PROGRESS_STATUSES.includes(s)) return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
   if (s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
 };
@@ -21,7 +23,7 @@ const getStatusLabel = (status: string) => {
   const s = status?.toUpperCase();
   if (s === 'SUCCESS' || s === 'COMPLETED') return 'Completed';
   if (s === 'FAILED') return 'Failed';
-  if (s === 'RUNNING') return 'In Progress';
+  if (IN_PROGRESS_STATUSES.includes(s)) return 'In Progress';
   if (s === 'PENDING') return 'Pending';
   return status || 'Unknown';
 };
@@ -184,8 +186,8 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
             <div className='flex flex-col gap-1.5 py-4 px-5' style={{ borderRight: '1.5px solid #E8EDF5' }}>
               <p className='text-xs font-medium' style={{ color: '#64748B' }}>Status</p>
               <span
-                className='inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold w-fit'
-                style={{ background: statusStyle.bg, color: statusStyle.color }}
+                className='inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold break-words text-center'
+                style={{ background: statusStyle.bg, color: statusStyle.color, wordBreak: 'break-word' }}
               >
                 {getStatusLabel(job.status)}
               </span>

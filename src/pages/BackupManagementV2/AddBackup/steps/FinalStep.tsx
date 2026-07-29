@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import { useDestinationService } from '../../../../services/destination/destination.service';
+import PermissionGate from '../../../../components/PermissionGate';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -39,6 +40,7 @@ type FinalStepProps = {
   destinationId?: string | null;
   editConfigId?: string | null;
   editConfigStatus?: string | null;
+  entireDatasetSelected?: boolean;
 };
 
 
@@ -56,6 +58,7 @@ export default function FinalStep({
   destinationId = null,
   editConfigId = null,
   editConfigStatus = null,
+  entireDatasetSelected = false,
 }: FinalStepProps) {
   const isDraft = !editConfigId || editConfigStatus?.toUpperCase() === 'DRAFT';
   const isNonDraftEdit = !!editConfigId && !isDraft;
@@ -126,6 +129,7 @@ export default function FinalStep({
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
       crmId, name: policyName, description, destinationId,
+      dataset: entireDatasetSelected ? 'ENTIRE' : 'PARTIAL',
       objectNames: objectIds,
       schedule: strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects: objectsToUse.map((obj) => {
@@ -258,7 +262,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Source Platform</p><p className='text-sm font-medium text-gray-900'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) : 'Salesforce'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Destination Platform</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.provider ?? '--'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeCrm?.name ?? '--'}</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeCrm ? activeCrm.crmName.charAt(0).toUpperCase() + activeCrm.crmName.slice(1) + ' Connection' : 'Source Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeCrm?.name ?? activeCrm?.crmProfile?.username ?? activeCrm?.contactEmail ?? activeCrm?.crmId ?? '--'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>{activeDestinationDetail?.provider ? activeDestinationDetail.provider + ' Connection' : 'Destination Connection'}</p><p className='text-sm font-medium text-gray-900'>{activeDestinationDetail?.name ?? '--'}</p></div>
           </div>
         </SectionBox>
@@ -325,16 +329,20 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             </button>
           ) : (
             <>
-              <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
-                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
-              </button>
-              <button
-                onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
-                disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
-                className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
-              </button>
+              <PermissionGate permission={['backup.write', 'backup.execute']}>
+                <button onClick={handleSaveDraft} disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending} className='px-6 py-2 text-blue-600 font-medium border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                  {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : 'Save Backup Policy'}
+                </button>
+              </PermissionGate>
+              <PermissionGate permission='backup.execute'>
+                <button
+                  onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
+                  disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+                  className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
+                </button>
+              </PermissionGate>
             </>
           )}
         </div>

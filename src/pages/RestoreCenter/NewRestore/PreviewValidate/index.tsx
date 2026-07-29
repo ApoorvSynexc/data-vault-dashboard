@@ -1,4 +1,4 @@
-// PreviewValidate — Step 6 of 7 in the New Restore wizard.
+// PreviewValidate — Step 7 of 8 in the New Restore wizard.
 // Shows impact summary, schema mismatch report, validation & trigger impact,
 // snapshot diff table, and dry-run controls before final submission.
 
@@ -7,33 +7,55 @@ import { Link } from 'react-router-dom';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -50,6 +72,7 @@ const SCHEMA_ISSUES = [
   { msg: '3 inactive owners — will be reassigned to queue per conflict rule.' },
 ];
 
+/* DEMO_HIDDEN
 const TRIGGER_ROWS = [
   { label: 'Validation Rules',      sub: '2 rules would fire — disabled per job config',    badge: 'Disabled',  color: 'green' },
   { label: 'Flows / Process Builder', sub: '4 flows active — disabled per job config',       badge: 'Disabled',  color: 'green' },
@@ -57,6 +80,7 @@ const TRIGGER_ROWS = [
   { label: 'Storage Delta',         sub: '',                                                 badge: '+320 MB',   color: 'blue'  },
   { label: 'Estimated Run Time',    sub: '',                                                 badge: '~4 min',    color: 'gray'  },
 ];
+END DEMO_HIDDEN */
 
 const DIFF_ROWS = [
   { id: '001xx001', field: 'Account.Stage',  before: 'Closed',    after: 'Active',      action: 'MOD',  actionColor: 'amber' },
@@ -95,16 +119,16 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 6 of 7</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 7 of 8</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Preview &amp; Validate</h1>
               <p className='text-gray-500 mt-1 text-sm'>Review impact before committing — no data has been written yet.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>6</span> of 7
+              Step <span className='text-blue-600'>7</span> of 8
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={6} />
+            <ProgressBar active={7} />
           </div>
         </div>
 
@@ -159,7 +183,7 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
               </div>
             </div>
 
-            {/* Validation & Trigger Impact */}
+            {/* DEMO_HIDDEN: Validation & Trigger Impact — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Validation &amp; Trigger Impact</span>
@@ -182,6 +206,7 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
                 ))}
               </div>
             </div>
+            END DEMO_HIDDEN */}
 
           </div>
 

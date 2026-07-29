@@ -1,54 +1,131 @@
-// ReviewSubmit — Step 7 of 7 (Final Step) in the New Restore wizard.
+// ReviewSubmit — Step 8 of 8 (Final Step) in the New Restore wizard.
 // Summarises all settings and provides Run Restore / Schedule for Later actions.
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict & Automation', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onBack: () => void; onComplete: () => void; }
+interface Props {
+  onBack: () => void;
+  onComplete: () => void;
+  restorePayload: RestoreRetrievePayload;
+  updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
+}
 
-export default function ReviewSubmit({ onBack, onComplete }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
+  const restoreService = useRestoreService();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => onComplete(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess]);
+
+  const createJobMutation = useMutation({
+    mutationFn: () => restoreService.createRestoreJob(restorePayload),
+    onSuccess: () => setIsSuccess(true),
+    onError: (err) => console.error('[RestoreJob] createRestoreJob failed:', err),
+  });
+
+  const handleRun = () => {
+    updatePayload({
+      jobDetail: {
+        name: jobName,
+        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+      },
+    });
+    console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
+    createJobMutation.mutate();
+  };
   const [jobName, setJobName]               = useState('INC-4711 Emergency Recovery – Accounts');
   const [tags, setTags]                     = useState('');
   const [ticket, setTicket]                 = useState('INC-4711');
   const [justification, setJustification]   = useState(
     "Accounts accidentally overwritten during bulk data load INC-4711. Restoring to state as of this morning's backup."
   );
+
+  if (isSuccess) {
+    return (
+      <div className='flex-1 min-h-0 bg-gray-50 flex flex-col items-center justify-center'>
+        <div className='text-center'>
+          <div className='relative mb-6'>
+            <div className='absolute inset-0 flex items-center justify-center'>
+              <div className='w-24 h-24 bg-green-100 rounded-full animate-pulse' />
+            </div>
+            <div className='relative w-24 h-24 mx-auto bg-green-500 rounded-full flex items-center justify-center'>
+              <svg className='w-12 h-12 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+              </svg>
+            </div>
+          </div>
+          <h1 className='text-3xl font-bold text-green-600 mb-2'>Restore Job Created Successfully</h1>
+          <p className='text-gray-500 text-sm'>Redirecting to Restore Center in 2s…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -78,10 +155,10 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
               <p className='text-gray-500 mt-1 text-sm'>Confirm all settings before executing.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>7</span> of 7
+              Step <span className='text-blue-600'>8</span> of 8
             </span>
           </div>
-          <ProgressBar active={7} />
+          <ProgressBar active={8} />
         </div>
 
         {/* Two-column layout */}
@@ -237,14 +314,15 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
 
                 {/* Run Restore */}
                 <button
-                  onClick={onComplete}
-                  className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90'
+                  onClick={handleRun}
+                  disabled={createJobMutation.isPending}
+                  className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
                   style={{ background: '#155DFC' }}
                 >
                   <svg width='14' height='14' viewBox='0 0 24 24' fill='currentColor'>
                     <polygon points='5 3 19 12 5 21 5 3'/>
                   </svg>
-                  Run Restore
+                  {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
                 </button>
 
                 {/* Schedule for Later */}
@@ -270,14 +348,15 @@ export default function ReviewSubmit({ onBack, onComplete }: Props) {
           ← Back
         </button>
         <button
-          onClick={onComplete}
-          className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90'
+          onClick={handleRun}
+          disabled={createJobMutation.isPending}
+          className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
           style={{ background: '#155DFC' }}
         >
           <svg width='13' height='13' viewBox='0 0 24 24' fill='currentColor'>
             <polygon points='5 3 19 12 5 21 5 3'/>
           </svg>
-          Run Restore
+          {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
         </button>
       </div>
     </div>

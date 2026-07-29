@@ -11,6 +11,7 @@ import { useAuthService } from '../../../services/auth/auth.service';
 export default function LoginV2() {
   const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
   const [isCustomURLModalOpen, setIsCustomURLModalOpen] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const authService = useAuthService();
 
   useEffect(() => {
@@ -21,6 +22,9 @@ export default function LoginV2() {
         event.data?.type === 'SALESFORCE_CONNECT_SUCCESS'
       ) {
         window.location.replace('/');
+      }
+      if (event.data?.type === 'SALESFORCE_LOGIN_ERROR') {
+        setLoginError(event.data.message ?? 'Login failed. Please try again.');
       }
     };
     window.addEventListener('message', handler);
@@ -33,6 +37,7 @@ export default function LoginV2() {
   });
 
   const handleSalesforceLogin = (env: 'production' | 'sandbox') => {
+    setLoginError(null);
     socialLoginMutation.mutate({ environment: env }, {
       onSuccess: (data) => {
         if (data?.authorizationUrl) {
@@ -91,6 +96,23 @@ export default function LoginV2() {
             <p className='mb-8 text-sm' style={{ color: '#33363F' }}>
               Login to your DataVault account with Salesforce Credentials
             </p>
+
+            {loginError && (
+              <div className='mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3'>
+                <svg className='mt-0.5 h-4 w-4 flex-shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                  <circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' />
+                </svg>
+                <div className='flex-1'>
+                  <p className='text-sm font-semibold text-red-700'>Login Failed</p>
+                  <p className='text-xs text-red-600 mt-0.5'>{loginError}</p>
+                </div>
+                <button onClick={() => setLoginError(null)} className='text-red-400 hover:text-red-600 transition-colors'>
+                  <svg className='h-4 w-4' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             <p className='mb-5 font-semibold' style={{ color: '#33363F', fontSize: 16 }}>Sign In With</p>
 

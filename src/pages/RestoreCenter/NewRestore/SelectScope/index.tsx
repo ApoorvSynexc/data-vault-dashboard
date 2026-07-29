@@ -1,4 +1,4 @@
-// SelectScope — Step 2 of 7 in the New Restore wizard.
+// SelectScope — Step 3 of 8 in the New Restore wizard.
 //
 // Scope modes:
 //   Full Restore   — everything from source, no filtering
@@ -10,100 +10,113 @@
 //   Changed-Since  — fields that differ between source and dest
 //   Bulk via CSV   — upload / paste ID list
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import Papa from 'papaparse';
+import Joi from 'joi';
+import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { SourceSelection } from '../SelectSourceType';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'changed' | 'csv';
 type FilterTab = 'visual' | 'soql';
-type RelPreset = 'none' | 'standard' | 'everything' | 'custom';
-
-interface SFObject {
-  id: string;
-  apiName: string;
-  label: string;
-  type: 'Standard' | 'Custom';
-  records: string;
-  size: string;
-}
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+type FilterOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE';
 
 interface SFRecord {
-  id: string;
-  name: string;
-  sfId: string;
-  lastModified: string;
+  Id: string;
+  Name: string;
+  LastModifiedDate: string;
+  backup_job_id: string;
+  change_type: string;
 }
 
 interface FilterRow {
   id: string;
   field: string;
-  op: string;
+  dataType: FieldDataType;
+  op: FilterOperator;
   value: string;
+  picklistValues?: { value: string; label: string }[];
 }
 
-// ── Stub data ─────────────────────────────────────────────────────────────────
+interface OrGroup {
+  id: string;
+  rows: FilterRow[];
+}
 
-const SF_OBJECTS: SFObject[] = [
-  { id: '1', apiName: 'Account',             label: 'Account',           type: 'Standard', records: '123,213', size: '5.2 GB' },
-  { id: '2', apiName: 'Contact',             label: 'Contact',           type: 'Standard', records: '3,213',   size: '1.2 GB' },
-  { id: '3', apiName: 'Lead',                label: 'Lead',              type: 'Standard', records: '2,133',   size: '1.0 GB' },
-  { id: '4', apiName: 'Opportunity',         label: 'Opportunity',       type: 'Standard', records: '6,343',   size: '1.5 GB' },
-  { id: '5', apiName: 'Case',                label: 'Case',              type: 'Standard', records: '9,210',   size: '2.1 GB' },
-  { id: '6', apiName: 'Task',                label: 'Task',              type: 'Standard', records: '23,140',  size: '1.4 GB' },
-  { id: '7', apiName: 'Custom_Audit_Log__c', label: 'Custom Audit Log',  type: 'Custom',   records: '8,401',   size: '0.8 GB' },
-];
+// ── Filter operators (same as ArchiveVault AddDetailsWizard) ──────────────────
 
-const SF_RECORDS: SFRecord[] = [
-  { id: '1', name: 'Acme Corp Industries', sfId: '0013a00001AbcDe', lastModified: 'May 22' },
-  { id: '2', name: 'Globex Inc',           sfId: '0013a00001AbcDf', lastModified: 'May 21' },
-  { id: '3', name: 'Initech',              sfId: '0013a00001AbcDg', lastModified: 'May 18' },
-  { id: '4', name: 'Stark Industries',     sfId: '0013a00001AbcDh', lastModified: 'May 15' },
-];
-
-const FIELD_OPTIONS: Record<string, string[]> = {
-  Account:    ['Name', 'Type', 'Industry', 'AnnualRevenue', 'BillingCity', 'BillingCountry', 'Phone', 'Website', 'OwnerId', 'CreatedDate', 'LastModifiedDate', 'Description'],
-  Contact:    ['FirstName', 'LastName', 'Email', 'Phone', 'AccountId', 'Title', 'Department', 'OwnerId'],
-  Lead:       ['FirstName', 'LastName', 'Email', 'Phone', 'Company', 'Status', 'LeadSource', 'OwnerId'],
-  Opportunity:['Name', 'StageName', 'CloseDate', 'Amount', 'AccountId', 'OwnerId', 'Probability', 'Type'],
-  Case:       ['CaseNumber', 'Subject', 'Status', 'Priority', 'AccountId', 'ContactId', 'OwnerId', 'Description'],
-  Task:       ['Subject', 'Status', 'Priority', 'ActivityDate', 'WhoId', 'WhatId', 'OwnerId'],
+const OP_LABELS: Record<FilterOperator, string> = {
+  '=': 'equals', '!=': 'not equals', '>': 'greater than', '<': 'less than',
+  '>=': 'greater than or equal', '<=': 'less than or equal', 'IN': 'in', 'LIKE': 'contains',
 };
 
-const FILTER_FIELDS = ['Status', 'LastModifiedDate', 'CreatedDate', 'OwnerId', 'Amount'];
-const FILTER_OPS    = ['equals', 'not equals', 'contains', 'after', 'before'];
+const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
+  string:   ['=', '!=', 'LIKE', 'IN'],
+  number:   ['=', '!=', '>', '<', '>=', '<='],
+  boolean:  ['=', '!='],
+  date:     ['=', '!=', '>', '<', '>=', '<='],
+  datetime: ['=', '!=', '>', '<', '>=', '<='],
+  id:       ['=', '!=', 'IN'],
+  picklist: ['=', '!='],
+};
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
-    <div className='flex items-center gap-0'>
-      {STEPS.map((label, i) => {
-        const num = i + 1;
-        const isDone   = num < active;
-        const isActive = num === active;
-        return (
-          <div key={label} className='flex items-center flex-1 min-w-0'>
-            <div className={`flex items-center gap-1.5 flex-shrink-0 text-[11px] font-semibold whitespace-nowrap ${isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold border-2 flex-shrink-0 ${
+    <div className='w-full'>
+      {/* Row 1: circles + connector lines */}
+      <div className='flex items-center'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
                 isDone   ? 'bg-green-500 border-green-500 text-white' :
                 isActive ? 'bg-blue-600 border-blue-600 text-white' :
                            'bg-white border-gray-300 text-gray-400'
               }`}>
-                {isDone ? '✓' : num}
+                {isDone ? (
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' className='w-3.5 h-3.5'>
+                    <polyline points='20 6 9 17 4 12' />
+                  </svg>
+                ) : num}
               </div>
-              <span className='hidden lg:inline'>{label}</span>
+              {!isLast && <div className='flex-1 h-0.5' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />}
             </div>
-            {i < STEPS.length - 1 && (
-              <div className='flex-1 h-0.5 mx-1' style={{ background: isDone ? '#22C55E' : '#E5E7EB' }} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      <div className='flex items-start mt-2'>
+        {STEPS.map((label, i) => {
+          const num = i + 1;
+          const isDone   = num < active;
+          const isActive = num === active;
+          const isLast   = i === STEPS.length - 1;
+          return (
+            <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${
+                isActive ? 'text-blue-600' : isDone ? 'text-green-600' : 'text-gray-400'
+              }`}>
+                {label}
+              </span>
+              {!isLast && <div className='flex-1' />}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -121,13 +134,7 @@ const SCOPE_MODES: { id: ScopeMode; icon: string; title: string; desc: string }[
   { id: 'csv',     icon: '📋', title: 'Bulk via CSV',   desc: 'Paste or upload IDs / external IDs' },
 ];
 
-// ── Tiny helpers ──────────────────────────────────────────────────────────────
 
-function TypeBadge({ type }: { type: 'Standard' | 'Custom' }) {
-  return type === 'Custom'
-    ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-700'>Custom</span>
-    : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600'>Standard</span>;
-}
 
 function InfoCallout({ children }: { children: React.ReactNode }) {
   return (
@@ -142,18 +149,49 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; sourceSelection: SourceSelection; }
 
-export default function SelectScope({ onNext, onBack }: Props) {
+export default function SelectScope({ onNext, onBack, sourceSelection }: Props) {
+  const restoreService = useRestoreService();
+
+  const { data: sourceObjectsData, isLoading: sourceObjectsLoading } = useQuery({
+    queryKey: ['source-objects', sourceSelection.backupConfigId, sourceSelection.configType],
+    queryFn: () => restoreService.getObjectListByConfigId(sourceSelection.backupConfigId, sourceSelection.configType),
+    enabled: !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const sourceObjectNames: string[] = [
+    ...new Set(Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]),
+  ];
+
   // scope selection
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
+
+  // by-record: object picked by user triggers fetch
+  const [recordObj, setRecordObj] = useState('');
+
+  const fetchPayload = scopeMode === 'record' && !!recordObj
+    ? sourceSelection.configType === 'ARCHIVAL'
+      ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupConfigId: sourceSelection.backupConfigId }
+      : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupJobIds: sourceSelection.backupJobIds }
+    : null;
+
+  const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
+    queryKey: ['restore-fetch-records', sourceSelection, recordObj],
+    queryFn: () => restoreService.fetchRecords(fetchPayload!),
+    enabled: !!fetchPayload && (
+      sourceSelection.configType === 'ARCHIVAL' ? !!sourceSelection.backupConfigId : sourceSelection.backupJobIds.length > 0
+    ),
+    staleTime: 60_000,
+  });
 
   // by-object state
   const [objSearch,        setObjSearch]        = useState('');
   const [selectedObjects,  setSelectedObjects]  = useState<Set<string>>(new Set(['1', '2', '4']));
 
   // by-record state
-  const [recordObj,        setRecordObj]        = useState('Account');
   const [recordSearch,     setRecordSearch]     = useState('');
   const [selectedRecords,  setSelectedRecords]  = useState<Set<string>>(new Set(['1', '2']));
   const [showIdList,       setShowIdList]       = useState(false);
@@ -161,38 +199,80 @@ export default function SelectScope({ onNext, onBack }: Props) {
 
   // by-field state
   const [fieldObjSearch,   setFieldObjSearch]   = useState('');
-  const [fieldSelectedObjs,setFieldSelectedObjs]= useState<Set<string>>(new Set(['1', '2']));
-  const [activeFieldObj,   setActiveFieldObj]   = useState('Account');
-  const [selectedFields,   setSelectedFields]   = useState<Record<string, Set<string>>>({
-    Account: new Set(['Name', 'Industry', 'AnnualRevenue']),
-  });
+  const [fieldSelectedObjs,setFieldSelectedObjs]= useState<Set<string>>(new Set());
+  const [activeFieldObj,   setActiveFieldObj]   = useState('');
+  const [selectedFields,   setSelectedFields]   = useState<Record<string, Set<string>>>({});
   const [fieldFilter,      setFieldFilter]      = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
   const [fieldSearch,      setFieldSearch]      = useState('');
 
   // custom filter state
   const [filterTab,        setFilterTab]        = useState<FilterTab>('visual');
-  const [filterRows,       setFilterRows]       = useState<FilterRow[]>([
-    { id: '1', field: 'Status',           op: 'equals', value: 'Closed' },
-    { id: '2', field: 'LastModifiedDate', op: 'after',  value: '2026-01-01' },
-  ]);
-  const [filterLogic,      setFilterLogic]      = useState('1 AND 2');
+  const [filterObj,        setFilterObj]        = useState('');
+  const [filterRows,       setFilterRows]       = useState<FilterRow[]>([]);
+  const [orGroups,         setOrGroups]         = useState<OrGroup[]>([]);
+  const [filterLogic,      setFilterLogic]      = useState('');
   const [soqlText,         setSoqlText]         = useState("SELECT Id, Name, Industry, AnnualRevenue\nFROM Account\nWHERE Status = 'Closed'\n  AND LastModifiedDate > 2026-01-01\n  AND BillingCountry = 'US'");
 
   // changed-since state
   const [changedDate,      setChangedDate]      = useState('2026-05-01');
 
   // csv state
-  const [csvText,          setCsvText]          = useState('0013a00001AbcDe\n0013a00001AbcDf\n0013a00001AbcDg');
+  const [csvText,          setCsvText]          = useState('');
+  const [csvParsedIds,     setCsvParsedIds]     = useState<string[]>([]);
+  const [csvFileName,      setCsvFileName]      = useState<string | null>(null);
+  const [csvErrors,        setCsvErrors]        = useState<{ row: number; message: string }[]>([]);
+  const [csvErrorOpen,     setCsvErrorOpen]     = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // related records state
-  const [relPreset,        setRelPreset]        = useState<RelPreset>('standard');
-  const [includeParents,   setIncludeParents]   = useState(true);
-  const [includeChildren,  setIncludeChildren]  = useState(true);
-  const [relDepth,         setRelDepth]         = useState('2 levels');
-  const [includeChatter,   setIncludeChatter]   = useState(false);
-  const [includeEmail,     setIncludeEmail]     = useState(false);
+  const idSchema = Joi.string().min(1).required().messages({
+    'string.empty': 'ID cannot be empty',
+    'any.required': 'ID is required',
+  });
 
-  const showRelated = scopeMode !== 'full';
+  const parseCsvFile = (file: File) => {
+    setCsvErrors([]);
+    setCsvParsedIds([]);
+    setCsvFileName(file.name);
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const errors: { row: number; message: string }[] = [];
+        const ids: string[] = [];
+
+        // Validate that first column is "Id"
+        const firstCol = results.meta.fields?.[0];
+        if (!firstCol || firstCol.trim() !== 'Id') {
+          errors.push({ row: 0, message: `First column must be "Id" but found "${firstCol ?? 'nothing'}"` });
+          setCsvErrors(errors);
+          setCsvErrorOpen(true);
+          return;
+        }
+
+        results.data.forEach((row, index) => {
+          const rowNum = index + 2; // +2 because row 1 is header
+          const id = row['Id']?.trim();
+          const { error } = idSchema.validate(id);
+          if (error) {
+            errors.push({ row: rowNum, message: error.message });
+          } else {
+            ids.push(id);
+          }
+        });
+
+        if (errors.length > 0) {
+          setCsvErrors(errors);
+          setCsvErrorOpen(true);
+        }
+        setCsvParsedIds(ids);
+      },
+      error: (err) => {
+        setCsvErrors([{ row: 0, message: `Failed to parse CSV: ${err.message}` }]);
+        setCsvErrorOpen(true);
+      },
+    });
+  };
+
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -200,7 +280,7 @@ export default function SelectScope({ onNext, onBack }: Props) {
     setSelectedObjects((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const toggleAllObjs = () =>
-    setSelectedObjects(selectedObjects.size === SF_OBJECTS.length ? new Set() : new Set(SF_OBJECTS.map((o) => o.id)));
+    setSelectedObjects(selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? new Set() : new Set(sourceObjectNames));
 
   const toggleRecord = (id: string) =>
     setSelectedRecords((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -221,8 +301,20 @@ export default function SelectScope({ onNext, onBack }: Props) {
     });
   };
 
+  const makeBlankRow = (fields: { apiName: string; dataType: string }[]): FilterRow => {
+    const first = fields[0];
+    const rawType = first?.dataType?.toLowerCase();
+    const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string';
+    return { id: String(Date.now()), field: first?.apiName ?? '', dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '' };
+  };
+
+  const resolveDataType = (apiName: string, fields: { apiName: string; dataType: string }[]): FieldDataType => {
+    const rawType = fields.find((f) => f.apiName === apiName)?.dataType?.toLowerCase();
+    return rawType && rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string';
+  };
+
   const addFilterRow = () =>
-    setFilterRows((p) => [...p, { id: String(Date.now()), field: 'Status', op: 'equals', value: '' }]);
+    setFilterRows((p) => [...p, makeBlankRow(filterFields)]);
 
   const removeFilterRow = (id: string) =>
     setFilterRows((p) => p.filter((r) => r.id !== id));
@@ -230,70 +322,124 @@ export default function SelectScope({ onNext, onBack }: Props) {
   const updateFilterRow = (id: string, patch: Partial<FilterRow>) =>
     setFilterRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
 
-  const applyRelPreset = (preset: RelPreset) => {
-    setRelPreset(preset);
-    if (preset === 'none')       { setIncludeParents(false); setIncludeChildren(false); setIncludeChatter(false); setIncludeEmail(false); }
-    if (preset === 'standard')   { setIncludeParents(true);  setIncludeChildren(false); setIncludeChatter(false); setIncludeEmail(false); }
-    if (preset === 'everything') { setIncludeParents(true);  setIncludeChildren(true);  setIncludeChatter(true);  setIncludeEmail(true);  }
+  const handleFilterFieldChange = (id: string, apiName: string) => {
+    const dataType = resolveDataType(apiName, filterFields);
+    updateFilterRow(id, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ rowId: id, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
   };
 
-  // ── Object table columns ───────────────────────────────────────────────────
+  const addOrGroup = () =>
+    setOrGroups((p) => [...p, { id: String(Date.now()), rows: [makeBlankRow(filterFields)] }]);
 
-  const filteredObjs = SF_OBJECTS.filter(
-    (o) => o.label.toLowerCase().includes(objSearch.toLowerCase()) || o.apiName.toLowerCase().includes(objSearch.toLowerCase()),
-  );
+  const removeOrGroup = (groupId: string) =>
+    setOrGroups((p) => p.filter((g) => g.id !== groupId));
 
-  const objectColumns: TableColumn<SFObject>[] = [
-    {
-      key: 'check', header: '', width: '40px',
-      render: (row) => (
-        <input type='checkbox' checked={selectedObjects.has(row.id)} onChange={() => toggleObj(row.id)}
-          className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
-      ),
-    },
-    {
-      key: 'label', header: 'Object',
-      render: (row) => (
-        <div>
-          <p className='text-sm font-semibold text-gray-900'>{row.label}</p>
-          <p className='text-xs text-gray-400 font-mono mt-0.5'>{row.apiName}</p>
-        </div>
-      ),
-    },
-    { key: 'type',    header: 'Type',    render: (row) => <TypeBadge type={row.type} /> },
-    { key: 'records', header: 'Records', render: (row) => <span className='text-sm tabular-nums text-gray-700'>{row.records}</span> },
-    { key: 'size',    header: 'Est. Size', render: (row) => <span className='text-sm text-gray-700'>{row.size}</span> },
-  ];
+  const addOrGroupRow = (groupId: string) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, makeBlankRow(filterFields)] }));
+
+  const removeOrGroupRow = (groupId: string, rowId: string) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }));
+
+  const updateOrGroupRow = (groupId: string, rowId: string, patch: Partial<FilterRow>) =>
+    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }));
+
+  const handleOrGroupFieldChange = (groupId: string, rowId: string, apiName: string) => {
+    const dataType = resolveDataType(apiName, filterFields);
+    updateOrGroupRow(groupId, rowId, { field: apiName, dataType, op: OPERATORS_BY_TYPE[dataType][0], value: '', picklistValues: [] });
+    if (dataType === 'picklist' && apiName) {
+      setPendingPicklist({ rowId, groupId, fieldApiName: apiName });
+    } else {
+      setPendingPicklist(null);
+    }
+  };
+
 
   // ── Record table columns ───────────────────────────────────────────────────
 
-  const filteredRecords = SF_RECORDS.filter(
-    (r) => r.name.toLowerCase().includes(recordSearch.toLowerCase()) || r.sfId.includes(recordSearch),
+  const fetchedRecords: SFRecord[] = Array.isArray((fetchedRecordsData as any)?.data?.rows) ? (fetchedRecordsData as any).data.rows : [];
+  const filteredRecords = fetchedRecords.filter(
+    (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
   );
 
   const recordColumns: TableColumn<SFRecord>[] = [
     {
       key: 'check', header: '', width: '40px',
       render: (row) => (
-        <input type='checkbox' checked={selectedRecords.has(row.id)} onChange={() => toggleRecord(row.id)}
+        <input type='checkbox' checked={selectedRecords.has(row.Id)} onChange={() => toggleRecord(row.Id)}
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
       ),
     },
-    { key: 'name',         header: 'Record',        render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.name}</span> },
-    { key: 'sfId',         header: 'ID',            render: (row) => <span className='text-xs font-mono text-gray-500'>{row.sfId}</span> },
-    { key: 'lastModified', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{row.lastModified}</span> },
+    { key: 'Name',             header: 'Record',        render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.Name}</span> },
+    { key: 'Id',               header: 'ID',            render: (row) => <span className='text-xs font-mono text-gray-500'>{row.Id}</span> },
+    { key: 'LastModifiedDate', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{new Date(row.LastModifiedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
   ];
+
+  // ── Field options API ──────────────────────────────────────────────────────
+
+  const { data: fieldOptionsData, isLoading: fieldOptionsLoading } = useQuery({
+    queryKey: ['source-object-fields', activeFieldObj, sourceSelection.backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(activeFieldObj, sourceSelection.backupConfigId),
+    enabled: scopeMode === 'field' && !!activeFieldObj && !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  interface FieldOption { label: string; apiName: string; dataType: string; isUpdateable: boolean; isCreateable: boolean; isCustom?: boolean; isRequired?: boolean; }
+  const sourceFields: FieldOption[] = (fieldOptionsData as any)?.data ?? [];
 
   // ── Derived field data ─────────────────────────────────────────────────────
 
-  const availableFields = (FIELD_OPTIONS[activeFieldObj] ?? []).filter(
-    (f) => f.toLowerCase().includes(fieldSearch.toLowerCase()),
-  );
+  const availableFields = sourceFields.filter((f) => {
+    if (fieldSearch && !f.label.toLowerCase().includes(fieldSearch.toLowerCase())) return false;
+    if (fieldFilter === 'Custom')   return f.isCustom === true;
+    if (fieldFilter === 'Standard') return f.isCustom === false;
+    if (fieldFilter === 'Required') return f.isRequired === true;
+    return true; // 'All'
+  });
   const activeFieldSet = selectedFields[activeFieldObj] ?? new Set<string>();
+
+  // ── Custom filter fields API ───────────────────────────────────────────────
+
+  const { data: filterFieldsData, isLoading: filterFieldsLoading } = useQuery({
+    queryKey: ['filter-object-fields', filterObj, sourceSelection.backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(filterObj, sourceSelection.backupConfigId),
+    enabled: scopeMode === 'filter' && !!filterObj && !!sourceSelection.backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
+
+  // ── Picklist values API ────────────────────────────────────────────────────
+
+  const [pendingPicklist, setPendingPicklist] = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
+
+  const { data: picklistData } = useQuery({
+    queryKey: ['restore-picklist', sourceSelection.backupConfigId, filterObj, pendingPicklist?.fieldApiName],
+    queryFn: async () => {
+      const result = await restoreService.getPicklistValues(filterObj, pendingPicklist!.fieldApiName, sourceSelection.backupConfigId);
+      const payload = (result as any)?.data ?? result;
+      const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
+      return values as { value: string; label: string }[];
+    },
+    enabled: !!pendingPicklist && !!filterObj,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!picklistData || !pendingPicklist) return;
+    if (pendingPicklist.groupId) {
+      updateOrGroupRow(pendingPicklist.groupId, pendingPicklist.rowId, { picklistValues: picklistData });
+    } else {
+      updateFilterRow(pendingPicklist.rowId, { picklistValues: picklistData });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picklistData]);
 
   // ── CSV stats ──────────────────────────────────────────────────────────────
 
-  const csvIds = csvText.split('\n').map((l) => l.trim()).filter(Boolean);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -327,7 +473,7 @@ export default function SelectScope({ onNext, onBack }: Props) {
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
             <div>
-              <p className='text-xs font-semibold text-blue-600 mb-1'>Step 2 of 7</p>
+              <p className='text-xs font-semibold text-blue-600 mb-1'>Step 3 of 8</p>
               <Typography as='h1' variant='pageTitle' color='primary'>Choose Selection Scope</Typography>
               <Typography variant='bodySm' color='muted' className='mt-0.5'>
                 Pick a mode below. Only the relevant sub-UI appears — no clutter.
@@ -335,7 +481,7 @@ export default function SelectScope({ onNext, onBack }: Props) {
             </div>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={2} />
+            <ProgressBar active={3} />
           </div>
         </div>
 
@@ -391,12 +537,6 @@ export default function SelectScope({ onNext, onBack }: Props) {
                   <p className='text-xs text-green-700 mt-1'>
                     Every record of every object in the chosen source. No further selection or filtering needed.
                   </p>
-                  <div className='flex flex-wrap gap-5 mt-3 text-xs text-green-700'>
-                    <span><span className='font-bold text-green-900'>12</span> objects</span>
-                    <span><span className='font-bold text-green-900'>8,435</span> records</span>
-                    <span><span className='font-bold text-green-900'>320 MB</span> data</span>
-                    <span><span className='font-bold text-green-900'>~4 min</span> estimated</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -420,25 +560,37 @@ export default function SelectScope({ onNext, onBack }: Props) {
                   />
                 </div>
                 <button onClick={toggleAllObjs} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors whitespace-nowrap'>
-                  {selectedObjects.size === SF_OBJECTS.length ? 'Deselect all' : 'Select all'}
+                  {selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? 'Deselect all' : 'Select all'}
                 </button>
                 <span className='inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
                   {selectedObjects.size} Selected
                 </span>
               </div>
             </div>
-            <Table
-              columns={objectColumns}
-              rows={filteredObjs}
-              getRowKey={(r) => r.id}
-              borderless
-              headerVariant='uppercase'
-              cellPaddingClassName='px-5 py-3'
-              rowClassName={(row) =>
-                `border-b border-gray-50 transition-colors cursor-pointer ${selectedObjects.has(row.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-              }
-              onRowClick={(row) => toggleObj(row.id)}
-            />
+            {sourceObjectsLoading ? (
+              <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading objects…
+              </div>
+            ) : sourceObjectNames.length === 0 ? (
+              <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
+            ) : (
+              <div className='divide-y divide-gray-50'>
+                {sourceObjectNames
+                  .filter((name) => name.toLowerCase().includes(objSearch.toLowerCase()))
+                  .map((name) => (
+                    <div
+                      key={name}
+                      onClick={() => toggleObj(name)}
+                      className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selectedObjects.has(name) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    >
+                      <input type='checkbox' checked={selectedObjects.has(name)} onChange={() => toggleObj(name)}
+                        className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
+                      <span className='text-sm font-semibold text-gray-900 font-mono'>{name}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -454,10 +606,12 @@ export default function SelectScope({ onNext, onBack }: Props) {
               </InfoCallout>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <select
-                  value={recordObj} onChange={(e) => setRecordObj(e.target.value)}
+                  value={recordObj}
+                  onChange={(e) => { setRecordObj(e.target.value); setSelectedRecords(new Set()); setRecordSearch(''); }}
                   className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
                 >
-                  {SF_OBJECTS.map((o) => <option key={o.id} value={o.apiName}>{o.label}</option>)}
+                  <option value=''>— Select an object —</option>
+                  {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
                 <div className='relative'>
                   <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
@@ -466,23 +620,33 @@ export default function SelectScope({ onNext, onBack }: Props) {
                   <input
                     value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
                     placeholder='Search records by name or ID…'
-                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                    disabled={!recordObj}
+                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400'
                   />
                 </div>
               </div>
 
-              <Table
-                columns={recordColumns}
-                rows={filteredRecords}
-                getRowKey={(r) => r.id}
-                borderless
-                headerVariant='uppercase'
-                cellPaddingClassName='px-5 py-3'
-                rowClassName={(row) =>
-                  `border-b border-gray-50 transition-colors cursor-pointer ${selectedRecords.has(row.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-                }
-                onRowClick={(row) => toggleRecord(row.id)}
-              />
+              {!recordObj ? (
+                <p className='text-sm text-gray-400 text-center py-6'>Select an object above to load its records.</p>
+              ) : isLoadingRecords ? (
+                <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
+                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  Loading records…
+                </div>
+              ) : (
+                <Table
+                  columns={recordColumns}
+                  rows={filteredRecords}
+                  getRowKey={(r) => r.Id}
+                  borderless
+                  headerVariant='uppercase'
+                  cellPaddingClassName='px-5 py-3'
+                  rowClassName={(row) =>
+                    `border-b border-gray-50 transition-colors cursor-pointer ${selectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
+                  }
+                  onRowClick={(row) => toggleRecord(row.Id)}
+                />
+              )}
 
               <div className='flex items-center gap-2 text-sm text-gray-500'>
                 <span>{selectedRecords.size} records selected</span>
@@ -541,35 +705,40 @@ export default function SelectScope({ onNext, onBack }: Props) {
                     <p className='text-[10px] font-bold text-gray-500 uppercase tracking-wide px-2 py-1'>Selected objects <span className='font-normal'>(tick to include)</span></p>
                   </div>
                   <div className='divide-y divide-gray-50 max-h-64 overflow-y-auto'>
-                    {SF_OBJECTS
-                      .filter((o) => o.label.toLowerCase().includes(fieldObjSearch.toLowerCase()))
-                      .map((o) => {
-                        const isTicked  = fieldSelectedObjs.has(o.apiName);
-                        const isActive  = activeFieldObj === o.apiName;
-                        const fieldCount = selectedFields[o.apiName]?.size ?? 0;
-                        const total      = (FIELD_OPTIONS[o.apiName] ?? []).length;
+                    {sourceObjectsLoading ? (
+                      <div className='flex items-center justify-center py-6 gap-2 text-xs text-gray-400'>
+                        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                        Loading objects…
+                      </div>
+                    ) : sourceObjectNames.length === 0 ? (
+                      <p className='text-xs text-gray-400 py-6 text-center'>No objects found.</p>
+                    ) : sourceObjectNames
+                      .filter((name) => name.toLowerCase().includes(fieldObjSearch.toLowerCase()))
+                      .map((name) => {
+                        const isTicked   = fieldSelectedObjs.has(name);
+                        const isActive   = activeFieldObj === name;
+                        const fieldCount = selectedFields[name]?.size ?? 0;
                         return (
                           <div
-                            key={o.id}
-                            onClick={() => { toggleFieldObj(o.apiName); setActiveFieldObj(o.apiName); }}
+                            key={name}
+                            onClick={() => { toggleFieldObj(name); setActiveFieldObj(name); }}
                             className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
                           >
                             <input
                               type='checkbox' checked={isTicked}
-                              onChange={(e) => { e.stopPropagation(); toggleFieldObj(o.apiName); }}
+                              onChange={(e) => { e.stopPropagation(); toggleFieldObj(name); }}
                               className='w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0'
                             />
-                            <span className={`text-sm flex-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{o.label}</span>
+                            <span className={`text-sm font-mono flex-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{name}</span>
                             <span className='text-xs text-gray-400 flex-shrink-0'>
-                              {isTicked ? `${fieldCount}/${total}` : '—'}
+                              {isTicked ? `${fieldCount} fields` : '—'}
                             </span>
                           </div>
                         );
                       })}
                   </div>
                   <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>Showing {SF_OBJECTS.length} of {SF_OBJECTS.length}</span>
-                    <button className='text-blue-500 hover:underline'>Load more ↓</button>
+                    <span>Showing {sourceObjectNames.filter((n) => n.toLowerCase().includes(fieldObjSearch.toLowerCase())).length} of {sourceObjectNames.length}</span>
                   </div>
                 </div>
 
@@ -601,34 +770,39 @@ export default function SelectScope({ onNext, onBack }: Props) {
                   <div className='px-3 py-2 border-b border-gray-100 flex items-center justify-between'>
                     <p className='text-xs font-semibold text-gray-700'>{activeFieldObj} — pick fields to restore</p>
                     <div className='flex gap-2 text-xs'>
-                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields) }))} className='text-blue-500 hover:underline'>Select all</button>
+                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields.map((f) => f.apiName)) }))} className='text-blue-500 hover:underline'>Select all</button>
                       <span className='text-gray-300'>·</span>
                       <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set() }))} className='text-blue-500 hover:underline'>Deselect all</button>
                     </div>
                   </div>
 
                   <div className='p-3 flex flex-wrap gap-2 max-h-52 overflow-y-auto'>
-                    {availableFields.map((f) => {
-                      const on = activeFieldSet.has(f);
+                    {fieldOptionsLoading ? (
+                      <div className='flex items-center gap-2 text-xs text-gray-400 w-full justify-center py-4'>
+                        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                        Loading fields…
+                      </div>
+                    ) : availableFields.length === 0 ? (
+                      <p className='text-xs text-gray-400'>
+                        {activeFieldObj ? 'No fields match your search.' : 'Select an object to see its fields.'}
+                      </p>
+                    ) : availableFields.map((f) => {
+                      const on = activeFieldSet.has(f.apiName);
                       return (
                         <button
-                          key={f} onClick={() => toggleField(f)}
+                          key={f.apiName} onClick={() => toggleField(f.apiName)}
                           className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                             on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
                           }`}
                         >
-                          {f}
+                          {f.label}
                         </button>
                       );
                     })}
-                    {availableFields.length === 0 && (
-                      <p className='text-xs text-gray-400'>No fields match your search.</p>
-                    )}
                   </div>
 
                   <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>{activeFieldSet.size} of {(FIELD_OPTIONS[activeFieldObj] ?? []).length} fields selected · showing {availableFields.length}</span>
-                    <button className='text-blue-500 hover:underline'>Load more ↓</button>
+                    <span>{activeFieldSet.size} of {sourceFields.length} fields selected · showing {availableFields.length}</span>
                   </div>
                 </div>
 
@@ -661,73 +835,150 @@ export default function SelectScope({ onNext, onBack }: Props) {
               {/* Visual builder */}
               {filterTab === 'visual' && (
                 <div className='space-y-4'>
-                  <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>Account</strong> · All filters in a group combine with AND.</p>
-                  <div className='space-y-2'>
-                    {filterRows.map((row, idx) => (
-                      <div key={row.id} className='flex items-center gap-2 flex-wrap'>
-                        <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
-                        <select
-                          value={row.field} onChange={(e) => updateFilterRow(row.id, { field: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-40'
-                        >
-                          {FILTER_FIELDS.map((f) => <option key={f}>{f}</option>)}
-                        </select>
-                        <select
-                          value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-28'
-                        >
-                          {FILTER_OPS.map((o) => <option key={o}>{o}</option>)}
-                        </select>
-                        <input
-                          value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
-                          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
-                        />
-                        <button onClick={() => removeFilterRow(row.id)} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
+
+                  {/* Object picker */}
+                  <div className='flex items-center gap-3 flex-wrap'>
+                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
+                    <select
+                      value={filterObj}
+                      onChange={(e) => { setFilterObj(e.target.value); setFilterRows([]); setOrGroups([]); }}
+                      className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+                    >
+                      <option value=''>— Select an object —</option>
+                      {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    {filterFieldsLoading && (
+                      <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                    )}
+                  </div>
+
+                  {!filterObj ? (
+                    <p className='text-xs text-gray-400 py-2'>Select an object above to start building filters.</p>
+                  ) : (
+                    <>
+                      <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>{filterObj}</strong> · All filters in a group combine with AND. Use OR groups to express alternatives.</p>
+                      <div className='space-y-2'>
+                        {filterRows.map((row, idx) => (
+                          <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                            <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
+                            <select
+                              value={row.field} onChange={(e) => handleFilterFieldChange(row.id, e.target.value)}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
+                            >
+                              {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
+                            </select>
+                            <select
+                              value={row.op} onChange={(e) => updateFilterRow(row.id, { op: e.target.value as FilterOperator })}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'
+                            >
+                              {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
+                            </select>
+                            {row.dataType === 'picklist' ? (
+                              <select
+                                value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                              >
+                                <option value=''>Select value</option>
+                                {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                value={row.value} onChange={(e) => updateFilterRow(row.id, { value: e.target.value })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                              />
+                            )}
+                            <button onClick={() => removeFilterRow(row.id)} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div className='flex gap-2'>
-                    <button onClick={addFilterRow} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
-                    <button className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
-                  </div>
 
-                  {/* Filter logic */}
-                  <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-1.5'>
-                    <div className='flex items-center gap-3 flex-wrap'>
-                      <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
-                      <input
-                        value={filterLogic} onChange={(e) => setFilterLogic(e.target.value)}
-                        placeholder='e.g. (1 OR 2) AND (3 OR 4)'
-                        className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none'
-                      />
-                    </div>
-                    <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
-                  </div>
+                      {/* OR groups */}
+                      {orGroups.map((group) => (
+                        <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
+                          <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
+                          {group.rows.map((row) => (
+                            <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                              <select
+                                value={row.field} onChange={(e) => handleOrGroupFieldChange(group.id, row.id, e.target.value)}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'
+                              >
+                                {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
+                              </select>
+                              <select
+                                value={row.op} onChange={(e) => updateOrGroupRow(group.id, row.id, { op: e.target.value as FilterOperator })}
+                                className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'
+                              >
+                                {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
+                              </select>
+                              {row.dataType === 'picklist' ? (
+                                <select
+                                  value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                                >
+                                  <option value=''>Select value</option>
+                                  {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  value={row.value} onChange={(e) => updateOrGroupRow(group.id, row.id, { value: e.target.value })}
+                                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'
+                                />
+                              )}
+                              <button
+                                onClick={() => group.rows.length === 1 ? removeOrGroup(group.id) : removeOrGroupRow(group.id, row.id)}
+                                className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'
+                              >×</button>
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => addOrGroupRow(group.id)}
+                            className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'
+                          >+ Add filter to this OR group</button>
+                        </div>
+                      ))}
 
-                  {/* Live count */}
-                  <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                    <span>📊</span>
-                    <span>Live preview: <strong>1,243</strong> records match this filter</span>
-                  </div>
-                  <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-mono text-gray-600'>
-                    Resolved SOQL: <span className='text-blue-600'>SELECT Id FROM Account WHERE Status = 'Closed' AND LastModifiedDate &gt; 2026-01-01</span>
-                  </div>
+                      <div className='flex gap-2'>
+                        <button onClick={addFilterRow} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
+                        <button onClick={addOrGroup} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
+                      </div>
+
+                      {/* Filter logic */}
+                      <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-1.5'>
+                        <div className='flex items-center gap-3 flex-wrap'>
+                          <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
+                          <input
+                            value={filterLogic} onChange={(e) => setFilterLogic(e.target.value)}
+                            placeholder='e.g. (1 OR 2) AND (3 OR 4)'
+                            className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none'
+                          />
+                        </div>
+                        <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
               {/* SOQL editor */}
               {filterTab === 'soql' && (
                 <div className='space-y-3'>
-                  <p className='text-xs text-gray-500'>Paste a raw SOQL query. The system parses it, validates against the source schema, and shows the live match count.</p>
+                  <p className='text-xs text-gray-500'>Paste a raw SOQL query. The system parses it, validates against the source schema.</p>
                   <textarea
                     value={soqlText} onChange={(e) => setSoqlText(e.target.value)}
                     rows={6}
                     className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
                   />
-                  <InfoCallout>Editing the SOQL directly resets the visual builder.</InfoCallout>
-                  <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                    <span>📊</span>
-                    <span>SOQL parsed successfully · <strong>892</strong> records match · <button className='text-blue-600 hover:underline'>Preview first 10</button></span>
+                  <div className='flex justify-end'>
+                    <button
+                      type='button'
+                      disabled={!soqlText.trim()}
+                      className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                    >
+                      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='20 6 9 17 4 12' />
+                      </svg>
+                      Validate Query
+                    </button>
                   </div>
                 </div>
               )}
@@ -751,11 +1002,6 @@ export default function SelectScope({ onNext, onBack }: Props) {
                   <p className='text-xs text-amber-700 mt-1'>
                     The system auto-compares the source snapshot to the destination and surfaces records that exist in the source but are missing (or in the recycle bin) in the destination. Records that were never deleted will not be touched.
                   </p>
-                  <div className='flex flex-wrap gap-5 mt-3 text-xs text-amber-700'>
-                    <span><span className='font-bold text-amber-900'>~218</span> deleted records detected</span>
-                    <span>across <span className='font-bold text-amber-900'>5</span> objects</span>
-                    <span>Last computed: just now · <button className='text-blue-600 hover:underline'>Recompute</button></span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -777,10 +1023,6 @@ export default function SelectScope({ onNext, onBack }: Props) {
                     className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
                   />
                 </div>
-                <p className='text-xs text-gray-600 pb-1'>
-                  ⚡ Live: <strong>1,420 records</strong> have at least one differing field since{' '}
-                  {changedDate ? new Date(changedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
-                </p>
               </div>
               <div className='flex items-start gap-4 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4'>
                 <div className='w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5 text-gray-600 font-bold'>Δ</div>
@@ -802,118 +1044,108 @@ export default function SelectScope({ onNext, onBack }: Props) {
               <Typography as='h3' variant='sectionTitle' color='secondary'>📋 Bulk Match via CSV</Typography>
             </div>
             <div className='p-5 space-y-4'>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type='file'
+                accept='.csv'
+                className='hidden'
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) parseCsvFile(file);
+                  e.target.value = '';
+                }}
+              />
+
               {/* Drop zone */}
-              <div className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'>
-                <p className='text-3xl text-gray-300 mb-2'>⬆</p>
-                <p className='text-sm font-semibold text-gray-700'>Drop a CSV file here or click to browse</p>
-                <p className='text-xs text-gray-400 mt-1'>First column = record ID or external ID. UTF-8 encoded, max 200 MB.</p>
+              <div
+                className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) parseCsvFile(file);
+                }}
+              >
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='w-10 h-10 mx-auto mb-3 text-gray-300'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 16V4m0 0L8 8m4-4l4 4M4 20h16' />
+                </svg>
+                {csvFileName ? (
+                  <p className='text-sm font-semibold text-blue-600'>{csvFileName}</p>
+                ) : (
+                  <p className='text-sm font-semibold text-gray-700'>Drop a CSV file here or click to browse</p>
+                )}
+                <p className='text-xs text-gray-400 mt-1'>First column must be <code className='bg-gray-100 px-1 rounded'>Id</code>. UTF-8 encoded.</p>
               </div>
+
+              {/* Paste IDs */}
               <p className='text-xs font-semibold text-gray-700'>Or paste record IDs (one per line)</p>
               <textarea
-                value={csvText} onChange={(e) => setCsvText(e.target.value)}
+                value={csvText}
+                onChange={(e) => {
+                  setCsvText(e.target.value);
+                  const ids = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+                  const errors: { row: number; message: string }[] = [];
+                  const valid: string[] = [];
+                  ids.forEach((id, i) => {
+                    const { error } = idSchema.validate(id);
+                    if (error) errors.push({ row: i + 1, message: error.message });
+                    else valid.push(id);
+                  });
+                  setCsvParsedIds(valid);
+                  setCsvErrors(errors);
+                  setCsvFileName(null);
+                }}
                 rows={5}
+                placeholder={'001dN00000xECllQAG\n001dN00000xEClmQAG\n001dN00000xEClnQAG'}
                 className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
               />
-              {csvIds.length > 0 && (
+
+              {/* Summary */}
+              {csvParsedIds.length > 0 && (
                 <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                  <span>📊</span>
-                  <span>
-                    <strong>{csvIds.length} IDs</strong> detected · <strong>{csvIds.length} matched</strong> in source snapshot · 0 not found
-                  </span>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><path strokeLinecap='round' strokeLinejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M5 21h14a2 2 0 002-2V7l-5-5H5a2 2 0 00-2 2v14a2 2 0 002 2z'/></svg>
+                  <span><strong>{csvParsedIds.length} valid ID{csvParsedIds.length !== 1 ? 's' : ''}</strong> loaded{csvErrors.length > 0 ? ` · ` : ''}{csvErrors.length > 0 && <span className='text-red-600 font-semibold cursor-pointer underline' onClick={() => setCsvErrorOpen(true)}>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</span>}</span>
+                </div>
+              )}
+
+              {csvErrors.length > 0 && csvParsedIds.length === 0 && (
+                <div className='flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 cursor-pointer' onClick={() => setCsvErrorOpen(true)}>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                  <span><strong>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</strong> found in CSV — <span className='underline'>click to view</span></span>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ── Related Records & Attachments (universal, not on Full) ────── */}
-        {showRelated && (
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100'>
-              <Typography as='h3' variant='sectionTitle' color='secondary'>🔗 Related Records &amp; Attachments</Typography>
-            </div>
-            <div className='p-5 space-y-4'>
-              {/* Preset buttons */}
-              <div className='flex flex-wrap gap-2'>
-                {([
-                  { id: 'none',      label: 'None',      sub: '(this selection only)' },
-                  { id: 'standard',  label: 'Standard',  sub: '(parents only)' },
-                  { id: 'everything',label: 'Everything', sub: '(all content + chatter)' },
-                  { id: 'custom',    label: 'Custom',    sub: '' },
-                ] as { id: RelPreset; label: string; sub: string }[]).map((p) => (
-                  <button
-                    key={p.id} onClick={() => applyRelPreset(p.id)}
-                    className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg border-2 transition-colors ${
-                      relPreset === p.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {p.label}
-                    {p.sub && <span className='text-xs font-normal text-gray-400'>{p.sub}</span>}
-                  </button>
+        {/* ── CSV Error Modal ───────────────────────────────────────────────── */}
+        {csvErrorOpen && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden' style={{ maxHeight: '80vh' }}>
+              <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100'>
+                <div className='flex items-center gap-2'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' className='w-5 h-5'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                  <h3 className='text-sm font-bold text-gray-900'>CSV Validation Errors</h3>
+                </div>
+                <button onClick={() => setCsvErrorOpen(false)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-5 h-5'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                </button>
+              </div>
+              <div className='overflow-y-auto flex-1 px-5 py-4 space-y-2'>
+                {csvErrors.map((err, i) => (
+                  <div key={i} className='flex items-start gap-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5'>
+                    <span className='text-xs font-bold text-red-400 w-14 shrink-0'>{err.row === 0 ? 'Header' : `Row ${err.row}`}</span>
+                    <span className='text-xs text-red-700'>{err.message}</span>
+                  </div>
                 ))}
               </div>
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {/* Family Records */}
-                <div className='rounded-lg border border-gray-200 p-4 space-y-3'>
-                  <p className='text-sm font-semibold text-gray-800'>👪 Family Records</p>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400 text-base'>↑</span>
-                      <span className='text-sm text-gray-700'>Include Parent Records</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeParents} onChange={(e) => setIncludeParents(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400 text-base'>↓</span>
-                      <span className='text-sm text-gray-700'>Include Child Records</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeChildren} onChange={(e) => setIncludeChildren(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center gap-3'>
-                    <span className='text-xs text-gray-600'>Relationship depth:</span>
-                    <select
-                      value={relDepth} onChange={(e) => setRelDepth(e.target.value)}
-                      className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none'
-                    >
-                      <option>1 level (direct only)</option>
-                      <option>2 levels</option>
-                      <option>3 levels</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Attached Content */}
-                <div className='rounded-lg border border-gray-200 p-4 space-y-3'>
-                  <p className='text-sm font-semibold text-gray-800'>📎 Attached Content</p>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400'>💬</span>
-                      <span className='text-sm text-gray-700'>Chatter / FeedItems</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeChatter} onChange={(e) => setIncludeChatter(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <span className='text-gray-400'>✉</span>
-                      <span className='text-sm text-gray-700'>EmailMessage</span>
-                    </div>
-                    <label className='relative inline-flex items-center cursor-pointer'>
-                      <input type='checkbox' checked={includeEmail} onChange={(e) => setIncludeEmail(e.target.checked)} className='sr-only peer' />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-                    </label>
-                  </div>
-                </div>
+              <div className='px-5 py-3 border-t border-gray-100 flex justify-end'>
+                <button onClick={() => setCsvErrorOpen(false)} className='px-4 py-2 text-xs font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'>
+                  Close
+                </button>
               </div>
             </div>
           </div>

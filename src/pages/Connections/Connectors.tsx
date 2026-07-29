@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import SalesforceConnections from './source/SalesforceConnections';
 import AWSConnections from './destination/AWSConnections';
 
@@ -7,13 +8,20 @@ type Tab = 'source' | 'destination';
 
 export default function Connectors() {
   const location = useLocation();
-  const initialTab: Tab = (location.state as { tab?: Tab } | null)?.tab ?? 'source';
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const { hasPermission } = useAuth();
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'source',      label: 'Source Platforms'      },
-    { id: 'destination', label: 'Destination Platforms' },
+  const canSource      = hasPermission('sourceConnection');
+  const canDestination = hasPermission('destinationConnection');
+
+  const allTabs: { id: Tab; label: string; visible: boolean }[] = [
+    { id: 'source',      label: 'Source Platforms',      visible: canSource      },
+    { id: 'destination', label: 'Destination Platforms', visible: canDestination },
   ];
+  const tabs = allTabs.filter((t) => t.visible);
+
+  const initialTab: Tab = (location.state as { tab?: Tab } | null)?.tab
+    ?? (canSource ? 'source' : 'destination');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   return (
     <div className='flex w-full min-w-0 flex-col flex-1 min-h-0 overflow-hidden bg-gray-50'>

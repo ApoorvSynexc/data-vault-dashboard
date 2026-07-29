@@ -7,8 +7,8 @@ import type { ConnectedPlatform } from '../../../../services/platform/platform.s
 export const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
   {
     name: 'Salesforce', crmId: 'salesforce-1', crmName: 'Salesforce',
-    isConnected: true, status: 'ACTIVE' as const,
-    crmProfile: { organizationId: 'org-123', photoUrl: '', name: 'Salesforce Production', userId: 'user-123', email: 'admin@salesforce.com', instanceUrl: 'https://salesforce.com', username: 'admin' },
+    status: 'ACTIVE' as const,
+    organizationId: 'org-placeholder',
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), userId: 'user-123',
   },
 ];
@@ -35,7 +35,9 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
   const connections = selectedPlatform
-    ? allConnections.filter((c: any) => c.crmName.toLowerCase() === selectedPlatform.crmName.toLowerCase() && c.isConnected && c.status === 'ACTIVE')
+    ? allConnections.filter((c: any) =>
+        (c.crm?.crmName ?? c.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase()
+      )
     : [];
 
   useEffect(() => { setSelectedConnection(null); }, [selectedPlatform?.crmId]);
@@ -90,18 +92,19 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
                       </div>
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2'>
-                          <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>{connection.name}</p>
-                          {connection.environment && (
+                          <p className={`font-semibold truncate ${isSelected ? 'text-blue-600' : 'text-gray-900'}`}>{connection.crmProfile?.username ?? connection.contactEmail ?? connection.crmId}</p>
+                          {(connection.crm?.environment ?? connection.environment) && (
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize flex-shrink-0 ${
-                              connection.environment === 'production' ? 'bg-green-50 text-green-700'
-                              : connection.environment === 'sandbox' ? 'bg-amber-50 text-amber-700'
+                              (connection.crm?.environment ?? connection.environment) === 'production' ? 'bg-green-50 text-green-700'
+                              : (connection.crm?.environment ?? connection.environment) === 'sandbox' ? 'bg-amber-50 text-amber-700'
                               : 'bg-blue-50 text-blue-700'
-                            }`}>{connection.environment}</span>
+                            }`}>{connection.crm?.environment ?? connection.environment}</span>
                           )}
                         </div>
-                        <p className='text-xs text-gray-500 truncate'>Org ID: {connection.crmProfile?.organizationId}</p>
-                        {connection.crmProfile?.username && <p className='text-xs text-gray-500 truncate'>@{connection.crmProfile.username}</p>}
-                        <p className='text-xs text-gray-500 truncate'>{connection.crmProfile?.instanceUrl?.replace('https://', '')}</p>
+                        <p className='text-xs text-gray-500 truncate'>Org ID: {connection.crm?.organizationId ?? connection.organizationId}</p>
+                        {(connection.firstName || connection.lastName) && (
+                          <p className='text-xs text-gray-500 truncate'>{[connection.firstName, connection.lastName].filter(Boolean).join(' ')}</p>
+                        )}
                       </div>
                     </div>
                   </div>

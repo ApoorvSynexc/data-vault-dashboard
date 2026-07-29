@@ -5,12 +5,14 @@ type Step3Props = {
   onNext: (policyName: string, description: string) => void;
   onBack: () => void;
   strategy?: 'realtime' | 'scheduled';
+  sourceName?: string;
+  destinationName?: string;
   policyName?: string;
   description?: string;
   onDone?: (policyName: string, description: string) => void;
 };
 
-export default function Step3({ onNext, onBack, strategy = 'realtime', policyName: initialPolicyName = '', description: initialDescription = '', onDone }: Step3Props) {
+export default function Step3({ onNext, onBack, strategy = 'realtime', sourceName = '', destinationName = '', policyName: initialPolicyName = '', description: initialDescription = '', onDone }: Step3Props) {
   const navigate = useNavigate();
   const [policyName, setPolicyName] = useState(initialPolicyName);
   const [description, setDescription] = useState(initialDescription);
@@ -61,7 +63,7 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
               </label>
               <input
                 type='text'
-                value='Salesforce Production'
+                value={sourceName || '—'}
                 disabled
                 className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
               />
@@ -74,7 +76,7 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', policyNam
               </label>
               <input
                 type='text'
-                value='AWS S3'
+                value={destinationName || '—'}
                 disabled
                 className='w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
               />
