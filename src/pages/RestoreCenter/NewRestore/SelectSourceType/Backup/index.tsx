@@ -144,6 +144,14 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const jobsRows: any[] = (jobsData as any)?.data ?? [];
   const jobsMeta = (jobsData as any)?.meta ?? { nextCursor: null, totalRecords: 0 };
 
+  // When ENTIRE or CHANGED_BETWEEN scope and jobs load, auto-emit selection so canProceed becomes true
+  useEffect(() => {
+    if ((type === 'ENTIRE' || type === 'CHANGED_BETWEEN') && jobsRows.length > 0) {
+      onSelectionChange(buildSelection(jobsRows.map((j: any) => j.backupJobId), type));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, jobsRows.length, selectedBackupConfigId]);
+
   const goJobsNext = () => {
     if (!jobsMeta.nextCursor) return;
     setJobsCursorStack((prev) => [...prev, { page: jobsCurrentPage, cursor: jobsCursor ?? '' }]);
@@ -160,14 +168,17 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   };
 
 
-  const buildSelection = (ids: string[]): BackupSelection => ({
+  const isEntireScope = type === 'ENTIRE' || type === 'CHANGED_BETWEEN';
+
+  const buildSelection = (ids: string[], scope = type, sDate = startDate, eDate = endDate): BackupSelection => ({
     backupConfigId: selectedBackupConfigId,
     backupJobIds: ids,
-    type,
-    ...(type === 'CHANGED_BETWEEN' ? { startDate, endDate } : {}),
+    type: scope,
+    ...(scope === 'CHANGED_BETWEEN' ? { startDate: sDate, endDate: eDate } : {}),
   });
 
   const toggleJob = (id: string) => {
+    if (isEntireScope) return; // locked when ENTIRE
     setSelectedJobIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -181,14 +192,9 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
   // Re-emit selection whenever scope/dates change so parent always has latest
   const emitScopeChange = (newScope: ScopeType, newStart = startDate, newEnd = endDate) => {
-    const ids = Array.from(selectedJobIds);
-    if (ids.length > 0) {
-      onSelectionChange({
-        backupConfigId: selectedBackupConfigId,
-        backupJobIds: ids,
-        type: newScope,
-        ...(newScope === 'CHANGED_BETWEEN' ? { startDate: newStart, endDate: newEnd } : {}),
-      });
+    const ids = newScope === 'ENTIRE' ? jobsRows.map((j: any) => j.backupJobId) : Array.from(selectedJobIds);
+    if (newScope === 'ENTIRE' || ids.length > 0) {
+      onSelectionChange(buildSelection(ids, newScope, newStart, newEnd));
     }
   };
 
@@ -287,10 +293,11 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       render: (job) => (
         <input
           type='checkbox'
-          checked={selectedJobIds.has(job.backupJobId)}
+          checked={isEntireScope || selectedJobIds.has(job.backupJobId)}
+          disabled={isEntireScope}
           onChange={() => toggleJob(job.backupJobId)}
           onClick={(e) => e.stopPropagation()}
-          className='w-4 h-4 accent-blue-600 cursor-pointer'
+          className={`w-4 h-4 accent-blue-600 ${isEntireScope ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
         />
       ),
     },
@@ -557,8 +564,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
             skeletonConfig={{ rows: 8, colWidths: ['w-8', 'w-12', 'w-36', 'w-24', 'w-16', 'w-20', 'w-12', 'w-20', 'w-32'] }}
             headerVariant='uppercase'
             borderless
-            getRowClassName={(job: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
-            onRowClick={(job: any) => toggleJob(job.backupJobId)}
+            getRowClassName={(job: any) => `border-b border-gray-50 transition-colors ${isEntireScope ? 'bg-blue-50/60 cursor-default' : `cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}`}
+            onRowClick={(job: any) => { if (!isEntireScope) toggleJob(job.backupJobId); }}
             emptyState='No backup jobs found for this backup config.'
             height='auto'
             paginationConfig={{
