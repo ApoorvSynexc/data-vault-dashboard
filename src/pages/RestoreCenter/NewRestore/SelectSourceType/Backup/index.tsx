@@ -600,7 +600,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               hasNext: !!jobsMeta.nextCursor,
               onPrev: goJobsPrev,
               onNext: goJobsNext,
-              label: `Showing ${jobsRows.length > 0 ? (jobsCurrentPage - 1) * JOBS_PAGE_SIZE + 1 : 0} to ${(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + jobsRows.length} of ${jobsMeta.totalRecords ?? jobsRows.length}`,
+              label: type === 'CHANGED_BETWEEN' ? undefined : `Showing ${jobsRows.length > 0 ? (jobsCurrentPage - 1) * JOBS_PAGE_SIZE + 1 : 0} to ${(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + jobsRows.length} of ${jobsMeta.totalRecords ?? jobsRows.length}`,
             }}
           />
         </div>
