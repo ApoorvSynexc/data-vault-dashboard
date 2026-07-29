@@ -485,74 +485,91 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
         </div>
       )}
 
+      {/* Phase 2 — scope selector (own card) */}
+      {showJobsPhase && (
+        <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
+          <p className='text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3'>Restore Type</p>
+          <div className='grid grid-cols-2 gap-3'>
+            {(isRealtime
+              ? [
+                  { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup job' },
+                  { id: 'CHANGED_BETWEEN' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>, title: 'Changed Between', desc: 'Restore only records changed within a specific time range' },
+                ]
+              : [
+                  { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup job' },
+                  { id: 'PARTIAL' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path d='M12 2a10 10 0 0 1 0 20'/><path d='M12 2v20'/></svg>, title: 'Partial', desc: 'Restore a specific subset of records from the backup job' },
+                ]
+            ).map(({ id, icon, title, desc }) => {
+              const active = type === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => { setScopeType(id); emitScopeChange(id); }}
+                  className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'}`}
+                >
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <span className={active ? 'text-blue-600' : 'text-gray-500'}>{icon}</span>
+                      <span className={`text-sm font-semibold ${active ? 'text-blue-600' : 'text-gray-800'}`}>{title}</span>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${active ? 'border-blue-600' : 'border-gray-300'}`}>
+                      {active && <div className='w-2 h-2 rounded-full bg-blue-600' />}
+                    </div>
+                  </div>
+                  <p className='mt-1 text-xs text-gray-500'>{desc}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Date range — only for Changed Between */}
+          {type === 'CHANGED_BETWEEN' && (
+            <div className='mt-3 flex items-center gap-4 flex-wrap'>
+              <div className='flex items-center gap-2'>
+                <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Start Time</label>
+                <input
+                  type='datetime-local'
+                  value={startDate}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setStartDate(newStart);
+                    if (endDate && newStart && endDate < newStart) {
+                      setEndDate('');
+                      emitScopeChange(type, newStart, '');
+                    } else {
+                      emitScopeChange(type, newStart, endDate);
+                    }
+                  }}
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
+                />
+              </div>
+              <div className='flex items-center gap-2'>
+                <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>End Time</label>
+                <input
+                  type='datetime-local'
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => {
+                    const newEnd = e.target.value;
+                    if (startDate && newEnd < startDate) return;
+                    setEndDate(newEnd);
+                    emitScopeChange(type, startDate, newEnd);
+                  }}
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Phase 2 — jobs list */}
       {showJobsPhase && (
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
-            <Typography as='h3' variant='sectionTitle' color='secondary'>Select a Backup Job</Typography>
+            <Typography as='h3' variant='sectionTitle' color='secondary'>Backup Jobs</Typography>
             {selectedBackupRow?.name && (
               <span className='ml-1 text-xs font-medium text-gray-500'>— {selectedBackupRow.name}</span>
-            )}
-          </div>
-
-          {/* Scope selector */}
-          <div className='flex-shrink-0 px-5 py-4 border-b border-gray-100'>
-            <p className='text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3'>Restore Scope</p>
-            <div className='grid grid-cols-2 gap-3'>
-              {(isRealtime
-                ? [
-                    { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup job' },
-                    { id: 'CHANGED_BETWEEN' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>, title: 'Changed Between', desc: 'Restore only records changed within a specific time range' },
-                  ]
-                : [
-                    { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup job' },
-                    { id: 'PARTIAL' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path d='M12 2a10 10 0 0 1 0 20'/><path d='M12 2v20'/></svg>, title: 'Partial', desc: 'Restore a specific subset of records from the backup job' },
-                  ]
-              ).map(({ id, icon, title, desc }) => {
-                const active = type === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => { setScopeType(id); emitScopeChange(id); }}
-                    className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'}`}
-                  >
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center gap-2'>
-                        <span className={active ? 'text-blue-600' : 'text-gray-500'}>{icon}</span>
-                        <span className={`text-sm font-semibold ${active ? 'text-blue-600' : 'text-gray-800'}`}>{title}</span>
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${active ? 'border-blue-600' : 'border-gray-300'}`}>
-                        {active && <div className='w-2 h-2 rounded-full bg-blue-600' />}
-                      </div>
-                    </div>
-                    <p className='mt-1 text-xs text-gray-500'>{desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Date range — only for Changed Between */}
-            {type === 'CHANGED_BETWEEN' && (
-              <div className='mt-3 flex items-center gap-4 flex-wrap'>
-                <div className='flex items-center gap-2'>
-                  <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Start Time</label>
-                  <input
-                    type='datetime-local'
-                    value={startDate}
-                    onChange={(e) => { setStartDate(e.target.value); emitScopeChange(type, e.target.value, endDate); }}
-                    className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
-                  />
-                </div>
-                <div className='flex items-center gap-2'>
-                  <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>End Time</label>
-                  <input
-                    type='datetime-local'
-                    value={endDate}
-                    onChange={(e) => { setEndDate(e.target.value); emitScopeChange(type, startDate, e.target.value); }}
-                    className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
-                  />
-                </div>
-              </div>
             )}
           </div>
 
