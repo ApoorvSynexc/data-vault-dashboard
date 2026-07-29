@@ -63,18 +63,22 @@ function ProgressBar({ active }: { active: number }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
-  onNext: (policyName: string, description: string, tags: string) => void;
+  onNext: (jobDetail: { name: string; description: string; tags: string[] }) => void;
   onBack: () => void;
+  crmName?: string;
+  crmUsername?: string;
+  connectionName?: string;
 }
 
-export default function DefineRestorePolicy({ onNext, onBack }: Props) {
-  const defaultName = `Restore Job – ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
-
-  const [policyName, setPolicyName]   = useState(defaultName);
+export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUsername, connectionName }: Props) {
+  const [policyName, setPolicyName]   = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags]               = useState('');
 
   const canProceed = policyName.trim().length > 0;
+
+  const sourceLabel = connectionName || '—';
+  const destLabel   = [crmName, crmUsername ? `(${crmUsername})` : ''].filter(Boolean).join(' ') || '—';
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -122,7 +126,7 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
               </label>
               <input
                 type='text'
-                value='Production (live CRM org)'
+                value={sourceLabel}
                 readOnly
                 className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
                 style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
@@ -135,9 +139,9 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
               </label>
               <input
                 type='text'
-                value='AWS S3 — Production Bucket'
+                value={destLabel}
                 readOnly
-                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default'
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none cursor-default capitalize'
                 style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#64748B' }}
               />
             </div>
@@ -205,7 +209,7 @@ export default function DefineRestorePolicy({ onNext, onBack }: Props) {
             💾 Save as Draft
           </button>
           <button
-            onClick={() => onNext(policyName, description, tags)}
+            onClick={() => onNext({ name: policyName, description, tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [] })}
             disabled={!canProceed}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}

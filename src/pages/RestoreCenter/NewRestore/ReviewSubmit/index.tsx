@@ -90,12 +90,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, updat
   });
 
   const handleRun = () => {
-    updatePayload({
-      jobDetail: {
-        name: jobName,
-        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
-      },
-    });
     console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
     createJobMutation.mutate();
   };
