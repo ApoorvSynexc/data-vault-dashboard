@@ -1163,9 +1163,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             ← Back
           </button>
           <div className='flex items-center gap-2'>
-            <button className='text-sm font-semibold text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5'>
-              💾 Save as Draft
-            </button>
+            {/* DEMO_HIDDEN: <button className='text-sm font-semibold text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5'>💾 Save as Draft</button> END DEMO_HIDDEN */}
             <button
               onClick={onNext}
               className='flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors'

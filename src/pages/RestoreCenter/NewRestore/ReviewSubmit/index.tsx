@@ -71,7 +71,7 @@ interface Props {
   updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
 }
 
-export default function ReviewSubmit({ onBack, onComplete, restorePayload, updatePayload }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Props) {
   const restoreService = useRestoreService();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -90,12 +90,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, updat
   });
 
   const handleRun = () => {
-    updatePayload({
-      jobDetail: {
-        name: jobName,
-        tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
-      },
-    });
     console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
     createJobMutation.mutate();
   };
