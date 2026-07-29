@@ -72,6 +72,7 @@ const SCHEMA_ISSUES = [
   { msg: '3 inactive owners — will be reassigned to queue per conflict rule.' },
 ];
 
+/* DEMO_HIDDEN
 const TRIGGER_ROWS = [
   { label: 'Validation Rules',      sub: '2 rules would fire — disabled per job config',    badge: 'Disabled',  color: 'green' },
   { label: 'Flows / Process Builder', sub: '4 flows active — disabled per job config',       badge: 'Disabled',  color: 'green' },
@@ -79,6 +80,7 @@ const TRIGGER_ROWS = [
   { label: 'Storage Delta',         sub: '',                                                 badge: '+320 MB',   color: 'blue'  },
   { label: 'Estimated Run Time',    sub: '',                                                 badge: '~4 min',    color: 'gray'  },
 ];
+END DEMO_HIDDEN */
 
 const DIFF_ROWS = [
   { id: '001xx001', field: 'Account.Stage',  before: 'Closed',    after: 'Active',      action: 'MOD',  actionColor: 'amber' },

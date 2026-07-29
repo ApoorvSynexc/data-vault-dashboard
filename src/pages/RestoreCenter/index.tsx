@@ -48,7 +48,7 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
-          onViewHistory={goToHistory}
+          onViewHistory={(jobId) => { if (jobId) goToHistory(jobId); }}
         />
       )}
       {screen === 'new-restore' && (
