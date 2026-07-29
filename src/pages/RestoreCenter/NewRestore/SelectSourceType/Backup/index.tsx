@@ -11,9 +11,14 @@ type BackupMode = 'list' | 'pit';
 
 const JOBS_PAGE_SIZE = 20;
 
+export type ScopeType = 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+
 export interface BackupSelection {
   backupConfigId: string;
   backupJobIds: string[];
+  type: ScopeType;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Props {
@@ -106,7 +111,13 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
   const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
 
-  // Reset jobs selection only when the backup config changes, not every time jobs phase is entered
+  // Scope selection state
+  const isRealtime = selectedBackupRow?.schedule === 'REALTIME';
+  const [type, setScopeType] = useState<ScopeType>('ENTIRE');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Reset jobs selection + scope when the backup config changes
   const prevConfigIdRef = useRef(selectedBackupConfigId);
   useEffect(() => {
     if (prevConfigIdRef.current !== selectedBackupConfigId) {
@@ -115,6 +126,9 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       setJobsCursor(null);
       setJobsCurrentPage(1);
       setJobsCursorStack([]);
+      setScopeType('ENTIRE');
+      setStartDate('');
+      setEndDate('');
     }
   }, [selectedBackupConfigId]);
 
@@ -146,6 +160,13 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   };
 
 
+  const buildSelection = (ids: string[]): BackupSelection => ({
+    backupConfigId: selectedBackupConfigId,
+    backupJobIds: ids,
+    type,
+    ...(type === 'CHANGED_BETWEEN' ? { startDate, endDate } : {}),
+  });
+
   const toggleJob = (id: string) => {
     setSelectedJobIds((prev) => {
       const next = new Set(prev);
@@ -153,9 +174,22 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       else next.add(id);
       const ids = Array.from(next);
       onSelectedJobIdsChange?.(ids);
-      onSelectionChange(next.size > 0 ? { backupConfigId: selectedBackupConfigId, backupJobIds: ids } : null);
+      onSelectionChange(next.size > 0 ? buildSelection(ids) : null);
       return next;
     });
+  };
+
+  // Re-emit selection whenever scope/dates change so parent always has latest
+  const emitScopeChange = (newScope: ScopeType, newStart = startDate, newEnd = endDate) => {
+    const ids = Array.from(selectedJobIds);
+    if (ids.length > 0) {
+      onSelectionChange({
+        backupConfigId: selectedBackupConfigId,
+        backupJobIds: ids,
+        type: newScope,
+        ...(newScope === 'CHANGED_BETWEEN' ? { startDate: newStart, endDate: newEnd } : {}),
+      });
+    }
   };
 
   // ── Columns ──────────────────────────────────────────────────────────────
@@ -453,6 +487,65 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               <span className='ml-1 text-xs font-medium text-gray-500'>— {selectedBackupRow.name}</span>
             )}
           </div>
+
+          {/* Scope selector */}
+          <div className='flex-shrink-0 px-5 py-3 border-b border-gray-100 bg-gray-50 flex flex-col gap-3'>
+            <div className='flex items-center gap-2'>
+              <span className='text-xs font-semibold text-gray-600'>Restore Scope:</span>
+              <div className='flex items-center gap-1.5'>
+                {(isRealtime
+                  ? [{ id: 'ENTIRE', label: 'Entire' }, { id: 'CHANGED_BETWEEN', label: 'Changed Between' }]
+                  : [{ id: 'ENTIRE', label: 'Entire' }, { id: 'PARTIAL', label: 'Partial' }]
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      setScopeType(id as ScopeType);
+                      emitScopeChange(id as ScopeType);
+                    }}
+                    className='px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors'
+                    style={type === id
+                      ? { background: '#155DFC', color: '#fff' }
+                      : { background: '#E5E7EB', color: '#374151' }
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date range — only for Changed Between */}
+            {type === 'CHANGED_BETWEEN' && (
+              <div className='flex items-center gap-4 flex-wrap'>
+                <div className='flex items-center gap-2'>
+                  <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Start Time</label>
+                  <input
+                    type='datetime-local'
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      emitScopeChange(type, e.target.value, endDate);
+                    }}
+                    className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
+                  />
+                </div>
+                <div className='flex items-center gap-2'>
+                  <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>End Time</label>
+                  <input
+                    type='datetime-local'
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      emitScopeChange(type, startDate, e.target.value);
+                    }}
+                    className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <Table
             columns={jobsColumns}
             rows={jobsRows}
