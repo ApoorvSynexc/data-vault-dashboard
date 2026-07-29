@@ -79,11 +79,15 @@ function Tip({ text }: { text: string }) {
 type RestoreMode = 'overwrite' | 'append' | 'merge' | 'skip' | 'replace';
 
 const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'overwrite', title: 'Overwrite Existing',    desc: 'Source record replaces destination — every field overwritten',           recommended: true },
+  { id: 'overwrite', title: 'Overwrite Existing',    desc: 'Source record replaces destination — every field overwritten', recommended: true },
   { id: 'append',    title: 'Append as New Records', desc: 'Always insert — creates duplicates if record already exists' },
-  { id: 'merge',     title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
-  { id: 'skip',      title: 'Skip if Exists',         desc: 'Do not touch records already in destination' },
-  { id: 'replace',   title: 'Replace Entire Object',  desc: 'Delete all destination records, then insert from source', danger: true },
+];
+
+/* DEMO_HIDDEN
+const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
+  { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
+  { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination' },
+  { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source', danger: true },
 ];
 
 const FIELD_DEFAULTS = [
@@ -93,6 +97,7 @@ const FIELD_DEFAULTS = [
   { field: 'Opportunity.StageName', sub: 'Picklist · Required', type: 'Picklist', options: ['Prospecting', 'Qualification', 'Closed Lost'] },
   { field: 'Case.Status',           sub: 'Picklist · Required', type: 'Picklist', options: ['New', 'Working', 'Escalated', 'Closed'] },
 ];
+END DEMO_HIDDEN */
 
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -101,19 +106,18 @@ interface Props { onNext: () => void; onBack: () => void; }
 
 export default function ConflictConfig({ onNext, onBack }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
-  const [mergeDefault, setMergeDefault] = useState('Newest LastModifiedDate wins');
-
-  // Edge case selects
-  const [ecDuplicate,   setEcDuplicate]   = useState('Use destination if newer ✓ Recommended');
+  /* DEMO_HIDDEN state — restore when uncommenting sections below
+  const [mergeDefault,   setMergeDefault]   = useState('Newest LastModifiedDate wins');
+  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer ✓ Recommended');
   const [ecMissingField, setEcMissingField] = useState('Skip the field ✓ Recommended');
-  const [ecOwner,       setEcOwner]       = useState('Reassign to specified user ✓ Recommended');
-  const [ecParent,      setEcParent]      = useState('Restore parent first ✓ Recommended');
-  const [ecRecordType,  setEcRecordType]  = useState('Map to default ✓ Recommended');
+  const [ecOwner,        setEcOwner]        = useState('Reassign to specified user ✓ Recommended');
+  const [ecParent,       setEcParent]       = useState('Restore parent first ✓ Recommended');
+  const [ecRecordType,   setEcRecordType]   = useState('Map to default ✓ Recommended');
   const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field ✓ Recommended');
-  const [fallbackOwner, setFallbackOwner] = useState('DataVault Service Account');
-
+  const [fallbackOwner,  setFallbackOwner]  = useState('DataVault Service Account');
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
+  END DEMO_HIDDEN */
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -195,7 +199,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                   );
                 })}
 
-                {/* Per-field merge panel */}
+                {/* DEMO_HIDDEN: Per-field merge panel — uncomment to restore
                 {restoreMode === 'merge' && (
                   <div className='mt-2 rounded-lg border border-blue-200 bg-blue-50 p-4 flex flex-col gap-3'>
                     <p className='text-xs font-semibold text-blue-800'>
@@ -229,17 +233,17 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <button className='text-xs font-semibold text-blue-600 hover:underline self-start'>+ Add per-field override</button>
                   </div>
                 )}
+                END DEMO_HIDDEN */}
               </div>
             </div>
 
-            {/* Edge Case Handling */}
+            {/* DEMO_HIDDEN: Edge Case Handling — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Edge Case Handling</span>
                 <Tip text="What to do when something doesn't line up cleanly — duplicate Id, missing field in destination, owner no longer active, parent record missing, or record type missing." />
               </div>
               <div className='p-4 flex flex-col divide-y divide-gray-100'>
-                {/* On duplicate records */}
                 <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                     On duplicate records <Tip text='Triggered when a record with the same Id (or external Id) already exists. Overwrite = source wins. Use destination if newer = safer, compares LastModifiedDate. Create new copy = inserts parallel with " (copy)" suffix.' />
@@ -251,7 +255,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <option>Use destination if newer ✓ Recommended</option>
                   </select>
                 </div>
-                {/* Missing fields in dest */}
                 <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                     Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />
@@ -262,7 +265,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <option>Fail the record</option>
                   </select>
                 </div>
-                {/* Owner inactive/deleted */}
                 <div className='py-3 flex flex-col gap-2'>
                   <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                     <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
@@ -288,7 +290,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     </div>
                   )}
                 </div>
-                {/* Parent missing */}
                 <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                     Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." />
@@ -299,7 +300,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <option>Skip</option>
                   </select>
                 </div>
-                {/* Record type missing */}
                 <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                     Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." />
@@ -310,7 +310,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <option>Skip</option>
                   </select>
                 </div>
-                {/* Missing required field value */}
                 <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                     Missing required field value <Tip text='Triggered when the destination has a mandatory field and the source record value is blank or missing.' />
@@ -324,8 +323,9 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 </div>
               </div>
             </div>
+            END DEMO_HIDDEN */}
 
-            {/* Field Defaults */}
+            {/* DEMO_HIDDEN: Field Defaults — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
                 <div className='flex items-center gap-1.5'>
@@ -335,7 +335,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 </div>
                 <span className='text-xs text-gray-400'>5 mandatory fields detected</span>
               </div>
-              {/* Filters */}
               <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
                 <span className='text-xs font-semibold text-gray-600'>Filter:</span>
                 <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none'>
@@ -344,7 +343,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <input placeholder='Search fields…' className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none flex-1 sm:w-40 sm:flex-none' />
                 <span className='ml-auto text-xs text-gray-400 hidden sm:inline'>Showing 5 of 5 mandatory fields</span>
               </div>
-              {/* Table */}
               <div className='overflow-x-auto'>
                 <table className='w-full text-xs'>
                   <thead>
@@ -388,6 +386,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
               </div>
             </div>
+            END DEMO_HIDDEN */}
 
         </div>
       </div>
