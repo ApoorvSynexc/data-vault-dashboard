@@ -103,7 +103,7 @@ export default function BackupDetails() {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* DEMO_HIDDEN: Sync Schema + Process Backup buttons — uncomment to restore
           <div className='flex items-center gap-3'>
             <button
               type='button'
@@ -141,6 +141,7 @@ export default function BackupDetails() {
               {isProcessingBackup ? 'Processing...' : 'Process Backup'}
             </button>
           </div>
+          END DEMO_HIDDEN */}
         </div>
 
         {/* Tabs */}
