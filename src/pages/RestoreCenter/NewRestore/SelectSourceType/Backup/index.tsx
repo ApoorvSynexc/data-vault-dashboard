@@ -367,9 +367,15 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     {
       key: 'jobType',
       header: 'Backup Type',
-      render: (job) => job.jobType === 'BULK'
-        ? <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700'>Scheduled</span>
-        : <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700'>Realtime</span>,
+      render: (job) => {
+        if (job.jobType === 'BULK' && isRealtime) {
+          return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700'>Initial Backup</span>;
+        }
+        if (job.jobType === 'BULK') {
+          return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700'>Scheduled</span>;
+        }
+        return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700'>Realtime</span>;
+      },
     },
     {
       key: 'errorMessage',
