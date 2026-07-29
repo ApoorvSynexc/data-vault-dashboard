@@ -40,10 +40,10 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
   // { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permissions: ['archival']                                  },
   { to: '/connections',        label: 'Connections',         Icon: Icons.connectors, permissions: ['sourceConnection', 'destinationConnection'] },
   { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permissions: ['storage']                                   },
-  { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permissions: ['activitylogs']                              },
-  { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permissions: ['activitylogs']                              },
-  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
-  { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permissions: ['settings']                                  },
+  // { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permissions: ['activitylogs']                              },
+  // { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permissions: ['activitylogs']                              },
+  // { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
+  // { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permissions: ['settings']                                  },
 ];
 
 export default function MainLayout() {
