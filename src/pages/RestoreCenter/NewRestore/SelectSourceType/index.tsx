@@ -86,7 +86,7 @@ function ProgressBar({ active }: { active: number }) {
 }
 
 // ── Source type cards ─────────────────────────────────────────────────────────
-
+/* DEMO_HIDDEN
 const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc: string }[] = [
   {
     id: 'backup',
@@ -101,10 +101,12 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
     desc: 'Cold/warm archived records',
   },
 ];
+END DEMO_HIDDEN */
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, onArchivalJobsPhaseChange }: Props) {
+  // @ts-expect-error setSourceType used by DEMO_HIDDEN source type cards
   const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
@@ -134,6 +136,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     onArchivalJobsPhaseChange?.(v);
   };
 
+  // @ts-expect-error clearBackup used by DEMO_HIDDEN source type cards
   const clearBackup = () => {
     setConfigSelected(false);
     setBackupSelection(null);
@@ -143,6 +146,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     setBackupSelectedJobIds([]);
   };
 
+  // @ts-expect-error clearArchival used by DEMO_HIDDEN source type cards
   const clearArchival = () => {
     setArchivalConfigSelected(false);
     setArchivalSelection(null);
