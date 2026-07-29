@@ -134,11 +134,14 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
   const selectedBackupSlug = selectedBackupRow?.slug ?? selectedBackupRow?.backupConfigId ?? '';
 
+  const jobsStartTime = type === 'CHANGED_BETWEEN' && startDate ? new Date(startDate).toISOString() : undefined;
+  const jobsEndTime   = type === 'CHANGED_BETWEEN' && endDate   ? new Date(endDate).toISOString()   : undefined;
+
   const { data: jobsData, isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery({
-    queryKey: ['restore-backup-jobs', selectedBackupSlug, jobsCursor],
-    queryFn: () => backupConfigService.listBackupJobs(selectedBackupSlug, true, jobsCursor ?? undefined, JOBS_PAGE_SIZE),
-    enabled: showJobsPhase && !!selectedBackupSlug,
-    staleTime: 30_000,
+    queryKey: ['restore-backup-jobs', selectedBackupSlug, jobsCursor, jobsStartTime, jobsEndTime],
+    queryFn: () => backupConfigService.listBackupJobs(selectedBackupSlug, true, jobsCursor ?? undefined, JOBS_PAGE_SIZE, undefined, jobsStartTime, jobsEndTime),
+    enabled: showJobsPhase && !!selectedBackupSlug && (type !== 'CHANGED_BETWEEN' || (!!startDate && !!endDate)),
+    staleTime: 0,
   });
 
   const jobsRows: any[] = (jobsData as any)?.data ?? [];
