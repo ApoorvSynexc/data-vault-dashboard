@@ -219,14 +219,14 @@ export default function ConnectAWSBucket() {
                 </select>
               </div>
               <div>
-                <label className='block text-sm font-semibold text-gray-900'>Folder Path (Optional)</label>
-                <input
+                {/* <label className='block text-sm font-semibold text-gray-900'>Folder Path (Optional)</label> */}
+                {/* <input
                   type='text'
                   value={folderPath}
                   onChange={(e) => setFolderPath(e.target.value)}
                   placeholder='Specify a folder path within a bucket'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                />
+                /> */}
               </div>
             </div>
           </div>
