@@ -88,7 +88,14 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       </div>
       <div className={currentStep === 2 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <SelectSourceType
-          onNext={(sel) => { setSourceSelection(sel); updatePayload({ source: { backupJobIds: sel.backupJobIds, backupConfigId: sel.backupConfigId } }); goNext(); }}
+          onNext={(sel) => {
+            setSourceSelection(sel);
+            const source = sel.type === 'PARTIAL'
+              ? { backupConfigId: sel.backupConfigId, backupJobIds: sel.backupJobIds, type: sel.type }
+              : { backupConfigId: sel.backupConfigId, type: sel.type, ...(sel.startDate ? { startDate: sel.startDate } : {}), ...(sel.endDate ? { endDate: sel.endDate } : {}) };
+            updatePayload({ source });
+            goNext();
+          }}
           onBack={goBack}
           selectedConnection={selectedConnection}
           initialBackupJobsPhase={step2BackupJobsPhase}
