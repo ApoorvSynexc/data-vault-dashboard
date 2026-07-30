@@ -182,7 +182,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           type: sourceSelection.type ?? 'ENTIRE',
           ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
           ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
-          ...(sourceSelection.type === 'PARTIAL' && sourceSelection.backupJobIds.length > 0
+          ...((sourceSelection.type === 'PARTIAL' || sourceSelection.type === 'CHANGED_BETWEEN') && sourceSelection.backupJobIds.length > 0
             ? { backupJobIds: sourceSelection.backupJobIds }
             : {}),
         },
