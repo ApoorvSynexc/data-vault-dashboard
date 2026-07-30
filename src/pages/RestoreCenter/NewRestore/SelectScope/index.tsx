@@ -399,7 +399,9 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     {
       key: 'check', header: '', width: '40px',
       render: (row) => (
-        <input type='checkbox' checked={selectedRecords.has(row.Id)} onChange={() => toggleRecord(row.Id)}
+        <input type='checkbox' checked={selectedRecords.has(row.Id)}
+          onChange={() => toggleRecord(row.Id)}
+          onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
       ),
     },
