@@ -198,7 +198,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, recordObj, recordCursor],
     queryFn: () => restoreService.fetchRecords({ ...fetchPayload!, ...(recordCursor ? { cursor: recordCursor } : {}) }),
     enabled: !!fetchPayload,
-    staleTime: 60_000,
+    staleTime: 0,
   });
 
   useEffect(() => {
