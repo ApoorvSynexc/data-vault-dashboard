@@ -150,7 +150,9 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; sourceSelection: SourceSelection; }
+import type { RestoreScope } from '../../../../services/restore/restore.service';
+
+interface Props { onNext: (scope: RestoreScope) => void; onBack: () => void; sourceSelection: SourceSelection; }
 
 export default function SelectScope({ onNext, onBack, sourceSelection }: Props) {
   const restoreService = useRestoreService();
@@ -446,6 +448,31 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picklistData]);
+
+  // ── Build RestoreScope from current UI state ───────────────────────────────
+
+  const buildScope = (): RestoreScope => {
+    switch (scopeMode) {
+      case 'object':
+        return { type: 'OBJECT', objects: [...selectedObjects] };
+      case 'record':
+        return { type: 'RECORD', records: recordObj ? [{ objectName: recordObj, recordIds: [...selectedRecords] }] : [] };
+      case 'field':
+        return { type: 'FIELD', fields: [...fieldSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] })) };
+      case 'filter':
+        if (filterTab === 'soql') return { type: 'FILTER', filters: { type: 'SOQL', soqlQuery: soqlText } };
+        return { type: 'FILTER', filters: { type: 'AND', fields: filterRows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
+      case 'changed':
+        return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
+      case 'csv':
+        return { type: 'BULK_CSV', bulkCsvIds: csvParsedIds };
+      case 'deleted':
+        return { type: 'DELETED_ONLY', deletedOnly: true };
+      case 'full':
+      default:
+        return { type: 'ALL' };
+    }
+  };
 
   // ── CSV stats ──────────────────────────────────────────────────────────────
 
@@ -1168,7 +1195,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           <div className='flex items-center gap-2'>
             {/* DEMO_HIDDEN: <button className='text-sm font-semibold text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5'>💾 Save as Draft</button> END DEMO_HIDDEN */}
             <button
-              onClick={onNext}
+              onClick={() => onNext(buildScope())}
               className='flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors'
             >
               Next: Set Destination →
