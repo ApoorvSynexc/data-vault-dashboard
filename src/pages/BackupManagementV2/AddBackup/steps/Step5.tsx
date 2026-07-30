@@ -60,14 +60,36 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
 
+  const PINNED_OBJECT_IDS = [
+    'Customer__c',
+    'Customer_Detail__c',
+    'Loan_Case__c',
+    'Account',
+    'Opportunity',
+    'Task',
+    'Lead',
+    'Contact',
+    'Asset',
+    'Product2',
+  ];
+
   // Filter + paginate from raw allObjects first (no counts yet)
   const allFilteredObjects = useMemo(() => {
-    return allObjects.filter((obj) => {
+    const filtered = allObjects.filter((obj) => {
       const matchesSearch = (obj.name ?? '').toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       if (selectedFilter === 'Standard') return matchesSearch && !obj.isCustom;
       if (selectedFilter === 'Custom') return matchesSearch && obj.isCustom;
       return matchesSearch;
     });
+
+    const pinned = PINNED_OBJECT_IDS
+      .map((id) => filtered.find((o) => o.id === id))
+      .filter((o): o is BackupObject => !!o);
+
+    const pinnedSet = new Set(PINNED_OBJECT_IDS);
+    const rest = filtered.filter((o) => !pinnedSet.has(o.id));
+
+    return [...pinned, ...rest];
   }, [debouncedSearchQuery, selectedFilter, allObjects]);
 
   const totalRecords = allFilteredObjects.length;
