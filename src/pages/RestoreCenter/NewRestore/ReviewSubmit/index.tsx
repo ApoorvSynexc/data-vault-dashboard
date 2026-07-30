@@ -69,9 +69,10 @@ interface Props {
   onComplete: () => void;
   restorePayload: RestoreRetrievePayload;
   updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
+  dryRunStats?: { insertCount: number; updateCount: number; totalRowsRaw: number };
 }
 
-export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats }: Props) {
   const restoreService = useRestoreService();
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -183,7 +184,9 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Pro
                 </div>
                 <div>
                   <p className='text-xs text-gray-400 mb-0.5'>Est. Records</p>
-                  <p className='text-sm font-semibold text-gray-800'>8,435</p>
+                  <p className='text-sm font-semibold text-gray-800'>
+                    {dryRunStats ? dryRunStats.totalRowsRaw.toLocaleString() : '—'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -266,9 +269,8 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload }: Pro
                   <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
                 </svg>
                 <div>
-                  <p className='text-sm font-semibold text-red-700'>You are about to overwrite 8,435 records in Production</p>
-                  <p className='text-xs text-red-500 mt-1 leading-relaxed'>
-                    This action will be fully logged and is reversible within the rollback window (7 days). A pre-job snapshot will be taken automatically.
+                  <p className='text-sm font-semibold text-red-700'>
+                    You are about to overwrite {dryRunStats ? dryRunStats.totalRowsRaw.toLocaleString() : '—'} records in Production
                   </p>
                 </div>
               </div>
