@@ -657,13 +657,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                 />
               )}
 
-              <div className='flex items-center gap-2 text-sm text-gray-500'>
-                <span>{selectedRecords.size} records selected</span>
-                <span>·</span>
-                <button onClick={() => setShowIdList((v) => !v)} className='text-blue-600 hover:underline text-sm'>
-                  {showIdList ? '− Hide ID list' : '+ Add by ID list'}
-                </button>
-              </div>
+{/* DEMO_HIDDEN: records selected + Add by ID list */}
 
               {showIdList && (
                 <div className='space-y-2'>
