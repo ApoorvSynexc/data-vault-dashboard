@@ -83,6 +83,24 @@ interface DiffRow {
 
 const DISPLAY_LIMIT = 50;
 
+function normalizeValue(val: string): string {
+  if (val === '' || val === null || val === undefined) return '';
+  // Normalize timestamps: convert +0000 offset to Z, strip sub-ms precision differences
+  const tsMatch = val.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?(Z|[+-]\d{4}|[+-]\d{2}:\d{2})$/);
+  if (tsMatch) {
+    try {
+      return new Date(val).toISOString();
+    } catch {
+      return val;
+    }
+  }
+  // Normalize numbers: strip trailing .0 (e.g. "714.0" → "714", "25000.0" → "25000")
+  if (/^-?\d+\.0+$/.test(val)) {
+    return String(parseFloat(val));
+  }
+  return val;
+}
+
 function parseDiffRows(rows: any[]): { diffRows: DiffRow[]; insertCount: number; updateCount: number } {
   const diffRows: DiffRow[] = [];
   let insertCount = 0;
@@ -98,10 +116,11 @@ function parseDiffRows(rows: any[]): { diffRows: DiffRow[]; insertCount: number;
       insertCount++;
       diffRows.push({ recordName, field: '—', before: '(new record)', after: '—', action: 'NEW' });
     } else {
-      // UPDATE — show only changed fields
-      const changedFields = Object.keys(prev).filter(
-        (key) => key !== 'OwnerId' && String(prev[key]) !== String(curr[key]),
-      );
+      // UPDATE — show only fields where normalized values actually differ
+      const changedFields = Object.keys(prev).filter((key) => {
+        if (key === 'OwnerId') return false;
+        return normalizeValue(String(prev[key])) !== normalizeValue(String(curr[key]));
+      });
       if (changedFields.length > 0) {
         updateCount++;
         for (const field of changedFields) {
