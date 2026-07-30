@@ -113,7 +113,7 @@ export type BackupJobObject = {
   deletedfailedRecordCount?: number;
   sizeInBytes?: number;
   condition?: { type: string };
-  field?: unknown[];
+  field?: unknown[]; 
 };
 
 export type BackupJobItem = {
