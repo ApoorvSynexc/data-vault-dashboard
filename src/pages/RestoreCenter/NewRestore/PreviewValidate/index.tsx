@@ -203,11 +203,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         </div>
 
         {/* Impact summary stats */}
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
+        <div className='grid grid-cols-2 sm:grid-cols-3 gap-3 flex-shrink-0'>
           {[
             { label: 'To Create',           value: dryRunDone ? String(insertCount)  : '—', color: '#16A34A' },
             { label: 'To Update',           value: dryRunDone ? String(updateCount)  : '—', color: '#D97706' },
-            { label: 'To Delete',           value: dryRunDone ? '0'                  : '—', color: '#374151' },
             { label: 'Skipped (Conflicts)', value: dryRunDone ? '0'                  : '—', color: '#374151' },
           ].map(({ label, value, color }) => (
             <div key={label}
