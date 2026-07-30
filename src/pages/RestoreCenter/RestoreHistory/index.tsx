@@ -6,12 +6,14 @@ import type { TableColumn } from '../../../components/Table';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
-  DONE:        { label: '✓ Done',        cls: 'text-green-600', icon: '✓' },
+  SUCCESS:     { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
+  DONE:        { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
   PARTIAL:     { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
   FAILED:      { label: '✗ Failed',      cls: 'text-red-600', icon: '✗' },
   ROLLED_BACK: { label: '↩ Rolled Back', cls: 'text-gray-600', icon: '↩' },
   DRAFT:       { label: '📝 Draft',      cls: 'text-orange-600', icon: '📝' },
   PENDING:     { label: '⏳ Pending',    cls: 'text-blue-600', icon: '⏳' },
+  RUNNING:     { label: '⏳ Running',    cls: 'text-blue-600', icon: '⏳' },
 };
 
 interface Props {
