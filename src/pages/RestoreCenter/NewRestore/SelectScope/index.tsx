@@ -239,7 +239,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [filterRows,       setFilterRows]       = useState<FilterRow[]>([]);
   const [orGroups,         setOrGroups]         = useState<OrGroup[]>([]);
   const [filterLogic,      setFilterLogic]      = useState('');
-  const [soqlText,         setSoqlText]         = useState("SELECT Id, Name, Industry, AnnualRevenue\nFROM Account\nWHERE Status = 'Closed'\n  AND LastModifiedDate > 2026-01-01\n  AND BillingCountry = 'US'");
+  const [soqlObj,          setSoqlObj]          = useState('');
+  const [soqlWhere,        setSoqlWhere]        = useState('');
 
   // changed-since state
   const [changedDate,      setChangedDate]      = useState('2026-05-01');
@@ -481,7 +482,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'field':
         return { type: 'FIELD', fields: [...fieldSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] })) };
       case 'filter':
-        if (filterTab === 'soql') return { type: 'FILTER', filters: { type: 'SOQL', soqlQuery: soqlText } };
+        if (filterTab === 'soql') return { type: 'FILTER', filters: { type: 'SOQL', soqlQuery: soqlWhere.trim() ? `SELECT Id FROM ${soqlObj} WHERE ${soqlWhere.trim()}` : `SELECT Id FROM ${soqlObj}` } };
         return { type: 'FILTER', filters: { type: 'AND', fields: filterRows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
       case 'changed':
         return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
@@ -1022,17 +1023,49 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
               {/* SOQL editor */}
               {filterTab === 'soql' && (
-                <div className='space-y-3'>
-                  <p className='text-xs text-gray-500'>Paste a raw SOQL query. The system parses it, validates against the source schema.</p>
-                  <textarea
-                    value={soqlText} onChange={(e) => setSoqlText(e.target.value)}
-                    rows={6}
-                    className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
-                  />
+                <div className='space-y-4'>
+                  <p className='text-xs text-gray-500'>Select an object, then write only the WHERE clause. The full query is built automatically.</p>
+
+                  {/* Object picker — same as visual builder */}
+                  <div className='flex items-center gap-3 flex-wrap'>
+                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
+                    <select
+                      value={soqlObj}
+                      onChange={(e) => { setSoqlObj(e.target.value); setSoqlWhere(''); }}
+                      className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+                    >
+                      <option value=''>— Select an object —</option>
+                      {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Query preview */}
+                  {soqlObj && (
+                    <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
+                      <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{soqlObj}</span>
+                      {soqlWhere.trim() && (
+                        <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
+                      )}
+                    </div>
+                  )}
+
+                  {/* WHERE clause input */}
+                  <div className='space-y-1.5'>
+                    <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
+                    <textarea
+                      value={soqlWhere}
+                      onChange={(e) => setSoqlWhere(e.target.value)}
+                      disabled={!soqlObj}
+                      rows={4}
+                      placeholder={soqlObj ? `e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01` : 'Select an object first…'}
+                      className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                    />
+                  </div>
+
                   <div className='flex justify-end'>
                     <button
                       type='button'
-                      disabled={!soqlText.trim()}
+                      disabled={!soqlObj || !soqlWhere.trim()}
                       className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
                     >
                       <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
