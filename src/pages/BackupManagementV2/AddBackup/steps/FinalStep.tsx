@@ -270,7 +270,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
         <SectionBox title='Backup Strategy' sectionKey='strategy' onEdit={isDraft ? () => onEditStep(4) : undefined}>
           <div className='grid grid-cols-2 gap-3'>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Strategy Type</p><p className='text-sm font-medium text-gray-900'>{strategy === 'realtime' ? 'Real-Time Sync' : 'Scheduled'}</p></div>
-            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>Custom Selection</p></div>
+            <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Data Modules</p><p className='text-sm font-medium text-gray-900'>{entireDatasetSelected ? 'Entire Dataset' : 'Partial Dataset'}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Objects Selected</p><p className='text-sm font-medium text-gray-900'>{selectedObjects.length > 0 ? selectedObjects.length : selectedObjectIds.length}</p></div>
             <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Environment</p><p className='text-sm font-medium text-gray-900'>{environment}</p></div>
           </div>
