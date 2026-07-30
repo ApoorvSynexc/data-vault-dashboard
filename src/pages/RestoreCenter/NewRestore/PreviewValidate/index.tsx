@@ -62,8 +62,10 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface DryRunStats { insertCount: number; updateCount: number; totalRowsRaw: number; }
+
 interface Props {
-  onNext: () => void;
+  onNext: (stats: DryRunStats | undefined) => void;
   onBack: () => void;
   sourceSelection: SourceSelection;
   restorePayload: RestoreRetrievePayload;
@@ -166,6 +168,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
   };
 
   const visibleRows = diffRows.slice(0, DISPLAY_LIMIT);
+  const [activeTab, setActiveTab] = useState<'dryrun' | 'diff'>('dryrun');
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -243,107 +246,53 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
             </div>
           </div>
 
-          {/* Two-column: Diff + Dry-Run */}
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
+          {/* Tabbed: Dry-Run + Diff */}
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
 
-            {/* Snapshot vs Current Diff */}
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Snapshot vs Current Diff</span>
+            {/* Tab bar */}
+            <div className='flex border-b border-gray-200'>
+              <button
+                onClick={() => setActiveTab('dryrun')}
+                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  activeTab === 'dryrun' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Dry-Run Mode
+              </button>
+              <button
+                onClick={() => setActiveTab('diff')}
+                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === 'diff' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Snapshot vs Current Diff
                 {dryRunDone && diffRows.length > 0 && (
-                  <span className='text-xs text-gray-400 flex-shrink-0'>
-                    Showing {Math.min(visibleRows.length, DISPLAY_LIMIT)} of {diffRows.length} change{diffRows.length !== 1 ? 's' : ''}
+                  <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700'>
+                    {diffRows.length}
                   </span>
                 )}
-              </div>
-
-              {!dryRunDone ? (
-                <div className='flex flex-col items-center justify-center py-12 gap-2 text-sm text-gray-400'>
-                  <svg width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-                  </svg>
-                  <p className='text-xs text-gray-400'>Run dry-run to see the diff</p>
-                </div>
-              ) : dryRunLoading ? (
-                <div className='flex items-center justify-center py-12 gap-2 text-sm text-gray-400'>
-                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                  Analysing changes…
-                </div>
-              ) : diffRows.length === 0 ? (
-                <div className='flex flex-col items-center justify-center py-10 gap-2'>
-                  <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                    <polyline points='20 6 9 17 4 12'/>
-                  </svg>
-                  <p className='text-xs text-gray-500'>No differences found — records are in sync.</p>
-                </div>
-              ) : (
-                <div className='overflow-x-auto'>
-                  <table className='w-full text-xs'>
-                    <thead>
-                      <tr className='border-b border-gray-100 bg-gray-50'>
-                        <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Record</th>
-                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
-                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Before</th>
-                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>After</th>
-                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleRows.map((row, i) => (
-                        <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                          <td className='py-2.5 px-4 font-medium text-gray-800 max-w-[120px] truncate' title={row.recordName}>{row.recordName}</td>
-                          <td className='py-2.5 px-3 text-gray-600 font-mono text-[11px] max-w-[100px] truncate' title={row.field}>{row.field}</td>
-                          <td className='py-2.5 px-3 text-gray-400 max-w-[100px] truncate' title={row.before}>
-                            {row.action === 'NEW' ? (
-                              <span className='italic text-gray-400'>new record</span>
-                            ) : (
-                              <span>{row.before || '—'}</span>
-                            )}
-                          </td>
-                          <td className='py-2.5 px-3 text-gray-800 font-medium max-w-[100px] truncate' title={row.after}>
-                            {row.action === 'NEW' ? '—' : <span>{row.after || '—'}</span>}
-                          </td>
-                          <td className='py-2.5 px-3'>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                              row.action === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {row.action}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {diffRows.length > DISPLAY_LIMIT && (
-                    <div className='px-5 py-3 border-t border-gray-100 text-center'>
-                      <p className='text-xs text-gray-400'>{diffRows.length - DISPLAY_LIMIT} more changes not shown</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Dry-Run Mode */}
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Dry-Run Mode</span>
+              </button>
+              <div className='flex-1 flex items-center justify-end px-5'>
                 <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700'>Recommended</span>
               </div>
-              <div className='p-4 flex flex-col gap-3'>
+            </div>
+
+            {/* Tab: Dry-Run */}
+            {activeTab === 'dryrun' && (
+              <div className='p-5 flex flex-col gap-4'>
                 <p className='text-xs text-gray-500 leading-relaxed'>
                   Execute the full job pipeline without writing any data. Produces a complete preview report showing records to insert, update, and any conflicts.
                 </p>
 
-                {/* Summary badges — shown after dry-run */}
                 {dryRunDone && (
-                  <div className='grid grid-cols-2 gap-2'>
-                    <div className='rounded-lg px-3 py-2.5 flex flex-col gap-0.5' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='rounded-lg px-4 py-3 flex flex-col gap-0.5' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
                       <span className='text-[10px] font-semibold text-green-600 uppercase tracking-wide'>To Insert</span>
-                      <span className='text-xl font-bold text-green-700'>{insertCount}</span>
+                      <span className='text-2xl font-bold text-green-700'>{insertCount}</span>
                     </div>
-                    <div className='rounded-lg px-3 py-2.5 flex flex-col gap-0.5' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                    <div className='rounded-lg px-4 py-3 flex flex-col gap-0.5' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
                       <span className='text-[10px] font-semibold text-amber-600 uppercase tracking-wide'>To Update</span>
-                      <span className='text-xl font-bold text-amber-700'>{updateCount}</span>
+                      <span className='text-2xl font-bold text-amber-700'>{updateCount}</span>
                     </div>
                   </div>
                 )}
@@ -369,6 +318,11 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                       <polyline points='20 6 9 17 4 12'/>
                     </svg>
                     Dry-run completed · {totalRowsRaw} record{totalRowsRaw !== 1 ? 's' : ''} analysed · 0 blocking errors
+                    {diffRows.length > 0 && (
+                      <button onClick={() => setActiveTab('diff')} className='ml-auto text-blue-600 hover:underline font-semibold'>
+                        View Diff →
+                      </button>
+                    )}
                   </div>
                 )}
                 {dryRunError && (
@@ -380,7 +334,79 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
+            {/* Tab: Diff */}
+            {activeTab === 'diff' && (
+              <>
+                {!dryRunDone ? (
+                  <div className='flex flex-col items-center justify-center py-14 gap-3'>
+                    <svg width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+                    </svg>
+                    <p className='text-xs text-gray-400'>Run dry-run first to see the diff</p>
+                    <button
+                      onClick={() => setActiveTab('dryrun')}
+                      className='text-xs font-semibold text-blue-600 hover:underline'
+                    >
+                      Go to Dry-Run →
+                    </button>
+                  </div>
+                ) : diffRows.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                    <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                      <polyline points='20 6 9 17 4 12'/>
+                    </svg>
+                    <p className='text-xs text-gray-500'>No differences found — records are in sync.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className='flex items-center justify-between px-5 py-2.5 bg-gray-50 border-b border-gray-100'>
+                      <span className='text-xs text-gray-500'>Showing {visibleRows.length} of {diffRows.length} change{diffRows.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className='overflow-x-auto'>
+                      <table className='w-full text-xs'>
+                        <thead>
+                          <tr className='border-b border-gray-100 bg-gray-50'>
+                            <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Record</th>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Before</th>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>After</th>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleRows.map((row, i) => (
+                            <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                              <td className='py-2.5 px-4 font-medium text-gray-800 max-w-[160px] truncate' title={row.recordName}>{row.recordName}</td>
+                              <td className='py-2.5 px-3 text-gray-600 font-mono text-[11px] max-w-[130px] truncate' title={row.field}>{row.field}</td>
+                              <td className='py-2.5 px-3 text-gray-400 max-w-[130px] truncate' title={row.before}>
+                                {row.action === 'NEW' ? <span className='italic'>new record</span> : <span>{row.before || '—'}</span>}
+                              </td>
+                              <td className='py-2.5 px-3 text-gray-800 font-medium max-w-[130px] truncate' title={row.after}>
+                                {row.action === 'NEW' ? '—' : <span>{row.after || '—'}</span>}
+                              </td>
+                              <td className='py-2.5 px-3'>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  row.action === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {row.action}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {diffRows.length > DISPLAY_LIMIT && (
+                        <div className='px-5 py-3 border-t border-gray-100 text-center'>
+                          <p className='text-xs text-gray-400'>{diffRows.length - DISPLAY_LIMIT} more changes not shown</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
 
           </div>
         </div>
@@ -397,7 +423,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         <div className='flex items-center gap-2'>
           {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
           <button
-            onClick={onNext}
+            onClick={() => onNext(dryRunDone ? { insertCount, updateCount, totalRowsRaw } : undefined)}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >

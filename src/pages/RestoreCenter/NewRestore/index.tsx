@@ -50,6 +50,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
     setRestorePayload((prev) => ({ ...prev, ...patch }));
 
   // Persist step-2 sub-phase so Back from step 3 lands on jobs table, not config list
+  const [dryRunStats, setDryRunStats] = useState<{ insertCount: number; updateCount: number; totalRowsRaw: number } | undefined>(undefined);
+
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
   const [step2ArchivalJobsPhase, setStep2ArchivalJobsPhase] = useState(false);
 
@@ -116,8 +118,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       )}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
-      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} />}
+      {currentStep === 7 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} />}
     </div>
   );
 }
