@@ -121,7 +121,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       )}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
       {currentStep === 7 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
-      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
     </div>
   );
 }
