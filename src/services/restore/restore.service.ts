@@ -123,6 +123,7 @@ const RESTORE_ENDPOINTS = {
   createRestoreJob:     '/v1/restore',
   listRestoreJobs:      '/v1/restore/config/list',
   getRestoreJob:        '/v1/restore/job',
+  jobStats:             '/v1/restore/job/stats',
 };
 
 export function useRestoreService() {
@@ -171,5 +172,8 @@ export function useRestoreService() {
 
     getRestoreJob: (restoreId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.getRestoreJob, { query: { restoreId } }),
+
+    getJobStats: () =>
+      api.get<unknown>(RESTORE_ENDPOINTS.jobStats),
   };
 }

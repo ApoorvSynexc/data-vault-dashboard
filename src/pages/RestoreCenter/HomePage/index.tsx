@@ -159,6 +159,24 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
     queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip),
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ['restore-job-stats'],
+    queryFn: () => restoreService.getJobStats(),
+    staleTime: 60_000,
+  });
+
+  const stats = (statsData as any)?.data ?? {};
+  const totalRestoreJobs  = stats.totalRestoreJobs  ?? '—';
+  const pendingRestore    = stats.pendingRestore     ?? '—';
+  const failedRestore     = stats.failedRestore      ?? '—';
+  const successRecordCount = stats.successRecordCount != null
+    ? stats.successRecordCount >= 1_000_000
+      ? `${(stats.successRecordCount / 1_000_000).toFixed(1)}M`
+      : stats.successRecordCount >= 1_000
+        ? `${(stats.successRecordCount / 1_000).toFixed(1)}K`
+        : String(stats.successRecordCount)
+    : '—';
+
   const apiMeta = (jobsData as any)?.meta ?? {};
   const nextCursor: string | null = apiMeta?.nextCursor ?? null;
   const totalRecords: number = apiMeta?.totalRecords ?? 0;
@@ -321,16 +339,16 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
         <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm flex-shrink-0'>
           <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>Restore Status</Typography>
           <div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>
-            <MetricCard label='Total Restores' value={24}
+            <MetricCard label='Total Restores' value={totalRestoreJobs}
               icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='23 4 23 10 17 10' /><path d='M20.49 15a9 9 0 1 1-.29-4.36' /></svg>}
             />
-            <MetricCard label='Running Now' value='01'
+            <MetricCard label='Pending' value={pendingRestore}
               icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><circle cx='12' cy='12' r='10' /><polyline points='12 6 12 12 16 14' /></svg>}
             />
-            <MetricCard label='Failed (30d)' value='02'
+            <MetricCard label='Failed' value={failedRestore}
               icon={<svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><circle cx='12' cy='12' r='10' /><line x1='15' y1='9' x2='9' y2='15' /><line x1='9' y1='9' x2='15' y2='15' /></svg>}
             />
-            <MetricCard label='Records Restored' value='1.2M'
+            <MetricCard label='Records Restored' value={successRecordCount}
               icon={<svg viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='20 6 9 17 4 12' /></svg>}
             />
           </div>
