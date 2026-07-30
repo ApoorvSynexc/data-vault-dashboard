@@ -191,20 +191,37 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       }
     : null;
 
-  const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
-    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, recordObj],
-    queryFn: () => restoreService.fetchRecords(fetchPayload!),
+  const [recordCursor, setRecordCursor] = useState<string | undefined>(undefined);
+  const [allRecords,   setAllRecords]   = useState<SFRecord[]>([]);
+
+  const { data: fetchedRecordsData, isLoading: isLoadingRecords, isFetching: isFetchingMore } = useQuery({
+    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, recordObj, recordCursor],
+    queryFn: () => restoreService.fetchRecords({ ...fetchPayload!, ...(recordCursor ? { cursor: recordCursor } : {}) }),
     enabled: !!fetchPayload,
     staleTime: 60_000,
   });
 
+  useEffect(() => {
+    const rows: { record: SFRecord }[] = (fetchedRecordsData as any)?.data?.rows ?? [];
+    const parsed: SFRecord[] = rows.map((r) => r.record);
+    if (!parsed.length) return;
+    setAllRecords((prev) => recordCursor ? [...prev, ...parsed] : parsed);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedRecordsData]);
+
+  useEffect(() => {
+    setAllRecords([]);
+    setRecordCursor(undefined);
+    setSelectedRecords(new Set());
+  }, [recordObj]);
+
   // by-object state
   const [objSearch,        setObjSearch]        = useState('');
-  const [selectedObjects,  setSelectedObjects]  = useState<Set<string>>(new Set(['1', '2', '4']));
+  const [selectedObjects,  setSelectedObjects]  = useState<Set<string>>(new Set());
 
   // by-record state
   const [recordSearch,     setRecordSearch]     = useState('');
-  const [selectedRecords,  setSelectedRecords]  = useState<Set<string>>(new Set(['1', '2']));
+  const [selectedRecords,  setSelectedRecords]  = useState<Set<string>>(new Set());
   const [showIdList,       setShowIdList]       = useState(false);
   const [idListText,       setIdListText]       = useState('');
 
@@ -371,8 +388,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // ── Record table columns ───────────────────────────────────────────────────
 
-  const fetchedRecords: SFRecord[] = Array.isArray((fetchedRecordsData as any)?.data?.rows) ? (fetchedRecordsData as any).data.rows : [];
-  const filteredRecords = fetchedRecords.filter(
+  const hasMore: boolean = (fetchedRecordsData as any)?.meta?.hasMore ?? false;
+  const nextCursor: string | undefined = (fetchedRecordsData as any)?.meta?.nextCursor;
+
+  const filteredRecords = allRecords.filter(
     (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
   );
 
@@ -684,7 +703,17 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                 />
               )}
 
-{/* DEMO_HIDDEN: records selected + Add by ID list */}
+              {hasMore && (
+                <button
+                  onClick={() => setRecordCursor(nextCursor)}
+                  disabled={isFetchingMore}
+                  className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
+                >
+                  {isFetchingMore ? 'Loading…' : 'Load more records'}
+                </button>
+              )}
+
+              {/* DEMO_HIDDEN: records selected + Add by ID list */}
 
               {showIdList && (
                 <div className='space-y-2'>
