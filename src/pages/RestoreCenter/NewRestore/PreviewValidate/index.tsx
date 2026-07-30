@@ -1,6 +1,5 @@
 // PreviewValidate — Step 7 of 8 in the New Restore wizard.
-// Shows impact summary, schema mismatch report, validation & trigger impact,
-// snapshot diff table, and dry-run controls before final submission.
+// Shows impact summary, schema mismatch report, snapshot diff table, and dry-run controls.
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -15,7 +14,6 @@ const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Confl
 function ProgressBar({ active }: { active: number }) {
   return (
     <div className='w-full'>
-      {/* Row 1: circles + connector lines */}
       <div className='flex items-center'>
         {STEPS.map((label, i) => {
           const num = i + 1;
@@ -40,7 +38,6 @@ function ProgressBar({ active }: { active: number }) {
           );
         })}
       </div>
-      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
       <div className='flex items-start mt-2'>
         {STEPS.map((label, i) => {
           const num = i + 1;
@@ -65,56 +62,84 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; sourceSelection: SourceSelection; restorePayload: RestoreRetrievePayload; }
+interface Props {
+  onNext: () => void;
+  onBack: () => void;
+  sourceSelection: SourceSelection;
+  restorePayload: RestoreRetrievePayload;
+}
 
-// ── Static mock data ──────────────────────────────────────────────────────────
+interface DiffRow {
+  recordName: string;
+  field: string;
+  before: string;
+  after: string;
+  action: 'NEW' | 'MOD';
+}
 
-/* DEMO_HIDDEN
-const SCHEMA_ISSUES = [
-  { msg: 'Account.Industry — picklist value "Aerospace" not in destination. Will be set to null.' },
-  { msg: 'Contact.Legacy_ID__c — field exists in source but not destination. Will be skipped.' },
-  { msg: '3 inactive owners — will be reassigned to queue per conflict rule.' },
-];
-END DEMO_HIDDEN */
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-/* DEMO_HIDDEN
-const TRIGGER_ROWS = [
-  { label: 'Validation Rules',      sub: '2 rules would fire — disabled per job config',    badge: 'Disabled',  color: 'green' },
-  { label: 'Flows / Process Builder', sub: '4 flows active — disabled per job config',       badge: 'Disabled',  color: 'green' },
-  { label: 'API Calls Estimated',   sub: '',                                                 badge: '+1,240',    color: 'blue'  },
-  { label: 'Storage Delta',         sub: '',                                                 badge: '+320 MB',   color: 'blue'  },
-  { label: 'Estimated Run Time',    sub: '',                                                 badge: '~4 min',    color: 'gray'  },
-];
-END DEMO_HIDDEN */
+const DISPLAY_LIMIT = 50;
 
-const DIFF_ROWS = [
-  { id: '001xx001', field: 'Account.Stage',  before: 'Closed',    after: 'Active',      action: 'MOD',  actionColor: 'amber' },
-  { id: '003xx299', field: 'Contact.Email',  before: '—',          after: 'j@acme.com',  action: 'NEW',  actionColor: 'green' },
-  { id: '006xx122', field: 'Opp.Amount',     before: '$50,000',   after: '$75,000',     action: 'MOD',  actionColor: 'amber' },
-  { id: '001xx055', field: 'Account.Name',   before: 'No change', after: 'No change',   action: 'SKIP', actionColor: 'gray'  },
-];
+function parseDiffRows(rows: any[]): { diffRows: DiffRow[]; insertCount: number; updateCount: number } {
+  const diffRows: DiffRow[] = [];
+  let insertCount = 0;
+  let updateCount = 0;
 
-const ACTION_BADGE: Record<string, string> = {
-  amber: 'bg-amber-100 text-amber-700',
-  green: 'bg-green-100 text-green-700',
-  gray:  'bg-gray-100 text-gray-500',
-};
+  for (const row of rows) {
+    const prev: Record<string, string> = row.previous ?? {};
+    const curr: Record<string, string> = row.current ?? null;
+    const recordName = prev.Name ?? prev.Id ?? 'Unknown';
+
+    if (!curr) {
+      // INSERT — only previous exists
+      insertCount++;
+      diffRows.push({ recordName, field: '—', before: '(new record)', after: '—', action: 'NEW' });
+    } else {
+      // UPDATE — show only changed fields
+      const changedFields = Object.keys(prev).filter(
+        (key) => key !== 'OwnerId' && String(prev[key]) !== String(curr[key]),
+      );
+      if (changedFields.length > 0) {
+        updateCount++;
+        for (const field of changedFields) {
+          diffRows.push({
+            recordName,
+            field,
+            before: prev[field] ?? '—',
+            after:  curr[field] ?? '—',
+            action: 'MOD',
+          });
+        }
+      }
+    }
+  }
+
+  return { diffRows, insertCount, updateCount };
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PreviewValidate({ onNext, onBack, sourceSelection, restorePayload }: Props) {
   const restoreService = useRestoreService();
-  const [dryRunDone, setDryRunDone] = useState(false);
+
   const [dryRunLoading, setDryRunLoading] = useState(false);
-  const [dryRunError, setDryRunError] = useState<string | null>(null);
+  const [dryRunDone,    setDryRunDone]    = useState(false);
+  const [dryRunError,   setDryRunError]   = useState<string | null>(null);
+
+  const [diffRows,     setDiffRows]     = useState<DiffRow[]>([]);
+  const [insertCount,  setInsertCount]  = useState(0);
+  const [updateCount,  setUpdateCount]  = useState(0);
+  const [totalRowsRaw, setTotalRowsRaw] = useState(0);
 
   const runDryRun = async () => {
     setDryRunLoading(true);
     setDryRunError(null);
+    setDryRunDone(false);
     try {
       const scope = restorePayload.selection?.restoreScope;
 
-      await restoreService.showPreview({
+      const res: any = await restoreService.showPreview({
         source: {
           backupConfigId: sourceSelection.backupConfigId,
           type: sourceSelection.type ?? 'ENTIRE',
@@ -125,6 +150,13 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         objectApiName: 'Customer__c',
         selection: scope ? { restoreScope: scope } : null,
       });
+
+      const rawRows: any[] = res?.data?.data?.rows ?? res?.data?.rows ?? [];
+      setTotalRowsRaw(rawRows.length);
+      const { diffRows: parsed, insertCount: ins, updateCount: upd } = parseDiffRows(rawRows);
+      setDiffRows(parsed);
+      setInsertCount(ins);
+      setUpdateCount(upd);
       setDryRunDone(true);
     } catch (err: any) {
       setDryRunError(err?.message ?? 'Dry-run failed. Please try again.');
@@ -132,6 +164,8 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
       setDryRunLoading(false);
     }
   };
+
+  const visibleRows = diffRows.slice(0, DISPLAY_LIMIT);
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -168,10 +202,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         {/* Impact summary stats */}
         <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
           {[
-            { label: 'To Create',          value: '4,821', color: '#16A34A' },
-            { label: 'To Update',          value: '3,602', color: '#D97706' },
-            { label: 'To Delete',          value: '0',     color: '#374151' },
-            { label: 'Skipped (Conflicts)',value: '12',    color: '#374151' },
+            { label: 'To Create',           value: dryRunDone ? String(insertCount)  : '—', color: '#16A34A' },
+            { label: 'To Update',           value: dryRunDone ? String(updateCount)  : '—', color: '#D97706' },
+            { label: 'To Delete',           value: dryRunDone ? '0'                  : '—', color: '#374151' },
+            { label: 'Skipped (Conflicts)', value: dryRunDone ? '0'                  : '—', color: '#374151' },
           ].map(({ label, value, color }) => (
             <div key={label}
               className='bg-white rounded-xl px-5 py-4 flex flex-col gap-1 flex-shrink-0'
@@ -209,68 +243,84 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
             </div>
           </div>
 
-          {/* DEMO_HIDDEN: Validation & Trigger Impact — uncomment to restore
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='border-b border-gray-100 px-5 py-3'>
-              <span className='text-sm font-semibold text-gray-800'>Validation &amp; Trigger Impact</span>
-            </div>
-            <div className='divide-y divide-gray-100'>
-              {TRIGGER_ROWS.map((row) => (
-                <div key={row.label} className='flex items-center justify-between gap-4 px-5 py-3.5'>
-                  <div>
-                    <p className='text-sm text-gray-700'>{row.label}</p>
-                    {row.sub && <p className='text-xs text-gray-400 mt-0.5'>{row.sub}</p>}
-                  </div>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
-                    row.color === 'green' ? 'bg-green-100 text-green-700' :
-                    row.color === 'blue'  ? 'bg-blue-100 text-blue-700'  :
-                                            'bg-gray-100 text-gray-600'
-                  }`}>
-                    {row.badge}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          END DEMO_HIDDEN */}
-
           {/* Two-column: Diff + Dry-Run */}
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
 
             {/* Snapshot vs Current Diff */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Snapshot vs Current Diff (Sample)</span>
-                <button className='text-xs font-semibold text-blue-600 hover:underline flex-shrink-0'>Full Diff →</button>
+                <span className='text-sm font-semibold text-gray-800'>Snapshot vs Current Diff</span>
+                {dryRunDone && diffRows.length > 0 && (
+                  <span className='text-xs text-gray-400 flex-shrink-0'>
+                    Showing {Math.min(visibleRows.length, DISPLAY_LIMIT)} of {diffRows.length} change{diffRows.length !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
-              <div className='overflow-x-auto'>
-                <table className='w-full text-xs'>
-                  <thead>
-                    <tr className='border-b border-gray-100 bg-gray-50'>
-                      <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Record ID</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Before</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>After</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DIFF_ROWS.map((row) => (
-                      <tr key={row.id + row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                        <td className='py-3 px-4 font-mono text-gray-700'>{row.id}</td>
-                        <td className='py-3 px-3 text-gray-700'>{row.field}</td>
-                        <td className='py-3 px-3 text-gray-500'>{row.before}</td>
-                        <td className='py-3 px-3 text-gray-800 font-medium'>{row.after}</td>
-                        <td className='py-3 px-3'>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${ACTION_BADGE[row.actionColor]}`}>
-                            {row.action}
-                          </span>
-                        </td>
+
+              {!dryRunDone ? (
+                <div className='flex flex-col items-center justify-center py-12 gap-2 text-sm text-gray-400'>
+                  <svg width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+                  </svg>
+                  <p className='text-xs text-gray-400'>Run dry-run to see the diff</p>
+                </div>
+              ) : dryRunLoading ? (
+                <div className='flex items-center justify-center py-12 gap-2 text-sm text-gray-400'>
+                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  Analysing changes…
+                </div>
+              ) : diffRows.length === 0 ? (
+                <div className='flex flex-col items-center justify-center py-10 gap-2'>
+                  <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline points='20 6 9 17 4 12'/>
+                  </svg>
+                  <p className='text-xs text-gray-500'>No differences found — records are in sync.</p>
+                </div>
+              ) : (
+                <div className='overflow-x-auto'>
+                  <table className='w-full text-xs'>
+                    <thead>
+                      <tr className='border-b border-gray-100 bg-gray-50'>
+                        <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Record</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Before</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>After</th>
+                        <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {visibleRows.map((row, i) => (
+                        <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                          <td className='py-2.5 px-4 font-medium text-gray-800 max-w-[120px] truncate' title={row.recordName}>{row.recordName}</td>
+                          <td className='py-2.5 px-3 text-gray-600 font-mono text-[11px] max-w-[100px] truncate' title={row.field}>{row.field}</td>
+                          <td className='py-2.5 px-3 text-gray-400 max-w-[100px] truncate' title={row.before}>
+                            {row.action === 'NEW' ? (
+                              <span className='italic text-gray-400'>new record</span>
+                            ) : (
+                              <span>{row.before || '—'}</span>
+                            )}
+                          </td>
+                          <td className='py-2.5 px-3 text-gray-800 font-medium max-w-[100px] truncate' title={row.after}>
+                            {row.action === 'NEW' ? '—' : <span>{row.after || '—'}</span>}
+                          </td>
+                          <td className='py-2.5 px-3'>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                              row.action === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {row.action}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {diffRows.length > DISPLAY_LIMIT && (
+                    <div className='px-5 py-3 border-t border-gray-100 text-center'>
+                      <p className='text-xs text-gray-400'>{diffRows.length - DISPLAY_LIMIT} more changes not shown</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Dry-Run Mode */}
@@ -281,8 +331,23 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
               </div>
               <div className='p-4 flex flex-col gap-3'>
                 <p className='text-xs text-gray-500 leading-relaxed'>
-                  Execute the full job pipeline without writing any data. Produces a complete preview report.
+                  Execute the full job pipeline without writing any data. Produces a complete preview report showing records to insert, update, and any conflicts.
                 </p>
+
+                {/* Summary badges — shown after dry-run */}
+                {dryRunDone && (
+                  <div className='grid grid-cols-2 gap-2'>
+                    <div className='rounded-lg px-3 py-2.5 flex flex-col gap-0.5' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                      <span className='text-[10px] font-semibold text-green-600 uppercase tracking-wide'>To Insert</span>
+                      <span className='text-xl font-bold text-green-700'>{insertCount}</span>
+                    </div>
+                    <div className='rounded-lg px-3 py-2.5 flex flex-col gap-0.5' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                      <span className='text-[10px] font-semibold text-amber-600 uppercase tracking-wide'>To Update</span>
+                      <span className='text-xl font-bold text-amber-700'>{updateCount}</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={runDryRun}
                   disabled={dryRunLoading}
@@ -295,14 +360,15 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                       <polygon points='5 3 19 12 5 21 5 3'/>
                     </svg>
                   )}
-                  {dryRunLoading ? 'Running…' : 'Run Dry-Run'}
+                  {dryRunLoading ? 'Running…' : dryRunDone ? 'Re-run Dry-Run' : 'Run Dry-Run'}
                 </button>
+
                 {dryRunDone && !dryRunError && (
                   <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
                     <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                       <polyline points='20 6 9 17 4 12'/>
                     </svg>
-                    Dry-run completed · 0 blocking errors found
+                    Dry-run completed · {totalRowsRaw} record{totalRowsRaw !== 1 ? 's' : ''} analysed · 0 blocking errors
                   </div>
                 )}
                 {dryRunError && (
