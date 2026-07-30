@@ -44,7 +44,7 @@ export type RestoreScope =
   | { type: 'RECORD'; records: { objectName: string; recordIds: string[] }[] }
   | { type: 'FIELD'; fields: { objectName: string; fieldNames: string[] }[] }
   | { type: 'FILTER'; filters: RestoreFilter }
-  | { type: 'CHNAGE_SINCE'; chnageSince: { date: string } }
+  | { type: 'CHANGE_SINCE'; changeSince: { date: string } }
   | { type: 'BULK_CSV'; bulkCsvIds: string[] }
   | { type: 'DELETED_ONLY'; deletedOnly: true };
 
@@ -75,6 +75,23 @@ export interface RestoreSchedule {
   };
 }
 
+// ── fetchRecords payload ──────────────────────────────────────────────────────
+
+export interface FetchRecordsPayload {
+  source: {
+    backupConfigId: string;
+    type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+    startDate?: string;
+    endDate?: string;
+    backupJobIds?: string[];
+  };
+  objectApiName: string;
+  columns: string[];
+  selection?: unknown;
+  fullRestore?: boolean;
+  cursor?: string;
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
 const RESTORE_ENDPOINTS = {
@@ -94,10 +111,8 @@ export function useRestoreService() {
   const api = useHttpRequest();
 
   return {
-    fetchRecords: (payload:
-      | { configType: 'BACKUP';   objectApiName: string; columnNames: string[]; backupJobIds: string[] }
-      | { configType: 'ARCHIVAL'; objectApiName: string; columnNames: string[]; backupConfigId: string }
-    ) => api.post<unknown>(RESTORE_ENDPOINTS.fetchRecords, payload),
+    fetchRecords: (payload: FetchRecordsPayload) =>
+      api.post<unknown>(RESTORE_ENDPOINTS.fetchRecords, payload),
 
     getBackupConfigsName: (destinationId: string) =>
       api.get<{ data: { backupConfigId: string; name: string }[] }>(

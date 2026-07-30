@@ -18,6 +18,7 @@ import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { FetchRecordsPayload } from '../../../../services/restore/restore.service';
 import type { SourceSelection } from '../SelectSourceType';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -172,18 +173,26 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   // by-record: object picked by user triggers fetch
   const [recordObj, setRecordObj] = useState('');
 
-  const fetchPayload = scopeMode === 'record' && !!recordObj
-    ? sourceSelection.configType === 'ARCHIVAL'
-      ? { configType: 'ARCHIVAL' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupConfigId: sourceSelection.backupConfigId }
-      : { configType: 'BACKUP' as const, objectApiName: recordObj, columnNames: ['Id', 'Name', 'LastModifiedDate'], backupJobIds: sourceSelection.backupJobIds }
+  const fetchPayload: FetchRecordsPayload | null = scopeMode === 'record' && !!recordObj && !!sourceSelection.backupConfigId
+    ? {
+        source: {
+          backupConfigId: sourceSelection.backupConfigId,
+          type: sourceSelection.type ?? 'ENTIRE',
+          ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
+          ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+          ...(sourceSelection.type === 'PARTIAL' && sourceSelection.backupJobIds.length > 0
+            ? { backupJobIds: sourceSelection.backupJobIds }
+            : {}),
+        },
+        objectApiName: recordObj,
+        columns: ['Id', 'Name', 'LastModifiedDate'],
+      }
     : null;
 
   const { data: fetchedRecordsData, isLoading: isLoadingRecords } = useQuery({
-    queryKey: ['restore-fetch-records', sourceSelection, recordObj],
+    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, recordObj],
     queryFn: () => restoreService.fetchRecords(fetchPayload!),
-    enabled: !!fetchPayload && (
-      sourceSelection.configType === 'ARCHIVAL' ? !!sourceSelection.backupConfigId : sourceSelection.backupJobIds.length > 0
-    ),
+    enabled: !!fetchPayload,
     staleTime: 60_000,
   });
 
