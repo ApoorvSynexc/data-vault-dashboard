@@ -104,7 +104,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onArchivalJobsPhaseChange={setStep2ArchivalJobsPhase}
         />
       </div>
-      {currentStep === 3 && <SelectScope onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} />}
+      {currentStep === 3 && <SelectScope onNext={(scope) => { updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />}
       {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />}
       {currentStep === 5 && (
         <DefineRestorePolicy
