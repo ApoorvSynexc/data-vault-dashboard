@@ -92,10 +92,28 @@ export interface FetchRecordsPayload {
   cursor?: string;
 }
 
+// ── showPreview payload ───────────────────────────────────────────────────────
+
+export interface ShowPreviewPayload {
+  source: {
+    backupConfigId: string;
+    type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+    backupJobIds?: string[];
+    startDate?: string;
+    endDate?: string;
+  };
+  objectApiName: string;
+  recordIds?: string[];
+  isDeleteOnly?: boolean;
+  selection?: unknown;
+  cursor?: string;
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
 const RESTORE_ENDPOINTS = {
   fetchRecords:         '/v1/restore/retrieve/fetch-records',
+  showPreview:          '/v1/restore/retrieve/show-preview',
   backupConfigsName:    '/v1/restore/get-backup-configs-name',
   crmObjects:           '/v1/crm-metadata/objects/list',
   crmFields:            '/v1/crm-metadata/fields/list',
@@ -113,6 +131,9 @@ export function useRestoreService() {
   return {
     fetchRecords: (payload: FetchRecordsPayload) =>
       api.post<unknown>(RESTORE_ENDPOINTS.fetchRecords, payload),
+
+    showPreview: (payload: ShowPreviewPayload) =>
+      api.post<unknown>(RESTORE_ENDPOINTS.showPreview, payload),
 
     getBackupConfigsName: (destinationId: string) =>
       api.get<{ data: { backupConfigId: string; name: string }[] }>(

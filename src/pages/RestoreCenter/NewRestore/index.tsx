@@ -116,7 +116,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       )}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} />}
+      {currentStep === 7 && <PreviewValidate onNext={goNext} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
       {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} />}
     </div>
   );
