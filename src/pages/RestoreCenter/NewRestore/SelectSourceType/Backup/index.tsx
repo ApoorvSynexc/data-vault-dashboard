@@ -150,10 +150,10 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   // When ENTIRE or CHANGED_BETWEEN scope and jobs load, auto-emit selection so canProceed becomes true
   useEffect(() => {
     if ((type === 'ENTIRE' || type === 'CHANGED_BETWEEN') && jobsRows.length > 0) {
-      onSelectionChange(buildSelection(jobsRows.map((j: any) => j.backupJobId), type));
+      onSelectionChange(buildSelection(jobsRows.map((j: any) => j.backupJobId), type, startDate, endDate));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, jobsRows.length, selectedBackupConfigId]);
+  }, [type, jobsRows.length, selectedBackupConfigId, startDate, endDate]);
 
   const goJobsNext = () => {
     if (!jobsMeta.nextCursor) return;
@@ -195,8 +195,10 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
   // Re-emit selection whenever scope/dates change so parent always has latest
   const emitScopeChange = (newScope: ScopeType, newStart = startDate, newEnd = endDate) => {
-    const ids = newScope === 'ENTIRE' ? jobsRows.map((j: any) => j.backupJobId) : Array.from(selectedJobIds);
-    if (newScope === 'ENTIRE' || ids.length > 0) {
+    const ids = (newScope === 'ENTIRE' || newScope === 'CHANGED_BETWEEN')
+      ? jobsRows.map((j: any) => j.backupJobId)
+      : Array.from(selectedJobIds);
+    if (newScope === 'ENTIRE' || newScope === 'CHANGED_BETWEEN' || ids.length > 0) {
       onSelectionChange(buildSelection(ids, newScope, newStart, newEnd));
     }
   };

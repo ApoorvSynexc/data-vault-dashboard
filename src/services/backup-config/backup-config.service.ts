@@ -308,11 +308,11 @@ export function useBackupConfigService() {
     },
     updateBackupConfig: (backupConfigId: string, payload: Record<string, unknown>) =>
       api.put<void>(BACKUP_CONFIG_ENDPOINTS.update, payload, { query: { backupConfigId } }),
-    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string, startDateTime?: string, endDateTime?: string) => {
+    listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string, startDate?: string, endDate?: string) => {
       const query: any = { slug, pagination, cursor, limit };
       if (status) query.status = status.toUpperCase();
-      if (startDateTime) query.startDateTime = startDateTime;
-      if (endDateTime) query.endDateTime = endDateTime;
+      if (startDate) query.startDate = startDate;
+      if (endDate) query.endDate = endDate;
       const response = await api.get<BackupJobListApiResponse>(BACKUP_CONFIG_ENDPOINTS.jobs, {
         query,
       });
