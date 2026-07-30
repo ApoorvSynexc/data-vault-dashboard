@@ -1,11 +1,12 @@
 // ReviewSubmit — Step 8 of 8 (Final Step) in the New Restore wizard.
-// Summarises all settings and provides Run Restore / Schedule for Later actions.
 
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
+import type { SourceSelection } from '../SelectSourceType';
+import type { Destination } from '../../../../services/destination/destination.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -14,7 +15,6 @@ const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Confl
 function ProgressBar({ active }: { active: number }) {
   return (
     <div className='w-full'>
-      {/* Row 1: circles + connector lines */}
       <div className='flex items-center'>
         {STEPS.map((label, i) => {
           const num = i + 1;
@@ -39,7 +39,6 @@ function ProgressBar({ active }: { active: number }) {
           );
         })}
       </div>
-      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
       <div className='flex items-start mt-2'>
         {STEPS.map((label, i) => {
           const num = i + 1;
@@ -62,6 +61,53 @@ function ProgressBar({ active }: { active: number }) {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function scopeTypeLabel(restorePayload: RestoreRetrievePayload): string {
+  const scope = restorePayload.selection?.restoreScope;
+  if (!scope) return '—';
+  switch (scope.type) {
+    case 'ALL':          return 'Full Restore';
+    case 'OBJECT':       return `By Object (${scope.objects?.length ?? 0} selected)`;
+    case 'RECORD':       return `By Record`;
+    case 'FIELD':        return `By Field`;
+    case 'FILTER':       return 'Custom Filter';
+    case 'CHANGE_SINCE': return 'Changed Since';
+    case 'DELETED_ONLY': return 'Deleted Only';
+    case 'BULK_CSV':     return 'Bulk via CSV';
+    default:             return '—';
+  }
+}
+
+function sourceTypeLabel(sourceSelection: SourceSelection): string {
+  if (!sourceSelection.type) return sourceSelection.configType === 'ARCHIVAL' ? 'Archive Vault' : 'Backup Snapshot';
+  switch (sourceSelection.type) {
+    case 'ENTIRE':          return 'Full Backup (Entire)';
+    case 'PARTIAL':         return 'Partial Backup';
+    case 'CHANGED_BETWEEN': return sourceSelection.startDate && sourceSelection.endDate
+      ? `Changed Between ${sourceSelection.startDate} → ${sourceSelection.endDate}`
+      : 'Changed Between';
+    default: return sourceSelection.type;
+  }
+}
+
+function restoreModeLabel(mode?: string): string {
+  switch (mode) {
+    case 'OVERWRITE':              return 'Overwrite Existing';
+    case 'APPEND_NEW':             return 'Append New Only';
+    case 'REPLACE_ENTIRE_OBJECT':  return 'Replace Entire Object';
+    case 'SKIP':                   return 'Skip Conflicts';
+    default:                       return mode ?? '—';
+  }
+}
+
+function destinationLabel(restorePayload: RestoreRetrievePayload, sourceSelection: SourceSelection): string {
+  if (restorePayload.destination?.type === 'SAME') {
+    return sourceSelection.crmName ?? 'Same Org (Source)';
+  }
+  return sourceSelection.crmName ?? 'Different Org';
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -70,12 +116,18 @@ interface Props {
   restorePayload: RestoreRetrievePayload;
   updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
   dryRunStats?: { insertCount: number; updateCount: number; totalRowsRaw: number };
+  sourceSelection: SourceSelection;
+  selectedConnection: Destination | null;
 }
 
-export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats, sourceSelection, selectedConnection }: Props) {
   const restoreService = useRestoreService();
-  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Editable job detail fields pre-filled from restorePayload
+  const [jobName, setJobName]     = useState(restorePayload.jobDetail?.name ?? '');
+  const [jobDesc, setJobDesc]     = useState(restorePayload.jobDetail?.description ?? '');
+  const [jobTags, setJobTags]     = useState((restorePayload.jobDetail?.tags ?? []).join(', '));
 
   useEffect(() => {
     if (isSuccess) {
@@ -85,7 +137,14 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   }, [isSuccess]);
 
   const createJobMutation = useMutation({
-    mutationFn: () => restoreService.createRestoreJob(restorePayload),
+    mutationFn: () => restoreService.createRestoreJob({
+      ...restorePayload,
+      jobDetail: {
+        name: jobName,
+        description: jobDesc || undefined,
+        tags: jobTags ? jobTags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+      },
+    }),
     onSuccess: () => setIsSuccess(true),
     onError: (err) => console.error('[RestoreJob] createRestoreJob failed:', err),
   });
@@ -94,11 +153,8 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
     console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
     createJobMutation.mutate();
   };
-  const [jobName, setJobName]               = useState('INC-4711 Emergency Recovery – Accounts');
-  const [tags, setTags]                     = useState('');
-  const [justification, setJustification]   = useState(
-    "Accounts accidentally overwritten during bulk data load INC-4711. Restoring to state as of this morning's backup."
-  );
+
+  const totalAffected = dryRunStats ? dryRunStats.insertCount + dryRunStats.updateCount : null;
 
   if (isSuccess) {
     return (
@@ -155,6 +211,21 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
           <ProgressBar active={8} />
         </div>
 
+        {/* Warning banner */}
+        {totalAffected !== null && (
+          <div className='flex-shrink-0 rounded-xl overflow-hidden' style={{ border: '1px solid #FECACA', background: '#FEF2F2' }}>
+            <div className='flex items-center gap-3 px-5 py-3'>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
+                <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+              </svg>
+              <p className='text-sm font-semibold text-red-700'>
+                You are about to overwrite {totalAffected.toLocaleString()} records in {destinationLabel(restorePayload, sourceSelection)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Two-column layout */}
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 items-start'>
 
@@ -163,96 +234,55 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
 
             {/* Source & Destination */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
+              <div className='border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Source &amp; Destination</span>
-                <button className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
-                  Edit
-                </button>
               </div>
               <div className='p-5 grid grid-cols-2 gap-x-6 gap-y-4'>
                 <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Source</p>
-                  <p className='text-sm font-semibold text-gray-800'>Backup · May 26, 06:00 AM</p>
+                  <p className='text-xs text-gray-400 mb-0.5'>Connection</p>
+                  <p className='text-sm font-semibold text-gray-800'>{selectedConnection?.name ?? '—'}</p>
                 </div>
                 <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Destination</p>
-                  <p className='text-sm font-semibold text-gray-800'>Salesforce Production</p>
+                  <p className='text-xs text-gray-400 mb-0.5'>Destination Org</p>
+                  <p className='text-sm font-semibold text-gray-800'>{destinationLabel(restorePayload, sourceSelection)}</p>
                 </div>
                 <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Objects</p>
-                  <p className='text-sm font-semibold text-gray-800'>Account, Contact, Opportunity</p>
+                  <p className='text-xs text-gray-400 mb-0.5'>Source Type</p>
+                  <p className='text-sm font-semibold text-gray-800'>{sourceTypeLabel(sourceSelection)}</p>
                 </div>
                 <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Est. Records</p>
-                  <p className='text-sm font-semibold text-gray-800'>
-                    {dryRunStats ? (dryRunStats.insertCount + dryRunStats.updateCount).toLocaleString() : '—'}
-                  </p>
+                  <p className='text-xs text-gray-400 mb-0.5'>CRM User</p>
+                  <p className='text-sm font-semibold text-gray-800 truncate' title={sourceSelection.crmUsername}>{sourceSelection.crmUsername ?? '—'}</p>
                 </div>
               </div>
             </div>
 
-            {/* Conflict & Automation */}
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Conflict &amp; Automation</span>
-                <button className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>
-                  Edit
-                </button>
-              </div>
-              <div className='p-5 grid grid-cols-2 gap-x-6 gap-y-4'>
-                <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Restore Mode</p>
-                  <p className='text-sm font-semibold text-gray-800'>Overwrite Existing</p>
-                </div>
-                <div>
-                  <p className='text-xs text-gray-400 mb-0.5'>Automation</p>
-                  <p className='text-sm font-semibold' style={{ color: '#155DFC' }}>5 controls disabled</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Job Details */}
+            {/* Scope & Conflict */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Job Details</span>
+                <span className='text-sm font-semibold text-gray-800'>Scope &amp; Conflict</span>
               </div>
-              <div className='p-5 flex flex-col gap-4'>
-                {/* Job Name */}
-                <div className='flex flex-col gap-1.5'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    Job Name <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    type='text'
-                    value={jobName}
-                    onChange={(e) => setJobName(e.target.value)}
-                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                  />
+              <div className='p-5 grid grid-cols-2 gap-x-6 gap-y-4'>
+                <div>
+                  <p className='text-xs text-gray-400 mb-0.5'>Scope Type</p>
+                  <p className='text-sm font-semibold text-gray-800'>{scopeTypeLabel(restorePayload)}</p>
                 </div>
-                {/* Tags */}
-                <div className='flex flex-col gap-1.5'>
-                  <label className='text-sm font-medium text-gray-700'>Tags</label>
-                  <input
-                    type='text'
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                    placeholder='e.g. Incident, production, Q2'
-                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                  />
+                <div>
+                  <p className='text-xs text-gray-400 mb-0.5'>Restore Mode</p>
+                  <p className='text-sm font-semibold text-gray-800'>{restoreModeLabel(restorePayload.conflict?.restoreMode)}</p>
                 </div>
-                {/* Justification */}
-                <div className='flex flex-col gap-1.5'>
-                  <label className='text-sm font-medium text-gray-700'>Justification</label>
-                  <textarea
-                    value={justification}
-                    onChange={(e) => setJustification(e.target.value)}
-                    rows={4}
-                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 resize-none'
-                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                  />
-                </div>
+                {dryRunStats && (
+                  <>
+                    <div>
+                      <p className='text-xs text-gray-400 mb-0.5'>To Insert</p>
+                      <p className='text-sm font-semibold text-green-700'>{dryRunStats.insertCount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className='text-xs text-gray-400 mb-0.5'>To Update</p>
+                      <p className='text-sm font-semibold text-amber-600'>{dryRunStats.updateCount.toLocaleString()}</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -261,61 +291,47 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
           {/* ── RIGHT COLUMN ── */}
           <div className='flex flex-col gap-4'>
 
-            {/* Warning banner */}
-            <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #FECACA', background: '#FEF2F2' }}>
-              <div className='flex items-start gap-3 px-5 py-4'>
-                <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
-                  <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
-                  <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-                </svg>
-                <div>
-                  <p className='text-sm font-semibold text-red-700'>
-                    You are about to overwrite {dryRunStats ? (dryRunStats.insertCount + dryRunStats.updateCount).toLocaleString() : '—'} records in Production
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Execute card */}
+            {/* Job Details */}
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Execute</span>
+                <span className='text-sm font-semibold text-gray-800'>Job Details</span>
               </div>
-              <div className='p-5 flex flex-col gap-3'>
-                {/* Save as template checkbox */}
-                <label className='flex items-center gap-2.5 cursor-pointer select-none'>
+              <div className='p-5 flex flex-col gap-4'>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>
+                    Job Name <span className='text-red-500'>*</span>
+                  </label>
                   <input
-                    type='checkbox'
-                    checked={saveAsTemplate}
-                    onChange={(e) => setSaveAsTemplate(e.target.checked)}
-                    className='w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600'
+                    type='text'
+                    value={jobName}
+                    onChange={(e) => setJobName(e.target.value)}
+                    placeholder='e.g. INC-4711 Emergency Recovery'
+                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   />
-                  <span className='text-sm text-gray-600'>
-                    <span className='mr-1'>💾</span>
-                    Also save as template when this runs
-                  </span>
-                </label>
-
-                {/* Run Restore */}
-                <button
-                  onClick={handleRun}
-                  disabled={createJobMutation.isPending}
-                  className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
-                  style={{ background: '#155DFC' }}
-                >
-                  <svg width='14' height='14' viewBox='0 0 24 24' fill='currentColor'>
-                    <polygon points='5 3 19 12 5 21 5 3'/>
-                  </svg>
-                  {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
-                </button>
-
-                {/* Schedule for Later */}
-                <button className='w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors'>
-                  <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-                  </svg>
-                  Schedule for Later
-                </button>
+                </div>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Description</label>
+                  <input
+                    type='text'
+                    value={jobDesc}
+                    onChange={(e) => setJobDesc(e.target.value)}
+                    placeholder='Optional description'
+                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                  />
+                </div>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Tags</label>
+                  <input
+                    type='text'
+                    value={jobTags}
+                    onChange={(e) => setJobTags(e.target.value)}
+                    placeholder='e.g. Incident, production, Q2'
+                    className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+                    style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -331,17 +347,27 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
         >
           ← Back
         </button>
-        <button
-          onClick={handleRun}
-          disabled={createJobMutation.isPending}
-          className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
-          style={{ background: '#155DFC' }}
-        >
-          <svg width='13' height='13' viewBox='0 0 24 24' fill='currentColor'>
-            <polygon points='5 3 19 12 5 21 5 3'/>
-          </svg>
-          {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
-        </button>
+        <div className='flex items-center gap-3'>
+          <button
+            className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
+          >
+            <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+            </svg>
+            Schedule for Later
+          </button>
+          <button
+            onClick={handleRun}
+            disabled={createJobMutation.isPending || !jobName.trim()}
+            className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
+            style={{ background: '#155DFC' }}
+          >
+            <svg width='13' height='13' viewBox='0 0 24 24' fill='currentColor'>
+              <polygon points='5 3 19 12 5 21 5 3'/>
+            </svg>
+            {createJobMutation.isPending ? 'Running…' : 'Run Restore'}
+          </button>
+        </div>
       </div>
     </div>
   );
