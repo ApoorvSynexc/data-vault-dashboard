@@ -81,8 +81,8 @@ export interface FetchRecordsPayload {
   source: {
     backupConfigId: string;
     type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
-    startDate?: string;
-    endDate?: string;
+    startDateTime?: string;
+    endDateTime?: string;
     backupJobIds?: string[];
   };
   objectApiName: string;
