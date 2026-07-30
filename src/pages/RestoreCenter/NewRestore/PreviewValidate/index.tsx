@@ -4,6 +4,9 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { SourceSelection } from '../SelectSourceType';
+import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -62,7 +65,7 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; sourceSelection: SourceSelection; restorePayload: RestoreRetrievePayload; }
 
 // ── Static mock data ──────────────────────────────────────────────────────────
 
@@ -99,8 +102,36 @@ const ACTION_BADGE: Record<string, string> = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PreviewValidate({ onNext, onBack }: Props) {
-  const [dryRunDone, setDryRunDone] = useState(true);
+export default function PreviewValidate({ onNext, onBack, sourceSelection, restorePayload }: Props) {
+  const restoreService = useRestoreService();
+  const [dryRunDone, setDryRunDone] = useState(false);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [dryRunError, setDryRunError] = useState<string | null>(null);
+
+  const runDryRun = async () => {
+    setDryRunLoading(true);
+    setDryRunError(null);
+    try {
+      const scope = restorePayload.selection?.restoreScope;
+
+      await restoreService.showPreview({
+        source: {
+          backupConfigId: sourceSelection.backupConfigId,
+          type: sourceSelection.type ?? 'ENTIRE',
+          ...(sourceSelection.backupJobIds?.length ? { backupJobIds: sourceSelection.backupJobIds } : {}),
+          ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
+          ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+        },
+        objectApiName: 'Customer__c',
+        selection: scope ? { restoreScope: scope } : null,
+      });
+      setDryRunDone(true);
+    } catch (err: any) {
+      setDryRunError(err?.message ?? 'Dry-run failed. Please try again.');
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -253,20 +284,33 @@ export default function PreviewValidate({ onNext, onBack }: Props) {
                   Execute the full job pipeline without writing any data. Produces a complete preview report.
                 </p>
                 <button
-                  onClick={() => setDryRunDone(true)}
-                  className='w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors'
+                  onClick={runDryRun}
+                  disabled={dryRunLoading}
+                  className='w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
-                  <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <polygon points='5 3 19 12 5 21 5 3'/>
-                  </svg>
-                  Run Dry-Run
+                  {dryRunLoading ? (
+                    <div className='w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin' />
+                  ) : (
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <polygon points='5 3 19 12 5 21 5 3'/>
+                    </svg>
+                  )}
+                  {dryRunLoading ? 'Running…' : 'Run Dry-Run'}
                 </button>
-                {dryRunDone && (
+                {dryRunDone && !dryRunError && (
                   <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
                     <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                       <polyline points='20 6 9 17 4 12'/>
                     </svg>
-                    Last dry-run: May 26 · 0 blocking errors found
+                    Dry-run completed · 0 blocking errors found
+                  </div>
+                )}
+                {dryRunError && (
+                  <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}>
+                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                    </svg>
+                    {dryRunError}
                   </div>
                 )}
               </div>
