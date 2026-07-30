@@ -185,7 +185,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                 <div>
                   <p className='text-xs text-gray-400 mb-0.5'>Est. Records</p>
                   <p className='text-sm font-semibold text-gray-800'>
-                    {dryRunStats ? dryRunStats.totalRowsRaw.toLocaleString() : '—'}
+                    {dryRunStats ? (dryRunStats.insertCount + dryRunStats.updateCount).toLocaleString() : '—'}
                   </p>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                 </svg>
                 <div>
                   <p className='text-sm font-semibold text-red-700'>
-                    You are about to overwrite {dryRunStats ? dryRunStats.totalRowsRaw.toLocaleString() : '—'} records in Production
+                    You are about to overwrite {dryRunStats ? (dryRunStats.insertCount + dryRunStats.updateCount).toLocaleString() : '—'} records in Production
                   </p>
                 </div>
               </div>

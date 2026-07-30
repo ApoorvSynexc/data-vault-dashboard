@@ -39,7 +39,7 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
   { to: '/restore-center',     label: 'Restore Center',      Icon: Icons.restore,    permissions: ['restore']                                   },
   // { to: '/archive-vault',      label: 'Archive Vault',       Icon: Icons.archive,    permissions: ['archival']                                  },
   { to: '/connections',        label: 'Connections',         Icon: Icons.connectors, permissions: ['sourceConnection', 'destinationConnection'] },
-  { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permissions: ['storage']                                   },
+  // DEMO_HIDDEN: { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permissions: ['storage']                                   },
   // { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permissions: ['activitylogs']                              },
   // { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permissions: ['activitylogs']                              },
   // { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
