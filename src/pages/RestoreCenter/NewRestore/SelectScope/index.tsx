@@ -180,8 +180,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         source: {
           backupConfigId: sourceSelection.backupConfigId,
           type: sourceSelection.type ?? 'ENTIRE',
-          ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
-          ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+          ...(sourceSelection.startDate ? { startDateTime: new Date(sourceSelection.startDate).toISOString() } : {}),
+          ...(sourceSelection.endDate   ? { endDateTime:   new Date(sourceSelection.endDate).toISOString()   } : {}),
           ...(sourceSelection.type === 'PARTIAL' && sourceSelection.backupJobIds.length > 0
             ? { backupJobIds: sourceSelection.backupJobIds }
             : {}),
