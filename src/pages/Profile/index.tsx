@@ -55,7 +55,7 @@ export default function Profile() {
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase();
   const fullName = `${profile.firstName} ${profile.lastName}`;
-  const email = profile.contact?.email ?? '—';
+  const email = (profile as any).crmProfile?.email ?? '—';
 
   return (
     <div className='mx-auto flex max-w-3xl flex-col gap-6'>
@@ -66,8 +66,8 @@ export default function Profile() {
           {initials}
         </div>
         <div className='min-w-0 flex-1'>
-          <h1 className='text-xl font-bold text-gray-900'>{fullName}</h1>
-          <p className='mt-0.5 text-sm text-gray-500'>{email}</p>
+          <h1 className='text-xl font-bold text-gray-900'>{fullName ?? "" }</h1>
+          <p className='mt-0.5 text-sm text-gray-500'>{email ?? ""}</p>
         </div>
         <span className='inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700'>
           <span className='h-1.5 w-1.5 rounded-full bg-green-500' />
