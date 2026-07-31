@@ -54,7 +54,7 @@ export default function Profile() {
   }
 
   const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase();
-  const fullName = `${profile.firstName} ${profile.lastName}`;
+  const fullName = `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim();
   const email = (profile as any).crmProfile?.email ?? '—';
 
   return (
@@ -289,7 +289,7 @@ function EmailCard({
     setEmailError('');
   }
 
-  const currentEmail = profile.contact?.email ?? '—';
+  const currentEmail = (profile as any).crmProfile?.email ?? '—';
 
   return (
     <div className='rounded-xl border border-gray-100 bg-white p-6 shadow-sm'>
