@@ -291,7 +291,7 @@ export default function Dashboard() {
             className='mb-10'
             style={{ color: '#64748B', fontSize: 22, fontWeight: 400, lineHeight: '34px', maxWidth: 700 }}
           >
-            Get started by creating your first backup or archive to protect your data.
+            Get started by creating your first backup to protect your data.
           </p>
           <div className='flex items-center gap-4 flex-wrap justify-center'>
             <button
