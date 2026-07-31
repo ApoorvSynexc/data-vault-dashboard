@@ -53,7 +53,7 @@ export default function Profile() {
     );
   }
 
-  const initials = `${profile.firstName[0] ?? ''}${profile.lastName[0] ?? ''}`.toUpperCase();
+  const initials = `${profile.firstName?.[0] ?? ''}${profile.lastName?.[0] ?? ''}`.toUpperCase();
   const fullName = `${profile.firstName} ${profile.lastName}`;
   const email = profile.contact?.email ?? '—';
 
