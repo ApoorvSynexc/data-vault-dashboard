@@ -163,17 +163,7 @@ export default function MainLayout() {
 
           <div className='flex-1' />
 
-          {/* Icon buttons */}
-          <button
-            onClick={() => navigate('/notifications')}
-            className='relative cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'
-          >
-            <Icons.bell />
-            <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full' />
-          </button>
-          <button className='cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'>
-            <Icons.settings />
-          </button>
+          {/* DEMO_HIDDEN: notification bell and settings gear */}
           <div className='relative' ref={userMenuRef}>
             <button
               type='button'
