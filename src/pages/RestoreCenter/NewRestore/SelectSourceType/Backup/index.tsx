@@ -37,8 +37,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const backupConfigService = useBackupConfigService();
 
   // ── Config list (phase 1) ────────────────────────────────────────────────
-  // DEMO_HIDDEN: point-in-time feature hidden; hardcoded to 'list'
-  const [backupMode, _setBackupMode] = useState<BackupMode>('list');
+  const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(initialSelectedConfigId ? new Set([initialSelectedConfigId]) : new Set());
   const [selectedBackupRow, setSelectedBackupRow] = useState<any>(initialSelectedRow);
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>(initialSelectedConfigId);
@@ -396,12 +395,11 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Choose a Backup</Typography>
-            {/* DEMO_HIDDEN: point-in-time toggle — uncomment to restore
             <div className='ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
               {(['list', 'pit'] as BackupMode[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => _setBackupMode(m)}
+                  onClick={() => setBackupMode(m)}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
                     backupMode === m ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                   }`}
@@ -410,7 +408,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                 </button>
               ))}
             </div>
-            END DEMO_HIDDEN */}
           </div>
 
           {backupMode === 'list' && (

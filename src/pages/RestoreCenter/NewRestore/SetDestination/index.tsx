@@ -68,13 +68,11 @@ function ProgressBar({ active }: { active: number }) {
 
 type DestType = 'same' | 'diff' | 'export';
 
-/* DEMO_HIDDEN
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
   { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
   { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
   { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
 ];
-END DEMO_HIDDEN */
 
 // ── Tooltip helper ────────────────────────────────────────────────────────────
 
@@ -92,7 +90,6 @@ function Tip({ text }: { text: string }) {
 // ── Sub-configs ───────────────────────────────────────────────────────────────
 
 function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername?: string }) {
-  // @ts-expect-error tag/setTag used by DEMO_HIDDEN Tag Restored Records section
   const [tag, setTag] = useState('Restored via DataVault {job-id}');
 
   return (
@@ -123,7 +120,6 @@ function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername
           </div>
         </div>
 
-        {/* DEMO_HIDDEN: Tag Restored Records — uncomment to restore
         <div className='flex flex-col gap-1.5'>
           <label className='text-sm font-medium text-gray-700'>
             Tag Restored Records
@@ -139,7 +135,6 @@ function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername
           />
           <p className='text-xs text-gray-400'>Written to a custom field on each restored record</p>
         </div>
-        END DEMO_HIDDEN */}
       </div>
     </div>
   );
@@ -642,8 +637,7 @@ function ExportOnlyConfig() {
 interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmName?: string; crmUsername?: string; }
 
 export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername }: Props) {
-  // DEMO_HIDDEN: hardcoded to 'same'; setDestType used by Destination Type cards when restored
-  const [destType, _setDestType] = useState<DestType>('same');
+  const [destType, setDestType] = useState<DestType>('same');
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -677,7 +671,6 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           </div>
         </div>
 
-        {/* DEMO_HIDDEN: Destination Type cards — uncomment to restore
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
           <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
@@ -701,7 +694,6 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
             })}
           </div>
         </div>
-        END DEMO_HIDDEN */}
 
         {/* Sub-config panel */}
         {destType === 'same'   && <SameOrgConfig crmName={crmName} crmUsername={crmUsername} />}
@@ -719,7 +711,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
+          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={onNext}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
