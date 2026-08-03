@@ -160,7 +160,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <Tip text='How to handle a source record when a record with the same Id (or external Id) already exists in the destination. Pick one mode for the whole job — you can override per object later.' />
               </div>
               <div className='p-4 flex flex-col gap-2'>
-                {RESTORE_MODES.map((m) => {
+                {[...RESTORE_MODES, ...RESTORE_MODES_FULL].map((m) => {
                   const active = restoreMode === m.id;
                   return (
                     <button
