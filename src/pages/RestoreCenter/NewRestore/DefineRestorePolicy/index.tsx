@@ -205,7 +205,7 @@ export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUserna
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
+          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={() => onNext({ name: policyName, description, tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [] })}
             disabled={!canProceed}

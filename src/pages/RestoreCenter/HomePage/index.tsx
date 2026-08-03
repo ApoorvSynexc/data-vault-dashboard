@@ -303,7 +303,6 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
           </button>
         </div>
 
-        {/* DEMO_HIDDEN: Recovery Readiness Banner + Quick Recover
         <div className='flex-shrink-0 flex items-start gap-3 rounded-xl px-4 py-3 text-sm' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
           <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
             <circle cx='12' cy='12' r='10' /><line x1='12' y1='16' x2='12' y2='12' /><line x1='12' y1='8' x2='12.01' y2='8' />
@@ -333,7 +332,6 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
             </svg>
           </button>
         </div>
-        END DEMO_HIDDEN */}
 
         {/* ── KPI Cards ── */}
         <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm flex-shrink-0'>

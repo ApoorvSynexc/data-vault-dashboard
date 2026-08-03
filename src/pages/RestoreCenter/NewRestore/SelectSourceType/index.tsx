@@ -88,7 +88,6 @@ function ProgressBar({ active }: { active: number }) {
 }
 
 // ── Source type cards ─────────────────────────────────────────────────────────
-/* DEMO_HIDDEN
 const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc: string }[] = [
   {
     id: 'backup',
@@ -103,12 +102,10 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
     desc: 'Cold/warm archived records',
   },
 ];
-END DEMO_HIDDEN */
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, onArchivalJobsPhaseChange }: Props) {
-  // @ts-expect-error setSourceType used by DEMO_HIDDEN source type cards
   const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
@@ -138,7 +135,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     onArchivalJobsPhaseChange?.(v);
   };
 
-  // @ts-expect-error clearBackup used by DEMO_HIDDEN source type cards
   const clearBackup = () => {
     setConfigSelected(false);
     setBackupSelection(null);
@@ -148,7 +144,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     setBackupSelectedJobIds([]);
   };
 
-  // @ts-expect-error clearArchival used by DEMO_HIDDEN source type cards
   const clearArchival = () => {
     setArchivalConfigSelected(false);
     setArchivalSelection(null);
@@ -219,8 +214,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           </div>
         </div>
 
-        {/* Source type cards — hidden for demo; backup is selected by default */}
-        {/* DEMO_HIDDEN: uncomment below to restore source type selection UI
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
           <div className='border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Source Type</Typography>
@@ -250,7 +243,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             })}
           </div>
         </div>
-        END DEMO_HIDDEN */}
 
         {/* Sub-pickers */}
         {sourceType === 'backup' && (
@@ -296,7 +288,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
+          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={handleNext}
             disabled={!canProceed}

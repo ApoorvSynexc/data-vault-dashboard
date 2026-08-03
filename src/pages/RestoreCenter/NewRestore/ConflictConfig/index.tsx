@@ -83,7 +83,6 @@ const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended
   { id: 'append',    title: 'Append as New Records', desc: 'Always insert — creates duplicates if record already exists' },
 ];
 
-/* DEMO_HIDDEN
 const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
   { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
   { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination' },
@@ -97,7 +96,6 @@ const FIELD_DEFAULTS = [
   { field: 'Opportunity.StageName', sub: 'Picklist · Required', type: 'Picklist', options: ['Prospecting', 'Qualification', 'Closed Lost'] },
   { field: 'Case.Status',           sub: 'Picklist · Required', type: 'Picklist', options: ['New', 'Working', 'Escalated', 'Closed'] },
 ];
-END DEMO_HIDDEN */
 
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -106,7 +104,6 @@ interface Props { onNext: () => void; onBack: () => void; }
 
 export default function ConflictConfig({ onNext, onBack }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
-  /* DEMO_HIDDEN state — restore when uncommenting sections below
   const [mergeDefault,   setMergeDefault]   = useState('Newest LastModifiedDate wins');
   const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer ✓ Recommended');
   const [ecMissingField, setEcMissingField] = useState('Skip the field ✓ Recommended');
@@ -117,7 +114,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
   const [fallbackOwner,  setFallbackOwner]  = useState('DataVault Service Account');
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
-  END DEMO_HIDDEN */
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -199,7 +195,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                   );
                 })}
 
-                {/* DEMO_HIDDEN: Per-field merge panel — uncomment to restore
                 {restoreMode === 'merge' && (
                   <div className='mt-2 rounded-lg border border-blue-200 bg-blue-50 p-4 flex flex-col gap-3'>
                     <p className='text-xs font-semibold text-blue-800'>
@@ -233,11 +228,9 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <button className='text-xs font-semibold text-blue-600 hover:underline self-start'>+ Add per-field override</button>
                   </div>
                 )}
-                END DEMO_HIDDEN */}
               </div>
             </div>
 
-            {/* DEMO_HIDDEN: Edge Case Handling — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Edge Case Handling</span>
@@ -323,9 +316,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 </div>
               </div>
             </div>
-            END DEMO_HIDDEN */}
 
-            {/* DEMO_HIDDEN: Field Defaults — uncomment to restore
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
                 <div className='flex items-center gap-1.5'>
@@ -386,7 +377,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
               </div>
             </div>
-            END DEMO_HIDDEN */}
 
         </div>
       </div>
@@ -400,7 +390,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          {/* DEMO_HIDDEN: <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button> END DEMO_HIDDEN */}
+          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={onNext}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'

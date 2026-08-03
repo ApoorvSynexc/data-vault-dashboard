@@ -318,7 +318,6 @@ export default function Dashboard() {
               </svg>
               Start Backup →
             </button>
-            {/* DEMO_HIDDEN: Start Archive button
             <button
               onClick={() => navigate('/archive-vault/new')}
               style={{
@@ -343,7 +342,6 @@ export default function Dashboard() {
               </svg>
               Start Archive →
             </button>
-            END DEMO_HIDDEN */}
           </div>
         </div>
       </div>
