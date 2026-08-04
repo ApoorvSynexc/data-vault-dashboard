@@ -107,9 +107,6 @@ export default function Storage() {
     refetchOnWindowFocus: false,
   });
 
-  console.log('last backup config (NORMAL):', lastBackupQuery.data);
-  console.log('last backup config (ARCHIVAL):', lastArchivalQuery.data);
-
   const overviewData = (overviewQuery.data as any)?.data;
   const backupSize: number = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes ?? 0;
   const backupRecords: number = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords ?? 0;

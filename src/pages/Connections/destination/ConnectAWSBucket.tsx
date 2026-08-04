@@ -49,7 +49,8 @@ type AckOption = 'auto' | 'manual';
 export default function ConnectAWSBucket() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/connections';
+  const raw = searchParams.get('returnTo') || '/connections';
+  const returnTo = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/connections';
   const queryClient = useQueryClient();
   const destinationService = useDestinationService();
 

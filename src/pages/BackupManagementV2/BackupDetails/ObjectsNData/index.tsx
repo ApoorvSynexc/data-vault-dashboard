@@ -48,7 +48,6 @@ export default function ObjectsNData({ backup }: ObjectsNDataProps) {
       if (!crmId) return null;
       const objectApiNames = mockObjectsData.objects.map((obj) => obj.name.toLowerCase());
       const response = await backupConfigService.getObjectCountList(crmId, objectApiNames);
-      console.log('Object Count API Response:', response);
       return response;
     },
     enabled: !!crmId,
