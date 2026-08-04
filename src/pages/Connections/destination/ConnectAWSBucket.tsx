@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import { useDestinationService, type CreateDestinationPayload } from '../../../services/destination/destination.service';
@@ -55,6 +55,7 @@ export default function ConnectAWSBucket() {
   const destinationService = useDestinationService();
 
   const [connectName, setConnectName] = useState('');
+  const [nameError, setNameError] = useState('');
   const [accessKeyId, setAccessKeyId] = useState('');
   const [secretAccessKey, setSecretAccessKey] = useState('');
   const [region, setRegion] = useState('us-east-1');
@@ -63,6 +64,22 @@ export default function ConnectAWSBucket() {
   const [showAck, setShowAck] = useState(false);
   const [ackOption, setAckOption] = useState<AckOption>('auto');
   const [copied, setCopied] = useState(false);
+
+  const { data: existingDestinations } = useQuery({
+    queryKey: ['destinations'],
+    queryFn: () => destinationService.listDestinations(),
+  });
+
+  const existingNames = (existingDestinations ?? []).map((d) => d.name.toLowerCase().trim());
+
+  const handleNameChange = (value: string) => {
+    setConnectName(value);
+    if (existingNames.includes(value.toLowerCase().trim())) {
+      setNameError('A connection with this name already exists. Please choose a different name.');
+    } else {
+      setNameError('');
+    }
+  };
 
   const createDestinationMutation = useMutation({
     mutationFn: async (payload: CreateDestinationPayload) =>
@@ -78,7 +95,7 @@ export default function ConnectAWSBucket() {
     },
   });
 
-  const isFormValid = connectName.trim() && accessKeyId.trim() && secretAccessKey.trim() && s3Bucket.trim();
+  const isFormValid = connectName.trim() && accessKeyId.trim() && secretAccessKey.trim() && s3Bucket.trim() && !nameError;
 
   const handleConnectClick = () => {
     if (!isFormValid) return;
@@ -157,11 +174,12 @@ export default function ConnectAWSBucket() {
                 <input
                   type='text'
                   value={connectName}
-                  onChange={(e) => setConnectName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
                   placeholder='Enter any name to recognize your destination point'
                   autoComplete='off'
-                  className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+                  className={`mt-2 w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition focus:ring-2 ${nameError ? 'border-red-400 focus:border-red-400 focus:ring-red-100' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-100'}`}
                 />
+                {nameError && <p className='mt-1.5 text-xs text-red-600'>{nameError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900'>* Secret Access Key</label>
