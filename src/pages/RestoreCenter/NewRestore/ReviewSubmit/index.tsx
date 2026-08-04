@@ -150,7 +150,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   });
 
   const handleRun = () => {
-    console.log('[RestoreJob] Submitting payload:', JSON.stringify(restorePayload, null, 2));
     createJobMutation.mutate();
   };
 
