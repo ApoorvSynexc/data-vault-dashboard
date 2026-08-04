@@ -92,21 +92,6 @@ export default function Storage() {
     refetchOnWindowFocus: false,
   });
 
-
-  const lastBackupQuery = useQuery({
-    queryKey: ['storage-last-backup-config', 'NORMAL'],
-    queryFn: () => storageService.getLastBackupConfig('NORMAL'),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const lastArchivalQuery = useQuery({
-    queryKey: ['storage-last-backup-config', 'ARCHIVAL'],
-    queryFn: () => storageService.getLastBackupConfig('ARCHIVAL'),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
   const overviewData = (overviewQuery.data as any)?.data;
   const backupSize: number = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes ?? 0;
   const backupRecords: number = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords ?? 0;
