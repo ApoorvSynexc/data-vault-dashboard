@@ -32,7 +32,8 @@ export function capitalize(value: string): string {
 }
 
 export function formatBytes(bytes: number | null | undefined): string {
-  if (!bytes) return '--';
+  if (bytes == null) return '--';
+  if (bytes === 0) return '0 B';
   if (bytes >= 1_099_511_627_776) return `${(bytes / 1_099_511_627_776).toFixed(1)} TB`;
   if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
   if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;

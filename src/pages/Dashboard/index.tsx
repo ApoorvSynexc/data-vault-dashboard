@@ -233,7 +233,7 @@ export default function Dashboard() {
       header: 'Data Size',
       render: (job) => {
         const sizeBytes = (job.object || []).reduce((s: number, o: any) => s + (o.sizeInBytes || 0), 0) || (job.sizeInBytes || 0);
-        return <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{sizeBytes > 0 ? formatBytes(sizeBytes) : '--'}</span>;
+        return <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>{formatBytes(sizeBytes)}</span>;
       },
     },
   ];
