@@ -500,6 +500,7 @@ export default function Dashboard() {
     {selectedJob && (
       <JobDetailsModal
         job={selectedJob}
+        backup={selectedJob.backupConfig}
         onClose={() => setSelectedJob(null)}
       />
     )}
