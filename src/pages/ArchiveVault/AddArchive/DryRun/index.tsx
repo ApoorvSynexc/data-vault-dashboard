@@ -810,7 +810,22 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                               </div>
                             ) : fields.length > 0 ? (
                               <span className='text-xs text-gray-600 truncate block max-w-xs'>
-                                {fields.map((f: any) => `${f.name} ${f.filter?.operator} "${f.filter?.value}"`).join(' AND ').slice(0, 50) + (fields.map((f: any) => `${f.name} ${f.filter?.operator} "${f.filter?.value}"`).join(' AND ').length > 50 ? '…' : '')}
+                                {(() => {
+                                  const condType = row.condition?.type;
+                                  if (condType === 'CUSTOM' && row.condition?.expression) {
+                                    // Replace index numbers in expression with actual field conditions
+                                    const expr: string = row.condition.expression;
+                                    const replaced = expr.replace(/\d+/g, (num) => {
+                                      const idx = parseInt(num) - 1;
+                                      const f = fields[idx];
+                                      return f ? `${f.name} ${f.filter?.operator} "${f.filter?.value}"` : num;
+                                    });
+                                    return replaced.length > 60 ? replaced.slice(0, 60) + '…' : replaced;
+                                  }
+                                  const operator = condType === 'OR' ? ' OR ' : ' AND ';
+                                  const full = fields.map((f: any) => `${f.name} ${f.filter?.operator} "${f.filter?.value}"`).join(operator);
+                                  return full.length > 50 ? full.slice(0, 50) + '…' : full;
+                                })()}
                               </span>
                             ) : (
                               <span className='text-xs text-gray-300 italic'>—</span>
