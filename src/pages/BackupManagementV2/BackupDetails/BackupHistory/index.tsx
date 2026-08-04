@@ -367,6 +367,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
       {selectedJobId && (
         <JobDetailsModal
           job={currentJobs.find((j: any) => j.backupJobId === selectedJobId)}
+          backup={backup}
           onClose={() => setSelectedJobId(null)}
           onRefresh={async () => {
             await queryClient.refetchQueries({ queryKey: ['backup-jobs', slug, cursor] });

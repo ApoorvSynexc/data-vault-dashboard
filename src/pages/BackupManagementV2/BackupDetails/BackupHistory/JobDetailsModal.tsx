@@ -4,6 +4,7 @@ import ChangesDetailModal from './ChangesDetailModal';
 
 type JobDetailsModalProps = {
   job: any;
+  backup?: any;
   onClose: () => void;
   onRefresh?: () => Promise<void>;
 };
@@ -79,7 +80,7 @@ const statIcons = [
   </IconStatWrapper>,
 ];
 
-export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsModalProps) {
+export default function JobDetailsModal({ job, backup, onClose, onRefresh }: JobDetailsModalProps) {
   const [view, setView] = useState<'job' | 'changes'>('job');
   if (!job) return null;
 
@@ -198,7 +199,7 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
               { label: 'Started At', value: startedAt ? formatDateTime(startedAt) : 'N/A' },
               { label: 'Duration', value: durationText },
               { label: 'Compressed Data Size', value: formatBytes(totalDataSize) },
-              { label: 'Backup Mode', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
+              { label: 'Backup Mode', value: job.jobType === 'BULK' && backup?.schedule?.toUpperCase() === 'REALTIME' ? 'Initial Backup' : job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
 
             ].map(({ label, value }, i) => (
               <div key={i} className='flex items-center gap-3 py-4 px-5' style={{ borderRight: i < 3 ? '1.5px solid #E8EDF5' : 'none' }}>
@@ -230,7 +231,7 @@ export default function JobDetailsModal({ job, onClose, onRefresh }: JobDetailsM
                 { label: 'Job Status', value: getStatusLabel(job.status) },
                 { label: 'Job Duration', value: durationText },
                 { label: 'Compressed Data Size', value: formatBytes(totalDataSize) },
-                { label: 'Backup Type', value: job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
+                { label: 'Backup Type', value: job.jobType === 'BULK' && backup?.schedule?.toUpperCase() === 'REALTIME' ? 'Initial Backup' : job.jobType === 'BULK' ? 'Scheduled' : 'Realtime' },
                 { label: 'Object Backed up', value: isRealtime ? (job.objectApiName || '1') : String(objectsList.length) },
                 ...(newRecordsCount > 0 ? [{ label: 'Estimated Data Size (Salesforce)', value: formatBytes(newRecordsCount * 2 * 1024) }] : []),
               ].map(({ label, value }, i, arr) => (
