@@ -716,8 +716,8 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                 <div className='divide-y' style={{ borderColor: 'rgba(242,68,0,0.08)' }}>
                   {failedObjects.map((f, i) => (
                     <div key={i} className='flex items-start gap-3 px-5 py-3'>
-                      <span className='text-xs font-semibold text-gray-800 w-32 flex-shrink-0'>{f.name}</span>
-                      <span className='text-xs text-red-600'>{f.error}</span>
+                      <span className='text-xs font-semibold text-gray-800 flex-shrink-0 max-w-[180px] break-all'>{f.name}</span>
+                      <span className='text-xs text-red-600 min-w-0 break-words'>{f.error}</span>
                     </div>
                   ))}
                 </div>
