@@ -861,17 +861,17 @@ export default function AddDetailsWizard({
                   </div>
 
                   {/* Add condition + clear */}
-                  <div className='flex items-center px-6 py-3 border-t border-gray-100 gap-4'>
+                  <div className='flex items-center px-6 py-3 border-t border-gray-100 gap-3'>
                     <button onClick={addCondition}
-                      className='flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors'>
+                      className='flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 transition-colors'>
                       <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                         <line x1='12' y1='5' x2='12' y2='19' /><line x1='5' y1='12' x2='19' y2='12' />
                       </svg>
-                      Add condition
+                      Add Condition
                     </button>
                     {conditions.length > 0 && (
                       <button onClick={() => setConditions([])}
-                        className='flex items-center gap-1 text-sm text-gray-500 hover:text-red-500 transition-colors'>
+                        className='flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
                         <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                           <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
                         </svg>
