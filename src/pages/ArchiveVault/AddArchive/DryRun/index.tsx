@@ -939,12 +939,6 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
               </button>
             </PermissionGate>
             <button
-              onClick={handleSaveDraft}
-              disabled={isSavingDraft || !archivalPayload}
-              className='px-4 py-2 text-gray-600 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm disabled:opacity-50'>
-              {isSavingDraft ? 'Saving…' : 'Save as Draft'}
-            </button>
-            <button
               onClick={() => onNext(
                 dryRunState === 'results' ? { totalRecords, totalDataSize } : undefined,
                 dryRunState === 'results' ? { objectCountMap, failedObjects, runTime, duration } : undefined,
