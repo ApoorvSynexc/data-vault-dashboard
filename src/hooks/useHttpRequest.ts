@@ -1,21 +1,19 @@
 import { useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useSelectedOrg } from '../layouts/MainLayout';
 import { createHttpRequest } from '../services/api';
 
 export function useHttpRequest() {
-  const { logout } = useAuth();
-  const { selectedOrg } = useSelectedOrg();
+  const { logout, crmUserId } = useAuth();
 
-  // Use a ref so the getter always reads the latest org without recreating the client
-  const orgRef = useRef(selectedOrg);
-  orgRef.current = selectedOrg;
+  // Ref so getCrmUserId always reads the latest value without recreating the client
+  const crmUserIdRef = useRef(crmUserId);
+  crmUserIdRef.current = crmUserId;
 
   return useMemo(
     () =>
       createHttpRequest({
         onLogout: logout,
-        getCrmUserId: () => orgRef.current?.crmProfile?.userId ?? null,
+        getCrmUserId: () => crmUserIdRef.current || null,
       }),
     [logout],
   );
