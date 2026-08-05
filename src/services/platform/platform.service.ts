@@ -43,6 +43,7 @@ export type ConnectedPlatform = {
   lastName?: string;
   contactEmail?: string;
   isCrmConnected?: boolean;
+  crmProfileUserId?: string;
 };
 
 export type ConnectPlatformResponse = {
@@ -73,10 +74,11 @@ export function usePlatformService() {
         updatedAt:      item.updatedAt,
         crmProfile:     item.crmProfile,
         crm:            item.crm,
-        firstName:      item.firstName,
-        lastName:       item.lastName,
-        contactEmail:   item.contactEmail,
-        isCrmConnected: item.isCrmConnected,
+        firstName:        item.firstName,
+        lastName:         item.lastName,
+        contactEmail:     item.contactEmail,
+        isCrmConnected:   item.isCrmConnected,
+        crmProfileUserId: item.crmProfileUserId ?? item.crmProfile?.userId,
       }));
     },
     connectPlatform: async (crmType: CrmPlatform, options?: ConnectOptions) => {
