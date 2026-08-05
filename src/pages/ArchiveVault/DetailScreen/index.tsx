@@ -258,10 +258,6 @@ export default function ArchiveDetailScreen() {
   const dataSize = formatBytes(totalSizeBytes || undefined);
   const status         = item?.backupStatus ?? item?.status ?? 'ACTIVE';
 
-  const sc             = item?.scheduleConfig;
-  const freq           = sc?.scheduling?.frequency ?? '--';
-  const startTime      = sc?.scheduling?.startTime ?? '--';
-
   const destName       = item?.destinationDetail?.destinationName ?? '--';
   const destType       = item?.destinationDetail?.type ?? '--';
 
@@ -443,14 +439,6 @@ export default function ArchiveDetailScreen() {
                   ),
                 },
                 { label: 'Data Size',           value: dataSize },
-                { label: 'Archive Schedule',     value: null,
-                  custom: (
-                    <span className='flex items-center gap-2'>
-                      <span className='rounded-full bg-blue-50 border border-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide'>{freq}</span>
-                      <span className='text-gray-700'>{startTime}</span>
-                    </span>
-                  ),
-                },
                 { label: 'Object(s)',            value: null,
                   custom: (
                     <span className='flex flex-wrap gap-1.5'>
