@@ -17,7 +17,7 @@ const mockBackupData = {
   name: 'Salesforce Production Backup',
   crmName: 'Salesforce',
   environment: 'Production',
-  backupStatus: 'ACTIVE',
+  backupStatus: undefined,
   schedule: 'SCHEDULE',
   description: 'Daily backup of Salesforce production environment',
   lastBackupAt: new Date().toISOString(),
@@ -93,9 +93,19 @@ export default function BackupDetails() {
                   </div>
                 )}
                 <h1 className='text-2xl font-bold text-gray-900'>{backupData?.name || 'Backup'}</h1>
-                <span className='px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'>
-                  ✓ {backupData?.backupStatus || 'ACTIVE'}
-                </span>
+                {(() => {
+                  const status = backupData?.status;
+                  if (!status) return null;
+                  const isDraft = status === 'DRAFT';
+                  const isActive = status === 'ACTIVE';
+                  const bg = isDraft ? 'bg-yellow-100' : isActive ? 'bg-green-100' : 'bg-gray-100';
+                  const text = isDraft ? 'text-yellow-700' : isActive ? 'text-green-700' : 'text-gray-600';
+                  return (
+                    <span className={`px-2 py-1 ${bg} ${text} text-xs font-semibold rounded-full`}>
+                      {isActive ? '✓ ' : ''}{status}
+                    </span>
+                  );
+                })()}
               </div>
               <p className='text-sm text-gray-600 mt-1'>
                 {backupData?.crmDetail?.crmName || backupData?.crmName}
