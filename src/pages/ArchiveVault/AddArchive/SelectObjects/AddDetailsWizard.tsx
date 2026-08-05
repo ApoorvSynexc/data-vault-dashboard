@@ -577,7 +577,7 @@ export default function AddDetailsWizard({
   const displayName = objectLabel ?? objectName;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30' onClick={onClose}>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/30'>
       <div
         className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
         style={{ width: 920, maxHeight: '92vh', border: '1px solid #E2E8F0' }}
