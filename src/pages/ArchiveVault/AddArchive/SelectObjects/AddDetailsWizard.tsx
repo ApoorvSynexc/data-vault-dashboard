@@ -253,8 +253,40 @@ export default function AddDetailsWizard({
   });
   const fields: any[] = Array.isArray(fieldsData) ? fieldsData : [];
 
-  // Tracks the condition+field that needs picklist values fetched
+  // Re-hydrate restored conditions when fields load: fix null dataType and queue picklist fetches
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!fields.length || hydratedRef.current) return;
+    hydratedRef.current = true;
+    setConditions((prev) => prev.map((cond) => {
+      if (!cond.field) return cond;
+      const matched = fields.find((f: any) => f.apiName === cond.field);
+      if (!matched) return cond;
+      const rawType = (matched.dataType as string | undefined)?.toLowerCase();
+      const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+      return { ...cond, dataType };
+    }));
+  }, [fields]);
+
+  // Tracks the condition+field that needs picklist values fetched (queue: one at a time via TanStack cache)
   const [pendingPicklist, setPendingPicklist] = useState<{ conditionId: string; fieldApiName: string } | null>(null);
+  // Queue of picklist fetches needed (for restored multi-picklist conditions)
+  const picklistQueueRef = useRef<{ conditionId: string; fieldApiName: string }[]>([]);
+
+  // After fields load, queue fetches for any restored picklist conditions missing their values
+  useEffect(() => {
+    if (!fields.length) return;
+    const toFetch = conditions.filter((cond) => {
+      if (!cond.field) return false;
+      const matched = fields.find((f: any) => f.apiName === cond.field);
+      const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
+      return rawType === 'picklist' && (!cond.picklistValues || cond.picklistValues.length === 0);
+    });
+    if (!toFetch.length) return;
+    picklistQueueRef.current = toFetch.map((c) => ({ conditionId: c.id, fieldApiName: c.field }));
+    setPendingPicklist(picklistQueueRef.current.shift() ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields]);
 
   const { data: picklistData } = useQuery({
     queryKey: ['archival-picklist', crmId, objectName, pendingPicklist?.fieldApiName],
@@ -271,6 +303,9 @@ export default function AddDetailsWizard({
   useEffect(() => {
     if (!picklistData || !pendingPicklist) return;
     updateCondition(pendingPicklist.conditionId, { picklistValues: picklistData });
+    // advance queue
+    const next = picklistQueueRef.current.shift() ?? null;
+    setPendingPicklist(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picklistData]);
 
