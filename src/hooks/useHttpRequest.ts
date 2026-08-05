@@ -1,26 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSelectedOrg } from '../layouts/MainLayout';
 import { createHttpRequest } from '../services/api';
 
-/**
- * Drop any custom hooks here and wire them into createHttpRequest.
- * The returned object has the same interface as httpRequest (get/post/put/patch/delete).
- *
- * Usage:
- *   const api = useHttpRequest();
- *   api.get('/some-path');
- */
 export function useHttpRequest() {
   const { logout } = useAuth();
+  const { selectedOrg } = useSelectedOrg();
 
-  // Add more hooks here as needed:
-  // const { token } = useSomeOtherHook();
+  // Use a ref so the getter always reads the latest org without recreating the client
+  const orgRef = useRef(selectedOrg);
+  orgRef.current = selectedOrg;
 
   return useMemo(
     () =>
       createHttpRequest({
         onLogout: logout,
-        // pass more config here as you add hooks above
+        getCrmUserId: () => orgRef.current?.crmProfile?.userId ?? null,
       }),
     [logout],
   );

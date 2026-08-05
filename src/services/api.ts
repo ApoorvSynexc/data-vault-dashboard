@@ -33,6 +33,7 @@ type MutationRequestOptions = Omit<HttpRequestOptions, 'method' | 'body'>;
 
 export type HttpRequestConfig = {
   onLogout?: () => void;
+  getCrmUserId?: () => string | null | undefined;
 }
 
 export type HttpRequestInstance = {
@@ -110,7 +111,12 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
     { body, headers, query, ...options }: HttpRequestOptions = {},
   ): Promise<ApiResponse<T>> {
     const resolvedPath = buildPath(path, query);
-    let response = await rawFetch(resolvedPath, body, headers, options);
+    const crmUserId = config.getCrmUserId?.();
+    const mergedHeaders: HeadersInit = {
+      ...(crmUserId ? { 'x-crm-userid': crmUserId } : {}),
+      ...(headers as Record<string, string> | undefined),
+    };
+    let response = await rawFetch(resolvedPath, body, mergedHeaders, options);
 
     if (response.status === 401 && path !== '/v1/auth/refresh-token') {
       if (!isRefreshing) {
@@ -130,7 +136,7 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
         await new Promise<void>((resolve) => refreshQueue.push(resolve));
       }
 
-      response = await rawFetch(resolvedPath, body, headers, options);
+      response = await rawFetch(resolvedPath, body, mergedHeaders, options);
     }
 
     const envelope = await parseResponse(response) as ApiResponse<T>;

@@ -1,10 +1,24 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, createContext, useContext } from 'react';
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
+import { usePlatformService } from '../services/platform/platform.service';
+import type { ConnectedPlatform } from '../services/platform/platform.service';
 import DataVaultLogo from '../assets/icons/DataVaultLOGO.svg';
 import DataVaultLogoIcon from '../assets/icons/Datavault Logo Container.svg';
+
+// ── Selected Org Context ───────────────────────────────────────────────────────
+// Provides the currently selected CRM org across the app.
+
+type OrgContextValue = {
+  selectedOrg: ConnectedPlatform | null;
+  setSelectedOrg: (org: ConnectedPlatform) => void;
+};
+
+const OrgContext = createContext<OrgContextValue>({ selectedOrg: null, setSelectedOrg: () => {} });
+export const useSelectedOrg = () => useContext(OrgContext);
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const ico = (children: React.ReactNode) => (
@@ -46,6 +60,129 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
   { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permissions: ['settings']                                  },
 ];
 
+// ── Org Dropdown ──────────────────────────────────────────────────────────────
+
+function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
+  selectedOrg: ConnectedPlatform | null;
+  onAutoSelect: (org: ConnectedPlatform) => void;
+  onSelect: (org: ConnectedPlatform) => void;
+}) {
+  const platformService = usePlatformService();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const { data: orgs = [], isLoading } = useQuery({
+    queryKey: ['crm-list'],
+    queryFn: () => platformService.getConnectedPlatforms(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Silently restore saved org on load — does NOT trigger a reload
+  useEffect(() => {
+    if (!selectedOrg && orgs.length > 0) {
+      const saved = localStorage.getItem('selectedOrgId');
+      const found = saved ? orgs.find((o) => o.crmId === saved) : null;
+      onAutoSelect(found ?? orgs[0]);
+    }
+  }, [orgs, selectedOrg]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const displayName = selectedOrg
+    ? (selectedOrg.name || selectedOrg.crmProfile?.username || selectedOrg.contactEmail || selectedOrg.crmId)
+    : 'Select Org';
+
+  const displayEnv = selectedOrg?.environment
+    ? selectedOrg.environment.charAt(0).toUpperCase() + selectedOrg.environment.slice(1).toLowerCase()
+    : '';
+
+  return (
+    <div ref={ref} className='relative flex-shrink-0'>
+      <button
+        type='button'
+        onClick={() => setOpen((v) => !v)}
+        className='flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors'
+        style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', minWidth: 200 }}
+      >
+        {/* Salesforce cloud icon */}
+        <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 text-blue-300'>
+          <path d='M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z' />
+        </svg>
+        <div className='flex flex-col items-start min-w-0 flex-1'>
+          {isLoading ? (
+            <span className='text-white/60 text-xs'>Loading orgs…</span>
+          ) : (
+            <>
+              <span className='text-white text-xs font-semibold truncate w-full leading-tight'>{displayName}</span>
+              {displayEnv && <span className='text-white/50 text-[10px] leading-tight'>{displayEnv}</span>}
+            </>
+          )}
+        </div>
+        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 text-white/60'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+
+      {open && orgs.length > 0 && (
+        <div className='absolute left-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl overflow-hidden'
+          style={{ minWidth: 280, border: '1px solid #E2E8F0' }}>
+          <div className='px-3 py-2 border-b border-gray-100'>
+            <p className='text-[10px] font-semibold text-gray-400 uppercase tracking-wider'>Connected Orgs</p>
+          </div>
+          <div className='max-h-64 overflow-y-auto'>
+            {orgs.map((org) => {
+              const isActive = org.crmId === selectedOrg?.crmId;
+              const label = org.name || org.crmProfile?.username || org.contactEmail || org.crmId;
+              const env = org.environment
+                ? org.environment.charAt(0).toUpperCase() + org.environment.slice(1).toLowerCase()
+                : '';
+              return (
+                <button
+                  key={org.crmId}
+                  type='button'
+                  onClick={() => { onSelect(org); setOpen(false); }}
+                  className='w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50'
+                  style={{ background: isActive ? 'rgba(21,93,252,0.05)' : undefined }}
+                >
+                  <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full'
+                    style={{ background: isActive ? 'rgba(21,93,252,0.1)' : '#F1F5F9' }}>
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke={isActive ? '#155DFC' : '#64748B'} strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z' />
+                    </svg>
+                  </div>
+                  <div className='min-w-0 flex-1'>
+                    <p className='text-sm font-medium text-gray-800 truncate'>{label}</p>
+                    <div className='flex items-center gap-1.5 mt-0.5'>
+                      {env && <span className='text-[10px] text-gray-400'>{env}</span>}
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${org.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {org.status}
+                      </span>
+                    </div>
+                  </div>
+                  {isActive && (
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                      <polyline points='20 6 9 17 4 12' />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Layout ────────────────────────────────────────────────────────────────
+
 export default function MainLayout() {
   const { logout, hasPermission } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
@@ -53,7 +190,16 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedOrg, setSelectedOrg] = useState<ConnectedPlatform | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSelectOrg = (org: ConnectedPlatform) => {
+    if (org.crmId === selectedOrg?.crmId) return;
+    setSelectedOrg(org);
+    localStorage.setItem('selectedOrgId', org.crmId);
+    // Full reload to '/' — DefaultRedirect will forward to the first permitted tab
+    window.location.href = window.location.origin + '/';
+  };
 
   useEffect(() => {
     dispatch(fetchPlatforms());
@@ -161,6 +307,9 @@ export default function MainLayout() {
             />
           </div>
 
+          {/* Org selector */}
+          <OrgDropdown selectedOrg={selectedOrg} onAutoSelect={setSelectedOrg} onSelect={handleSelectOrg} />
+
           <div className='flex-1' />
 
           {/* Icon buttons */}
@@ -231,7 +380,9 @@ export default function MainLayout() {
         {/* Page content */}
         <main className='flex-1 w-full overflow-hidden bg-gray-50 min-h-0 flex flex-col'>
           <div className='flex-1 min-h-0 flex flex-col overflow-y-auto'>
-            <Outlet />
+            <OrgContext.Provider value={{ selectedOrg, setSelectedOrg: handleSelectOrg }}>
+              <Outlet />
+            </OrgContext.Provider>
           </div>
         </main>
       </div>
