@@ -311,9 +311,37 @@ const [confirmError, setConfirmError] = useState(false);
             )}
           </ReviewRow>
 
-          <ReviewRow label='Scheduled' onEdit={() => onEditStep(5)} noBorder>
-            <span>{scheduleDisplay}</span>
-          </ReviewRow>
+          {(() => {
+            // Check if any object has its own per-object schedule
+            const objectsWithSchedule = dummyObjects.filter((o) => (o as any).scheduleConfig);
+            if (objectsWithSchedule.length > 0) {
+              return objectsWithSchedule.map((obj, idx) => {
+                const sc = (obj as any).scheduleConfig;
+                const freq = freqLabel[sc?.scheduling?.frequency] ?? sc?.scheduling?.frequency ?? 'Daily';
+                const startDate = sc?.scheduling?.startDate;
+                const startTime = sc?.scheduling?.startTime;
+                const isOnce = sc?.scheduling?.frequency === 'ONCE' && !startDate && !startTime;
+                const display = isOnce
+                  ? 'One Time (Archive Now)'
+                  : startTime && startDate
+                    ? `${freq} at ${startTime}, Starts from ${startDate}`
+                    : startTime
+                      ? `${freq} at ${startTime}`
+                      : freq;
+                return (
+                  <ReviewRow key={obj.id} label={`${obj.id} Schedule`} onEdit={() => onEditStep(3)} noBorder={idx === objectsWithSchedule.length - 1}>
+                    <span>{display}</span>
+                  </ReviewRow>
+                );
+              });
+            }
+            // Fall back to global schedule
+            return (
+              <ReviewRow label='Scheduled' onEdit={() => onEditStep(5)} noBorder>
+                <span>{scheduleDisplay}</span>
+              </ReviewRow>
+            );
+          })()}
 
         </div>
 
