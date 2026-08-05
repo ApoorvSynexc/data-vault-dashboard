@@ -10,6 +10,8 @@ type AuthContextValue = {
   hasPermission: (prefix: string) => boolean;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  crmUserId: string;
+  setCrmUserId: (id: string) => void;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -19,6 +21,8 @@ const AuthContext = createContext<AuthContextValue>({
   hasPermission: () => false,
   logout: async () => {},
   refreshProfile: async () => {},
+  crmUserId: '',
+  setCrmUserId: () => {},
 });
 
 function extractPermissions(profile: Record<string, unknown>): string[] {
@@ -48,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [crmUserId, setCrmUserId] = useState<string>(() => localStorage.getItem('selectedOrgCrmUserId') ?? '');
 
   const hasPermission = useCallback(
     (prefix: string) => permissions.some((p) => p === prefix || p.startsWith(`${prefix}.`)),
@@ -76,9 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshProfile().catch(() => setStatus('unauthenticated'));
   }, []);
 
+  const updateCrmUserId = useCallback((id: string) => {
+    localStorage.setItem('selectedOrgCrmUserId', id);
+    setCrmUserId(id);
+  }, []);
+
   const value = useMemo(
-    () => ({ status, user, permissions, hasPermission, logout, refreshProfile }),
-    [status, user, permissions, hasPermission, logout, refreshProfile],
+    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId: updateCrmUserId }),
+    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, updateCrmUserId],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

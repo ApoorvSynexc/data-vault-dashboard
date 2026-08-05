@@ -186,7 +186,7 @@ function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
 // ── Main Layout ────────────────────────────────────────────────────────────────
 
 export default function MainLayout() {
-  const { logout, hasPermission } = useAuth();
+  const { logout, hasPermission, setCrmUserId } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -197,9 +197,11 @@ export default function MainLayout() {
 
   const handleSelectOrg = (org: ConnectedPlatform) => {
     if (org.crmId === selectedOrg?.crmId) return;
-    setSelectedOrg(org);
+    const userId = org.crmProfile?.userId ?? org.crmProfileUserId ?? '';
     localStorage.setItem('selectedOrgId', org.crmId);
-    // Full reload to '/' — DefaultRedirect will forward to the first permitted tab
+    // Full reload to '/' — DefaultRedirect will forward to the first permitted tab.
+    // Store userId before reload so it can be rehydrated immediately on mount.
+    localStorage.setItem('selectedOrgCrmUserId', userId);
     window.location.href = window.location.origin + '/';
   };
 
@@ -312,7 +314,14 @@ export default function MainLayout() {
           <div className='flex-1' />
 
           {/* Org selector */}
-          <OrgDropdown selectedOrg={selectedOrg} onAutoSelect={setSelectedOrg} onSelect={handleSelectOrg} />
+          <OrgDropdown
+            selectedOrg={selectedOrg}
+            onAutoSelect={(org) => {
+              setSelectedOrg(org);
+              setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+            }}
+            onSelect={handleSelectOrg}
+          />
 
           {/* Icon buttons */}
           <button
