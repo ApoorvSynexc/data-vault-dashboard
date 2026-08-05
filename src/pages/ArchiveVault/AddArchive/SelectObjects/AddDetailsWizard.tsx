@@ -110,6 +110,94 @@ function Stepper({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
+// ─── custom field dropdown (stays inside modal bounds) ───────────────────────
+
+function FieldDropdown({ value, options, onChange }: {
+  value: string;
+  options: { apiName: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const selected = options.find((o) => o.apiName === value);
+  const DROPDOWN_HEIGHT = 220;
+  const DROPDOWN_WIDTH = 220;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleOpen = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const goUp = spaceBelow < DROPDOWN_HEIGHT + 8;
+      setDropdownStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: DROPDOWN_WIDTH,
+        maxHeight: DROPDOWN_HEIGHT,
+        zIndex: 9999,
+        ...(goUp
+          ? { bottom: window.innerHeight - rect.top + 4 }
+          : { top: rect.bottom + 4 }),
+      });
+    }
+    setOpen((v) => !v);
+  };
+
+  return (
+    <div ref={ref} className='relative w-full'>
+      <button
+        ref={buttonRef}
+        type='button'
+        onClick={handleOpen}
+        className='w-full flex items-center justify-between px-3 py-2 text-sm rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500/20'
+        style={{ border: '1px solid #E2E8F0', color: selected ? '#33363F' : '#94a3b8' }}
+      >
+        <span className='truncate'>{selected?.label || 'Field Name'}</span>
+        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 ml-1'>
+          <polyline points='6 9 12 15 18 9' />
+        </svg>
+      </button>
+      {open && (
+        <div
+          className='bg-white rounded-lg shadow-lg overflow-y-auto'
+          style={{
+            border: '1px solid #E2E8F0',
+            ...dropdownStyle,
+          }}
+        >
+          <div
+            className='px-3 py-2 text-sm cursor-pointer hover:bg-gray-50'
+            style={{ color: '#94a3b8' }}
+            onClick={() => { onChange(''); setOpen(false); }}
+          >
+            Field Name
+          </div>
+          {options.map((o) => (
+            <div
+              key={o.apiName}
+              onClick={() => { onChange(o.apiName); setOpen(false); }}
+              className='px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 truncate'
+              style={{ color: o.apiName === value ? '#155DFC' : '#33363F', background: o.apiName === value ? 'rgba(21,93,252,0.06)' : undefined }}
+            >
+              {o.label || o.apiName}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── main wizard component ────────────────────────────────────────────────────
 
 export default function AddDetailsWizard({
@@ -661,23 +749,17 @@ export default function AddDetailsWizard({
                           <span className='text-xs font-semibold w-12 flex-shrink-0' style={{ color: '#155DFC' }}>{getConditionLabel(idx)}</span>
 
                           {/* Field */}
-                          <div className='flex-1 relative'>
+                          <div className='flex-1 min-w-0 max-w-[220px]'>
                             {isLoadingFields ? (
                               <div className='w-full px-3 py-2 text-sm rounded-lg flex items-center gap-2 text-gray-400' style={{ border: '1px solid #E2E8F0' }}>
                                 <div className='animate-spin w-3 h-3 border border-gray-400 border-t-transparent rounded-full' />Loading fields...
                               </div>
                             ) : (
-                              <>
-                                <select value={cond.field} onChange={(e) => handleFieldChange(cond.id, e.target.value)}
-                                  className='w-full appearance-none px-3 py-2 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 bg-white pr-8'
-                                  style={{ border: '1px solid #E2E8F0', color: cond.field ? '#33363F' : '#94a3b8' }}>
-                                  <option value=''>Field Name</option>
-                                  {fields.map((f: any) => <option key={f.apiName} value={f.apiName}>{f.label || f.apiName}</option>)}
-                                </select>
-                                <span className='pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400'>
-                                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='6 9 12 15 18 9' /></svg>
-                                </span>
-                              </>
+                              <FieldDropdown
+                                value={cond.field}
+                                options={fields.map((f: any) => ({ apiName: f.apiName, label: f.label || f.apiName }))}
+                                onChange={(v) => handleFieldChange(cond.id, v)}
+                              />
                             )}
                           </div>
 
