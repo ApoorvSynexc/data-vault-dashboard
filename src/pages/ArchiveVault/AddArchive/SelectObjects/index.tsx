@@ -246,7 +246,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           <div className='flex items-start justify-between flex-shrink-0'>
             <div>
               <h1 className='text-3xl font-bold text-gray-900'>Select Objects</h1>
-              <p className='text-gray-600 mt-1'>Choose objects to archive, then configure each one via <strong>Add Details</strong></p>
+              <p className='text-gray-600 mt-1'>Choose objects to archive, then configure each one via <strong>Set Configuration</strong></p>
             </div>
             <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
               Step <span className='text-blue-600'>3</span> of 6
