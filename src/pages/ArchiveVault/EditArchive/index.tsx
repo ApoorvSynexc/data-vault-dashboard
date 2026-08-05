@@ -209,7 +209,7 @@ export default function EditArchive() {
           initialScheduleConfig={scheduleConfig}
           editMode
           onNext={(config, payload) => { setScheduleConfig(config); setArchivalPayload(payload); goNext(); }}
-          onBack={() => { setSelectedObjects([]); goBack(3); }}
+          onBack={() => goBack(3)}
         />
       )}
       {currentStep === 5 && (
