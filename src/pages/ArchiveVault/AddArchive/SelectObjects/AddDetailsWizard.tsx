@@ -386,6 +386,8 @@ export default function AddDetailsWizard({
     if (nums.length === 0) return 'Expression must reference at least one condition number.';
     const bad = nums.find((n) => n < 1 || n > count);
     if (bad) return `Condition ${bad} doesn't exist (you have ${count}).`;
+    const missing = Array.from({ length: count }, (_, i) => i + 1).filter((n) => !nums.includes(n));
+    if (missing.length > 0) return `Condition${missing.length > 1 ? 's' : ''} ${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} not referenced in the expression.`;
     let depth = 0;
     for (const ch of t) {
       if (ch === '(') depth++;
@@ -403,7 +405,9 @@ export default function AddDetailsWizard({
   const canProceedFromStep1 =
     filterTab === 'SOQL'
       ? soqlUserClause.trim().length > 0 && soqlValidated
-      : conditions.some((c) => c.field) && conditions.every((c) => !c.field || c.value.trim() !== '');
+      : conditions.some((c) => c.field) &&
+        conditions.every((c) => c.field.trim() !== '' && c.value.trim() !== '') &&
+        !customLogicError;
 
   // ── step 2: children ───────────────────────────────────────────────────────
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
@@ -576,6 +580,12 @@ export default function AddDetailsWizard({
       setStep1Error(
         filterTab === 'SOQL'
           ? 'Please enter and validate a SOQL query before proceeding.'
+          : customLogicError
+          ? customLogicError
+          : conditions.some((c) => !c.field.trim())
+          ? 'All condition rows must have a Field Name selected. Remove any empty rows before proceeding.'
+          : conditions.some((c) => c.field && !c.value.trim())
+          ? 'All conditions must have a value filled in before proceeding.'
           : 'Please add at least one filter condition before proceeding.'
       );
       return;
