@@ -36,7 +36,8 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
   const connections = selectedPlatform
     ? allConnections.filter((c: any) =>
-        (c.crm?.crmName ?? c.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase()
+        (c.crm?.crmName ?? c.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
+        c.isCrmConnected === true
       )
     : [];
 
