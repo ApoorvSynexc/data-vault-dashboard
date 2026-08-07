@@ -77,12 +77,10 @@ function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Silently restore saved org on load — does NOT trigger a reload
+  // Auto-select first org on load
   useEffect(() => {
     if (!selectedOrg && orgs.length > 0) {
-      const saved = localStorage.getItem('selectedOrgId');
-      const found = saved ? orgs.find((o) => o.crmId === saved) : null;
-      onAutoSelect(found ?? orgs[0]);
+      onAutoSelect(orgs[0]);
     }
   }, [orgs, selectedOrg]);
 
@@ -197,12 +195,9 @@ export default function MainLayout() {
 
   const handleSelectOrg = (org: ConnectedPlatform) => {
     if (org.crmId === selectedOrg?.crmId) return;
-    const userId = org.crmProfile?.userId ?? org.crmProfileUserId ?? '';
-    localStorage.setItem('selectedOrgId', org.crmId);
-    // Full reload to '/' — DefaultRedirect will forward to the first permitted tab.
-    // Store userId before reload so it can be rehydrated immediately on mount.
-    localStorage.setItem('selectedOrgCrmUserId', userId);
-    window.location.href = window.location.origin + '/';
+    setSelectedOrg(org);
+    setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+    navigate('/', { replace: true });
   };
 
   useEffect(() => {
