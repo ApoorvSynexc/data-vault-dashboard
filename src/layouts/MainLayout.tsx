@@ -186,7 +186,7 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
 // ── Main Layout ────────────────────────────────────────────────────────────────
 
 export default function MainLayout() {
-  const { logout, hasPermission, setCrmUserId, userCrmId } = useAuth();
+  const { logout, hasPermission, setCrmUserId, userCrmId, refreshProfile } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -195,10 +195,13 @@ export default function MainLayout() {
   const [selectedOrg, setSelectedOrg] = useState<ConnectedPlatform | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const handleSelectOrg = (org: ConnectedPlatform) => {
+  const handleSelectOrg = async (org: ConnectedPlatform) => {
     if (org.crmId === selectedOrg?.crmId) return;
     setSelectedOrg(org);
+    // Set crmUserId first — updates module-level ref immediately so the
+    // refreshProfile call below sends x-crm-userid with the new org's userId
     setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+    await refreshProfile();
     navigate('/', { replace: true });
   };
 
