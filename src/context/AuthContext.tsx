@@ -48,9 +48,9 @@ function extractPermissions(profile: Record<string, unknown>): string[] {
 }
 
 // Module-level ref — always holds the latest crmUserId.
-// useHttpRequest reads this synchronously on every request, so even calls made
-// from AuthContext itself (before React state propagates) get the right header.
-let _crmUserId = '';
+// Initialised from localStorage so the very first my-profile call on reload
+// already carries the correct x-crm-userid header.
+let _crmUserId = localStorage.getItem('selectedOrgCrmId') ?? '';
 export function getCrmUserIdForRequest(): string { return _crmUserId; }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [crmUserId, _setCrmUserId] = useState<string>('');
+  const [crmUserId, _setCrmUserId] = useState<string>(() => localStorage.getItem('selectedOrgCrmId') ?? '');
   const [userCrmId, setUserCrmId] = useState<string>('');
 
   const hasPermission = useCallback(
