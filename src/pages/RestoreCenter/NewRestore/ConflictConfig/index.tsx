@@ -83,11 +83,11 @@ const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended
   { id: 'append',    title: 'Append as New Records', desc: 'Always insert — creates duplicates if record already exists' },
 ];
 
-const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
-  { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination' },
-  { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source', danger: true },
-];
+// const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
+//   { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
+//   { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination' },
+//   { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source', danger: true },
+// ];
 
 const FIELD_DEFAULTS = [
   { field: 'Account.Industry',      sub: 'Picklist · Required', type: 'Picklist', options: ['Other', 'Technology', 'Finance', 'Healthcare'] },
