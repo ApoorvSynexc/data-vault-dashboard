@@ -78,9 +78,19 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Auto-select the org matching the logged-in user's crmId, fallback to first
+  // Auto-select on load:
+  // 1. Prefer localStorage crmProfileUserId (set when user explicitly picks an org — survives reload)
+  // 2. Fall back to userCrmId from profile (the org they logged in with)
+  // 3. Fall back to first org
+  // If localStorage key is stale (not in CRM list), remove it
   useEffect(() => {
     if (!selectedOrg && orgs.length > 0) {
+      const savedUserId = localStorage.getItem('selectedOrgCrmId');
+      if (savedUserId) {
+        const found = orgs.find((o) => (o.crmProfile?.userId ?? o.crmProfileUserId) === savedUserId);
+        if (found) { onAutoSelect(found); return; }
+        localStorage.removeItem('selectedOrgCrmId');
+      }
       const matched = userCrmId ? orgs.find((o) => o.crmId === userCrmId) : null;
       onAutoSelect(matched ?? orgs[0]);
     }
@@ -198,6 +208,7 @@ export default function MainLayout() {
   const handleSelectOrg = async (org: ConnectedPlatform) => {
     if (org.crmId === selectedOrg?.crmId) return;
     setSelectedOrg(org);
+    localStorage.setItem('selectedOrgCrmId', org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
     // Set crmUserId first — updates module-level ref immediately so the
     // refreshProfile call below sends x-crm-userid with the new org's userId
     setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');

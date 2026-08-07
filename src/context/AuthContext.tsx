@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore — clear state regardless
     }
+    localStorage.removeItem('selectedOrgCrmId');
     _crmUserId = '';
     _setCrmUserId('');
     setUser(null);
