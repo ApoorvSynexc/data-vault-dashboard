@@ -62,8 +62,9 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
 
 // ── Org Dropdown ──────────────────────────────────────────────────────────────
 
-function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
+function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
   selectedOrg: ConnectedPlatform | null;
+  userCrmId: string;
   onAutoSelect: (org: ConnectedPlatform) => void;
   onSelect: (org: ConnectedPlatform) => void;
 }) {
@@ -77,12 +78,13 @@ function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Auto-select first org on load
+  // Auto-select the org matching the logged-in user's crmId, fallback to first
   useEffect(() => {
     if (!selectedOrg && orgs.length > 0) {
-      onAutoSelect(orgs[0]);
+      const matched = userCrmId ? orgs.find((o) => o.crmId === userCrmId) : null;
+      onAutoSelect(matched ?? orgs[0]);
     }
-  }, [orgs, selectedOrg]);
+  }, [orgs, selectedOrg, userCrmId]);
 
   useEffect(() => {
     if (!open) return;
@@ -184,7 +186,7 @@ function OrgDropdown({ selectedOrg, onAutoSelect, onSelect }: {
 // ── Main Layout ────────────────────────────────────────────────────────────────
 
 export default function MainLayout() {
-  const { logout, hasPermission, setCrmUserId } = useAuth();
+  const { logout, hasPermission, setCrmUserId, userCrmId } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -311,6 +313,7 @@ export default function MainLayout() {
           {/* Org selector */}
           <OrgDropdown
             selectedOrg={selectedOrg}
+            userCrmId={userCrmId}
             onAutoSelect={(org) => {
               setSelectedOrg(org);
               setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');

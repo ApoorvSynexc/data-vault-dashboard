@@ -12,6 +12,8 @@ type AuthContextValue = {
   refreshProfile: () => Promise<void>;
   crmUserId: string;
   setCrmUserId: (id: string) => void;
+  // crmId of the org the logged-in user belongs to — used to auto-select the correct org in the dropdown
+  userCrmId: string;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -23,6 +25,7 @@ const AuthContext = createContext<AuthContextValue>({
   refreshProfile: async () => {},
   crmUserId: '',
   setCrmUserId: () => {},
+  userCrmId: '',
 });
 
 function extractPermissions(profile: Record<string, unknown>): string[] {
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [crmUserId, setCrmUserId] = useState<string>('');
+  const [userCrmId, setUserCrmId] = useState<string>('');
 
   const hasPermission = useCallback(
     (prefix: string) => permissions.some((p) => p === prefix || p.startsWith(`${prefix}.`)),
@@ -63,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const profile = await getMyProfile<Record<string, unknown>>();
     setUser(profile);
     setPermissions(profile ? extractPermissions(profile) : []);
+    setUserCrmId((profile?.crmId as string) ?? '');
     setStatus('authenticated');
   }, []);
 
@@ -86,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId: updateCrmUserId }),
-    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, updateCrmUserId],
+    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId: updateCrmUserId, userCrmId }),
+    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, updateCrmUserId, userCrmId],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
