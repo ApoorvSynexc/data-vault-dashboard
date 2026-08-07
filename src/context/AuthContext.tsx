@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [crmUserId, setCrmUserId] = useState<string>(() => localStorage.getItem('selectedOrgCrmUserId') ?? '');
+  const [crmUserId, setCrmUserId] = useState<string>('');
 
   const hasPermission = useCallback(
     (prefix: string) => permissions.some((p) => p === prefix || p.startsWith(`${prefix}.`)),
@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateCrmUserId = useCallback((id: string) => {
-    localStorage.setItem('selectedOrgCrmUserId', id);
     setCrmUserId(id);
   }, []);
 
