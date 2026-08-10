@@ -63,7 +63,7 @@ function Tip({ text }: { text: string }) {
   return (
     <span className='relative group inline-flex items-center ml-1 cursor-help align-middle'>
       <span className='w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold flex items-center justify-center'>i</span>
-      <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-60 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-50 shadow-lg pointer-events-none'>
+      <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-60 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-50 shadow-lg pointer-events-none'>
         {text}
       </span>
     </span>
@@ -134,8 +134,8 @@ export default function EdgeCases({ onNext, onBack }: Props) {
         <div className='flex flex-col gap-4'>
 
           {/* Edge Case Handling */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
+            <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3 rounded-t-xl'>
               <span className='text-sm font-semibold text-gray-800'>Edge Case Handling</span>
               <Tip text="What to do when something doesn't line up cleanly — duplicate Id, missing field in destination, owner no longer active, parent record missing, or record type missing." />
             </div>
