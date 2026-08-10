@@ -508,7 +508,14 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               return (
                 <button
                   key={id}
-                  onClick={() => { setScopeType(id); emitScopeChange(id); }}
+                  onClick={() => {
+                    setScopeType(id);
+                    if (id === 'CHANGED_BETWEEN' && (!startDate || !endDate)) {
+                      onSelectionChange(null);
+                    } else {
+                      emitScopeChange(id);
+                    }
+                  }}
                   className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'}`}
                 >
                   <div className='flex items-center justify-between'>
@@ -528,47 +535,66 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
           {/* Date range — only for Changed Between */}
           {type === 'CHANGED_BETWEEN' && (
-            <div className='mt-3 flex items-center gap-4 flex-wrap'>
-              <div className='flex items-center gap-2'>
-                <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>Start Time</label>
-                <input
-                  type='datetime-local'
-                  value={startDate}
-                  onChange={(e) => {
-                    const newStart = e.target.value;
-                    setStartDate(newStart);
-                    if (endDate && newStart && endDate < newStart) {
-                      setEndDate('');
-                      emitScopeChange(type, newStart, '');
-                    } else {
-                      emitScopeChange(type, newStart, endDate);
-                    }
-                  }}
-                  className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
-                />
+            <div className='mt-4 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5'>
+              <div className='flex items-center gap-2 mb-4'>
+                <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24'>
+                  <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                </svg>
+                <p className='text-sm font-semibold text-blue-700'>Select time range to search backup jobs</p>
               </div>
-              <div className='flex items-center gap-2'>
-                <label className='text-xs font-semibold text-gray-600 whitespace-nowrap'>End Time</label>
-                <input
-                  type='datetime-local'
-                  value={endDate}
-                  min={startDate || undefined}
-                  onChange={(e) => {
-                    const newEnd = e.target.value;
-                    if (startDate && newEnd < startDate) return;
-                    setEndDate(newEnd);
-                    emitScopeChange(type, startDate, newEnd);
-                  }}
-                  className='h-8 text-xs border border-gray-200 rounded-lg px-2.5 bg-white text-gray-700 outline-none focus:border-blue-400'
-                />
+              <div className='grid grid-cols-2 gap-5'>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
+                  <input
+                    type='datetime-local'
+                    value={startDate}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setStartDate(newStart);
+                      if (endDate && newStart && endDate < newStart) {
+                        setEndDate('');
+                        onSelectionChange(null);
+                      }
+                    }}
+                    className='h-10 text-sm border-2 border-gray-200 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors'
+                  />
+                </div>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
+                  <input
+                    type='datetime-local'
+                    value={endDate}
+                    min={startDate || undefined}
+                    onChange={(e) => {
+                      const newEnd = e.target.value;
+                      if (startDate && newEnd < startDate) return;
+                      setEndDate(newEnd);
+                    }}
+                    className='h-10 text-sm border-2 border-gray-200 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors'
+                  />
+                </div>
               </div>
+              {(!startDate || !endDate) && (
+                <div className='mt-3 flex items-center gap-2'>
+                  <div className='w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse' />
+                  <p className='text-xs text-blue-600 font-medium'>Fill both dates above to load matching backup jobs</p>
+                </div>
+              )}
+              {startDate && endDate && (
+                <div className='mt-3 flex items-center gap-2'>
+                  <svg width='13' height='13' fill='none' stroke='#16a34a' strokeWidth='2.5' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/>
+                  </svg>
+                  <p className='text-xs text-green-700 font-medium'>Time range set — loading matching jobs below</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
       {/* Phase 2 — jobs list */}
-      {showJobsPhase && (
+      {showJobsPhase && (type !== 'CHANGED_BETWEEN' || (!!startDate && !!endDate)) && (
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Backup Jobs</Typography>
