@@ -93,6 +93,21 @@ export default function EdgeCases({ onNext, onBack }: Props) {
   const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field ✓ Recommended');
   const [fallbackOwner,  setFallbackOwner]  = useState('DataVault Service Account');
 
+  type CustomRow = { id: number; field: string; type: string; value: string };
+  const [customRows, setCustomRows] = useState<CustomRow[]>([]);
+  const [addedMsg, setAddedMsg] = useState(false);
+
+  const addCustomRow = () => {
+    const id = Date.now();
+    setCustomRows((prev) => [...prev, { id, field: '', type: 'Text', value: '' }]);
+    setAddedMsg(true);
+    setTimeout(() => setAddedMsg(false), 2500);
+  };
+
+  const removeCustomRow = (id: number) => setCustomRows((prev) => prev.filter((r) => r.id !== id));
+  const updateCustomRow = (id: number, patch: Partial<CustomRow>) =>
+    setCustomRows((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
+
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
 
@@ -245,6 +260,7 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                     <th className='text-left py-2 px-4 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
                     <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
                     <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Default Value</th>
+                    <th className='w-8' />
                   </tr>
                 </thead>
                 <tbody>
@@ -263,22 +279,62 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                             {row.options.map((o) => <option key={o}>{o}</option>)}
                           </select>
                         ) : (
-                          <input
-                            type='text'
-                            defaultValue='noreply@acme.com'
-                            className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]'
-                            style={{ border: '1px solid #E2E8F0' }}
-                          />
+                          <input type='text' defaultValue='noreply@acme.com' className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]' style={{ border: '1px solid #E2E8F0' }} />
                         )}
+                      </td>
+                      <td className='py-3 px-3 w-8' />
+                    </tr>
+                  ))}
+                  {customRows.map((row) => (
+                    <tr key={row.id} className='border-b border-blue-50 bg-blue-50/40'>
+                      <td className='py-2 px-4'>
+                        <input
+                          value={row.field}
+                          onChange={(e) => updateCustomRow(row.id, { field: e.target.value })}
+                          placeholder='Object.Field (e.g. Account.Type)'
+                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400'
+                        />
+                      </td>
+                      <td className='py-2 px-3'>
+                        <select
+                          value={row.type}
+                          onChange={(e) => updateCustomRow(row.id, { type: e.target.value })}
+                          className='h-8 text-xs border border-blue-200 rounded-lg px-2 bg-white text-gray-700 outline-none'
+                        >
+                          <option>Text</option>
+                          <option>Picklist</option>
+                          <option>Email</option>
+                          <option>Number</option>
+                          <option>Date</option>
+                          <option>Checkbox</option>
+                        </select>
+                      </td>
+                      <td className='py-2 px-3'>
+                        <input
+                          value={row.value}
+                          onChange={(e) => updateCustomRow(row.id, { value: e.target.value })}
+                          placeholder='Default value'
+                          className='h-8 w-full max-w-[160px] px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400'
+                        />
+                      </td>
+                      <td className='py-2 px-3 w-8'>
+                        <button onClick={() => removeCustomRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors'>
+                          <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className='px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400'>
+            <div className='relative px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400'>
               Mandatory fields are detected automatically from the destination schema.{' '}
-              <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
+              <button onClick={addCustomRow} className='text-blue-600 hover:underline font-medium'>+ Add custom default rule</button>
+              {addedMsg && (
+                <span className='ml-3 inline-flex items-center gap-1 text-xs font-semibold text-gray-800 bg-gray-900 text-white px-3 py-1.5 rounded-lg'>
+                  ✓ Custom default row added — fill in the field, type, and value.
+                </span>
+              )}
             </div>
           </div>}
 
