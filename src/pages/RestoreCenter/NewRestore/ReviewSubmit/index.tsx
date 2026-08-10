@@ -1,4 +1,4 @@
-// ReviewSubmit — Step 8 of 8 (Final Step) in the New Restore wizard.
+// ReviewSubmit — Step 9 of 9 (Final Step) in the New Restore wizard.
 
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,7 +10,7 @@ import type { Destination } from '../../../../services/destination/destination.s
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Edge Cases', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -204,10 +204,10 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
               <p className='text-gray-500 mt-1 text-sm'>Confirm all settings before executing.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>8</span> of 8
+              Step <span className='text-blue-600'>9</span> of 9
             </span>
           </div>
-          <ProgressBar active={8} />
+          <ProgressBar active={9} />
         </div>
 
         {/* Warning banner */}

@@ -1,4 +1,4 @@
-// NewRestore — 8-step wizard orchestrator for creating a new restore job.
+// NewRestore — 9-step wizard orchestrator for creating a new restore job.
 //
 // Step flow:
 //   1. SelectSource        — cloud source (storage platform + connection)
@@ -7,8 +7,9 @@
 //   4. SetDestination      — target org + restore mode
 //   5. DefineRestorePolicy — name, description, tags
 //   6. ConflictConfig      — conflict rules + CRM automation controls (combined)
-//   7. PreviewValidate     — validate plan and preview record counts
-//   8. ReviewSubmit        — final review + submit
+//   7. EdgeCases           — edge case handling + field defaults
+//   8. PreviewValidate     — validate plan and preview record counts
+//   9. ReviewSubmit        — final review + submit
 
 import { useState } from 'react';
 import SelectSource from './SelectSource';
@@ -17,13 +18,14 @@ import SelectScope from './SelectScope';
 import SetDestination from './SetDestination';
 import DefineRestorePolicy from './DefineRestorePolicy';
 import ConflictConfig from './ConflictConfig';
+import EdgeCases from './EdgeCases';
 import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SourceSelection } from './SelectSourceType';
 import type { RestoreRetrievePayload } from '../../../services/restore/restore.service';
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 interface NewRestoreProps {
   onBack: () => void;
@@ -55,7 +57,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
   const [step2ArchivalJobsPhase, setStep2ArchivalJobsPhase] = useState(false);
 
-  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
+  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 9) as Step);
   const goBack = () => {
     if (currentStep === 1) { onBack(); return; }
     setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -120,8 +122,9 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       )}
       {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 7 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
-      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
+      {currentStep === 7 && <EdgeCases onNext={goNext} onBack={goBack} />}
+      {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
+      {currentStep === 9 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
     </div>
   );
 }
