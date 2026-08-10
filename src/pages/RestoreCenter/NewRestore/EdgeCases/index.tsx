@@ -220,8 +220,8 @@ export default function EdgeCases({ onNext, onBack }: Props) {
             </div>
           </div>
 
-          {/* Field Defaults */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          {/* Field Defaults — only when "Use specified default per field" is selected */}
+          {ecMissRequired === 'Use specified default per field ✓ Recommended' && <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
             <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <div className='flex items-center gap-1.5'>
                 <span className='text-base'>🏷</span>
@@ -280,7 +280,7 @@ export default function EdgeCases({ onNext, onBack }: Props) {
               Mandatory fields are detected automatically from the destination schema.{' '}
               <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
             </div>
-          </div>
+          </div>}
 
         </div>
       </div>
