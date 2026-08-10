@@ -87,26 +87,10 @@ function ProgressBar({ active }: { active: number }) {
   );
 }
 
-// ── Source type cards ─────────────────────────────────────────────────────────
-const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc: string }[] = [
-  {
-    id: 'backup',
-    icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-.29-4.36'/></svg>,
-    title: 'Backup Snapshot',
-    desc: 'Point-in-time backup with change history',
-  },
-  {
-    id: 'archive',
-    icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path d='M5 8l4 4 4-4'/><rect x='3' y='3' width='18' height='18' rx='2'/></svg>,
-    title: 'Archive Vault Entry',
-    desc: 'Cold/warm archived records',
-  },
-];
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, onArchivalJobsPhaseChange }: Props) {
-  const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
+  const [sourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
   // Backup phase states
@@ -133,24 +117,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
   const setArchivalJobsPhase = (v: boolean) => {
     setShowArchivalJobsPhase(v);
     onArchivalJobsPhaseChange?.(v);
-  };
-
-  const clearBackup = () => {
-    setConfigSelected(false);
-    setBackupSelection(null);
-    setBackupJobsPhase(false);
-    setBackupSelectedRow(null);
-    setBackupSelectedConfigId('');
-    setBackupSelectedJobIds([]);
-  };
-
-  const clearArchival = () => {
-    setArchivalConfigSelected(false);
-    setArchivalSelection(null);
-    setArchivalJobsPhase(false);
-    setArchivalSelectedRow(null);
-    setArchivalSelectedConfigId('');
-    setArchivalSelectedJobIds([]);
   };
 
   const canProceed =
@@ -214,35 +180,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           </div>
         </div>
 
-        <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-          <div className='border-b border-gray-100 px-5 py-3'>
-            <Typography as='h3' variant='sectionTitle' color='secondary'>Source Type</Typography>
-          </div>
-          <div className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-3'>
-            {SOURCE_TYPES.map((s) => {
-              const active = sourceType === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setSourceType(s.id);
-                    if (s.id === 'backup') { clearArchival(); }
-                    else { clearBackup(); }
-                  }}
-                  className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
-                    active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                  }`}
-                >
-                  <div className='flex items-center gap-2'>
-                    <span className={active ? 'text-blue-600' : 'text-gray-500'}>{s.icon}</span>
-                    <span className={`text-sm font-semibold ${active ? 'text-blue-600' : 'text-gray-800'}`}>{s.title}</span>
-                  </div>
-                  <p className='mt-1 text-xs text-gray-500'>{s.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Source Type tab hidden for demo */}
 
         {/* Sub-pickers */}
         {sourceType === 'backup' && (

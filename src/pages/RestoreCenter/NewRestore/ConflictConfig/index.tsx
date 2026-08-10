@@ -89,13 +89,6 @@ const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended
 //   { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source', danger: true },
 // ];
 
-const FIELD_DEFAULTS = [
-  { field: 'Account.Industry',      sub: 'Picklist · Required', type: 'Picklist', options: ['Other', 'Technology', 'Finance', 'Healthcare'] },
-  { field: 'Account.Type',          sub: 'Picklist · Required', type: 'Picklist', options: ['Customer', 'Prospect', 'Partner', 'Other'] },
-  { field: 'Contact.Email',         sub: 'Email · Required',    type: 'Email',    options: [] },
-  { field: 'Opportunity.StageName', sub: 'Picklist · Required', type: 'Picklist', options: ['Prospecting', 'Qualification', 'Closed Lost'] },
-  { field: 'Case.Status',           sub: 'Picklist · Required', type: 'Picklist', options: ['New', 'Working', 'Escalated', 'Closed'] },
-];
 
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -105,13 +98,6 @@ interface Props { onNext: () => void; onBack: () => void; }
 export default function ConflictConfig({ onNext, onBack }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
   const [mergeDefault,   setMergeDefault]   = useState('Newest LastModifiedDate wins');
-  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer ✓ Recommended');
-  const [ecMissingField, setEcMissingField] = useState('Skip the field ✓ Recommended');
-  const [ecOwner,        setEcOwner]        = useState('Reassign to specified user ✓ Recommended');
-  const [ecParent,       setEcParent]       = useState('Restore parent first ✓ Recommended');
-  const [ecRecordType,   setEcRecordType]   = useState('Map to default ✓ Recommended');
-  const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field ✓ Recommended');
-  const [fallbackOwner,  setFallbackOwner]  = useState('DataVault Service Account');
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
 
@@ -228,153 +214,6 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                     <button className='text-xs font-semibold text-blue-600 hover:underline self-start'>+ Add per-field override</button>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
-                <span className='text-sm font-semibold text-gray-800'>Edge Case Handling</span>
-                <Tip text="What to do when something doesn't line up cleanly — duplicate Id, missing field in destination, owner no longer active, parent record missing, or record type missing." />
-              </div>
-              <div className='p-4 flex flex-col divide-y divide-gray-100'>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                    On duplicate records <Tip text='Triggered when a record with the same Id (or external Id) already exists. Overwrite = source wins. Use destination if newer = safer, compares LastModifiedDate. Create new copy = inserts parallel with " (copy)" suffix.' />
-                  </span>
-                  <select value={ecDuplicate} onChange={(e) => setEcDuplicate(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Overwrite</option>
-                    <option>Skip</option>
-                    <option>Create new copy with suffix</option>
-                    <option>Use destination if newer ✓ Recommended</option>
-                  </select>
-                </div>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                    Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />
-                  </span>
-                  <select value={ecMissingField} onChange={(e) => setEcMissingField(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Skip the field ✓ Recommended</option>
-                    <option>Map to existing field</option>
-                    <option>Fail the record</option>
-                  </select>
-                </div>
-                <div className='py-3 flex flex-col gap-2'>
-                  <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
-                    <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                      Owner inactive/deleted <Tip text='Triggered when the original record owner no longer exists or is deactivated.' />
-                    </span>
-                    <select value={ecOwner} onChange={(e) => setEcOwner(e.target.value)} className={selectClass} style={selectStyle}>
-                      <option>Reassign to specified user ✓ Recommended</option>
-                      <option>Reassign to manager</option>
-                      <option>Reassign to queue</option>
-                      <option>Skip record</option>
-                    </select>
-                  </div>
-                  {ecOwner.startsWith('Reassign to specified user') && (
-                    <div className='ml-0 sm:ml-48 flex flex-col gap-1'>
-                      <span className='text-xs text-gray-500'>Fallback owner</span>
-                      <input
-                        value={fallbackOwner}
-                        onChange={(e) => setFallbackOwner(e.target.value)}
-                        placeholder='Search users…'
-                        className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30'
-                        style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                    Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." />
-                  </span>
-                  <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Re-parent to placeholder</option>
-                    <option>Restore parent first ✓ Recommended</option>
-                    <option>Skip</option>
-                  </select>
-                </div>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                    Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." />
-                  </span>
-                  <select value={ecRecordType} onChange={(e) => setEcRecordType(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Map to default ✓ Recommended</option>
-                    <option>Map manually</option>
-                    <option>Skip</option>
-                  </select>
-                </div>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                    Missing required field value <Tip text='Triggered when the destination has a mandatory field and the source record value is blank or missing.' />
-                  </span>
-                  <select value={ecMissRequired} onChange={(e) => setEcMissRequired(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Use specified default per field ✓ Recommended</option>
-                    <option>Use last known value from history</option>
-                    <option>Skip the record</option>
-                    <option>Skip the object</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-              <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-                <div className='flex items-center gap-1.5'>
-                  <span className='text-base'>🏷</span>
-                  <span className='text-sm font-semibold text-gray-800'>Field Defaults</span>
-                  <Tip text='For each mandatory field in your selected objects, define a fallback value to use when the source record does not have one. Only fills in when the field is blank in source — existing values are not overwritten.' />
-                </div>
-                <span className='text-xs text-gray-400'>5 mandatory fields detected</span>
-              </div>
-              <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-                <span className='text-xs font-semibold text-gray-600'>Filter:</span>
-                <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none'>
-                  <option>All objects</option><option>Account</option><option>Contact</option><option>Opportunity</option><option>Case</option>
-                </select>
-                <input placeholder='Search fields…' className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none flex-1 sm:w-40 sm:flex-none' />
-                <span className='ml-auto text-xs text-gray-400 hidden sm:inline'>Showing 5 of 5 mandatory fields</span>
-              </div>
-              <div className='overflow-x-auto'>
-                <table className='w-full text-xs'>
-                  <thead>
-                    <tr className='border-b border-gray-100 bg-gray-50'>
-                      <th className='text-left py-2 px-4 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
-                      <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Default Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {FIELD_DEFAULTS.map((row) => (
-                      <tr key={row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                        <td className='py-3 px-4'>
-                          <p className='font-semibold text-gray-800'>{row.field}</p>
-                          <p className='text-gray-400 mt-0.5'>{row.sub}</p>
-                        </td>
-                        <td className='py-3 px-3'>
-                          <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600'>{row.type}</span>
-                        </td>
-                        <td className='py-3 px-3'>
-                          {row.options.length > 0 ? (
-                            <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'>
-                              {row.options.map((o) => <option key={o}>{o}</option>)}
-                            </select>
-                          ) : (
-                            <input
-                              type='text'
-                              defaultValue='noreply@acme.com'
-                              className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]'
-                              style={{ border: '1px solid #E2E8F0' }}
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className='px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400'>
-                Mandatory fields are detected automatically from the destination schema.{' '}
-                <button className='text-blue-600 hover:underline'>+ Add custom default rule</button>
               </div>
             </div>
 
