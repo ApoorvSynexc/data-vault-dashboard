@@ -1,4 +1,4 @@
-import { BASE_URL } from "../constant";
+import { BASE_URL } from "../constants";
 
 export type ApiResponse<T> = {
   success: boolean;
