@@ -158,7 +158,8 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
               {!((scopeMode === 'full' || scopeMode === 'object' || scopeMode === 'record') && (restoreMode === 'append' || restoreMode === 'skip' || restoreMode === 'replace')
                 || (scopeMode === 'field' && restoreMode === 'skip')
                 || (scopeMode === 'filter' && (restoreMode === 'append' || restoreMode === 'skip'))
-                || (scopeMode === 'deleted' && restoreMode === 'append')) && (
+                || (scopeMode === 'deleted' && restoreMode === 'append')
+                || (scopeMode === 'changed' && (restoreMode === 'append' || restoreMode === 'skip'))) && (
               <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                 <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                   On duplicate records <Tip text='Triggered when a record with the same Id (or external Id) already exists. Overwrite = source wins. Use destination if newer = safer, compares LastModifiedDate. Create new copy = inserts parallel with " (copy)" suffix.' />
