@@ -117,7 +117,7 @@ export default function Storage() {
       {/* ── Stat Cards ── */}
       <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
-          <p className='text-xs text-gray-500'>DataVault Storage Used</p>
+          <p className='text-xs text-gray-500'>DataCraft Storage Used</p>
           <p className='text-xl font-bold mt-1' style={{ color: '#155DFC' }}>{formatBytes(backupSize)}</p>
           <p className='text-xs mt-1 text-gray-400'>Backup storage consumed</p>
         </div>
@@ -142,7 +142,7 @@ export default function Storage() {
       <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
         <div className='flex items-center justify-between mb-3'>
           <span className='text-sm font-semibold text-gray-800'>Where the 156 GB lives</span>
-          <span className='text-xs text-gray-400'>DataVault storage breakdown</span>
+          <span className='text-xs text-gray-400'>DataCraft storage breakdown</span>
         </div>
         <div className='flex w-full h-3.5 rounded-full overflow-hidden mb-3'>
           <div style={{ width: '45%', background: '#3b82f6' }} />
@@ -191,7 +191,7 @@ export default function Storage() {
           {/* Table header */}
           <div className='flex items-center justify-between mb-3'>
             <span className='text-xs font-semibold text-gray-700'>Top 5 backup policies by storage</span>
-            <span className='text-xs text-gray-400'>Ranked by DataVault storage used</span>
+            <span className='text-xs text-gray-400'>Ranked by DataCraft storage used</span>
           </div>
           <div className='overflow-x-auto'>
             <table className='w-full text-xs min-w-[520px]'>
@@ -199,7 +199,7 @@ export default function Storage() {
                 <tr className='border-b border-gray-100 bg-gray-50'>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Backup Policy</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Records</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>DataVault Storage</th>
+                  <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>DataCraft Storage</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Compression</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Last Run</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Health</th>
@@ -237,7 +237,7 @@ export default function Storage() {
       <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden' style={{ borderLeft: '4px solid #16a34a' }}>
         <div className='px-5 py-4 border-b border-gray-100'>
           <p className='text-sm font-semibold text-gray-800'>💰 Archive Savings</p>
-          <p className='text-xs text-gray-400 mt-0.5'>How much DataVault has freed up in your CRM org — this is the real storage saving.</p>
+          <p className='text-xs text-gray-400 mt-0.5'>How much DataCraft has freed up in your CRM org — this is the real storage saving.</p>
         </div>
         <div className='px-5 py-4'>
 
@@ -284,7 +284,7 @@ export default function Storage() {
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Source Object</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Records</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>SF Storage Freed</th>
-                  <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>DataVault Used</th>
+                  <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>DataCraft Used</th>
                   <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Tier</th>
                   <th className='py-2 px-3' />
                 </tr>

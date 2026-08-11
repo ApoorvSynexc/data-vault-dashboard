@@ -85,7 +85,7 @@ export default function CustomURLModal({ isOpen, onClose }: CustomURLModalProps)
           </div>
 
           <h3 className='mb-1 text-xl font-semibold text-gray-900'>Login with Custom URL</h3>
-          <p className='text-sm text-gray-600'>Use your custom Salesforce instance URL to log in to your DataVault account</p>
+          <p className='text-sm text-gray-600'>Use your custom Salesforce instance URL to log in to your DataCraft account</p>
         </div>
 
         {/* Content */}

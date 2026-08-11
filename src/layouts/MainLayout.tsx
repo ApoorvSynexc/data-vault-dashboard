@@ -6,8 +6,7 @@ import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
 import { usePlatformService } from '../services/platform/platform.service';
 import type { ConnectedPlatform } from '../services/platform/platform.service';
-import DataVaultLogo from '../assets/icons/DataVaultLOGO.svg';
-import DataVaultLogoIcon from '../assets/icons/Datavault Logo Container.svg';
+import DataCraftLogoIcon from '../assets/icons/Datavault Logo Container.svg';
 
 // ── Selected Org Context ───────────────────────────────────────────────────────
 // Provides the currently selected CRM org across the app.
@@ -252,7 +251,10 @@ export default function MainLayout() {
         {/* Logo */}
         {isSidebarOpen && (
           <div className='flex items-center gap-2.5 px-4 py-3 border-b border-white/10 justify-between'>
-            <img src={DataVaultLogo} alt='DataVault' className='h-8 w-auto object-contain' />
+            <div className='flex items-center gap-2 min-w-0'>
+              <img src={DataCraftLogoIcon} alt='DataCraft' className='h-7 w-7 object-contain flex-shrink-0' />
+              <span className='text-white font-bold text-sm'>360 DataCraft</span>
+            </div>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className='p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
@@ -268,7 +270,7 @@ export default function MainLayout() {
         {/* Collapsed Logo + Expand Button */}
         {!isSidebarOpen && (
           <div className='flex items-center justify-between px-2 py-3 border-b border-white/10'>
-            <img src={DataVaultLogoIcon} alt='DataVault' className='h-6 w-6 object-contain flex-shrink-0' />
+            <img src={DataCraftLogoIcon} alt='DataCraft' className='h-6 w-6 object-contain flex-shrink-0' />
             <button
               onClick={() => setIsSidebarOpen(true)}
               className='p-0.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors flex-shrink-0'
