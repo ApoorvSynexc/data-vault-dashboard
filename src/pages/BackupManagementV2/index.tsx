@@ -995,16 +995,16 @@ export default function BackupManagementV2() {
             <div className='px-6 py-5 space-y-4'>
               {activateTarget.isRealtime && (
                 <>
-                  <p className='text-sm text-gray-500 mb-4'>DataVault uses Salesforce Apex Triggers to capture record changes instantly and sync them to your backup destination in real time.</p>
+                  <p className='text-sm text-gray-500 mb-4'>DataCraft uses Salesforce Apex Triggers to capture record changes instantly and sync them to your backup destination in real time.</p>
                   <p className='text-sm font-semibold text-gray-800 mb-3'>What will happen after you activate this backup configuration:</p>
                   <ul className='text-sm text-gray-700 space-y-3 mb-4'>
                     <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span>An <span className='font-semibold'>Apex Trigger</span> will be created on each object you selected to listen for <span className='font-semibold'>insert, update, delete,</span> and <span className='font-semibold'>undelete</span> events.</span></li>
-                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span>A Permission Set named <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> will be created in your Salesforce org and granted access to the DataVault handler class and the triggers above.</span></li>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span>A Permission Set named <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> will be created in your Salesforce org and granted access to the DataCraft handler class and the triggers above.</span></li>
                     <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span><span className='font-semibold'>Action required:</span> Assign the <span className='font-semibold'>DataVaultRealTimeTriggerAccess</span> Permission Set to all users who create, update, or delete records on the selected objects.</span></li>
-                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span><span className='font-semibold'>Already using Real-Time Backup?</span> No duplicate triggers or permission sets will be created. DataVault will only create triggers for newly added objects.</span></li>
+                    <li className='flex gap-2'><span className='mt-0.5 shrink-0 text-blue-600'>•</span><span><span className='font-semibold'>Already using Real-Time Backup?</span> No duplicate triggers or permission sets will be created. DataCraft will only create triggers for newly added objects.</span></li>
                   </ul>
                   <div className='bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded-r-lg'>
-                    <p className='text-sm text-yellow-800'>By activating this configuration, you acknowledge that DataVault will deploy <span className='font-semibold'>Apex Triggers</span> and a <span className='font-semibold'>Permission Set</span> to your connected Salesforce org as described above.</p>
+                    <p className='text-sm text-yellow-800'>By activating this configuration, you acknowledge that DataCraft will deploy <span className='font-semibold'>Apex Triggers</span> and a <span className='font-semibold'>Permission Set</span> to your connected Salesforce org as described above.</p>
                   </div>
                   <div>
                     <label className='block text-sm font-semibold text-gray-900 mb-1'>Confirm to proceed</label>

@@ -90,7 +90,7 @@ function Tip({ text }: { text: string }) {
 // ── Sub-configs ───────────────────────────────────────────────────────────────
 
 function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername?: string }) {
-  const [tag, setTag] = useState('Restored via DataVault {job-id}');
+  const [tag, setTag] = useState('Restored via DataCraft {job-id}');
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -251,7 +251,7 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
 function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
-  const [tag, setTag]           = useState('Restored via DataVault {job-id}');
+  const [tag, setTag]           = useState('Restored via DataCraft {job-id}');
   const [destOrg, setDestOrg]   = useState('');
 
   const { data: crmsData, isLoading: destLoading } = useQuery({

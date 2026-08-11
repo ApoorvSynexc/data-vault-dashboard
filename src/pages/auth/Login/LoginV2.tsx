@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import LoginPagePicture from '../../../assets/icons/LoginPagePicture.svg';
+import DataCraftIcon from '../../../assets/icons/Datavault Logo Container.svg';
 import LockIcon from '../../../assets/icons/lock.svg?react';
 import ShieldIcon from '../../../assets/icons/shield.svg?react';
 import CheckCircleIcon from '../../../assets/icons/check-circle.svg?react';
@@ -76,13 +77,9 @@ export default function LoginV2() {
 
             {/* Logo directly above card */}
             <div className='flex items-center gap-3 mb-4'>
-              <svg width="72" height="72" viewBox="3 2 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="23.1601" height="23.2585" rx="7" transform="matrix(0.66168 0.708274 -0.66168 0.708274 20.5117 1.75586)" fill="#155DFC"/>
-                <path d="M34.5285 19.9376C34.9771 19.4574 35.6229 19.2542 36.2429 19.3983C37.6854 19.7333 38.21 21.644 37.1663 22.7612L28.7282 31.7935C28.2675 32.2866 27.5999 32.4867 26.967 32.3214C25.554 31.9522 25.0619 30.0708 26.0904 28.9699L34.5285 19.9376Z" fill="#D9D9D9" fillOpacity="0.7"/>
-                <rect width="23.1601" height="23.2585" rx="7" transform="matrix(0.66168 0.708274 -0.66168 0.708274 25.5469 2.28613)" fill="#155DFC" fillOpacity="0.4"/>
-              </svg>
+              <img src={DataCraftIcon} className='h-16 w-16 object-contain flex-shrink-0' alt='DataCraft' />
               <div>
-                <p className='font-bold leading-tight' style={{ color: '#33363F', fontSize: 30 }}>360 DataVault</p>
+                <p className='font-bold leading-tight' style={{ color: '#33363F', fontSize: 30 }}>360 DataCraft</p>
                 <p className='font-light' style={{ color: '#4D4D4D', fontSize: 14 }}>Secure Backup &amp; Restore Platform</p>
               </div>
             </div>
@@ -94,7 +91,7 @@ export default function LoginV2() {
             >
             <h2 className='mb-2 font-semibold' style={{ color: '#33363F', fontSize: 28 }}>Welcome Back</h2>
             <p className='mb-8 text-sm' style={{ color: '#33363F' }}>
-              Login to your DataVault account with Salesforce Credentials
+              Login to your DataCraft account with Salesforce Credentials
             </p>
 
             {loginError && (
@@ -183,7 +180,7 @@ export default function LoginV2() {
         {/* Footer */}
         <div className='text-center text-xs' style={{ color: '#64748B' }}>
           <p>Privacy Ploicy | Terms &amp; Conditions | Support</p>
-          <p className='mt-1'>@ 2026 360 DataVault</p>
+          <p className='mt-1'>@ 2026 360 DataCraft</p>
         </div>
       </div>
 
@@ -194,7 +191,7 @@ export default function LoginV2() {
         <div className='flex flex-1 items-center justify-center w-full'>
           <img
             src={LoginPagePicture}
-            alt='DataVault Illustration'
+            alt='DataCraft Illustration'
             className='max-h-[55vh] w-auto max-w-full object-contain'
           />
         </div>
@@ -215,7 +212,7 @@ export default function LoginV2() {
         {/* Right footer */}
         <div className='text-center text-xs' style={{ color: 'rgba(10,10,10,0.4)' }}>
           <p>Privacy Policy | Terms &amp; Conditions | Support</p>
-          <p className='mt-1'>© 2026 360 DataVault</p>
+          <p className='mt-1'>© 2026 360 DataCraft</p>
         </div>
       </div>
 

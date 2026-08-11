@@ -15,7 +15,7 @@ export default function ForgotPassword() {
             <span className='-rotate-45 text-xs font-bold text-white'>DV</span>
           </div>
           <div>
-            <p className='text-xl font-bold leading-tight text-gray-900'>360 DataVault</p>
+            <p className='text-xl font-bold leading-tight text-gray-900'>360 DataCraft</p>
             <p className='text-xs text-gray-500'>Secure Backup &amp; Restore Platform</p>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function ForgotPassword() {
             {' | '}
             <a href='#' className='hover:text-white'>Support</a>
           </p>
-          <p>© 2026 360 DataVault</p>
+          <p>© 2026 360 DataCraft</p>
         </div>
       </div>
     </div>
