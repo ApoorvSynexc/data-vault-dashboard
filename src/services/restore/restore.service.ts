@@ -43,7 +43,7 @@ export type RestoreScope =
   | { type: 'OBJECT'; objects: string[] }
   | { type: 'RECORD'; records: { objectName: string; recordIds: string[] }[] }
   | { type: 'FIELD'; fields: { objectName: string; fieldNames: string[] }[] }
-  | { type: 'FILTER'; filters: RestoreFilter }
+  | { type: 'FILTER'; objectName: string; filters: RestoreFilter }
   | { type: 'CHANGE_SINCE'; changeSince: { date: string } }
   | { type: 'BULK_CSV'; bulkCsvIds: string[] }
   | { type: 'DELETED_ONLY'; deletedOnly: true };
