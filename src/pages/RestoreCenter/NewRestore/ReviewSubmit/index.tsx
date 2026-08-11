@@ -120,9 +120,198 @@ interface Props {
   selectedConnection: Destination | null;
 }
 
+// ── Acknowledgement Modal ─────────────────────────────────────────────────────
+
+interface AckModalProps {
+  onConfirm: (enableRollback: boolean) => void;
+  onCancel: () => void;
+  jobName: string;
+  destinationOrg: string;
+  totalAffected: number | null;
+}
+
+function AcknowledgementModal({ onConfirm, onCancel, jobName, destinationOrg, totalAffected }: AckModalProps) {
+  const [rollbackEnabled, setRollbackEnabled] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  return (
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4'>
+      <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
+
+        {/* Header */}
+        <div className='flex items-start gap-4 px-6 py-5 border-b border-gray-100'>
+          <div className='flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center' style={{ background: '#FEF3C7', border: '1px solid #FCD34D' }}>
+            <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+              <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
+              <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+            </svg>
+          </div>
+          <div className='flex-1 min-w-0'>
+            <h2 className='text-base font-bold text-gray-900'>Confirm Restore Execution</h2>
+            <p className='text-xs text-gray-500 mt-0.5'>Please review the details below before proceeding. This action will modify live Salesforce data.</p>
+          </div>
+          <button onClick={onCancel} className='flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors mt-0.5'>
+            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+              <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Job summary */}
+        <div className='px-6 py-4 border-b border-gray-100 bg-gray-50'>
+          <div className='grid grid-cols-2 gap-3'>
+            <div>
+              <p className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5'>Job Name</p>
+              <p className='text-sm font-semibold text-gray-800 truncate'>{jobName || '—'}</p>
+            </div>
+            <div>
+              <p className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5'>Target Org</p>
+              <p className='text-sm font-semibold text-gray-800 truncate'>{destinationOrg}</p>
+            </div>
+            {totalAffected !== null && (
+              <div className='col-span-2'>
+                <p className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5'>Estimated Records Affected</p>
+                <p className='text-sm font-semibold text-amber-600'>{totalAffected.toLocaleString()} records</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Rollback option */}
+        <div className='px-6 py-4 border-b border-gray-100'>
+          <button
+            onClick={() => setRollbackEnabled((v) => !v)}
+            className={`w-full text-left rounded-xl border-2 px-4 py-3.5 transition-all ${
+              rollbackEnabled ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className='flex items-start gap-3'>
+              <div className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                rollbackEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+              }`}>
+                {rollbackEnabled && (
+                  <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline points='20 6 9 17 4 12'/>
+                  </svg>
+                )}
+              </div>
+              <div className='flex-1 min-w-0'>
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <span className={`text-sm font-semibold ${rollbackEnabled ? 'text-blue-700' : 'text-gray-800'}`}>
+                    Enable Rollback Snapshot
+                  </span>
+                  <span className='text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600'>Recommended</span>
+                </div>
+                <p className='text-xs text-gray-500 mt-1 leading-relaxed'>
+                  Captures a point-in-time snapshot of all affected records <strong className='text-gray-700'>before</strong> the restore runs, allowing you to fully undo this job if something goes wrong.
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Rollback impact notice — shown only when enabled */}
+          {rollbackEnabled && (
+            <div className='mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 space-y-2.5'>
+              <p className='text-xs font-bold text-amber-800 flex items-center gap-1.5'>
+                <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                </svg>
+                What rollback means for your Salesforce org
+              </p>
+              <ul className='space-y-2'>
+                {[
+                  {
+                    icon: '⏱',
+                    text: 'Additional processing time before the restore begins — the system must read and store every affected record\'s current state first.',
+                  },
+                  {
+                    icon: '📡',
+                    text: 'Salesforce API calls will be consumed to snapshot pre-restore data. On large jobs this can be significant — plan around your daily API limit.',
+                  },
+                  {
+                    icon: '💾',
+                    text: 'Snapshot data is stored in your connected cloud storage. Size depends on the number of records and fields involved.',
+                  },
+                  {
+                    icon: '↩',
+                    text: 'Once stored, you can trigger a one-click rollback from the Restore History screen to revert all changes made by this job.',
+                  },
+                ].map((item, i) => (
+                  <li key={i} className='flex items-start gap-2.5 text-xs text-amber-800'>
+                    <span className='flex-shrink-0 w-5 text-center leading-relaxed'>{item.icon}</span>
+                    <span className='leading-relaxed'>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* No rollback notice — shown only when disabled */}
+          {!rollbackEnabled && (
+            <div className='mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex items-start gap-2.5'>
+              <svg className='flex-shrink-0 mt-0.5 text-gray-400' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+              </svg>
+              <p className='text-xs text-gray-500 leading-relaxed'>
+                Without a rollback snapshot, this restore <strong className='text-gray-700'>cannot be automatically undone</strong>. You would need to run a new restore job manually to recover.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Acknowledgement checkbox */}
+        <div className='px-6 py-4 border-b border-gray-100'>
+          <button
+            onClick={() => setAcknowledged((v) => !v)}
+            className='flex items-start gap-3 w-full text-left group'
+          >
+            <div className={`flex-shrink-0 mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+              acknowledged ? 'bg-gray-800 border-gray-800' : 'bg-white border-gray-300 group-hover:border-gray-400'
+            }`}>
+              {acknowledged && (
+                <svg width='9' height='9' viewBox='0 0 24 24' fill='none' stroke='white' strokeWidth='3.5' strokeLinecap='round' strokeLinejoin='round'>
+                  <polyline points='20 6 9 17 4 12'/>
+                </svg>
+              )}
+            </div>
+            <p className='text-xs text-gray-600 leading-relaxed'>
+              I understand this will <strong className='text-gray-900'>modify live data</strong> in the destination Salesforce org and that this operation cannot be automatically reversed{rollbackEnabled ? ' (a rollback snapshot will be created)' : ' without a rollback snapshot'}.
+            </p>
+          </button>
+        </div>
+
+        {/* Footer actions */}
+        <div className='flex items-center justify-between gap-3 px-6 py-4'>
+          <button
+            onClick={onCancel}
+            className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(rollbackEnabled)}
+            disabled={!acknowledged}
+            className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90'
+            style={{ background: acknowledged ? '#155DFC' : '#94A3B8' }}
+          >
+            <svg width='13' height='13' viewBox='0 0 24 24' fill='currentColor'>
+              <polygon points='5 3 19 12 5 21 5 3'/>
+            </svg>
+            Confirm &amp; Run Restore
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats, sourceSelection, selectedConnection }: Props) {
   const restoreService = useRestoreService();
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showAckModal, setShowAckModal] = useState(false);
 
   useEffect(() => {
     console.log('[ReviewSubmit] Final restore payload:', JSON.stringify(restorePayload, null, 2));
@@ -154,6 +343,11 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   });
 
   const handleRun = () => {
+    setShowAckModal(true);
+  };
+
+  const handleConfirm = (_enableRollback: boolean) => {
+    setShowAckModal(false);
     createJobMutation.mutate();
   };
 
@@ -182,6 +376,15 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      {showAckModal && (
+        <AcknowledgementModal
+          onConfirm={handleConfirm}
+          onCancel={() => setShowAckModal(false)}
+          jobName={jobName}
+          destinationOrg={destinationLabel(restorePayload, sourceSelection)}
+          totalAffected={totalAffected}
+        />
+      )}
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
 
         {/* Breadcrumb */}
