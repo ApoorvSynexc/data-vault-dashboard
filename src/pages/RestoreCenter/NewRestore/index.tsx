@@ -57,6 +57,10 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
   const [step2ArchivalJobsPhase, setStep2ArchivalJobsPhase] = useState(false);
 
+  // Shared state for conditional UI across steps
+  const [scopeMode, setScopeMode] = useState<string>('full');
+  const [restoreMode, setRestoreMode] = useState<string>('overwrite');
+
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 9) as Step);
   const goBack = () => {
     if (currentStep === 1) { onBack(); return; }
@@ -110,7 +114,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onArchivalJobsPhaseChange={setStep2ArchivalJobsPhase}
         />
       </div>
-      {currentStep === 3 && <SelectScope onNext={(scope) => { updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />}
+      {currentStep === 3 && <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />}
       {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />}
       {currentStep === 5 && (
         <DefineRestorePolicy
@@ -121,8 +125,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           connectionName={selectedConnection?.name}
         />
       )}
-      {currentStep === 6 && <ConflictConfig onNext={goNext} onBack={goBack} />}
-      {currentStep === 7 && <EdgeCases onNext={goNext} onBack={goBack} />}
+      {currentStep === 6 && <ConflictConfig onNext={(mode) => { setRestoreMode(mode); goNext(); }} onBack={goBack} scopeMode={scopeMode} />}
+      {currentStep === 7 && <EdgeCases onNext={goNext} onBack={goBack} scopeMode={scopeMode} restoreMode={restoreMode} />}
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
       {currentStep === 9 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
     </div>
