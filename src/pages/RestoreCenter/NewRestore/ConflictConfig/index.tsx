@@ -146,6 +146,8 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                   if (scopeMode === 'record' && m.id === 'replace') return false;
                   if (scopeMode === 'field' && (m.id === 'replace' || m.id === 'append')) return false;
                   if (scopeMode === 'filter' && m.id === 'replace') return false;
+                  if (scopeMode === 'deleted' && (m.id === 'skip' || m.id === 'merge' || m.id === 'replace')) return false;
+                  if (scopeMode === 'changed' && m.id === 'replace') return false;
                   return true;
                 }).map((m) => {
                   const active = restoreMode === m.id;
