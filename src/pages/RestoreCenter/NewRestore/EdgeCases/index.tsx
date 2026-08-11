@@ -82,9 +82,9 @@ const FIELD_DEFAULTS = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: () => void; onBack: () => void; scopeMode: string; restoreMode: string; }
 
-export default function EdgeCases({ onNext, onBack }: Props) {
+export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Props) {
   const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer ✓ Recommended');
   const [ecMissingField, setEcMissingField] = useState('Skip the field ✓ Recommended');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user ✓ Recommended');
@@ -155,6 +155,7 @@ export default function EdgeCases({ onNext, onBack }: Props) {
               <Tip text="What to do when something doesn't line up cleanly — duplicate Id, missing field in destination, owner no longer active, parent record missing, or record type missing." />
             </div>
             <div className='p-4 flex flex-col divide-y divide-gray-100'>
+              {!(scopeMode === 'full' && restoreMode === 'append') && (
               <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                 <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                   On duplicate records <Tip text='Triggered when a record with the same Id (or external Id) already exists. Overwrite = source wins. Use destination if newer = safer, compares LastModifiedDate. Create new copy = inserts parallel with " (copy)" suffix.' />
@@ -166,6 +167,7 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                   <option>Use destination if newer ✓ Recommended</option>
                 </select>
               </div>
+              )}
               <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
                 <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
                   Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />

@@ -89,7 +89,7 @@ const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recomm
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; }
+interface Props { onNext: (restoreMode: string) => void; onBack: () => void; scopeMode: string; }
 
 export default function ConflictConfig({ onNext, onBack }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
@@ -227,7 +227,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={onNext}
+            onClick={() => onNext(restoreMode)}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >

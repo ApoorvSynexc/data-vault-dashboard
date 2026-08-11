@@ -152,7 +152,7 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 
 import type { RestoreScope } from '../../../../services/restore/restore.service';
 
-interface Props { onNext: (scope: RestoreScope) => void; onBack: () => void; sourceSelection: SourceSelection; }
+interface Props { onNext: (scope: RestoreScope, scopeMode: string) => void; onBack: () => void; sourceSelection: SourceSelection; }
 
 export default function SelectScope({ onNext, onBack, sourceSelection }: Props) {
   const restoreService = useRestoreService();
@@ -1259,7 +1259,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           <div className='flex items-center gap-2'>
             <button className='text-sm font-semibold text-gray-500 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5'>💾 Save as Draft</button>
             <button
-              onClick={() => onNext(buildScope())}
+              onClick={() => onNext(buildScope(), scopeMode)}
               className='flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors'
             >
               Next: Set Destination →
