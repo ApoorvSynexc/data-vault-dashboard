@@ -145,6 +145,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                 {[...RESTORE_MODES, ...RESTORE_MODES_FULL].filter((m) => {
                   if (scopeMode === 'record' && m.id === 'replace') return false;
                   if (scopeMode === 'field' && (m.id === 'replace' || m.id === 'append')) return false;
+                  if (scopeMode === 'filter' && m.id === 'replace') return false;
                   return true;
                 }).map((m) => {
                   const active = restoreMode === m.id;
