@@ -113,13 +113,15 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
     ? selectedOrg.environment.charAt(0).toUpperCase() + selectedOrg.environment.slice(1).toLowerCase()
     : '';
 
+  const singleOrg = orgs.length <= 1;
+
   return (
     <div ref={ref} className='relative flex-shrink-0'>
       <button
         type='button'
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !singleOrg && setOpen((v) => !v)}
         className='flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors'
-        style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', minWidth: 200 }}
+        style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', minWidth: 200, cursor: singleOrg ? 'default' : 'pointer' }}
       >
         {/* Salesforce cloud icon */}
         <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 text-blue-300'>
@@ -135,12 +137,14 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
             </>
           )}
         </div>
-        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 text-white/60'>
-          <polyline points='6 9 12 15 18 9' />
-        </svg>
+        {!singleOrg && (
+          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 text-white/60'>
+            <polyline points='6 9 12 15 18 9' />
+          </svg>
+        )}
       </button>
 
-      {open && orgs.length > 0 && (
+      {open && orgs.length > 1 && (
         <div className='absolute left-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl overflow-hidden'
           style={{ minWidth: 280, border: '1px solid #E2E8F0' }}>
           <div className='px-3 py-2 border-b border-gray-100'>
