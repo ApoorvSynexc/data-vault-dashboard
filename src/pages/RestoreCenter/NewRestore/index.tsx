@@ -114,9 +114,13 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onArchivalJobsPhaseChange={setStep2ArchivalJobsPhase}
         />
       </div>
-      {currentStep === 3 && <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />}
-      {currentStep === 4 && <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />}
-      {currentStep === 5 && (
+      <div className={currentStep === 3 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+        <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />
+      </div>
+      <div className={currentStep === 4 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+        <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />
+      </div>
+      <div className={currentStep === 5 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <DefineRestorePolicy
           onNext={(jobDetail) => { updatePayload({ jobDetail: { name: jobDetail.name, description: jobDetail.description, tags: jobDetail.tags } }); goNext(); }}
           onBack={goBack}
@@ -124,9 +128,13 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           crmUsername={sourceSelection.crmUsername}
           connectionName={selectedConnection?.name}
         />
-      )}
-      {currentStep === 6 && <ConflictConfig onNext={(mode) => { setRestoreMode(mode); goNext(); }} onBack={goBack} scopeMode={scopeMode} />}
-      {currentStep === 7 && <EdgeCases onNext={goNext} onBack={goBack} scopeMode={scopeMode} restoreMode={restoreMode} />}
+      </div>
+      <div className={currentStep === 6 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+        <ConflictConfig onNext={(mode) => { setRestoreMode(mode); goNext(); }} onBack={goBack} scopeMode={scopeMode} />
+      </div>
+      <div className={currentStep === 7 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
+        <EdgeCases onNext={goNext} onBack={goBack} scopeMode={scopeMode} restoreMode={restoreMode} />
+      </div>
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
       {currentStep === 9 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
     </div>
