@@ -482,8 +482,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'field':
         return { type: 'FIELD', fields: [...fieldSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] })) };
       case 'filter':
-        if (filterTab === 'soql') return { type: 'FILTER', filters: { type: 'SOQL', soqlQuery: soqlWhere.trim() ? `SELECT Id FROM ${soqlObj} WHERE ${soqlWhere.trim()}` : `SELECT Id FROM ${soqlObj}` } };
-        return { type: 'FILTER', filters: { type: 'AND', fields: filterRows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
+        if (filterTab === 'soql') return { type: 'FILTER', objectName: soqlObj, filters: { type: 'SOQL', soqlQuery: soqlWhere.trim() ? `SELECT Id FROM ${soqlObj} WHERE ${soqlWhere.trim()}` : `SELECT Id FROM ${soqlObj}` } };
+        return { type: 'FILTER', objectName: filterObj, filters: { type: 'AND', fields: filterRows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
       case 'changed':
         return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
       case 'csv':
