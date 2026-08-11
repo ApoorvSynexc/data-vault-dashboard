@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { RestoreEdgeCases } from '../../../../services/restore/restore.service';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -82,16 +83,20 @@ const FIELD_DEFAULTS = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; scopeMode: string; restoreMode: string; }
+// Convert UI label to SCREAMING_SNAKE_CASE enum value
+const toEnum = (label: string): string =>
+  label.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; scopeMode: string; restoreMode: string; }
 
 export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Props) {
-  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer ✓ Recommended');
-  const [ecMissingField, setEcMissingField] = useState('Skip the field ✓ Recommended');
-  const [ecOwner,        setEcOwner]        = useState('Reassign to specified user ✓ Recommended');
-  const [ecParent,       setEcParent]       = useState('Restore parent first ✓ Recommended');
-  const [ecRecordType,   setEcRecordType]   = useState('Map to default ✓ Recommended');
-  const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field ✓ Recommended');
-  const [fallbackOwner,  setFallbackOwner]  = useState('DataVault Service Account');
+  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer');
+  const [ecMissingField, setEcMissingField] = useState('Skip the field');
+  const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
+  const [ecParent,       setEcParent]       = useState('Restore parent first');
+  const [ecRecordType,   setEcRecordType]   = useState('Map to default');
+  const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field');
+  const [fallbackOwner,  setFallbackOwner]  = useState('');
 
   type CustomRow = { id: number; field: string; type: string; value: string };
   const [customRows, setCustomRows] = useState<CustomRow[]>([]);
@@ -169,7 +174,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   <option>Overwrite</option>
                   <option>Skip</option>
                   <option>Create new copy with suffix</option>
-                  <option>Use destination if newer ✓ Recommended</option>
+                  <option>Use destination if newer</option>
                 </select>
               </div>
               )}
@@ -178,7 +183,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />
                 </span>
                 <select value={ecMissingField} onChange={(e) => setEcMissingField(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Skip the field ✓ Recommended</option>
+                  <option>Skip the field</option>
                   <option>Map to existing field</option>
                   <option>Fail the record</option>
                 </select>
@@ -189,13 +194,13 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                     Owner inactive/deleted <Tip text='Triggered when the original record owner no longer exists or is deactivated.' />
                   </span>
                   <select value={ecOwner} onChange={(e) => setEcOwner(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Reassign to specified user ✓ Recommended</option>
+                    <option>Reassign to specified user</option>
                     <option>Reassign to manager</option>
                     <option>Reassign to queue</option>
                     <option>Skip record</option>
                   </select>
                 </div>
-                {ecOwner.startsWith('Reassign to specified user') && (
+                {ecOwner === 'Reassign to specified user' && (
                   <div className='ml-0 sm:ml-48 flex flex-col gap-1'>
                     <span className='text-xs text-gray-500'>Fallback owner</span>
                     <input
@@ -214,7 +219,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 </span>
                 <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
                   <option>Re-parent to placeholder</option>
-                  <option>Restore parent first ✓ Recommended</option>
+                  <option>Restore parent first</option>
                   <option>Skip</option>
                 </select>
               </div>
@@ -223,7 +228,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." />
                 </span>
                 <select value={ecRecordType} onChange={(e) => setEcRecordType(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Map to default ✓ Recommended</option>
+                  <option>Map to default</option>
                   <option>Map manually</option>
                   <option>Skip</option>
                 </select>
@@ -233,7 +238,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   Missing required field value <Tip text='Triggered when the destination has a mandatory field and the source record value is blank or missing.' />
                 </span>
                 <select value={ecMissRequired} onChange={(e) => setEcMissRequired(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Use specified default per field ✓ Recommended</option>
+                  <option>Use specified default per field</option>
                   <option>Use last known value from history</option>
                   <option>Skip the record</option>
                   <option>Skip the object</option>
@@ -243,7 +248,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
           </div>
 
           {/* Field Defaults — only when "Use specified default per field" is selected */}
-          {ecMissRequired === 'Use specified default per field ✓ Recommended' && <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          {ecMissRequired === 'Use specified default per field' && <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
             <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <div className='flex items-center gap-1.5'>
                 <span className='text-base'>🏷</span>
@@ -359,7 +364,29 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={onNext}
+            onClick={() => {
+              const edgeCases: RestoreEdgeCases = {
+                onDuplicateRecord:         toEnum(ecDuplicate)        as RestoreEdgeCases['onDuplicateRecord'],
+                missingFieldInDestination: toEnum(ecMissingField)     as RestoreEdgeCases['missingFieldInDestination'],
+                ownerInactive:             toEnum(ecOwner)            as RestoreEdgeCases['ownerInactive'],
+                parentMissing:             toEnum(ecParent)           as RestoreEdgeCases['parentMissing'],
+                recordTypeMissing:         toEnum(ecRecordType)       as RestoreEdgeCases['recordTypeMissing'],
+                missingRequiredFieldValue: toEnum(ecMissRequired)     as RestoreEdgeCases['missingRequiredFieldValue'],
+                ...(ecOwner === 'Reassign to specified user' && fallbackOwner ? { ownerInactiveFallbackUserId: fallbackOwner } : {}),
+                ...(ecMissRequired === 'Use specified default per field' && customRows.length > 0 ? {
+                  fieldDefaults: customRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
+                    if (!row.field || !row.value) return acc;
+                    const [obj, fieldName] = row.field.split('.');
+                    if (!obj || !fieldName) return acc;
+                    const existing = acc!.find((e) => e.object === obj);
+                    if (existing) { existing.fields.push({ name: fieldName, type: row.type.toUpperCase(), value: row.value }); }
+                    else { acc!.push({ object: obj, fields: [{ name: fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
+                    return acc;
+                  }, []),
+                } : {}),
+              };
+              onNext(edgeCases);
+            }}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >

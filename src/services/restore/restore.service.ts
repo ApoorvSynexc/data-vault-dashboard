@@ -25,6 +25,7 @@ export interface RestoreRetrievePayload {
 
   conflict: {
     restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP';
+    edgeCases?: RestoreEdgeCases;
   };
 
   restoreType?: 'RESTORE_ONLY_CHANGED_FIELDS' | 'RESTORE_ENTIRE_RECORD';
@@ -36,6 +37,20 @@ export interface RestoreRetrievePayload {
   };
 
   schedule: RestoreSchedule;
+}
+
+export interface RestoreEdgeCases {
+  onDuplicateRecord?:          'OVERWRITE' | 'SKIP' | 'CREATE_NEW_COPY_WITH_SUFFIX' | 'USE_DESTINATION_IF_NEWER';
+  parentMissing?:              'RE_PARENT_TO_PLACEHOLDER' | 'RESTORE_PARENT_FIRST' | 'SKIP';
+  missingFieldInDestination?:  'SKIP_THE_FIELD' | 'MAP_TO_EXISTING_FIELD' | 'FAIL_THE_RECORD';
+  ownerInactive?:              'REASSIGN_TO_SPECIFIED_USER' | 'REASSIGN_TO_MANAGER' | 'REASSIGN_TO_QUEUE' | 'SKIP_RECORD';
+  ownerInactiveFallbackUserId?: string;
+  recordTypeMissing?:          'MAP_TO_DEFAULT' | 'MAP_MANUALLY' | 'SKIP';
+  missingRequiredFieldValue?:  'USE_SPECIFIED_DEFAULT_PER_FIELD' | 'USE_LAST_KNOWN_VALUE_FROM_HISTORY' | 'SKIP_THE_RECORD' | 'SKIP_THE_OBJECT';
+  fieldDefaults?: {
+    object: string;
+    fields: { name: string; type: string; value: string }[];
+  }[];
 }
 
 export type RestoreScope =

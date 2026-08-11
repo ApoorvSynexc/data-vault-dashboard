@@ -133,7 +133,15 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         <ConflictConfig onNext={(mode) => { setRestoreMode(mode); goNext(); }} onBack={goBack} scopeMode={scopeMode} />
       </div>
       <div className={currentStep === 7 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <EdgeCases onNext={goNext} onBack={goBack} scopeMode={scopeMode} restoreMode={restoreMode} />
+        <EdgeCases
+          onNext={(edgeCases) => {
+            updatePayload({ conflict: { ...restorePayload.conflict, edgeCases } });
+            goNext();
+          }}
+          onBack={goBack}
+          scopeMode={scopeMode}
+          restoreMode={restoreMode}
+        />
       </div>
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
       {currentStep === 9 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
