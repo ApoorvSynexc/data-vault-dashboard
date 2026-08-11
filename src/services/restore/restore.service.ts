@@ -45,7 +45,7 @@ export type RestoreScope =
   | { type: 'FIELD'; fields: { objectName: string; fieldNames: string[] }[] }
   | { type: 'FILTER'; objectName: string; filters: RestoreFilter }
   | { type: 'CHANGE_SINCE'; changeSince: { date: string } }
-  | { type: 'BULK_CSV'; bulkCsvIds: string[] }
+  | { type: 'BULK_CSV'; objectName: string; bulkCsvIds: string[] }
   | { type: 'DELETED_ONLY'; deletedOnly: true };
 
 export type RestoreFilter =
