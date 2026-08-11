@@ -246,6 +246,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [changedDate,      setChangedDate]      = useState('2026-05-01');
 
   // csv state
+  const [csvObj,           setCsvObj]           = useState('');
   const [csvText,          setCsvText]          = useState('');
   const [csvParsedIds,     setCsvParsedIds]     = useState<string[]>([]);
   const [csvFileName,      setCsvFileName]      = useState<string | null>(null);
@@ -487,7 +488,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'changed':
         return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
       case 'csv':
-        return { type: 'BULK_CSV', bulkCsvIds: csvParsedIds };
+        return { type: 'BULK_CSV', objectName: csvObj, bulkCsvIds: csvParsedIds };
       case 'deleted':
         return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':
@@ -1138,6 +1139,22 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               <Typography as='h3' variant='sectionTitle' color='secondary'>📋 Bulk Match via CSV</Typography>
             </div>
             <div className='p-5 space-y-4'>
+
+              {/* Object picker */}
+              <div className='flex items-center gap-3 flex-wrap'>
+                <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
+                <select
+                  value={csvObj}
+                  onChange={(e) => setCsvObj(e.target.value)}
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+                >
+                  <option value=''>— Select an object —</option>
+                  {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+                {sourceObjectsLoading && (
+                  <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                )}
+              </div>
 
               {/* Hidden file input */}
               <input
