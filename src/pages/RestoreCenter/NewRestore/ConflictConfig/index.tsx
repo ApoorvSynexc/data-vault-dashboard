@@ -91,7 +91,7 @@ const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recomm
 
 interface Props { onNext: (restoreMode: string) => void; onBack: () => void; scopeMode: string; }
 
-export default function ConflictConfig({ onNext, onBack }: Props) {
+export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
   const [mergeDefault, setMergeDefault] = useState('Newest LastModifiedDate wins');
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
@@ -142,7 +142,7 @@ export default function ConflictConfig({ onNext, onBack }: Props) {
                 <Tip text='How to handle a source record when a record with the same Id (or external Id) already exists in the destination. Pick one mode for the whole job — you can override per object later.' />
               </div>
               <div className='p-4 flex flex-col gap-2'>
-                {[...RESTORE_MODES, ...RESTORE_MODES_FULL].map((m) => {
+                {[...RESTORE_MODES, ...RESTORE_MODES_FULL].filter((m) => !(scopeMode === 'record' && m.id === 'replace')).map((m) => {
                   const active = restoreMode === m.id;
                   return (
                     <button
