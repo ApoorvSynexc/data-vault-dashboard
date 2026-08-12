@@ -1,9 +1,12 @@
 // EdgeCases — Step 7 of 9 in the New Restore wizard.
 // Edge Case Handling + Field Defaults configuration.
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { RestoreEdgeCases } from '../../../../services/restore/restore.service';
+
+type FieldMapRow = { id: number; sourceField: string; destField: string };
+type RecordTypeMapRow = { id: number; source: string; dest: string };
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -98,6 +101,25 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
   const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
 
+  // Field mapping rows for "Map to existing field"
+  const [fieldMapRows, setFieldMapRows] = useState<FieldMapRow[]>([
+    { id: 1, sourceField: '', destField: '' },
+  ]);
+  const addFieldMapRow = () => setFieldMapRows((p) => [...p, { id: Date.now(), sourceField: '', destField: '' }]);
+  const removeFieldMapRow = (id: number) => setFieldMapRows((p) => p.filter((r) => r.id !== id));
+  const updateFieldMapRow = (id: number, patch: Partial<FieldMapRow>) =>
+    setFieldMapRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+
+  // Record type mapping rows for "Map manually"
+  const [rtMapRows, setRtMapRows] = useState<RecordTypeMapRow[]>([
+    { id: 1, source: 'Support Case', dest: 'Support Case' },
+    { id: 2, source: 'Escalation',   dest: '' },
+  ]);
+  const updateRtMapRow = (id: number, dest: string) =>
+    setRtMapRows((p) => p.map((r) => r.id === id ? { ...r, dest } : r));
+
+  const fieldDefaultsRef = useRef<HTMLDivElement>(null);
+
   type CustomRow = { id: number; field: string; type: string; value: string };
   const [customRows, setCustomRows] = useState<CustomRow[]>([]);
   const [addedMsg, setAddedMsg] = useState(false);
@@ -178,15 +200,53 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 </select>
               </div>
               )}
-              <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                  Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />
-                </span>
-                <select value={ecMissingField} onChange={(e) => setEcMissingField(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Skip the field</option>
-                  <option>Map to existing field</option>
-                  <option>Fail the record</option>
-                </select>
+              <div className='py-3 flex flex-col gap-2'>
+                <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
+                    Missing fields in dest <Tip text='Triggered when the source has fields the destination does not have. Skip = drop that one field. Map to existing = route to a different field. Fail = reject the whole record.' />
+                  </span>
+                  <select value={ecMissingField} onChange={(e) => setEcMissingField(e.target.value)} className={selectClass} style={selectStyle}>
+                    <option>Skip the field</option>
+                    <option>Map to existing field</option>
+                    <option>Fail the record</option>
+                  </select>
+                </div>
+                {ecMissingField === 'Map to existing field' && (
+                  <div className='ml-0 sm:ml-48 flex flex-col gap-2'>
+                    <span className='text-xs font-semibold text-gray-600'>Map source field → destination field</span>
+                    {fieldMapRows.map((row) => (
+                      <div key={row.id} className='flex items-center gap-2'>
+                        <select
+                          value={row.sourceField}
+                          onChange={(e) => updateFieldMapRow(row.id, { sourceField: e.target.value })}
+                          className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                        >
+                          <option value=''>— pick source field —</option>
+                          <option>Account.Legacy_ID__c</option>
+                          <option>Account.Old_Code__c</option>
+                        </select>
+                        <span className='text-gray-400 font-medium text-sm flex-shrink-0'>→</span>
+                        <select
+                          value={row.destField}
+                          onChange={(e) => updateFieldMapRow(row.id, { destField: e.target.value })}
+                          className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                        >
+                          <option value=''>— pick destination field —</option>
+                          <option>Account.ExternalId__c</option>
+                          <option>Account.Reference__c</option>
+                        </select>
+                        {fieldMapRows.length > 1 && (
+                          <button onClick={() => removeFieldMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'>
+                            <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={addFieldMapRow} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add mapping</button>
+                  </div>
+                )}
               </div>
               <div className='py-3 flex flex-col gap-2'>
                 <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
@@ -218,37 +278,89 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." />
                 </span>
                 <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Re-parent to placeholder</option>
                   <option>Restore parent first</option>
                   <option>Skip</option>
                 </select>
               </div>
-              <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                  Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." />
-                </span>
-                <select value={ecRecordType} onChange={(e) => setEcRecordType(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Map to default</option>
-                  <option>Map manually</option>
-                  <option>Skip</option>
-                </select>
+              <div className='py-3 flex flex-col gap-2'>
+                <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
+                    Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." />
+                  </span>
+                  <select value={ecRecordType} onChange={(e) => setEcRecordType(e.target.value)} className={selectClass} style={selectStyle}>
+                    <option>Map to default</option>
+                    <option>Map manually</option>
+                    <option>Skip</option>
+                  </select>
+                </div>
+                {ecRecordType === 'Map manually' && (
+                  <div className='ml-0 sm:ml-48 flex flex-col gap-2'>
+                    <span className='text-xs font-semibold text-gray-600'>Map source record types → destination record types</span>
+                    <div className='rounded-lg border border-gray-200 overflow-hidden'>
+                      <table className='w-full text-xs'>
+                        <thead>
+                          <tr className='bg-gray-50 border-b border-gray-100'>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Source Record Type</th>
+                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Destination Record Type</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rtMapRows.map((row) => (
+                            <tr key={row.id} className='border-b border-gray-50 last:border-0'>
+                              <td className='py-2 px-3'>
+                                <span className='inline-flex items-center px-2 py-1 rounded bg-gray-100 text-gray-700 font-medium'>{row.source}</span>
+                                <span className='ml-2 text-gray-400 text-[10px]'>(source)</span>
+                              </td>
+                              <td className='py-2 px-3'>
+                                <select
+                                  value={row.dest}
+                                  onChange={(e) => updateRtMapRow(row.id, e.target.value)}
+                                  className='h-8 px-2 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                                  style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                                >
+                                  <option value=''>— pick —</option>
+                                  <option>Support Case</option>
+                                  <option>Standard Case</option>
+                                  <option>Escalation</option>
+                                  <option>Tier-2</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                  Missing required field value <Tip text='Triggered when the destination has a mandatory field and the source record value is blank or missing.' />
-                </span>
-                <select value={ecMissRequired} onChange={(e) => setEcMissRequired(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Use specified default per field</option>
-                  <option>Use last known value from history</option>
-                  <option>Skip the record</option>
-                  <option>Skip the object</option>
-                </select>
+              <div className='py-3 flex flex-col gap-2'>
+                <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
+                    Missing required field value <Tip text='Triggered when the destination has a mandatory field and the source record value is blank or missing.' />
+                  </span>
+                  <select value={ecMissRequired} onChange={(e) => setEcMissRequired(e.target.value)} className={selectClass} style={selectStyle}>
+                    <option>Use specified default per field</option>
+                    <option>Use last known value from history</option>
+                    <option>Skip the record</option>
+                    <option>Skip the object</option>
+                  </select>
+                </div>
+                {ecMissRequired === 'Use specified default per field' && (
+                  <div className='ml-0 sm:ml-48'>
+                    <button
+                      onClick={() => fieldDefaultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      className='text-xs text-blue-600 hover:underline font-medium'
+                    >
+                      Configure defaults ↓
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Field Defaults — only when "Use specified default per field" is selected */}
-          {ecMissRequired === 'Use specified default per field' && <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          {ecMissRequired === 'Use specified default per field' && <div ref={fieldDefaultsRef} className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
             <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <div className='flex items-center gap-1.5'>
                 <span className='text-base'>🏷</span>
