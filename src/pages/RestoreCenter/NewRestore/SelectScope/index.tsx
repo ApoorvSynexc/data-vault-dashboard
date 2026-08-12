@@ -172,10 +172,16 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   // scope selection
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
 
-  // by-record: object picked by user triggers fetch
-  const [recordObj, setRecordObj] = useState('');
+  // by-record state — declared early so fetchPayload derivation below can reference them
+  const [recordObj,            setRecordObj]            = useState('');
+  const [addedRecordObjs,      setAddedRecordObjs]      = useState<string[]>([]);
+  const [activeRecordObj,      setActiveRecordObj]      = useState('');
+  const [selectedRecordsByObj, setSelectedRecordsByObj] = useState<Record<string, Set<string>>>({});
+  const [allRecordsByObj,      setAllRecordsByObj]      = useState<Record<string, SFRecord[]>>({});
+  const [cursorByObj,          setCursorByObj]          = useState<Record<string, string | undefined>>({});
 
-  const fetchPayload: FetchRecordsPayload | null = scopeMode === 'record' && !!recordObj && !!sourceSelection.backupConfigId
+  const activeCursor = cursorByObj[activeRecordObj];
+  const fetchPayload: FetchRecordsPayload | null = scopeMode === 'record' && !!activeRecordObj && !!sourceSelection.backupConfigId
     ? {
         source: {
           backupConfigId: sourceSelection.backupConfigId,
@@ -186,44 +192,38 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             ? { backupJobIds: sourceSelection.backupJobIds }
             : {}),
         },
-        objectApiName: recordObj,
+        objectApiName: activeRecordObj,
         columns: ['Id', 'Name', 'LastModifiedDate'],
       }
     : null;
 
-  const [recordCursor, setRecordCursor] = useState<string | undefined>(undefined);
-  const [allRecords,   setAllRecords]   = useState<SFRecord[]>([]);
-
   const { data: fetchedRecordsData, isLoading: isLoadingRecords, isFetching: isFetchingMore } = useQuery({
-    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, recordObj, recordCursor],
-    queryFn: () => restoreService.fetchRecords({ ...fetchPayload!, ...(recordCursor ? { cursor: recordCursor } : {}) }),
+    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, activeRecordObj, activeCursor],
+    queryFn: () => restoreService.fetchRecords({ ...fetchPayload!, ...(activeCursor ? { cursor: activeCursor } : {}) }),
     enabled: !!fetchPayload,
     staleTime: 0,
   });
 
   useEffect(() => {
+    if (!activeRecordObj) return;
     const rows: { record: SFRecord }[] = (fetchedRecordsData as any)?.data?.rows ?? [];
     const parsed: SFRecord[] = rows.map((r) => r.record);
     if (!parsed.length) return;
-    setAllRecords((prev) => recordCursor ? [...prev, ...parsed] : parsed);
+    setAllRecordsByObj((prev) => ({
+      ...prev,
+      [activeRecordObj]: activeCursor ? [...(prev[activeRecordObj] ?? []), ...parsed] : parsed,
+    }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchedRecordsData]);
-
-  useEffect(() => {
-    setAllRecords([]);
-    setRecordCursor(undefined);
-    setSelectedRecords(new Set());
-  }, [recordObj]);
 
   // by-object state
   const [objSearch,        setObjSearch]        = useState('');
   const [selectedObjects,  setSelectedObjects]  = useState<Set<string>>(new Set());
 
-  // by-record state
-  const [recordSearch,     setRecordSearch]     = useState('');
-  const [selectedRecords,  setSelectedRecords]  = useState<Set<string>>(new Set());
-  const [showIdList,       setShowIdList]       = useState(false);
-  const [idListText,       setIdListText]       = useState('');
+  // by-record additional state
+  const [recordSearch, setRecordSearch] = useState('');
+  const [showIdList,   setShowIdList]   = useState(false);
+  const [idListText,   setIdListText]   = useState('');
 
   // by-field state
   const [fieldObjSearch,   setFieldObjSearch]   = useState('');
@@ -313,7 +313,33 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     setSelectedObjects(selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? new Set() : new Set(sourceObjectNames));
 
   const toggleRecord = (id: string) =>
-    setSelectedRecords((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedRecordsByObj((p) => {
+      const cur = new Set(p[activeRecordObj] ?? []);
+      cur.has(id) ? cur.delete(id) : cur.add(id);
+      return { ...p, [activeRecordObj]: cur };
+    });
+
+  const addRecordObject = () => {
+    if (!recordObj || addedRecordObjs.includes(recordObj)) {
+      setActiveRecordObj(recordObj);
+      return;
+    }
+    setAddedRecordObjs((p) => [...p, recordObj]);
+    setActiveRecordObj(recordObj);
+    setAllRecordsByObj((p) => ({ ...p, [recordObj]: [] }));
+    setSelectedRecordsByObj((p) => ({ ...p, [recordObj]: new Set() }));
+    setCursorByObj((p) => ({ ...p, [recordObj]: undefined }));
+  };
+
+  const removeRecordObject = (obj: string) => {
+    setAddedRecordObjs((p) => p.filter((o) => o !== obj));
+    setAllRecordsByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
+    setSelectedRecordsByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
+    setCursorByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
+    setActiveRecordObj((prev) => prev === obj ? (addedRecordObjs.find((o) => o !== obj) ?? '') : prev);
+  };
+
+  const totalSelectedRecords = Object.values(selectedRecordsByObj).reduce((sum, s) => sum + s.size, 0);
 
   const toggleFieldObj = (apiName: string) => {
     setFieldSelectedObjs((p) => {
@@ -393,7 +419,9 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const hasMore: boolean = (fetchedRecordsData as any)?.meta?.hasMore ?? false;
   const nextCursor: string | undefined = (fetchedRecordsData as any)?.meta?.nextCursor;
 
-  const filteredRecords = allRecords.filter(
+  const activeRecords = allRecordsByObj[activeRecordObj] ?? [];
+  const activeSelectedRecords = selectedRecordsByObj[activeRecordObj] ?? new Set<string>();
+  const filteredRecords = activeRecords.filter(
     (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
   );
 
@@ -401,7 +429,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     {
       key: 'check', header: '', width: '40px',
       render: (row) => (
-        <input type='checkbox' checked={selectedRecords.has(row.Id)}
+        <input type='checkbox' checked={activeSelectedRecords.has(row.Id)}
           onChange={() => toggleRecord(row.Id)}
           onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
@@ -479,7 +507,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'object':
         return { type: 'OBJECT', objects: [...selectedObjects] };
       case 'record':
-        return { type: 'RECORD', records: recordObj ? [{ objectName: recordObj, recordIds: [...selectedRecords] }] : [] };
+        return {
+          type: 'RECORD',
+          records: addedRecordObjs.map((obj) => ({
+            objectName: obj,
+            recordIds: [...(selectedRecordsByObj[obj] ?? [])],
+          })),
+        };
       case 'field':
         return { type: 'FIELD', fields: [...fieldSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] })) };
       case 'filter':
@@ -656,83 +690,150 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {/* ── Sub-UI: By Record ─────────────────────────────────────────── */}
         {scopeMode === 'record' && (
           <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100'>
+            <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>◉ Select Records</Typography>
+              {totalSelectedRecords > 0 && (
+                <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
+                  {addedRecordObjs.length} object{addedRecordObjs.length !== 1 ? 's' : ''} · {totalSelectedRecords} record{totalSelectedRecords !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
             <div className='p-5 space-y-4'>
               <InfoCallout>
-                Object dropdown is populated from the <strong>source snapshot's manifest</strong> — only objects that exist in the chosen backup or archive appear.
+                Select an object, click <strong>Add Object</strong> to open its records tab. Repeat for multiple objects — each gets its own tab.
               </InfoCallout>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+
+              {/* Object picker + Add button */}
+              <div className='flex items-center gap-2 flex-wrap'>
                 <select
                   value={recordObj}
-                  onChange={(e) => { setRecordObj(e.target.value); setSelectedRecords(new Set()); setRecordSearch(''); }}
-                  className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500'
+                  onChange={(e) => setRecordObj(e.target.value)}
+                  className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:flex-none sm:w-56'
                 >
                   <option value=''>— Select an object —</option>
                   {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
-                <div className='relative'>
-                  <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                    <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
-                  </svg>
-                  <input
-                    value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
-                    placeholder='Search records by name or ID…'
-                    disabled={!recordObj}
-                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400'
-                  />
-                </div>
+                <button
+                  onClick={addRecordObject}
+                  disabled={!recordObj}
+                  className='h-9 px-4 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0'
+                >
+                  + Add Object
+                </button>
               </div>
 
-              {!recordObj ? (
-                <p className='text-sm text-gray-400 text-center py-6'>Select an object above to load its records.</p>
-              ) : isLoadingRecords ? (
-                <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
-                  <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                  Loading records…
-                </div>
-              ) : (
-                <Table
-                  columns={recordColumns}
-                  rows={filteredRecords}
-                  getRowKey={(r) => r.Id}
-                  borderless
-                  headerVariant='uppercase'
-                  cellPaddingClassName='px-5 py-3'
-                  rowClassName={(row) =>
-                    `border-b border-gray-50 transition-colors cursor-pointer ${selectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-                  }
-                  onRowClick={(row) => toggleRecord(row.Id)}
-                />
-              )}
-
-              {hasMore && (
-                <button
-                  onClick={() => setRecordCursor(nextCursor)}
-                  disabled={isFetchingMore}
-                  className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
-                >
-                  {isFetchingMore ? 'Loading…' : 'Load more records'}
-                </button>
-              )}
-
-              {/* DEMO_HIDDEN: records selected + Add by ID list */}
-
-              {showIdList && (
-                <div className='space-y-2'>
-                  <p className='text-xs font-semibold text-gray-700'>Paste record IDs or external IDs (one per line)</p>
-                  <textarea
-                    value={idListText} onChange={(e) => setIdListText(e.target.value)}
-                    placeholder={'0013a00001AbcDe\n0013a00001AbcDf'}
-                    rows={4}
-                    className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
-                  />
-                  <div className='flex gap-2'>
-                    <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Add IDs</button>
-                    <button onClick={() => setShowIdList(false)} className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>Cancel</button>
+              {/* Object tabs */}
+              {addedRecordObjs.length > 0 && (
+                <>
+                  <div className='flex items-center gap-1 flex-wrap border-b border-gray-200'>
+                    {addedRecordObjs.map((obj) => {
+                      const count = selectedRecordsByObj[obj]?.size ?? 0;
+                      const isActive = activeRecordObj === obj;
+                      return (
+                        <div
+                          key={obj}
+                          onClick={() => { setActiveRecordObj(obj); setRecordSearch(''); }}
+                          className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer text-xs font-semibold border-b-2 transition-colors -mb-px ${
+                            isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <span className='font-mono'>{obj}</span>
+                          {count > 0 && (
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                              {count}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeRecordObject(obj); }}
+                            className='ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:text-white hover:bg-red-500 transition-colors flex-shrink-0 text-[11px] font-bold'
+                            title={`Remove ${obj}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+
+                  {/* Search bar for active tab */}
+                  <div className='relative'>
+                    <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                      <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                    </svg>
+                    <input
+                      value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
+                      placeholder={`Search ${activeRecordObj} records by name or ID…`}
+                      className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                    />
+                  </div>
+
+                  {/* Record table for active tab */}
+                  {isLoadingRecords ? (
+                    <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
+                      <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                      Loading {activeRecordObj} records…
+                    </div>
+                  ) : (
+                    <Table
+                      columns={recordColumns}
+                      rows={filteredRecords}
+                      getRowKey={(r) => r.Id}
+                      borderless
+                      headerVariant='uppercase'
+                      cellPaddingClassName='px-5 py-3'
+                      rowClassName={(row) =>
+                        `border-b border-gray-50 transition-colors cursor-pointer ${activeSelectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
+                      }
+                      onRowClick={(row) => toggleRecord(row.Id)}
+                    />
+                  )}
+
+                  {hasMore && (
+                    <button
+                      onClick={() => setCursorByObj((p) => ({ ...p, [activeRecordObj]: nextCursor }))}
+                      disabled={isFetchingMore}
+                      className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
+                    >
+                      {isFetchingMore ? 'Loading…' : `Load more ${activeRecordObj} records`}
+                    </button>
+                  )}
+
+                  {/* Selected summary per object */}
+                  {totalSelectedRecords > 0 && (
+                    <div className='rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-1'>
+                      <p className='text-xs font-semibold text-gray-600 mb-2'>Selection summary</p>
+                      {addedRecordObjs.map((obj) => {
+                        const count = selectedRecordsByObj[obj]?.size ?? 0;
+                        return count > 0 ? (
+                          <div key={obj} className='flex items-center justify-between text-xs'>
+                            <span className='font-mono text-gray-700'>{obj}</span>
+                            <span className='font-semibold text-blue-600'>{count} record{count !== 1 ? 's' : ''}</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+
+                  {showIdList && (
+                    <div className='space-y-2'>
+                      <p className='text-xs font-semibold text-gray-700'>Paste record IDs or external IDs (one per line) for <span className='font-mono text-blue-600'>{activeRecordObj}</span></p>
+                      <textarea
+                        value={idListText} onChange={(e) => setIdListText(e.target.value)}
+                        placeholder={'0013a00001AbcDe\n0013a00001AbcDf'}
+                        rows={4}
+                        className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
+                      />
+                      <div className='flex gap-2'>
+                        <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Add IDs</button>
+                        <button onClick={() => setShowIdList(false)} className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {addedRecordObjs.length === 0 && (
+                <p className='text-sm text-gray-400 text-center py-6'>Select an object above and click <strong>+ Add Object</strong> to start picking records.</p>
               )}
             </div>
           </div>
