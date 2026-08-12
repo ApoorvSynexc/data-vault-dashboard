@@ -233,24 +233,48 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [fieldFilter,      setFieldFilter]      = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
   const [fieldSearch,      setFieldSearch]      = useState('');
 
-  // custom filter state
+  // custom filter state — multi-object
   const [filterTab,        setFilterTab]        = useState<FilterTab>('visual');
-  const [filterObj,        setFilterObj]        = useState('');
-  const [filterRows,       setFilterRows]       = useState<FilterRow[]>([]);
-  const [orGroups,         setOrGroups]         = useState<OrGroup[]>([]);
-  const [filterLogic,      setFilterLogic]      = useState('');
-  const [soqlObj,          setSoqlObj]          = useState('');
-  const [soqlWhere,        setSoqlWhere]        = useState('');
+  const [filterPickerObj,  setFilterPickerObj]  = useState('');                 // dropdown before "Add"
+  const [addedFilterObjs,  setAddedFilterObjs]  = useState<string[]>([]);
+  const [activeFilterObj,  setActiveFilterObj]  = useState('');
+
+  type FilterConfig = { rows: FilterRow[]; orGroups: OrGroup[]; filterLogic: string };
+  const [filterConfigByObj, setFilterConfigByObj] = useState<Record<string, FilterConfig>>({});
+
+  // Derived helpers for the active object's config
+  const activeFilterCfg: FilterConfig = filterConfigByObj[activeFilterObj] ?? { rows: [], orGroups: [], filterLogic: '' };
+  const filterRows  = activeFilterCfg.rows;
+  const orGroups    = activeFilterCfg.orGroups;
+  const filterLogic = activeFilterCfg.filterLogic;
+
+  const setFilterCfg = (obj: string, patch: Partial<FilterConfig>) =>
+    setFilterConfigByObj((p) => ({ ...p, [obj]: { ...(p[obj] ?? { rows: [], orGroups: [], filterLogic: '' }), ...patch } }));
+
+  // SOQL tab state — per-object too
+  const [soqlConfigByObj,  setSoqlConfigByObj]  = useState<Record<string, string>>({});
+  const soqlWhere = soqlConfigByObj[activeFilterObj] ?? '';
+  const setSoqlWhere = (val: string) => setSoqlConfigByObj((p) => ({ ...p, [activeFilterObj]: val }));
+
+  // keep filterObj alias for the API query (used by filter fields + picklist)
+  const filterObj = activeFilterObj;
 
   // changed-since state
   const [changedDate,      setChangedDate]      = useState('2026-05-01');
 
-  // csv state
-  const [csvObj,           setCsvObj]           = useState('');
-  const [csvText,          setCsvText]          = useState('');
-  const [csvParsedIds,     setCsvParsedIds]     = useState<string[]>([]);
-  const [csvFileName,      setCsvFileName]      = useState<string | null>(null);
-  const [csvErrors,        setCsvErrors]        = useState<{ row: number; message: string }[]>([]);
+  // csv state — multi-object
+  const [csvObjSearch,     setCsvObjSearch]     = useState('');
+  const [addedCsvObjs,     setAddedCsvObjs]     = useState<string[]>([]);
+  const [activeCsvObj,     setActiveCsvObj]     = useState('');
+
+  type CsvConfig = { text: string; parsedIds: string[]; fileName: string | null; errors: { row: number; message: string }[] };
+  const [csvConfigByObj,   setCsvConfigByObj]   = useState<Record<string, CsvConfig>>({});
+  const blankCsvConfig = (): CsvConfig => ({ text: '', parsedIds: [], fileName: null, errors: [] });
+  const activeCsvCfg: CsvConfig = csvConfigByObj[activeCsvObj] ?? blankCsvConfig();
+
+  const setCsvCfg = (obj: string, patch: Partial<CsvConfig>) =>
+    setCsvConfigByObj((p) => ({ ...p, [obj]: { ...(p[obj] ?? blankCsvConfig()), ...patch } }));
+
   const [csvErrorOpen,     setCsvErrorOpen]     = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -259,10 +283,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     'any.required': 'ID is required',
   });
 
-  const parseCsvFile = (file: File) => {
-    setCsvErrors([]);
-    setCsvParsedIds([]);
-    setCsvFileName(file.name);
+  const parseCsvFile = (file: File, targetObj: string) => {
+    setCsvCfg(targetObj, { errors: [], parsedIds: [], fileName: file.name });
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
@@ -270,34 +292,27 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         const errors: { row: number; message: string }[] = [];
         const ids: string[] = [];
 
-        // Validate that first column is "Id"
         const firstCol = results.meta.fields?.[0];
-        if (!firstCol || firstCol.trim() !== 'Id') {
+        if (!firstCol || firstCol.trim().toLowerCase() !== 'id') {
           errors.push({ row: 0, message: `First column must be "Id" but found "${firstCol ?? 'nothing'}"` });
-          setCsvErrors(errors);
+          setCsvCfg(targetObj, { errors, fileName: file.name });
           setCsvErrorOpen(true);
           return;
         }
 
         results.data.forEach((row, index) => {
-          const rowNum = index + 2; // +2 because row 1 is header
-          const id = row['Id']?.trim();
+          const rowNum = index + 2;
+          const id = row[firstCol]?.trim();
           const { error } = idSchema.validate(id);
-          if (error) {
-            errors.push({ row: rowNum, message: error.message });
-          } else {
-            ids.push(id);
-          }
+          if (error) errors.push({ row: rowNum, message: error.message });
+          else ids.push(id);
         });
 
-        if (errors.length > 0) {
-          setCsvErrors(errors);
-          setCsvErrorOpen(true);
-        }
-        setCsvParsedIds(ids);
+        if (errors.length > 0) setCsvErrorOpen(true);
+        setCsvCfg(targetObj, { parsedIds: ids, errors, fileName: file.name });
       },
       error: (err) => {
-        setCsvErrors([{ row: 0, message: `Failed to parse CSV: ${err.message}` }]);
+        setCsvCfg(targetObj, { errors: [{ row: 0, message: `Failed to parse CSV: ${err.message}` }], fileName: file.name });
         setCsvErrorOpen(true);
       },
     });
@@ -319,16 +334,16 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       return { ...p, [activeRecordObj]: cur };
     });
 
-  const addRecordObject = () => {
-    if (!recordObj || addedRecordObjs.includes(recordObj)) {
-      setActiveRecordObj(recordObj);
+  const addRecordObject = (name: string) => {
+    if (!name || addedRecordObjs.includes(name)) {
+      setActiveRecordObj(name);
       return;
     }
-    setAddedRecordObjs((p) => [...p, recordObj]);
-    setActiveRecordObj(recordObj);
-    setAllRecordsByObj((p) => ({ ...p, [recordObj]: [] }));
-    setSelectedRecordsByObj((p) => ({ ...p, [recordObj]: new Set() }));
-    setCursorByObj((p) => ({ ...p, [recordObj]: undefined }));
+    setAddedRecordObjs((p) => [...p, name]);
+    setActiveRecordObj(name);
+    setAllRecordsByObj((p) => ({ ...p, [name]: [] }));
+    setSelectedRecordsByObj((p) => ({ ...p, [name]: new Set() }));
+    setCursorByObj((p) => ({ ...p, [name]: undefined }));
   };
 
   const removeRecordObject = (obj: string) => {
@@ -370,13 +385,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   };
 
   const addFilterRow = () =>
-    setFilterRows((p) => [...p, makeBlankRow(filterFields)]);
+    setFilterCfg(activeFilterObj, { rows: [...filterRows, makeBlankRow(filterFields)] });
 
   const removeFilterRow = (id: string) =>
-    setFilterRows((p) => p.filter((r) => r.id !== id));
+    setFilterCfg(activeFilterObj, { rows: filterRows.filter((r) => r.id !== id) });
 
   const updateFilterRow = (id: string, patch: Partial<FilterRow>) =>
-    setFilterRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+    setFilterCfg(activeFilterObj, { rows: filterRows.map((r) => r.id === id ? { ...r, ...patch } : r) });
 
   const handleFilterFieldChange = (id: string, apiName: string) => {
     const dataType = resolveDataType(apiName, filterFields);
@@ -389,19 +404,19 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   };
 
   const addOrGroup = () =>
-    setOrGroups((p) => [...p, { id: String(Date.now()), rows: [makeBlankRow(filterFields)] }]);
+    setFilterCfg(activeFilterObj, { orGroups: [...orGroups, { id: String(Date.now()), rows: [makeBlankRow(filterFields)] }] });
 
   const removeOrGroup = (groupId: string) =>
-    setOrGroups((p) => p.filter((g) => g.id !== groupId));
+    setFilterCfg(activeFilterObj, { orGroups: orGroups.filter((g) => g.id !== groupId) });
 
   const addOrGroupRow = (groupId: string) =>
-    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, makeBlankRow(filterFields)] }));
+    setFilterCfg(activeFilterObj, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: [...g.rows, makeBlankRow(filterFields)] }) });
 
   const removeOrGroupRow = (groupId: string, rowId: string) =>
-    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }));
+    setFilterCfg(activeFilterObj, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }) });
 
   const updateOrGroupRow = (groupId: string, rowId: string, patch: Partial<FilterRow>) =>
-    setOrGroups((p) => p.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }));
+    setFilterCfg(activeFilterObj, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }) });
 
   const handleOrGroupFieldChange = (groupId: string, rowId: string, apiName: string) => {
     const dataType = resolveDataType(apiName, filterFields);
@@ -411,6 +426,23 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     } else {
       setPendingPicklist(null);
     }
+  };
+
+  const addFilterObject = () => {
+    if (!filterPickerObj || addedFilterObjs.includes(filterPickerObj)) {
+      setActiveFilterObj(filterPickerObj);
+      return;
+    }
+    setAddedFilterObjs((p) => [...p, filterPickerObj]);
+    setActiveFilterObj(filterPickerObj);
+    setFilterConfigByObj((p) => ({ ...p, [filterPickerObj]: { rows: [], orGroups: [], filterLogic: '' } }));
+  };
+
+  const removeFilterObject = (obj: string) => {
+    setAddedFilterObjs((p) => p.filter((o) => o !== obj));
+    setFilterConfigByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
+    setSoqlConfigByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
+    setActiveFilterObj((prev) => prev === obj ? (addedFilterObjs.find((o) => o !== obj) ?? '') : prev);
   };
 
 
@@ -517,12 +549,26 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'field':
         return { type: 'FIELD', fields: [...fieldSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] })) };
       case 'filter':
-        if (filterTab === 'soql') return { type: 'FILTER', objectName: soqlObj, filters: { type: 'SOQL', soqlQuery: soqlWhere.trim() ? `SELECT Id FROM ${soqlObj} WHERE ${soqlWhere.trim()}` : `SELECT Id FROM ${soqlObj}` } };
-        return { type: 'FILTER', objectName: filterObj, filters: { type: 'AND', fields: filterRows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
+        return {
+          type: 'FILTER',
+          objects: addedFilterObjs.map((obj) => {
+            if (filterTab === 'soql') {
+              const where = soqlConfigByObj[obj] ?? '';
+              return { objectName: obj, filters: { type: 'SOQL' as const, soqlQuery: where.trim() ? `SELECT Id FROM ${obj} WHERE ${where.trim()}` : `SELECT Id FROM ${obj}` } };
+            }
+            const cfg = filterConfigByObj[obj] ?? { rows: [], orGroups: [], filterLogic: '' };
+            return { objectName: obj, filters: { type: 'AND' as const, fields: cfg.rows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
+          }),
+        };
       case 'changed':
         return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
       case 'csv':
-        return { type: 'BULK_CSV', objectName: csvObj, bulkCsvIds: csvParsedIds };
+        return {
+          type: 'BULK_CSV',
+          records: addedCsvObjs
+            .filter((obj) => (csvConfigByObj[obj]?.parsedIds?.length ?? 0) > 0)
+            .map((obj) => ({ objectName: obj, bulkCsvIds: csvConfigByObj[obj].parsedIds })),
+        };
       case 'deleted':
         return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':
@@ -690,152 +736,185 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {/* ── Sub-UI: By Record ─────────────────────────────────────────── */}
         {scopeMode === 'record' && (
           <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3'>
+            <div className='px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>◉ Select Records</Typography>
-              {totalSelectedRecords > 0 && (
-                <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
-                  {addedRecordObjs.length} object{addedRecordObjs.length !== 1 ? 's' : ''} · {totalSelectedRecords} record{totalSelectedRecords !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <div className='p-5 space-y-4'>
-              <InfoCallout>
-                Select an object, click <strong>Add Object</strong> to open its records tab. Repeat for multiple objects — each gets its own tab.
-              </InfoCallout>
-
-              {/* Object picker + Add button */}
               <div className='flex items-center gap-2 flex-wrap'>
-                <select
-                  value={recordObj}
-                  onChange={(e) => setRecordObj(e.target.value)}
-                  className='h-9 text-sm border border-gray-200 rounded-lg px-3 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:flex-none sm:w-56'
-                >
-                  <option value=''>— Select an object —</option>
-                  {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-                <button
-                  onClick={addRecordObject}
-                  disabled={!recordObj}
-                  className='h-9 px-4 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0'
-                >
-                  + Add Object
-                </button>
+                <div className='relative'>
+                  <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                  </svg>
+                  <input
+                    value={recordObj}
+                    onChange={(e) => setRecordObj(e.target.value)}
+                    placeholder='Search objects…'
+                    className='pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-44'
+                  />
+                </div>
+                {totalSelectedRecords > 0 && (
+                  <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
+                    {addedRecordObjs.length} object{addedRecordObjs.length !== 1 ? 's' : ''} · {totalSelectedRecords} record{totalSelectedRecords !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
+            </div>
 
-              {/* Object tabs */}
-              {addedRecordObjs.length > 0 && (
-                <>
-                  <div className='flex items-center gap-1 flex-wrap border-b border-gray-200'>
+            {/* Object table — tick to add tabs */}
+            {sourceObjectsLoading ? (
+              <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading objects…
+              </div>
+            ) : sourceObjectNames.length === 0 ? (
+              <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
+            ) : (
+              <div className='divide-y divide-gray-50' style={{ maxHeight: 280, overflowY: 'auto' }}>
+                {sourceObjectNames
+                  .filter((name) => name.toLowerCase().includes(recordObj.toLowerCase()))
+                  .map((name) => {
+                    const isTicked  = addedRecordObjs.includes(name);
+                    const isActive  = activeRecordObj === name;
+                    const recCount  = selectedRecordsByObj[name]?.size ?? 0;
+                    return (
+                      <div
+                        key={name}
+                        className={`flex items-center gap-3 px-5 py-3 transition-colors ${isActive ? 'bg-blue-50' : isTicked ? 'bg-gray-50/60' : 'bg-white hover:bg-gray-50'}`}
+                      >
+                        <input
+                          type='checkbox'
+                          checked={isTicked}
+                          onChange={() => {
+                            if (isTicked) {
+                              removeRecordObject(name);
+                            } else {
+                              addRecordObject(name);
+                            }
+                          }}
+                          className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0'
+                        />
+                        <span className={`text-sm font-mono flex-1 min-w-0 truncate ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800 font-semibold' : 'text-gray-600'}`}>
+                          {name}
+                        </span>
+                        {isTicked && (
+                          <button
+                            onClick={() => { setActiveRecordObj(name); setRecordSearch(''); }}
+                            className={`flex-shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border transition-colors ${
+                              isActive
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-blue-300 text-blue-600 hover:bg-blue-50'
+                            }`}
+                          >
+                            {recCount > 0 ? `${recCount} record${recCount !== 1 ? 's' : ''} ✎` : 'Select Records →'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Record panel — shows when an object tab is active */}
+            {addedRecordObjs.length > 0 && activeRecordObj && (
+              <div className='border-t border-gray-200 p-5 space-y-4'>
+                {/* Object tabs bar */}
+                <div className='flex items-center gap-1 flex-wrap border-b border-gray-200'>
+                  {addedRecordObjs.map((obj) => {
+                    const count = selectedRecordsByObj[obj]?.size ?? 0;
+                    const isActive = activeRecordObj === obj;
+                    return (
+                      <div
+                        key={obj}
+                        onClick={() => { setActiveRecordObj(obj); setRecordSearch(''); }}
+                        className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer text-xs font-semibold border-b-2 transition-colors -mb-px ${
+                          isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        <span className='font-mono'>{obj}</span>
+                        {count > 0 && (
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {count}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Search bar for active tab */}
+                <div className='relative'>
+                  <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                  </svg>
+                  <input
+                    value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
+                    placeholder={`Search ${activeRecordObj} records by name or ID…`}
+                    className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                  />
+                </div>
+
+                {/* Record table for active tab */}
+                {isLoadingRecords ? (
+                  <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
+                    <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                    Loading {activeRecordObj} records…
+                  </div>
+                ) : (
+                  <Table
+                    columns={recordColumns}
+                    rows={filteredRecords}
+                    getRowKey={(r) => r.Id}
+                    borderless
+                    headerVariant='uppercase'
+                    cellPaddingClassName='px-5 py-3'
+                    rowClassName={(row) =>
+                      `border-b border-gray-50 transition-colors cursor-pointer ${activeSelectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
+                    }
+                    onRowClick={(row) => toggleRecord(row.Id)}
+                  />
+                )}
+
+                {hasMore && (
+                  <button
+                    onClick={() => setCursorByObj((p) => ({ ...p, [activeRecordObj]: nextCursor }))}
+                    disabled={isFetchingMore}
+                    className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
+                  >
+                    {isFetchingMore ? 'Loading…' : `Load more ${activeRecordObj} records`}
+                  </button>
+                )}
+
+                {/* Selected summary per object */}
+                {totalSelectedRecords > 0 && (
+                  <div className='rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-1'>
+                    <p className='text-xs font-semibold text-gray-600 mb-2'>Selection summary</p>
                     {addedRecordObjs.map((obj) => {
                       const count = selectedRecordsByObj[obj]?.size ?? 0;
-                      const isActive = activeRecordObj === obj;
-                      return (
-                        <div
-                          key={obj}
-                          onClick={() => { setActiveRecordObj(obj); setRecordSearch(''); }}
-                          className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer text-xs font-semibold border-b-2 transition-colors -mb-px ${
-                            isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                          }`}
-                        >
-                          <span className='font-mono'>{obj}</span>
-                          {count > 0 && (
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                              {count}
-                            </span>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); removeRecordObject(obj); }}
-                            className='ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:text-white hover:bg-red-500 transition-colors flex-shrink-0 text-[11px] font-bold'
-                            title={`Remove ${obj}`}
-                          >
-                            ×
-                          </button>
+                      return count > 0 ? (
+                        <div key={obj} className='flex items-center justify-between text-xs'>
+                          <span className='font-mono text-gray-700'>{obj}</span>
+                          <span className='font-semibold text-blue-600'>{count} record{count !== 1 ? 's' : ''}</span>
                         </div>
-                      );
+                      ) : null;
                     })}
                   </div>
+                )}
 
-                  {/* Search bar for active tab */}
-                  <div className='relative'>
-                    <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                      <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
-                    </svg>
-                    <input
-                      value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
-                      placeholder={`Search ${activeRecordObj} records by name or ID…`}
-                      className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                {showIdList && (
+                  <div className='space-y-2'>
+                    <p className='text-xs font-semibold text-gray-700'>Paste record IDs or external IDs (one per line) for <span className='font-mono text-blue-600'>{activeRecordObj}</span></p>
+                    <textarea
+                      value={idListText} onChange={(e) => setIdListText(e.target.value)}
+                      placeholder={'0013a00001AbcDe\n0013a00001AbcDf'}
+                      rows={4}
+                      className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
                     />
+                    <div className='flex gap-2'>
+                      <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Add IDs</button>
+                      <button onClick={() => setShowIdList(false)} className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>Cancel</button>
+                    </div>
                   </div>
-
-                  {/* Record table for active tab */}
-                  {isLoadingRecords ? (
-                    <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
-                      <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                      Loading {activeRecordObj} records…
-                    </div>
-                  ) : (
-                    <Table
-                      columns={recordColumns}
-                      rows={filteredRecords}
-                      getRowKey={(r) => r.Id}
-                      borderless
-                      headerVariant='uppercase'
-                      cellPaddingClassName='px-5 py-3'
-                      rowClassName={(row) =>
-                        `border-b border-gray-50 transition-colors cursor-pointer ${activeSelectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
-                      }
-                      onRowClick={(row) => toggleRecord(row.Id)}
-                    />
-                  )}
-
-                  {hasMore && (
-                    <button
-                      onClick={() => setCursorByObj((p) => ({ ...p, [activeRecordObj]: nextCursor }))}
-                      disabled={isFetchingMore}
-                      className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
-                    >
-                      {isFetchingMore ? 'Loading…' : `Load more ${activeRecordObj} records`}
-                    </button>
-                  )}
-
-                  {/* Selected summary per object */}
-                  {totalSelectedRecords > 0 && (
-                    <div className='rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-1'>
-                      <p className='text-xs font-semibold text-gray-600 mb-2'>Selection summary</p>
-                      {addedRecordObjs.map((obj) => {
-                        const count = selectedRecordsByObj[obj]?.size ?? 0;
-                        return count > 0 ? (
-                          <div key={obj} className='flex items-center justify-between text-xs'>
-                            <span className='font-mono text-gray-700'>{obj}</span>
-                            <span className='font-semibold text-blue-600'>{count} record{count !== 1 ? 's' : ''}</span>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-
-                  {showIdList && (
-                    <div className='space-y-2'>
-                      <p className='text-xs font-semibold text-gray-700'>Paste record IDs or external IDs (one per line) for <span className='font-mono text-blue-600'>{activeRecordObj}</span></p>
-                      <textarea
-                        value={idListText} onChange={(e) => setIdListText(e.target.value)}
-                        placeholder={'0013a00001AbcDe\n0013a00001AbcDf'}
-                        rows={4}
-                        className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
-                      />
-                      <div className='flex gap-2'>
-                        <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Add IDs</button>
-                        <button onClick={() => setShowIdList(false)} className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>Cancel</button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {addedRecordObjs.length === 0 && (
-                <p className='text-sm text-gray-400 text-center py-6'>Select an object above and click <strong>+ Add Object</strong> to start picking records.</p>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1010,45 +1089,81 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               <Typography as='h3' variant='sectionTitle' color='secondary'>⚙ Custom Filter</Typography>
             </div>
             <div className='p-5 space-y-4'>
-              {/* Tabs */}
-              <div className='flex border-b border-gray-200'>
-                {(['visual', 'soql'] as FilterTab[]).map((t) => (
-                  <button
-                    key={t} onClick={() => setFilterTab(t)}
-                    className={`pb-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
-                      filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
-                  </button>
-                ))}
+
+              {/* Object picker row */}
+              <div className='flex items-center gap-3 flex-wrap'>
+                <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Add Object</label>
+                <select
+                  value={filterPickerObj}
+                  onChange={(e) => setFilterPickerObj(e.target.value)}
+                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-52'
+                >
+                  <option value=''>— Select an object —</option>
+                  {sourceObjectNames.filter((n) => !addedFilterObjs.includes(n)).map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={addFilterObject}
+                  disabled={!filterPickerObj}
+                  className='h-8 px-3 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                >+ Add Object</button>
               </div>
 
-              {/* Visual builder */}
-              {filterTab === 'visual' && (
-                <div className='space-y-4'>
-
-                  {/* Object picker */}
-                  <div className='flex items-center gap-3 flex-wrap'>
-                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
-                    <select
-                      value={filterObj}
-                      onChange={(e) => { setFilterObj(e.target.value); setFilterRows([]); setOrGroups([]); }}
-                      className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+              {/* Object tabs */}
+              {addedFilterObjs.length > 0 && (
+                <div className='flex gap-1.5 flex-wrap border-b border-gray-200 pb-0'>
+                  {addedFilterObjs.map((obj) => (
+                    <button
+                      key={obj}
+                      onClick={() => setActiveFilterObj(obj)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-t-lg border border-b-0 transition-colors ${
+                        activeFilterObj === obj
+                          ? 'bg-white border-gray-200 text-blue-600'
+                          : 'bg-gray-50 border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
                     >
-                      <option value=''>— Select an object —</option>
-                      {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                    {filterFieldsLoading && (
-                      <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                    )}
+                      {obj}
+                      <span
+                        onClick={(e) => { e.stopPropagation(); removeFilterObject(obj); }}
+                        className='ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:text-white hover:bg-red-500 transition-colors flex-shrink-0 text-[11px] font-bold cursor-pointer'
+                      >×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {addedFilterObjs.length === 0 ? (
+                <p className='text-xs text-gray-400 py-4 text-center'>Add at least one object above to start building filters.</p>
+              ) : !activeFilterObj ? (
+                <p className='text-xs text-gray-400 py-4 text-center'>Select an object tab to configure its filters.</p>
+              ) : (
+                <>
+                  {/* Filter mode tabs (Visual / SOQL) */}
+                  <div className='flex border-b border-gray-200'>
+                    {(['visual', 'soql'] as FilterTab[]).map((t) => (
+                      <button
+                        key={t} onClick={() => setFilterTab(t)}
+                        className={`pb-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+                          filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
+                      </button>
+                    ))}
                   </div>
 
-                  {!filterObj ? (
-                    <p className='text-xs text-gray-400 py-2'>Select an object above to start building filters.</p>
-                  ) : (
-                    <>
-                      <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>{filterObj}</strong> · All filters in a group combine with AND. Use OR groups to express alternatives.</p>
+                  {/* Visual builder */}
+                  {filterTab === 'visual' && (
+                    <div className='space-y-4'>
+                      {filterFieldsLoading && (
+                        <div className='flex items-center gap-2 text-xs text-gray-400'>
+                          <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                          Loading fields for {activeFilterObj}…
+                        </div>
+                      )}
+                      <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>{activeFilterObj}</strong> · Filters in a group combine with AND. Use OR groups for alternatives.</p>
+
                       <div className='space-y-2'>
                         {filterRows.map((row, idx) => (
                           <div key={row.id} className='flex items-center gap-2 flex-wrap'>
@@ -1139,72 +1254,56 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                         <div className='flex items-center gap-3 flex-wrap'>
                           <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
                           <input
-                            value={filterLogic} onChange={(e) => setFilterLogic(e.target.value)}
+                            value={filterLogic} onChange={(e) => setFilterCfg(activeFilterObj, { filterLogic: e.target.value })}
                             placeholder='e.g. (1 OR 2) AND (3 OR 4)'
                             className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none'
                           />
                         </div>
                         <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* SOQL editor */}
-              {filterTab === 'soql' && (
-                <div className='space-y-4'>
-                  <p className='text-xs text-gray-500'>Select an object, then write only the WHERE clause. The full query is built automatically.</p>
-
-                  {/* Object picker — same as visual builder */}
-                  <div className='flex items-center gap-3 flex-wrap'>
-                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
-                    <select
-                      value={soqlObj}
-                      onChange={(e) => { setSoqlObj(e.target.value); setSoqlWhere(''); }}
-                      className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
-                    >
-                      <option value=''>— Select an object —</option>
-                      {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Query preview */}
-                  {soqlObj && (
-                    <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
-                      <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{soqlObj}</span>
-                      {soqlWhere.trim() && (
-                        <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
-                      )}
                     </div>
                   )}
 
-                  {/* WHERE clause input */}
-                  <div className='space-y-1.5'>
-                    <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
-                    <textarea
-                      value={soqlWhere}
-                      onChange={(e) => setSoqlWhere(e.target.value)}
-                      disabled={!soqlObj}
-                      rows={4}
-                      placeholder={soqlObj ? `e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01` : 'Select an object first…'}
-                      className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                    />
-                  </div>
+                  {/* SOQL editor */}
+                  {filterTab === 'soql' && (
+                    <div className='space-y-4'>
+                      <p className='text-xs text-gray-500'>Write only the WHERE clause for <strong className='text-gray-800'>{activeFilterObj}</strong>. The full query is built automatically.</p>
 
-                  <div className='flex justify-end'>
-                    <button
-                      type='button'
-                      disabled={!soqlObj || !soqlWhere.trim()}
-                      className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
-                    >
-                      <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                        <polyline points='20 6 9 17 4 12' />
-                      </svg>
-                      Validate Query
-                    </button>
-                  </div>
-                </div>
+                      {/* Query preview */}
+                      <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
+                        <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{activeFilterObj}</span>
+                        {soqlWhere.trim() && (
+                          <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
+                        )}
+                      </div>
+
+                      {/* WHERE clause input */}
+                      <div className='space-y-1.5'>
+                        <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
+                        <textarea
+                          value={soqlWhere}
+                          onChange={(e) => setSoqlWhere(e.target.value)}
+                          rows={4}
+                          placeholder={`e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01`}
+                          className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
+                        />
+                      </div>
+
+                      <div className='flex justify-end'>
+                        <button
+                          type='button'
+                          disabled={!soqlWhere.trim()}
+                          className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+                        >
+                          <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                            <polyline points='20 6 9 17 4 12' />
+                          </svg>
+                          Validate Query
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1264,100 +1363,188 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {/* ── Sub-UI: Bulk via CSV ──────────────────────────────────────── */}
         {scopeMode === 'csv' && (
           <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100'>
+            <div className='px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>📋 Bulk Match via CSV</Typography>
+              <div className='flex items-center gap-2 flex-wrap'>
+                <div className='relative'>
+                  <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                  </svg>
+                  <input
+                    value={csvObjSearch}
+                    onChange={(e) => setCsvObjSearch(e.target.value)}
+                    placeholder='Search objects…'
+                    className='pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-44'
+                  />
+                </div>
+                {addedCsvObjs.length > 0 && (
+                  <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
+                    {addedCsvObjs.length} object{addedCsvObjs.length !== 1 ? 's' : ''} · {addedCsvObjs.reduce((s, o) => s + (csvConfigByObj[o]?.parsedIds.length ?? 0), 0)} IDs
+                  </span>
+                )}
+              </div>
             </div>
-            <div className='p-5 space-y-4'>
 
-              {/* Object picker */}
-              <div className='flex items-center gap-3 flex-wrap'>
-                <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Object</label>
-                <select
-                  value={csvObj}
-                  onChange={(e) => setCsvObj(e.target.value)}
-                  className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48'
+            {/* Object table — tick to add tabs */}
+            {sourceObjectsLoading ? (
+              <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
+                <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                Loading objects…
+              </div>
+            ) : sourceObjectNames.length === 0 ? (
+              <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
+            ) : (
+              <div className='divide-y divide-gray-50' style={{ maxHeight: 280, overflowY: 'auto' }}>
+                {sourceObjectNames
+                  .filter((name) => name.toLowerCase().includes(csvObjSearch.toLowerCase()))
+                  .map((name) => {
+                    const isTicked  = addedCsvObjs.includes(name);
+                    const isActive  = activeCsvObj === name;
+                    const idCount   = csvConfigByObj[name]?.parsedIds.length ?? 0;
+                    return (
+                      <div
+                        key={name}
+                        className={`flex items-center gap-3 px-5 py-3 transition-colors ${isActive ? 'bg-blue-50' : isTicked ? 'bg-gray-50/60' : 'bg-white hover:bg-gray-50'}`}
+                      >
+                        <input
+                          type='checkbox'
+                          checked={isTicked}
+                          onChange={() => {
+                            if (isTicked) {
+                              setAddedCsvObjs((p) => p.filter((o) => o !== name));
+                              setCsvConfigByObj((p) => { const n = { ...p }; delete n[name]; return n; });
+                              setActiveCsvObj((prev) => prev === name ? (addedCsvObjs.find((o) => o !== name) ?? '') : prev);
+                            } else {
+                              setAddedCsvObjs((p) => [...p, name]);
+                              setActiveCsvObj(name);
+                            }
+                          }}
+                          className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0'
+                        />
+                        <span className={`text-sm font-mono flex-1 min-w-0 truncate ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800 font-semibold' : 'text-gray-600'}`}>
+                          {name}
+                        </span>
+                        {isTicked && (
+                          <button
+                            onClick={() => setActiveCsvObj(name)}
+                            className={`flex-shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border transition-colors ${
+                              isActive
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-blue-300 text-blue-600 hover:bg-blue-50'
+                            }`}
+                          >
+                            {idCount > 0 ? `${idCount} ID${idCount !== 1 ? 's' : ''} ✎` : 'Upload CSV →'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* CSV upload panel — shows when an object is active */}
+            {addedCsvObjs.length > 0 && activeCsvObj && (
+              <div className='border-t border-gray-200 p-5 space-y-4'>
+
+                {/* Object tabs */}
+                <div className='flex items-center gap-1 flex-wrap border-b border-gray-200'>
+                  {addedCsvObjs.map((obj) => {
+                    const idCount = csvConfigByObj[obj]?.parsedIds.length ?? 0;
+                    const isActive = activeCsvObj === obj;
+                    return (
+                      <div
+                        key={obj}
+                        onClick={() => setActiveCsvObj(obj)}
+                        className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer text-xs font-semibold border-b-2 transition-colors -mb-px ${
+                          isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        <span className='font-mono'>{obj}</span>
+                        {idCount > 0 && (
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {idCount}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='.csv'
+                  className='hidden'
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) parseCsvFile(file, activeCsvObj);
+                    e.target.value = '';
+                  }}
+                />
+
+                {/* Drop zone */}
+                <div
+                  className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) parseCsvFile(file, activeCsvObj);
+                  }}
                 >
-                  <option value=''>— Select an object —</option>
-                  {sourceObjectNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-                {sourceObjectsLoading && (
-                  <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='w-10 h-10 mx-auto mb-3 text-gray-300'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M12 16V4m0 0L8 8m4-4l4 4M4 20h16' />
+                  </svg>
+                  {activeCsvCfg.fileName ? (
+                    <p className='text-sm font-semibold text-blue-600'>{activeCsvCfg.fileName}</p>
+                  ) : (
+                    <p className='text-sm font-semibold text-gray-700'>Drop a CSV for <span className='font-mono text-blue-600'>{activeCsvObj}</span> here or click to browse</p>
+                  )}
+                  <p className='text-xs text-gray-400 mt-1'>First column must be <code className='bg-gray-100 px-1 rounded'>Id</code>. UTF-8 encoded.</p>
+                </div>
+
+                {/* Paste IDs */}
+                <p className='text-xs font-semibold text-gray-700'>Or paste record IDs (one per line) for <span className='font-mono text-blue-600'>{activeCsvObj}</span></p>
+                <textarea
+                  value={activeCsvCfg.text}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    const ids = text.split('\n').map((l) => l.trim()).filter(Boolean);
+                    const errors: { row: number; message: string }[] = [];
+                    const valid: string[] = [];
+                    ids.forEach((id, i) => {
+                      const { error } = idSchema.validate(id);
+                      if (error) errors.push({ row: i + 1, message: error.message });
+                      else valid.push(id);
+                    });
+                    setCsvCfg(activeCsvObj, { text, parsedIds: valid, errors, fileName: null });
+                  }}
+                  rows={5}
+                  placeholder={'001dN00000xECllQAG\n001dN00000xEClmQAG\n001dN00000xEClnQAG'}
+                  className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
+                />
+
+                {/* Summary */}
+                {activeCsvCfg.parsedIds.length > 0 && (
+                  <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><path strokeLinecap='round' strokeLinejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M5 21h14a2 2 0 002-2V7l-5-5H5a2 2 0 00-2 2v14a2 2 0 002 2z'/></svg>
+                    <span>
+                      <strong>{activeCsvCfg.parsedIds.length} valid ID{activeCsvCfg.parsedIds.length !== 1 ? 's' : ''}</strong> loaded for <span className='font-mono'>{activeCsvObj}</span>
+                      {activeCsvCfg.errors.length > 0 && <> · <span className='text-red-600 font-semibold cursor-pointer underline' onClick={() => setCsvErrorOpen(true)}>{activeCsvCfg.errors.length} error{activeCsvCfg.errors.length !== 1 ? 's' : ''}</span></>}
+                    </span>
+                  </div>
+                )}
+
+                {activeCsvCfg.errors.length > 0 && activeCsvCfg.parsedIds.length === 0 && (
+                  <div className='flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 cursor-pointer' onClick={() => setCsvErrorOpen(true)}>
+                    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+                    <span><strong>{activeCsvCfg.errors.length} error{activeCsvCfg.errors.length !== 1 ? 's' : ''}</strong> found — <span className='underline'>click to view</span></span>
+                  </div>
                 )}
               </div>
-
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type='file'
-                accept='.csv'
-                className='hidden'
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) parseCsvFile(file);
-                  e.target.value = '';
-                }}
-              />
-
-              {/* Drop zone */}
-              <div
-                className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) parseCsvFile(file);
-                }}
-              >
-                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='w-10 h-10 mx-auto mb-3 text-gray-300'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 16V4m0 0L8 8m4-4l4 4M4 20h16' />
-                </svg>
-                {csvFileName ? (
-                  <p className='text-sm font-semibold text-blue-600'>{csvFileName}</p>
-                ) : (
-                  <p className='text-sm font-semibold text-gray-700'>Drop a CSV file here or click to browse</p>
-                )}
-                <p className='text-xs text-gray-400 mt-1'>First column must be <code className='bg-gray-100 px-1 rounded'>Id</code>. UTF-8 encoded.</p>
-              </div>
-
-              {/* Paste IDs */}
-              <p className='text-xs font-semibold text-gray-700'>Or paste record IDs (one per line)</p>
-              <textarea
-                value={csvText}
-                onChange={(e) => {
-                  setCsvText(e.target.value);
-                  const ids = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
-                  const errors: { row: number; message: string }[] = [];
-                  const valid: string[] = [];
-                  ids.forEach((id, i) => {
-                    const { error } = idSchema.validate(id);
-                    if (error) errors.push({ row: i + 1, message: error.message });
-                    else valid.push(id);
-                  });
-                  setCsvParsedIds(valid);
-                  setCsvErrors(errors);
-                  setCsvFileName(null);
-                }}
-                rows={5}
-                placeholder={'001dN00000xECllQAG\n001dN00000xEClmQAG\n001dN00000xEClnQAG'}
-                className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
-              />
-
-              {/* Summary */}
-              {csvParsedIds.length > 0 && (
-                <div className='flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800'>
-                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><path strokeLinecap='round' strokeLinejoin='round' d='M9 17v-2m3 2v-4m3 4v-6M5 21h14a2 2 0 002-2V7l-5-5H5a2 2 0 00-2 2v14a2 2 0 002 2z'/></svg>
-                  <span><strong>{csvParsedIds.length} valid ID{csvParsedIds.length !== 1 ? 's' : ''}</strong> loaded{csvErrors.length > 0 ? ` · ` : ''}{csvErrors.length > 0 && <span className='text-red-600 font-semibold cursor-pointer underline' onClick={() => setCsvErrorOpen(true)}>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</span>}</span>
-                </div>
-              )}
-
-              {csvErrors.length > 0 && csvParsedIds.length === 0 && (
-                <div className='flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 cursor-pointer' onClick={() => setCsvErrorOpen(true)}>
-                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-4 h-4 flex-shrink-0'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
-                  <span><strong>{csvErrors.length} error{csvErrors.length !== 1 ? 's' : ''}</strong> found in CSV — <span className='underline'>click to view</span></span>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -1375,7 +1562,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                 </button>
               </div>
               <div className='overflow-y-auto flex-1 px-5 py-4 space-y-2'>
-                {csvErrors.map((err, i) => (
+                {activeCsvCfg.errors.map((err, i) => (
                   <div key={i} className='flex items-start gap-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5'>
                     <span className='text-xs font-bold text-red-400 w-14 shrink-0'>{err.row === 0 ? 'Header' : `Row ${err.row}`}</span>
                     <span className='text-xs text-red-700'>{err.message}</span>
