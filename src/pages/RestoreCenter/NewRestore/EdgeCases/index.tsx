@@ -86,14 +86,11 @@ const FIELD_DEFAULTS = [
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-// Convert UI label to SCREAMING_SNAKE_CASE enum value
-const toEnum = (label: string): string =>
-  label.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
 
 interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; scopeMode: string; restoreMode: string; }
 
 export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Props) {
-  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer');
+  const [ecDuplicate,    setEcDuplicate]    = useState('Overwrite');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
   const [ecParent,       setEcParent]       = useState('Restore parent first');
@@ -202,8 +199,6 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 <select value={ecDuplicate} onChange={(e) => setEcDuplicate(e.target.value)} className={selectClass} style={selectStyle}>
                   <option>Overwrite</option>
                   <option>Skip</option>
-                  <option>Create new copy with suffix</option>
-                  <option>Use destination if newer</option>
                 </select>
               </div>
               )}
@@ -509,54 +504,113 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={() => {
-              const edgeCases: RestoreEdgeCases = {
-                onDuplicateRecord:         toEnum(ecDuplicate)    as RestoreEdgeCases['onDuplicateRecord'],
-                missingFieldInDestination: toEnum(ecMissingField) as RestoreEdgeCases['missingFieldInDestination'],
-                ownerInactive:             toEnum(ecOwner)        as RestoreEdgeCases['ownerInactive'],
-                parentMissing:             toEnum(ecParent)       as RestoreEdgeCases['parentMissing'],
-                recordTypeMissing:         toEnum(ecRecordType)   as RestoreEdgeCases['recordTypeMissing'],
-                missingRequiredFieldValue: toEnum(ecMissRequired) as RestoreEdgeCases['missingRequiredFieldValue'],
-                // ownerInactive companion
-                ...(ecOwner === 'Reassign to specified user' && fallbackOwner
-                  ? { ownerInactiveFallbackUserId: fallbackOwner }
-                  : {}),
-                // missingFieldInDestination companion
-                ...(ecMissingField === 'Map to existing field' && fieldMapRows.some((r) => r.sourceField && r.destField)
-                  ? {
-                      fieldMappings: fieldMapRows
-                        .filter((r) => r.sourceField && r.destField)
-                        .map((r) => ({ sourceField: r.sourceField, destinationField: r.destField })),
-                    }
-                  : {}),
-                // recordTypeMissing companion
-                ...(ecRecordType === 'Map manually' && rtMapRows.some((r) => r.dest)
-                  ? {
-                      recordTypeMappings: rtMapRows
-                        .filter((r) => r.dest)
-                        .map((r) => ({ sourceRecordType: r.source, destinationRecordType: r.dest })),
-                    }
-                  : {}),
-                // missingRequiredFieldValue companion — merge static + custom rows
-                ...(ecMissRequired === 'Use specified default per field'
-                  ? (() => {
-                      const allRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
-                        ...staticDefaults.map((r) => {
-                          const [objectName, fieldName] = r.field.split('.');
-                          return { objectName, fieldName, type: r.type, value: r.value };
-                        }),
-                        ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
-                      ];
-                      const grouped = allRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
-                        if (!row.objectName || !row.fieldName || !row.value) return acc;
-                        const existing = acc!.find((e) => e.object === row.objectName);
-                        if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
-                        else { acc!.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
-                        return acc;
-                      }, []);
-                      return grouped && grouped.length > 0 ? { fieldDefaults: grouped } : {};
-                    })()
-                  : {}),
+              // onDuplicateRecord — only SKIP | OVERWRITE are valid
+              const DUPLICATE_ENUM: Record<string, 'SKIP' | 'OVERWRITE'> = {
+                'Overwrite': 'OVERWRITE',
+                'Skip':      'SKIP',
               };
+
+              // missingFieldInDestination type enum
+              const MISSING_FIELD_ENUM: Record<string, string> = {
+                'Skip the field':       'SKIP_THE_FIELD',
+                'Map to existing field':'MAP_TO_EXISTING_FIELD',
+                'Fail the record':      'FAIL_THE_RECORD',
+              };
+
+              // ownerInactive type enum
+              const OWNER_INACTIVE_ENUM: Record<string, string> = {
+                'Reassign to specified user': 'REASSIGN_TO_SPECIFIED_USER',
+                'Reassign to manager':        'REASSIGN_TO_MANAGER',
+                'Reassign to queue':          'REASSIGN_TO_QUEUE',
+                'Skip record':               'SKIP_RECORD',
+              };
+
+              // recordTypeMissing type enum
+              const RECORD_TYPE_ENUM: Record<string, string> = {
+                'Map to default': 'MAP_TO_DEFAULT',
+                'Map manually':   'MAP_MANUALLY',
+                'Skip':          'SKIP',
+              };
+
+              // missingRequiredFieldValue type enum
+              const MISS_REQUIRED_ENUM: Record<string, string> = {
+                'Use specified default per field':    'USE_SPECIFIED_DEFAULT_PER_FIELD',
+                'Use last known value from history':  'USE_LAST_KNOWN_VALUE_FROM_HISTORY',
+                'Skip the record':                   'SKIP_THE_RECORD',
+                'Skip the object':                   'SKIP_THE_OBJECT',
+              };
+
+              const edgeCases: RestoreEdgeCases = {};
+
+              // onDuplicateRecord
+              if (DUPLICATE_ENUM[ecDuplicate]) {
+                edgeCases.onDuplicateRecord = DUPLICATE_ENUM[ecDuplicate];
+              }
+
+              // missingFieldInDestination — nested object with sourceDestinationMapping
+              edgeCases.missingFieldInDestination = {
+                type: MISSING_FIELD_ENUM[ecMissingField] ?? 'SKIP_THE_FIELD',
+                sourceDestinationMapping: ecMissingField === 'Map to existing field'
+                  ? fieldMapRows
+                      .filter((r) => r.sourceField && r.destField)
+                      .map((r) => {
+                        // sourceField is "Object.Field" format from the select options
+                        const [srcObj, srcFld] = r.sourceField.split('.');
+                        const [dstObj, dstFld] = r.destField.split('.');
+                        return {
+                          sourceObject:      srcObj ?? r.sourceField,
+                          sourceFields:      srcFld ?? '',
+                          destinationObject: dstObj ?? r.destField,
+                          destinationFields: dstFld ?? '',
+                        };
+                      })
+                  : [],
+              };
+
+              // ownerInactive — nested object
+              edgeCases.ownerInactive = {
+                type: OWNER_INACTIVE_ENUM[ecOwner] ?? 'SKIP_RECORD',
+                fallbackValue: ecOwner === 'Reassign to specified user' ? fallbackOwner : '',
+              };
+
+              // parentMissing — plain string
+              edgeCases.parentMissing = ecParent;
+
+              // recordTypeMissing — nested object with objects[]
+              edgeCases.recordTypeMissing = {
+                type: RECORD_TYPE_ENUM[ecRecordType] ?? 'MAP_TO_DEFAULT',
+                objects: ecRecordType === 'Map manually'
+                  ? (() => {
+                      // Group rtMapRows by source object name (rows share same object in this UI)
+                      // The source/dest here are record type labels — we use them as IDs
+                      const mapped = rtMapRows.filter((r) => r.source && r.dest);
+                      if (!mapped.length) return [];
+                      return [{ name: 'DefaultObject', mapping: mapped.map((r) => ({ sourceRecordTypeId: r.source, destinationRecordTypeId: r.dest })) }];
+                    })()
+                  : [],
+              };
+
+              // missingRequiredFieldValue — nested object with type + mapping
+              const allFieldRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
+                ...staticDefaults.map((r) => {
+                  const [objectName, fieldName] = r.field.split('.');
+                  return { objectName, fieldName, type: r.type, value: r.value };
+                }),
+                ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
+              ];
+              const fieldMapping = allFieldRows
+                .filter((r) => r.objectName && r.fieldName && r.value)
+                .reduce<{ object: string; fields: { name: string; type: string; value: string }[] }[]>((acc, row) => {
+                  const existing = acc.find((e) => e.object === row.objectName);
+                  if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
+                  else { acc.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
+                  return acc;
+                }, []);
+              edgeCases.missingRequiredFieldValue = {
+                type: MISS_REQUIRED_ENUM[ecMissRequired] ?? 'SKIP_THE_RECORD',
+                mapping: fieldMapping,
+              };
+
               onNext(edgeCases);
             }}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'

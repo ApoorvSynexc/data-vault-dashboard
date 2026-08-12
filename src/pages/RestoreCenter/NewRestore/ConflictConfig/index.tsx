@@ -95,23 +95,28 @@ const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
   replace:   'REPLACE_ENTIRE_OBJECT',
 };
 
-const MERGE_RULE_ENUM: Record<string, string> = {
-  'Source always wins':                  'USE_SOURCE',
-  'Destination always wins':             'USE_DESTINATION',
-  'Newest LastModifiedDate wins':        'USE_NEWER',
-  'Use source if destination is blank':  'USE_SOURCE_IF_BLANK',
-  'Use destination if source is blank':  'USE_DESTINATION_IF_BLANK',
-  'Concatenate values':                  'CONCATENATE',
-  'Use larger value':                    'USE_LARGER',
-  'Use smaller value':                   'USE_SMALLER',
+// Per-field rule values (for individual field overrides)
+const FIELD_MERGE_RULE_ENUM: Record<string, string> = {
+  'Use default':                'USE_DEFAULT',
+  'Source always wins':         'SOURCE_ALWAYS_WINS',
+  'Destination always wins':    'DESTINATION_ALWAYS_WINS',
+};
+
+// Default rule values (for the job-level default)
+const DEFAULT_MERGE_RULE_ENUM: Record<string, string> = {
+  'Newest LastModifiedDate wins': 'NEWEST_LAST_MODIFIED_DATE_WINS',
+  'Source always wins':           'SOURCE_ALWAYS_WINS',
+  'Destination always wins':      'DESTINATION_ALWAYS_WINS',
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export interface ConflictOutput {
   restoreMode: string;
-  defaultMergeRule?: string;
-  fieldMergeRules?: { objectName: string; fieldName: string; rule: string }[];
+  mergeRule?: {
+    default: string;
+    objects: { name: string; fields: { name: string; value: string }[] }[];
+  };
 }
 
 interface Props { onNext: (conflict: ConflictOutput) => void; onBack: () => void; scopeMode: string; }
@@ -132,17 +137,8 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
   const updateMergeRow = (id: number, patch: Partial<MergeRow>) =>
     setMergeRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
 
-  const MERGE_RULE_OPTIONS = [
-    'Use default',
-    'Source always wins',
-    'Destination always wins',
-    'Newest LastModifiedDate wins',
-    'Use source if destination is blank',
-    'Use destination if source is blank',
-    'Concatenate values',
-    'Use larger value',
-    'Use smaller value',
-  ];
+  const DEFAULT_MERGE_OPTIONS = ['Newest LastModifiedDate wins', 'Source always wins', 'Destination always wins'];
+  const FIELD_MERGE_OPTIONS   = ['Use default', 'Source always wins', 'Destination always wins'];
 
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
@@ -258,7 +254,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                         onChange={(e) => setMergeDefault(e.target.value)}
                         className={selectClass} style={selectStyle}
                       >
-                        {MERGE_RULE_OPTIONS.filter((o) => o !== 'Use default').map((o) => <option key={o}>{o}</option>)}
+                        {DEFAULT_MERGE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                       </select>
                       <span className='w-6' />
                     </div>
@@ -285,7 +281,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                           onChange={(e) => updateMergeRow(row.id, { rule: e.target.value })}
                           className={selectClass} style={selectStyle}
                         >
-                          {MERGE_RULE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                          {FIELD_MERGE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                         </select>
                         <button
                           onClick={() => removeMergeRow(row.id)}
@@ -320,10 +316,18 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
             onClick={() => {
               const output: ConflictOutput = { restoreMode: RESTORE_MODE_ENUM[restoreMode] };
               if (restoreMode === 'merge') {
-                output.defaultMergeRule = MERGE_RULE_ENUM[mergeDefault] ?? 'USE_SOURCE';
-                output.fieldMergeRules = mergeRows
+                // Group per-field rows by objectName → mergeRule.objects[]
+                const objectMap: Record<string, { name: string; value: string }[]> = {};
+                mergeRows
                   .filter((r) => r.objectName && r.fieldName)
-                  .map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, rule: MERGE_RULE_ENUM[r.rule] ?? 'USE_SOURCE' }));
+                  .forEach((r) => {
+                    if (!objectMap[r.objectName]) objectMap[r.objectName] = [];
+                    objectMap[r.objectName].push({ name: r.fieldName, value: FIELD_MERGE_RULE_ENUM[r.rule] ?? 'USE_DEFAULT' });
+                  });
+                output.mergeRule = {
+                  default: DEFAULT_MERGE_RULE_ENUM[mergeDefault] ?? 'NEWEST_LAST_MODIFIED_DATE_WINS',
+                  objects: Object.entries(objectMap).map(([name, fields]) => ({ name, fields })),
+                };
               }
               onNext(output);
             }}

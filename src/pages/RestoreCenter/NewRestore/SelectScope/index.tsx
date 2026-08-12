@@ -551,13 +551,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'filter':
         return {
           type: 'FILTER',
-          objects: addedFilterObjs.map((obj) => {
+          filters: addedFilterObjs.map((obj) => {
             if (filterTab === 'soql') {
               const where = soqlConfigByObj[obj] ?? '';
-              return { objectName: obj, filters: { type: 'SOQL' as const, soqlQuery: where.trim() ? `SELECT Id FROM ${obj} WHERE ${where.trim()}` : `SELECT Id FROM ${obj}` } };
+              return { objectName: obj, filter: { type: 'SOQL' as const, soqlQuery: where.trim() ? `SELECT Id FROM ${obj} WHERE ${where.trim()}` : `SELECT Id FROM ${obj}` } };
             }
             const cfg = filterConfigByObj[obj] ?? { rows: [], orGroups: [], filterLogic: '' };
-            return { objectName: obj, filters: { type: 'AND' as const, fields: cfg.rows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
+            return { objectName: obj, filter: { type: 'AND' as const, fields: cfg.rows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
           }),
         };
       case 'changed':
@@ -565,9 +565,9 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'csv':
         return {
           type: 'BULK_CSV',
-          records: addedCsvObjs
+          bulkCsvIds: addedCsvObjs
             .filter((obj) => (csvConfigByObj[obj]?.parsedIds?.length ?? 0) > 0)
-            .map((obj) => ({ objectName: obj, bulkCsvIds: csvConfigByObj[obj].parsedIds })),
+            .map((obj) => ({ objectName: obj, ids: csvConfigByObj[obj].parsedIds })),
         };
       case 'deleted':
         return { type: 'DELETED_ONLY', deletedOnly: true };
