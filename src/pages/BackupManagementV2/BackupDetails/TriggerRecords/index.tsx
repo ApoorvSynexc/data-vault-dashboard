@@ -26,8 +26,8 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
   const failed  = triggers.filter((t) => t.status === 'FAILED').length;
 
   const filtered = triggers.filter((t) => {
-    const matchesFilter = filter === 'all' || t.status.toLowerCase() === filter;
-    const matchesSearch = t.triggerName.toLowerCase().includes(search.toLowerCase());
+    const matchesFilter = filter === 'all' || (t.status ?? '').toLowerCase() === filter;
+    const matchesSearch = (t.triggerName ?? '').toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
