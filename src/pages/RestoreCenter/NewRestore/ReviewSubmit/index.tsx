@@ -97,6 +97,7 @@ function restoreModeLabel(mode?: string): string {
     case 'APPEND_NEW':             return 'Append New Only';
     case 'REPLACE_ENTIRE_OBJECT':  return 'Replace Entire Object';
     case 'SKIP':                   return 'Skip Conflicts';
+    case 'MERGE':                  return 'Merge (Per-Field Rules)';
     default:                       return mode ?? '—';
   }
 }

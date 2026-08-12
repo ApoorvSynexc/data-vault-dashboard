@@ -87,9 +87,34 @@ const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recomm
   { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
 ];
 
+const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
+  overwrite: 'OVERWRITE',
+  append:    'APPEND_NEW',
+  merge:     'MERGE',
+  skip:      'SKIP',
+  replace:   'REPLACE_ENTIRE_OBJECT',
+};
+
+const MERGE_RULE_ENUM: Record<string, string> = {
+  'Source always wins':                  'USE_SOURCE',
+  'Destination always wins':             'USE_DESTINATION',
+  'Newest LastModifiedDate wins':        'USE_NEWER',
+  'Use source if destination is blank':  'USE_SOURCE_IF_BLANK',
+  'Use destination if source is blank':  'USE_DESTINATION_IF_BLANK',
+  'Concatenate values':                  'CONCATENATE',
+  'Use larger value':                    'USE_LARGER',
+  'Use smaller value':                   'USE_SMALLER',
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: (restoreMode: string) => void; onBack: () => void; scopeMode: string; }
+export interface ConflictOutput {
+  restoreMode: string;
+  defaultMergeRule?: string;
+  fieldMergeRules?: { objectName: string; fieldName: string; rule: string }[];
+}
+
+interface Props { onNext: (conflict: ConflictOutput) => void; onBack: () => void; scopeMode: string; }
 
 export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
@@ -292,7 +317,16 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={() => onNext(restoreMode)}
+            onClick={() => {
+              const output: ConflictOutput = { restoreMode: RESTORE_MODE_ENUM[restoreMode] };
+              if (restoreMode === 'merge') {
+                output.defaultMergeRule = MERGE_RULE_ENUM[mergeDefault] ?? 'USE_SOURCE';
+                output.fieldMergeRules = mergeRows
+                  .filter((r) => r.objectName && r.fieldName)
+                  .map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, rule: MERGE_RULE_ENUM[r.rule] ?? 'USE_SOURCE' }));
+              }
+              onNext(output);
+            }}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >

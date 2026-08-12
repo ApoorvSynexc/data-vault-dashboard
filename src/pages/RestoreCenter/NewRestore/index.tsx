@@ -24,6 +24,7 @@ import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SourceSelection } from './SelectSourceType';
 import type { RestoreRetrievePayload } from '../../../services/restore/restore.service';
+import type { ConflictOutput } from './ConflictConfig';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -130,7 +131,22 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       </div>
       <div className={currentStep === 6 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <ConflictConfig onNext={(mode) => { setRestoreMode(mode); goNext(); }} onBack={goBack} scopeMode={scopeMode} />
+        <ConflictConfig
+          onNext={(conflict: ConflictOutput) => {
+            setRestoreMode(conflict.restoreMode);
+            updatePayload({
+              conflict: {
+                ...restorePayload.conflict,
+                restoreMode: conflict.restoreMode as RestoreRetrievePayload['conflict']['restoreMode'],
+                ...(conflict.defaultMergeRule ? { defaultMergeRule: conflict.defaultMergeRule as RestoreRetrievePayload['conflict']['defaultMergeRule'] } : {}),
+                ...(conflict.fieldMergeRules ? { fieldMergeRules: conflict.fieldMergeRules } : {}),
+              },
+            });
+            goNext();
+          }}
+          onBack={goBack}
+          scopeMode={scopeMode}
+        />
       </div>
       <div className={currentStep === 7 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <EdgeCases
