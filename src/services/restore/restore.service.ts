@@ -1,16 +1,146 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
-// ── Restore-retrieve payload types ────────────────────────────────────────────
+// ── Restore scope types ───────────────────────────────────────────────────────
+
+export interface RestoreScopeRecord {
+  objectName: string;
+  recordIds: string[];
+}
+
+export interface RestoreScopeField {
+  objectName: string;
+  fieldNames: string[];
+}
+
+export interface RestoreFilterField {
+  name: string;
+  dataType: string;
+  operator: string;
+  value: unknown;
+}
+
+export interface RestoreFilters {
+  type: 'AND' | 'OR' | 'SOQL';
+  soqlQuery?: string;
+  fields?: RestoreFilterField[];
+}
+
+export interface RestoreScopeFilter {
+  objectName: string;
+  filter: RestoreFilters;
+}
+
+export interface RestoreBulkCsvIds {
+  objectName: string;
+  ids: string[];
+}
+
+export type RestoreScope =
+  | { type: 'ALL' }
+  | { type: 'OBJECT'; objects: string[] }
+  | { type: 'RECORD'; records: RestoreScopeRecord[] }
+  | { type: 'FIELD'; fields: RestoreScopeField[] }
+  | { type: 'FILTER'; filters: RestoreScopeFilter[] }
+  | { type: 'CHANGE_SINCE'; changeSince: { date: string } }
+  | { type: 'BULK_CSV'; bulkCsvIds: RestoreBulkCsvIds[] }
+  | { type: 'DELETED_ONLY'; deletedOnly: true }
+  | { type: 'INSERTS_ONLY'; insertsOnly: true };
+
+// ── Edge case types ───────────────────────────────────────────────────────────
+
+export interface RestoreEdgeCaseFieldMapping {
+  sourceObject: string;
+  sourceFields: string;
+  destinationObject: string;
+  destinationFields: string;
+}
+
+export interface RestoreMissingFieldInDestination {
+  type: string;
+  sourceDestinationMapping: RestoreEdgeCaseFieldMapping[];
+}
+
+export interface RestoreOwnerInactive {
+  type: string;
+  fallbackValue: string;
+}
+
+export interface RestoreRecordTypeIdMapping {
+  sourceRecordTypeId: string;
+  destinationRecordTypeId: string;
+}
+
+export interface RestoreRecordTypeObjectMapping {
+  name: string;
+  mapping: RestoreRecordTypeIdMapping[];
+}
+
+export interface RestoreRecordTypeMissing {
+  type: string;
+  objects: RestoreRecordTypeObjectMapping[];
+}
+
+export interface RestoreMissingRequiredField {
+  name: string;
+  type: string;
+  value: string;
+}
+
+export interface RestoreMissingRequiredFieldMapping {
+  object: string;
+  fields: RestoreMissingRequiredField[];
+}
+
+export interface RestoreMissingRequiredFieldValue {
+  type: string;
+  mapping: RestoreMissingRequiredFieldMapping[];
+}
+
+export interface RestoreEdgeCases {
+  onDuplicateRecord?: 'SKIP' | 'OVERWRITE';
+  missingFieldInDestination?: RestoreMissingFieldInDestination;
+  ownerInactive?: RestoreOwnerInactive;
+  parentMissing?: string;
+  recordTypeMissing?: RestoreRecordTypeMissing;
+  missingRequiredFieldValue?: RestoreMissingRequiredFieldValue;
+}
+
+// ── Merge rule types ──────────────────────────────────────────────────────────
+
+export interface RestoreMergeRuleField {
+  name: string;
+  value: string;
+}
+
+export interface RestoreMergeRuleObject {
+  name: string;
+  fields: RestoreMergeRuleField[];
+}
+
+export interface RestoreMergeRule {
+  default: string;
+  objects: RestoreMergeRuleObject[];
+}
+
+// ── Conflict ──────────────────────────────────────────────────────────────────
+
+export interface RestoreConflict {
+  restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP';
+  edgeCases?: RestoreEdgeCases;
+  mergeRule?: RestoreMergeRule;
+}
+
+// ── Top-level payload ─────────────────────────────────────────────────────────
 
 export interface RestoreRetrievePayload {
   crmId?: string;
 
   source: {
-    backupJobIds?: string[];
-    backupConfigId?: string;
-    type?: string;
+    backupConfigId: string;
+    type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
     startDate?: string;
     endDate?: string;
+    backupJobIds?: string[];
   };
 
   selection: {
@@ -23,63 +153,18 @@ export interface RestoreRetrievePayload {
     tagRestoredRecord?: string;
   };
 
-  conflict: {
-    restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP' | 'MERGE';
-    edgeCases?: RestoreEdgeCases;
-    defaultMergeRule?: 'USE_SOURCE' | 'USE_DESTINATION' | 'USE_NEWER' | 'USE_SOURCE_IF_BLANK' | 'USE_DESTINATION_IF_BLANK' | 'CONCATENATE' | 'USE_LARGER' | 'USE_SMALLER';
-    fieldMergeRules?: { objectName: string; fieldName: string; rule: string; concatenateSeparator?: string }[];
-  };
+  conflict: RestoreConflict;
 
   restoreType?: 'RESTORE_ONLY_CHANGED_FIELDS' | 'RESTORE_ENTIRE_RECORD';
 
   jobDetail?: {
-    name: string;
+    name?: string;
     description?: string;
     tags?: string[];
   };
 
   schedule: RestoreSchedule;
 }
-
-export interface RestoreEdgeCases {
-  onDuplicateRecord?:          'OVERWRITE' | 'SKIP' | 'CREATE_NEW_COPY_WITH_SUFFIX' | 'USE_DESTINATION_IF_NEWER';
-  parentMissing?:              'RE_PARENT_TO_PLACEHOLDER' | 'RESTORE_PARENT_FIRST' | 'SKIP';
-  missingFieldInDestination?:  'SKIP_THE_FIELD' | 'MAP_TO_EXISTING_FIELD' | 'FAIL_THE_RECORD';
-  // When missingFieldInDestination = MAP_TO_EXISTING_FIELD
-  fieldMappings?: { sourceField: string; destinationField: string }[];
-  ownerInactive?:              'REASSIGN_TO_SPECIFIED_USER' | 'REASSIGN_TO_MANAGER' | 'REASSIGN_TO_QUEUE' | 'SKIP_RECORD';
-  ownerInactiveFallbackUserId?: string;
-  recordTypeMissing?:          'MAP_TO_DEFAULT' | 'MAP_MANUALLY' | 'SKIP';
-  // When recordTypeMissing = MAP_MANUALLY
-  recordTypeMappings?: { sourceRecordType: string; destinationRecordType: string }[];
-  missingRequiredFieldValue?:  'USE_SPECIFIED_DEFAULT_PER_FIELD' | 'USE_LAST_KNOWN_VALUE_FROM_HISTORY' | 'SKIP_THE_RECORD' | 'SKIP_THE_OBJECT';
-  fieldDefaults?: {
-    object: string;
-    fields: { name: string; type: string; value: string }[];
-  }[];
-}
-
-export type RestoreScope =
-  | { type: 'ALL' }
-  | { type: 'OBJECT'; objects: string[] }
-  | { type: 'RECORD'; records: { objectName: string; recordIds: string[] }[] }
-  | { type: 'FIELD'; fields: { objectName: string; fieldNames: string[] }[] }
-  | { type: 'FILTER'; objects: { objectName: string; filters: RestoreFilter }[] }
-  | { type: 'CHANGE_SINCE'; changeSince: { date: string } }
-  | { type: 'BULK_CSV'; records: { objectName: string; bulkCsvIds: string[] }[] }
-  | { type: 'DELETED_ONLY'; deletedOnly: true };
-
-export type RestoreFilter =
-  | { type: 'SOQL'; soqlQuery: string }
-  | {
-      type: 'AND' | 'OR';
-      fields: {
-        name: string;
-        dataType: string;
-        operator: '>' | '<' | '>=' | '<=' | '=' | '!=' | 'IN' | 'LIKE';
-        value: string;
-      }[];
-    };
 
 export interface RestoreSchedule {
   type: 'ONE_TIME' | 'INCREMENTAL';

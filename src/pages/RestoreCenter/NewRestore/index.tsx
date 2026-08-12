@@ -35,7 +35,7 @@ interface NewRestoreProps {
 }
 
 const INITIAL_PAYLOAD: RestoreRetrievePayload = {
-  source: { backupJobIds: [] },
+  source: { backupConfigId: '', backupJobIds: [] },
   selection: { restoreScope: { type: 'ALL' } },
   destination: { type: 'SAME' },
   conflict: { restoreMode: 'OVERWRITE' },
@@ -138,8 +138,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
               conflict: {
                 ...restorePayload.conflict,
                 restoreMode: conflict.restoreMode as RestoreRetrievePayload['conflict']['restoreMode'],
-                ...(conflict.defaultMergeRule ? { defaultMergeRule: conflict.defaultMergeRule as RestoreRetrievePayload['conflict']['defaultMergeRule'] } : {}),
-                ...(conflict.fieldMergeRules ? { fieldMergeRules: conflict.fieldMergeRules } : {}),
+                ...(conflict.mergeRule ? { mergeRule: conflict.mergeRule } : {}),
               },
             });
             goNext();
