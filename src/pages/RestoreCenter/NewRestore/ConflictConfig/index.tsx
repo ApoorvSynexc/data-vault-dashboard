@@ -94,6 +94,31 @@ interface Props { onNext: (restoreMode: string) => void; onBack: () => void; sco
 export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
   const [mergeDefault, setMergeDefault] = useState('Newest LastModifiedDate wins');
+
+  type MergeRow = { id: number; objectName: string; fieldName: string; rule: string };
+  const [mergeRows, setMergeRows] = useState<MergeRow[]>([
+    { id: 1, objectName: 'Account', fieldName: 'AnnualRevenue', rule: 'Source always wins' },
+    { id: 2, objectName: 'Account', fieldName: 'OwnerId',       rule: 'Destination always wins' },
+  ]);
+  const addMergeRow = () =>
+    setMergeRows((p) => [...p, { id: Date.now(), objectName: '', fieldName: '', rule: 'Use default' }]);
+  const removeMergeRow = (id: number) =>
+    setMergeRows((p) => p.filter((r) => r.id !== id));
+  const updateMergeRow = (id: number, patch: Partial<MergeRow>) =>
+    setMergeRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+
+  const MERGE_RULE_OPTIONS = [
+    'Use default',
+    'Source always wins',
+    'Destination always wins',
+    'Newest LastModifiedDate wins',
+    'Use source if destination is blank',
+    'Use destination if source is blank',
+    'Concatenate values',
+    'Use larger value',
+    'Use smaller value',
+  ];
+
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
 
@@ -191,31 +216,63 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                       ⚖ Per-field merge rules
                       <Tip text='When a record exists in both source and destination, decide which side wins for each field. Default applies to all fields; add per-field overrides for exceptions.' />
                     </p>
-                    <div className='flex items-center gap-3'>
-                      <span className='text-xs font-semibold text-gray-700 w-40 flex-shrink-0'>Default for all fields</span>
-                      <select value={mergeDefault} onChange={(e) => setMergeDefault(e.target.value)} className={selectClass} style={selectStyle}>
-                        <option>Newest LastModifiedDate wins</option>
-                        <option>Source always wins</option>
-                        <option>Destination always wins</option>
-                      </select>
+
+                    {/* Column headers */}
+                    <div className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
+                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Object</span>
+                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Field</span>
+                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Rule</span>
+                      <span />
                     </div>
-                    <div className='flex items-center gap-3'>
-                      <span className='text-xs text-gray-600 w-40 flex-shrink-0'>Account.AnnualRevenue</span>
-                      <select defaultValue='Source always wins' className={selectClass} style={selectStyle}>
-                        <option>Use default</option>
-                        <option>Source always wins</option>
-                        <option>Destination always wins</option>
+
+                    {/* Default row */}
+                    <div className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
+                      <span className='text-xs font-semibold text-gray-700 col-span-2'>Default for all fields</span>
+                      <select
+                        value={mergeDefault}
+                        onChange={(e) => setMergeDefault(e.target.value)}
+                        className={selectClass} style={selectStyle}
+                      >
+                        {MERGE_RULE_OPTIONS.filter((o) => o !== 'Use default').map((o) => <option key={o}>{o}</option>)}
                       </select>
+                      <span className='w-6' />
                     </div>
-                    <div className='flex items-center gap-3'>
-                      <span className='text-xs text-gray-600 w-40 flex-shrink-0'>Account.OwnerId</span>
-                      <select defaultValue='Destination always wins' className={selectClass} style={selectStyle}>
-                        <option>Use default</option>
-                        <option>Source always wins</option>
-                        <option>Destination always wins</option>
-                      </select>
-                    </div>
-                    <button className='text-xs font-semibold text-blue-600 hover:underline self-start'>+ Add per-field override</button>
+
+                    {/* Per-field override rows */}
+                    {mergeRows.map((row) => (
+                      <div key={row.id} className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
+                        <input
+                          value={row.objectName}
+                          onChange={(e) => updateMergeRow(row.id, { objectName: e.target.value })}
+                          placeholder='Object API name'
+                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                        />
+                        <input
+                          value={row.fieldName}
+                          onChange={(e) => updateMergeRow(row.id, { fieldName: e.target.value })}
+                          placeholder='Field API name'
+                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                        />
+                        <select
+                          value={row.rule}
+                          onChange={(e) => updateMergeRow(row.id, { rule: e.target.value })}
+                          className={selectClass} style={selectStyle}
+                        >
+                          {MERGE_RULE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                        </select>
+                        <button
+                          onClick={() => removeMergeRow(row.id)}
+                          className='w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:text-white hover:bg-red-500 transition-colors text-[11px] font-bold flex-shrink-0'
+                        >×</button>
+                      </div>
+                    ))}
+
+                    <button
+                      onClick={addMergeRow}
+                      className='text-xs font-semibold text-blue-600 hover:underline self-start'
+                    >+ Add per-field override</button>
                   </div>
                 )}
               </div>

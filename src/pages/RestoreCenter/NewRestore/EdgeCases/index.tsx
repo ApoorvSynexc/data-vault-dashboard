@@ -120,13 +120,13 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
 
   const fieldDefaultsRef = useRef<HTMLDivElement>(null);
 
-  type CustomRow = { id: number; field: string; type: string; value: string };
+  type CustomRow = { id: number; objectName: string; fieldName: string; type: string; value: string };
   const [customRows, setCustomRows] = useState<CustomRow[]>([]);
   const [addedMsg, setAddedMsg] = useState(false);
 
   const addCustomRow = () => {
     const id = Date.now();
-    setCustomRows((prev) => [...prev, { id, field: '', type: 'Text', value: '' }]);
+    setCustomRows((prev) => [...prev, { id, objectName: '', fieldName: '', type: 'Text', value: '' }]);
     setAddedMsg(true);
     setTimeout(() => setAddedMsg(false), 2500);
   };
@@ -381,42 +381,57 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
               <table className='w-full text-xs'>
                 <thead>
                   <tr className='border-b border-gray-100 bg-gray-50'>
-                    <th className='text-left py-2 px-4 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
+                    <th className='text-left py-2 px-4 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Object</th>
+                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
                     <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
                     <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Default Value</th>
                     <th className='w-8' />
                   </tr>
                 </thead>
                 <tbody>
-                  {FIELD_DEFAULTS.map((row) => (
-                    <tr key={row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                      <td className='py-3 px-4'>
-                        <p className='font-semibold text-gray-800'>{row.field}</p>
-                        <p className='text-gray-400 mt-0.5'>{row.sub}</p>
-                      </td>
-                      <td className='py-3 px-3'>
-                        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600'>{row.type}</span>
-                      </td>
-                      <td className='py-3 px-3'>
-                        {row.options.length > 0 ? (
-                          <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'>
-                            {row.options.map((o) => <option key={o}>{o}</option>)}
-                          </select>
-                        ) : (
-                          <input type='text' defaultValue='noreply@acme.com' className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]' style={{ border: '1px solid #E2E8F0' }} />
-                        )}
-                      </td>
-                      <td className='py-3 px-3 w-8' />
-                    </tr>
-                  ))}
+                  {FIELD_DEFAULTS.map((row) => {
+                    const [objName, fieldName] = row.field.split('.');
+                    return (
+                      <tr key={row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                        <td className='py-3 px-4'>
+                          <p className='font-semibold text-gray-800 font-mono'>{objName}</p>
+                        </td>
+                        <td className='py-3 px-3'>
+                          <p className='font-semibold text-gray-800 font-mono'>{fieldName}</p>
+                          <p className='text-gray-400 mt-0.5'>{row.sub}</p>
+                        </td>
+                        <td className='py-3 px-3'>
+                          <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600'>{row.type}</span>
+                        </td>
+                        <td className='py-3 px-3'>
+                          {row.options.length > 0 ? (
+                            <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'>
+                              {row.options.map((o) => <option key={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input type='text' defaultValue='noreply@acme.com' className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]' style={{ border: '1px solid #E2E8F0' }} />
+                          )}
+                        </td>
+                        <td className='py-3 px-3 w-8' />
+                      </tr>
+                    );
+                  })}
                   {customRows.map((row) => (
                     <tr key={row.id} className='border-b border-blue-50 bg-blue-50/40'>
                       <td className='py-2 px-4'>
                         <input
-                          value={row.field}
-                          onChange={(e) => updateCustomRow(row.id, { field: e.target.value })}
-                          placeholder='Object.Field (e.g. Account.Type)'
-                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400'
+                          value={row.objectName}
+                          onChange={(e) => updateCustomRow(row.id, { objectName: e.target.value })}
+                          placeholder='e.g. Account'
+                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400 font-mono'
+                        />
+                      </td>
+                      <td className='py-2 px-3'>
+                        <input
+                          value={row.fieldName}
+                          onChange={(e) => updateCustomRow(row.id, { fieldName: e.target.value })}
+                          placeholder='e.g. Industry'
+                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400 font-mono'
                         />
                       </td>
                       <td className='py-2 px-3'>
@@ -508,12 +523,10 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 ...(ecMissRequired === 'Use specified default per field' && customRows.length > 0
                   ? {
                       fieldDefaults: customRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
-                        if (!row.field || !row.value) return acc;
-                        const [obj, fieldName] = row.field.split('.');
-                        if (!obj || !fieldName) return acc;
-                        const existing = acc!.find((e) => e.object === obj);
-                        if (existing) { existing.fields.push({ name: fieldName, type: row.type.toUpperCase(), value: row.value }); }
-                        else { acc!.push({ object: obj, fields: [{ name: fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
+                        if (!row.objectName || !row.fieldName || !row.value) return acc;
+                        const existing = acc!.find((e) => e.object === row.objectName);
+                        if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
+                        else { acc!.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
                         return acc;
                       }, []),
                     }
