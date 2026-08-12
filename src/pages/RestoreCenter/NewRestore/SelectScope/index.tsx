@@ -222,8 +222,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // by-record additional state
   const [recordSearch, setRecordSearch] = useState('');
-  const [showIdList,   setShowIdList]   = useState(false);
-  const [idListText,   setIdListText]   = useState('');
 
   // by-field state
   const [fieldObjSearch,   setFieldObjSearch]   = useState('');
@@ -326,13 +324,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const toggleAllObjs = () =>
     setSelectedObjects(selectedObjects.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? new Set() : new Set(sourceObjectNames));
-
-  const toggleRecord = (id: string) =>
-    setSelectedRecordsByObj((p) => {
-      const cur = new Set(p[activeRecordObj] ?? []);
-      cur.has(id) ? cur.delete(id) : cur.add(id);
-      return { ...p, [activeRecordObj]: cur };
-    });
 
   const addRecordObject = (name: string) => {
     if (!name || addedRecordObjs.includes(name)) {
@@ -451,8 +442,38 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const hasMore: boolean = (fetchedRecordsData as any)?.meta?.hasMore ?? false;
   const nextCursor: string | undefined = (fetchedRecordsData as any)?.meta?.nextCursor;
 
+  // modal state for record picker
+  const [recordModalObj, setRecordModalObj] = useState<string | null>(null);
+  // draft selection inside modal — committed on Save
+  const [draftSelectedRecords, setDraftSelectedRecords] = useState<Set<string>>(new Set());
+
+  const openRecordModal = (objName: string) => {
+    setActiveRecordObj(objName);
+    setRecordSearch('');
+    setDraftSelectedRecords(new Set(selectedRecordsByObj[objName] ?? []));
+    setRecordModalObj(objName);
+  };
+
+  const closeRecordModal = () => {
+    setRecordModalObj(null);
+    setDraftSelectedRecords(new Set());
+  };
+
+  const saveRecordModal = () => {
+    if (!recordModalObj) return;
+    setSelectedRecordsByObj((p) => ({ ...p, [recordModalObj]: new Set(draftSelectedRecords) }));
+    setRecordModalObj(null);
+    setDraftSelectedRecords(new Set());
+  };
+
+  const toggleDraftRecord = (id: string) =>
+    setDraftSelectedRecords((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   const activeRecords = allRecordsByObj[activeRecordObj] ?? [];
-  const activeSelectedRecords = selectedRecordsByObj[activeRecordObj] ?? new Set<string>();
   const filteredRecords = activeRecords.filter(
     (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
   );
@@ -461,8 +482,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     {
       key: 'check', header: '', width: '40px',
       render: (row) => (
-        <input type='checkbox' checked={activeSelectedRecords.has(row.Id)}
-          onChange={() => toggleRecord(row.Id)}
+        <input type='checkbox' checked={draftSelectedRecords.has(row.Id)}
+          onChange={() => toggleDraftRecord(row.Id)}
           onClick={(e) => e.stopPropagation()}
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
       ),
@@ -758,7 +779,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               </div>
             </div>
 
-            {/* Object table — tick to add tabs */}
+            {/* Object list — tick to include, click button to open record picker modal */}
             {sourceObjectsLoading ? (
               <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
                 <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
@@ -767,41 +788,32 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             ) : sourceObjectNames.length === 0 ? (
               <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
             ) : (
-              <div className='divide-y divide-gray-50' style={{ maxHeight: 280, overflowY: 'auto' }}>
+              <div className='divide-y divide-gray-50' style={{ maxHeight: 320, overflowY: 'auto' }}>
                 {sourceObjectNames
                   .filter((name) => name.toLowerCase().includes(recordObj.toLowerCase()))
                   .map((name) => {
-                    const isTicked  = addedRecordObjs.includes(name);
-                    const isActive  = activeRecordObj === name;
-                    const recCount  = selectedRecordsByObj[name]?.size ?? 0;
+                    const isTicked = addedRecordObjs.includes(name);
+                    const recCount = selectedRecordsByObj[name]?.size ?? 0;
                     return (
                       <div
                         key={name}
-                        className={`flex items-center gap-3 px-5 py-3 transition-colors ${isActive ? 'bg-blue-50' : isTicked ? 'bg-gray-50/60' : 'bg-white hover:bg-gray-50'}`}
+                        className={`flex items-center gap-3 px-5 py-3 transition-colors ${isTicked ? 'bg-blue-50/40' : 'bg-white hover:bg-gray-50'}`}
                       >
                         <input
                           type='checkbox'
                           checked={isTicked}
                           onChange={() => {
-                            if (isTicked) {
-                              removeRecordObject(name);
-                            } else {
-                              addRecordObject(name);
-                            }
+                            if (isTicked) { removeRecordObject(name); } else { addRecordObject(name); }
                           }}
                           className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0'
                         />
-                        <span className={`text-sm font-mono flex-1 min-w-0 truncate ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800 font-semibold' : 'text-gray-600'}`}>
+                        <span className={`text-sm font-mono flex-1 min-w-0 truncate ${isTicked ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
                           {name}
                         </span>
                         {isTicked && (
                           <button
-                            onClick={() => { setActiveRecordObj(name); setRecordSearch(''); }}
-                            className={`flex-shrink-0 text-[11px] font-semibold px-2.5 py-0.5 rounded-md border transition-colors ${
-                              isActive
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-blue-300 text-blue-600 hover:bg-blue-50'
-                            }`}
+                            onClick={() => openRecordModal(name)}
+                            className='flex-shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors border-blue-300 text-blue-600 hover:bg-blue-50'
                           >
                             {recCount > 0 ? `${recCount} record${recCount !== 1 ? 's' : ''} ✎` : 'Select Records →'}
                           </button>
@@ -812,50 +824,74 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               </div>
             )}
 
-            {/* Record panel — shows when an object tab is active */}
-            {addedRecordObjs.length > 0 && activeRecordObj && (
-              <div className='border-t border-gray-200 p-5 space-y-4'>
-                {/* Object tabs bar */}
-                <div className='flex items-center gap-1 flex-wrap border-b border-gray-200'>
-                  {addedRecordObjs.map((obj) => {
-                    const count = selectedRecordsByObj[obj]?.size ?? 0;
-                    const isActive = activeRecordObj === obj;
-                    return (
-                      <div
-                        key={obj}
-                        onClick={() => { setActiveRecordObj(obj); setRecordSearch(''); }}
-                        className={`flex items-center gap-1.5 px-3 py-2 cursor-pointer text-xs font-semibold border-b-2 transition-colors -mb-px ${
-                          isActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        <span className='font-mono'>{obj}</span>
-                        {count > 0 && (
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* Selection summary */}
+            {totalSelectedRecords > 0 && (
+              <div className='border-t border-gray-100 px-5 py-3 space-y-1'>
+                <p className='text-xs font-semibold text-gray-500 mb-1.5'>Selection summary</p>
+                {addedRecordObjs.map((obj) => {
+                  const count = selectedRecordsByObj[obj]?.size ?? 0;
+                  return count > 0 ? (
+                    <div key={obj} className='flex items-center justify-between text-xs'>
+                      <span className='font-mono text-gray-700'>{obj}</span>
+                      <span className='font-semibold text-blue-600'>{count} record{count !== 1 ? 's' : ''}</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
-                {/* Search bar for active tab */}
+        {/* ── Record Picker Modal ───────────────────────────────────────────── */}
+        {recordModalObj && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
+            <div
+              className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
+              style={{ width: 720, maxHeight: '88vh', border: '1px solid #E2E8F0' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
+                <div>
+                  <h2 className='text-base font-bold text-gray-900 font-mono'>{recordModalObj}</h2>
+                  <p className='text-xs text-gray-400 mt-0.5'>Select the records to restore for this object</p>
+                </div>
+                <button
+                  onClick={closeRecordModal}
+                  className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'
+                >
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className='px-6 py-3 border-b border-gray-100 flex-shrink-0'>
                 <div className='relative'>
                   <svg className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
                     <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
                   </svg>
                   <input
-                    value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
-                    placeholder={`Search ${activeRecordObj} records by name or ID…`}
+                    value={recordSearch}
+                    onChange={(e) => setRecordSearch(e.target.value)}
+                    placeholder={`Search ${recordModalObj} records by name or ID…`}
                     className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                    autoFocus
                   />
                 </div>
+              </div>
 
-                {/* Record table for active tab */}
+              {/* Record table */}
+              <div className='flex-1 min-h-0 overflow-y-auto'>
                 {isLoadingRecords ? (
-                  <div className='flex items-center justify-center py-8 gap-2 text-sm text-gray-400'>
+                  <div className='flex items-center justify-center py-12 gap-2 text-sm text-gray-400'>
                     <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                    Loading {activeRecordObj} records…
+                    Loading {recordModalObj} records…
+                  </div>
+                ) : filteredRecords.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-12 gap-2'>
+                    <p className='text-sm text-gray-400'>No records found.</p>
                   </div>
                 ) : (
                   <Table
@@ -864,57 +900,49 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                     getRowKey={(r) => r.Id}
                     borderless
                     headerVariant='uppercase'
-                    cellPaddingClassName='px-5 py-3'
+                    cellPaddingClassName='px-6 py-3'
                     rowClassName={(row) =>
-                      `border-b border-gray-50 transition-colors cursor-pointer ${activeSelectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
+                      `border-b border-gray-50 transition-colors cursor-pointer ${draftSelectedRecords.has(row.Id) ? 'bg-blue-50' : 'hover:bg-gray-50'}`
                     }
-                    onRowClick={(row) => toggleRecord(row.Id)}
+                    onRowClick={(row) => toggleDraftRecord(row.Id)}
                   />
                 )}
-
                 {hasMore && (
-                  <button
-                    onClick={() => setCursorByObj((p) => ({ ...p, [activeRecordObj]: nextCursor }))}
-                    disabled={isFetchingMore}
-                    className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
-                  >
-                    {isFetchingMore ? 'Loading…' : `Load more ${activeRecordObj} records`}
-                  </button>
-                )}
-
-                {/* Selected summary per object */}
-                {totalSelectedRecords > 0 && (
-                  <div className='rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-1'>
-                    <p className='text-xs font-semibold text-gray-600 mb-2'>Selection summary</p>
-                    {addedRecordObjs.map((obj) => {
-                      const count = selectedRecordsByObj[obj]?.size ?? 0;
-                      return count > 0 ? (
-                        <div key={obj} className='flex items-center justify-between text-xs'>
-                          <span className='font-mono text-gray-700'>{obj}</span>
-                          <span className='font-semibold text-blue-600'>{count} record{count !== 1 ? 's' : ''}</span>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                )}
-
-                {showIdList && (
-                  <div className='space-y-2'>
-                    <p className='text-xs font-semibold text-gray-700'>Paste record IDs or external IDs (one per line) for <span className='font-mono text-blue-600'>{activeRecordObj}</span></p>
-                    <textarea
-                      value={idListText} onChange={(e) => setIdListText(e.target.value)}
-                      placeholder={'0013a00001AbcDe\n0013a00001AbcDf'}
-                      rows={4}
-                      className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50'
-                    />
-                    <div className='flex gap-2'>
-                      <button className='text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Add IDs</button>
-                      <button onClick={() => setShowIdList(false)} className='text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>Cancel</button>
-                    </div>
+                  <div className='px-6 py-3'>
+                    <button
+                      onClick={() => setCursorByObj((p) => ({ ...p, [recordModalObj]: nextCursor }))}
+                      disabled={isFetchingMore}
+                      className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'
+                    >
+                      {isFetchingMore ? 'Loading…' : `Load more ${recordModalObj} records`}
+                    </button>
                   </div>
                 )}
               </div>
-            )}
+
+              {/* Footer */}
+              <div className='flex-shrink-0 px-6 py-4 border-t border-gray-100 flex items-center justify-between'>
+                <span className='text-xs text-gray-500'>
+                  {draftSelectedRecords.size > 0
+                    ? <span className='font-semibold text-blue-600'>{draftSelectedRecords.size} record{draftSelectedRecords.size !== 1 ? 's' : ''} selected</span>
+                    : 'No records selected'}
+                </span>
+                <div className='flex items-center gap-3'>
+                  <button
+                    onClick={closeRecordModal}
+                    className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveRecordModal}
+                    className='px-6 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+                  >
+                    Save Selection
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
