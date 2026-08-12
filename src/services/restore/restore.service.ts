@@ -24,8 +24,10 @@ export interface RestoreRetrievePayload {
   };
 
   conflict: {
-    restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP';
+    restoreMode: 'OVERWRITE' | 'APPEND_NEW' | 'REPLACE_ENTIRE_OBJECT' | 'SKIP' | 'MERGE';
     edgeCases?: RestoreEdgeCases;
+    defaultMergeRule?: 'USE_SOURCE' | 'USE_DESTINATION' | 'USE_NEWER' | 'USE_SOURCE_IF_BLANK' | 'USE_DESTINATION_IF_BLANK' | 'CONCATENATE' | 'USE_LARGER' | 'USE_SMALLER';
+    fieldMergeRules?: { objectName: string; fieldName: string; rule: string; concatenateSeparator?: string }[];
   };
 
   restoreType?: 'RESTORE_ONLY_CHANGED_FIELDS' | 'RESTORE_ENTIRE_RECORD';

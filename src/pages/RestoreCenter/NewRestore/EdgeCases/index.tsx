@@ -120,6 +120,13 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
 
   const fieldDefaultsRef = useRef<HTMLDivElement>(null);
 
+  type StaticDefault = { field: string; sub: string; type: string; options: string[]; value: string };
+  const [staticDefaults, setStaticDefaults] = useState<StaticDefault[]>(
+    FIELD_DEFAULTS.map((r) => ({ ...r, value: r.options[0] ?? 'noreply@acme.com' }))
+  );
+  const updateStaticDefault = (field: string, value: string) =>
+    setStaticDefaults((prev) => prev.map((r) => r.field === field ? { ...r, value } : r));
+
   type CustomRow = { id: number; objectName: string; fieldName: string; type: string; value: string };
   const [customRows, setCustomRows] = useState<CustomRow[]>([]);
   const [addedMsg, setAddedMsg] = useState(false);
@@ -389,7 +396,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   </tr>
                 </thead>
                 <tbody>
-                  {FIELD_DEFAULTS.map((row) => {
+                  {staticDefaults.map((row) => {
                     const [objName, fieldName] = row.field.split('.');
                     return (
                       <tr key={row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
@@ -405,11 +412,21 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                         </td>
                         <td className='py-3 px-3'>
                           {row.options.length > 0 ? (
-                            <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'>
+                            <select
+                              value={row.value}
+                              onChange={(e) => updateStaticDefault(row.field, e.target.value)}
+                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'
+                            >
                               {row.options.map((o) => <option key={o}>{o}</option>)}
                             </select>
                           ) : (
-                            <input type='text' defaultValue='noreply@acme.com' className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]' style={{ border: '1px solid #E2E8F0' }} />
+                            <input
+                              type='text'
+                              value={row.value}
+                              onChange={(e) => updateStaticDefault(row.field, e.target.value)}
+                              className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]'
+                              style={{ border: '1px solid #E2E8F0' }}
+                            />
                           )}
                         </td>
                         <td className='py-3 px-3 w-8' />
@@ -519,17 +536,25 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                         .map((r) => ({ sourceRecordType: r.source, destinationRecordType: r.dest })),
                     }
                   : {}),
-                // missingRequiredFieldValue companion
-                ...(ecMissRequired === 'Use specified default per field' && customRows.length > 0
-                  ? {
-                      fieldDefaults: customRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
+                // missingRequiredFieldValue companion — merge static + custom rows
+                ...(ecMissRequired === 'Use specified default per field'
+                  ? (() => {
+                      const allRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
+                        ...staticDefaults.map((r) => {
+                          const [objectName, fieldName] = r.field.split('.');
+                          return { objectName, fieldName, type: r.type, value: r.value };
+                        }),
+                        ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
+                      ];
+                      const grouped = allRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
                         if (!row.objectName || !row.fieldName || !row.value) return acc;
                         const existing = acc!.find((e) => e.object === row.objectName);
                         if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
                         else { acc!.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
                         return acc;
-                      }, []),
-                    }
+                      }, []);
+                      return grouped && grouped.length > 0 ? { fieldDefaults: grouped } : {};
+                    })()
                   : {}),
               };
               onNext(edgeCases);
