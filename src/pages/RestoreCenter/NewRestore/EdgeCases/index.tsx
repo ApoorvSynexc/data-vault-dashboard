@@ -90,7 +90,7 @@ const FIELD_DEFAULTS = [
 interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; scopeMode: string; restoreMode: string; }
 
 export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Props) {
-  const [ecDuplicate,    setEcDuplicate]    = useState('Overwrite');
+  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
   const [ecParent,       setEcParent]       = useState('Restore parent first');
@@ -199,6 +199,8 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 <select value={ecDuplicate} onChange={(e) => setEcDuplicate(e.target.value)} className={selectClass} style={selectStyle}>
                   <option>Overwrite</option>
                   <option>Skip</option>
+                  <option>Create new copy with suffix</option>
+                  <option>Use destination if newer</option>
                 </select>
               </div>
               )}
@@ -280,6 +282,7 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." />
                 </span>
                 <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
+                  <option>Re-parent to placeholder</option>
                   <option>Restore parent first</option>
                   <option>Skip</option>
                 </select>
@@ -504,10 +507,12 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={() => {
-              // onDuplicateRecord — only SKIP | OVERWRITE are valid
-              const DUPLICATE_ENUM: Record<string, 'SKIP' | 'OVERWRITE'> = {
-                'Overwrite': 'OVERWRITE',
-                'Skip':      'SKIP',
+              // onDuplicateRecord
+              const DUPLICATE_ENUM: Record<string, string> = {
+                'Overwrite':                  'OVERWRITE',
+                'Skip':                       'SKIP',
+                'Create new copy with suffix':'CREATE_NEW_COPY_WITH_SUFFIX',
+                'Use destination if newer':   'USE_DESTINATION_IF_NEWER',
               };
 
               // missingFieldInDestination type enum

@@ -82,9 +82,9 @@ const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended
 ];
 
 const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination' },
-  { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source', danger: true },
-  { id: 'merge',   title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
+  { id: 'skip',    title: 'Skip if Exists',           desc: 'Do not touch records already in destination' },
+  { id: 'merge',   title: 'Merge (per-field rule)',  desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
+  { id: 'replace', title: 'Replace Entire Object',    desc: 'Delete all destination records, then insert from source', danger: true },
 ];
 
 const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
