@@ -478,24 +478,46 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
           <button
             onClick={() => {
               const edgeCases: RestoreEdgeCases = {
-                onDuplicateRecord:         toEnum(ecDuplicate)        as RestoreEdgeCases['onDuplicateRecord'],
-                missingFieldInDestination: toEnum(ecMissingField)     as RestoreEdgeCases['missingFieldInDestination'],
-                ownerInactive:             toEnum(ecOwner)            as RestoreEdgeCases['ownerInactive'],
-                parentMissing:             toEnum(ecParent)           as RestoreEdgeCases['parentMissing'],
-                recordTypeMissing:         toEnum(ecRecordType)       as RestoreEdgeCases['recordTypeMissing'],
-                missingRequiredFieldValue: toEnum(ecMissRequired)     as RestoreEdgeCases['missingRequiredFieldValue'],
-                ...(ecOwner === 'Reassign to specified user' && fallbackOwner ? { ownerInactiveFallbackUserId: fallbackOwner } : {}),
-                ...(ecMissRequired === 'Use specified default per field' && customRows.length > 0 ? {
-                  fieldDefaults: customRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
-                    if (!row.field || !row.value) return acc;
-                    const [obj, fieldName] = row.field.split('.');
-                    if (!obj || !fieldName) return acc;
-                    const existing = acc!.find((e) => e.object === obj);
-                    if (existing) { existing.fields.push({ name: fieldName, type: row.type.toUpperCase(), value: row.value }); }
-                    else { acc!.push({ object: obj, fields: [{ name: fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
-                    return acc;
-                  }, []),
-                } : {}),
+                onDuplicateRecord:         toEnum(ecDuplicate)    as RestoreEdgeCases['onDuplicateRecord'],
+                missingFieldInDestination: toEnum(ecMissingField) as RestoreEdgeCases['missingFieldInDestination'],
+                ownerInactive:             toEnum(ecOwner)        as RestoreEdgeCases['ownerInactive'],
+                parentMissing:             toEnum(ecParent)       as RestoreEdgeCases['parentMissing'],
+                recordTypeMissing:         toEnum(ecRecordType)   as RestoreEdgeCases['recordTypeMissing'],
+                missingRequiredFieldValue: toEnum(ecMissRequired) as RestoreEdgeCases['missingRequiredFieldValue'],
+                // ownerInactive companion
+                ...(ecOwner === 'Reassign to specified user' && fallbackOwner
+                  ? { ownerInactiveFallbackUserId: fallbackOwner }
+                  : {}),
+                // missingFieldInDestination companion
+                ...(ecMissingField === 'Map to existing field' && fieldMapRows.some((r) => r.sourceField && r.destField)
+                  ? {
+                      fieldMappings: fieldMapRows
+                        .filter((r) => r.sourceField && r.destField)
+                        .map((r) => ({ sourceField: r.sourceField, destinationField: r.destField })),
+                    }
+                  : {}),
+                // recordTypeMissing companion
+                ...(ecRecordType === 'Map manually' && rtMapRows.some((r) => r.dest)
+                  ? {
+                      recordTypeMappings: rtMapRows
+                        .filter((r) => r.dest)
+                        .map((r) => ({ sourceRecordType: r.source, destinationRecordType: r.dest })),
+                    }
+                  : {}),
+                // missingRequiredFieldValue companion
+                ...(ecMissRequired === 'Use specified default per field' && customRows.length > 0
+                  ? {
+                      fieldDefaults: customRows.reduce<RestoreEdgeCases['fieldDefaults']>((acc, row) => {
+                        if (!row.field || !row.value) return acc;
+                        const [obj, fieldName] = row.field.split('.');
+                        if (!obj || !fieldName) return acc;
+                        const existing = acc!.find((e) => e.object === obj);
+                        if (existing) { existing.fields.push({ name: fieldName, type: row.type.toUpperCase(), value: row.value }); }
+                        else { acc!.push({ object: obj, fields: [{ name: fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
+                        return acc;
+                      }, []),
+                    }
+                  : {}),
               };
               onNext(edgeCases);
             }}
