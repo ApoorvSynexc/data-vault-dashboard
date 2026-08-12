@@ -842,17 +842,23 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {/* ── Sub-UI: By Field ──────────────────────────────────────────── */}
         {scopeMode === 'field' && (
           <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='px-5 py-3 border-b border-gray-100'>
+            <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
               <Typography as='h3' variant='sectionTitle' color='secondary'>▤ Pick Fields per Object</Typography>
+              {fieldSelectedObjs.size > 0 && (
+                <span className='text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700'>
+                  {fieldSelectedObjs.size} object{fieldSelectedObjs.size !== 1 ? 's' : ''} · {Object.values(selectedFields).reduce((s, f) => s + f.size, 0)} fields
+                </span>
+              )}
             </div>
             <div className='p-5 space-y-4'>
               <InfoCallout>
-                Objects come from the <strong>source snapshot's manifest</strong>. Step 1: tick the objects you want. Step 2: click each object to choose its fields.
+                Tick objects to include them. Click <strong>Select Fields →</strong> on any ticked object to choose which fields to restore.
               </InfoCallout>
+
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 
                 {/* Left — object list */}
-                <div className='rounded-lg border border-gray-200 overflow-hidden'>
+                <div className='rounded-lg border border-gray-200 overflow-hidden flex flex-col'>
                   <div className='px-3 py-2 border-b border-gray-100 bg-gray-50'>
                     <div className='relative'>
                       <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='12' height='12' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
@@ -865,10 +871,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                       />
                     </div>
                   </div>
-                  <div className='px-2 py-1 bg-gray-50 border-b border-gray-100'>
-                    <p className='text-[10px] font-bold text-gray-500 uppercase tracking-wide px-2 py-1'>Selected objects <span className='font-normal'>(tick to include)</span></p>
+                  <div className='px-3 py-1.5 bg-gray-50 border-b border-gray-100'>
+                    <p className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Objects <span className='font-normal normal-case'>(tick to include)</span></p>
                   </div>
-                  <div className='divide-y divide-gray-50 max-h-64 overflow-y-auto'>
+                  <div className='divide-y divide-gray-50 overflow-y-auto' style={{ maxHeight: 300 }}>
                     {sourceObjectsLoading ? (
                       <div className='flex items-center justify-center py-6 gap-2 text-xs text-gray-400'>
                         <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
@@ -885,89 +891,111 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                         return (
                           <div
                             key={name}
-                            onClick={() => { toggleFieldObj(name); setActiveFieldObj(name); }}
-                            className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors ${isActive ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors ${isActive ? 'bg-blue-50' : isTicked ? 'bg-gray-50/60' : 'bg-white'}`}
                           >
                             <input
                               type='checkbox' checked={isTicked}
-                              onChange={(e) => { e.stopPropagation(); toggleFieldObj(name); }}
+                              onChange={() => toggleFieldObj(name)}
                               className='w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0'
                             />
-                            <span className={`text-sm font-mono flex-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'}`}>{name}</span>
-                            <span className='text-xs text-gray-400 flex-shrink-0'>
-                              {isTicked ? `${fieldCount} fields` : '—'}
+                            <span className={`text-xs font-mono flex-1 min-w-0 truncate ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800' : 'text-gray-500'}`}>
+                              {name}
                             </span>
+                            {isTicked ? (
+                              <button
+                                onClick={() => { setActiveFieldObj(name); setFieldSearch(''); setFieldFilter('All'); }}
+                                className={`flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-md border transition-colors ${
+                                  isActive
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'border-blue-300 text-blue-600 hover:bg-blue-50'
+                                }`}
+                              >
+                                {fieldCount > 0 ? `${fieldCount} fields ✎` : 'Select Fields →'}
+                              </button>
+                            ) : (
+                              <span className='text-[10px] text-gray-300 flex-shrink-0'>—</span>
+                            )}
                           </div>
                         );
                       })}
                   </div>
-                  <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>Showing {sourceObjectNames.filter((n) => n.toLowerCase().includes(fieldObjSearch.toLowerCase())).length} of {sourceObjectNames.length}</span>
+                  <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-400'>
+                    Showing {sourceObjectNames.filter((n) => n.toLowerCase().includes(fieldObjSearch.toLowerCase())).length} of {sourceObjectNames.length}
                   </div>
                 </div>
 
                 {/* Right — field picker */}
-                <div className='rounded-lg border border-gray-200 overflow-hidden'>
-                  <div className='px-3 py-2 border-b border-gray-100 bg-gray-50 space-y-2'>
-                    <div className='relative'>
-                      <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='12' height='12' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                        <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                <div className='rounded-lg border border-gray-200 overflow-hidden flex flex-col'>
+                  {!activeFieldObj ? (
+                    <div className='flex-1 flex flex-col items-center justify-center py-12 px-4 text-center gap-2'>
+                      <svg width='32' height='32' fill='none' stroke='#CBD5E1' strokeWidth='1.5' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' />
                       </svg>
-                      <input
-                        value={fieldSearch} onChange={(e) => setFieldSearch(e.target.value)}
-                        placeholder={`Search fields in ${activeFieldObj}…`}
-                        className='w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
-                      />
+                      <p className='text-xs text-gray-400'>Tick an object on the left, then click <strong className='text-gray-600'>Select Fields →</strong> to choose its fields here.</p>
                     </div>
-                    <div className='flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold'>
-                      {(['All', 'Standard', 'Custom', 'Required'] as const).map((f) => (
-                        <button
-                          key={f} onClick={() => setFieldFilter(f)}
-                          className={`flex-1 px-2 py-1 transition-colors ${fieldFilter === f ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className='px-3 py-2 border-b border-gray-100 flex items-center justify-between'>
-                    <p className='text-xs font-semibold text-gray-700'>{activeFieldObj} — pick fields to restore</p>
-                    <div className='flex gap-2 text-xs'>
-                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields.map((f) => f.apiName)) }))} className='text-blue-500 hover:underline'>Select all</button>
-                      <span className='text-gray-300'>·</span>
-                      <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set() }))} className='text-blue-500 hover:underline'>Deselect all</button>
-                    </div>
-                  </div>
-
-                  <div className='p-3 flex flex-wrap gap-2 max-h-52 overflow-y-auto'>
-                    {fieldOptionsLoading ? (
-                      <div className='flex items-center gap-2 text-xs text-gray-400 w-full justify-center py-4'>
-                        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                        Loading fields…
+                  ) : (
+                    <>
+                      {/* Header */}
+                      <div className='px-3 py-2 border-b border-gray-100 bg-gray-50 space-y-2'>
+                        <div className='flex items-center justify-between gap-2'>
+                          <span className='text-xs font-semibold text-gray-700 font-mono truncate'>{activeFieldObj}</span>
+                          <div className='flex gap-2 text-xs flex-shrink-0'>
+                            <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set(availableFields.map((f) => f.apiName)) }))} className='text-blue-500 hover:underline'>Select all</button>
+                            <span className='text-gray-300'>·</span>
+                            <button onClick={() => setSelectedFields((p) => ({ ...p, [activeFieldObj]: new Set() }))} className='text-blue-500 hover:underline'>Deselect all</button>
+                          </div>
+                        </div>
+                        <div className='relative'>
+                          <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='12' height='12' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                            <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+                          </svg>
+                          <input
+                            value={fieldSearch} onChange={(e) => setFieldSearch(e.target.value)}
+                            placeholder={`Search fields…`}
+                            className='w-full pl-7 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
+                          />
+                        </div>
+                        <div className='flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold'>
+                          {(['All', 'Standard', 'Custom', 'Required'] as const).map((f) => (
+                            <button
+                              key={f} onClick={() => setFieldFilter(f)}
+                              className={`flex-1 px-2 py-1 transition-colors ${fieldFilter === f ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    ) : availableFields.length === 0 ? (
-                      <p className='text-xs text-gray-400'>
-                        {activeFieldObj ? 'No fields match your search.' : 'Select an object to see its fields.'}
-                      </p>
-                    ) : availableFields.map((f) => {
-                      const on = activeFieldSet.has(f.apiName);
-                      return (
-                        <button
-                          key={f.apiName} onClick={() => toggleField(f.apiName)}
-                          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                            on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-                          }`}
-                        >
-                          {f.label}
-                        </button>
-                      );
-                    })}
-                  </div>
 
-                  <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-400'>
-                    <span>{activeFieldSet.size} of {sourceFields.length} fields selected · showing {availableFields.length}</span>
-                  </div>
+                      {/* Field chips */}
+                      <div className='p-3 flex flex-wrap gap-2 overflow-y-auto' style={{ maxHeight: 200 }}>
+                        {fieldOptionsLoading ? (
+                          <div className='flex items-center gap-2 text-xs text-gray-400 w-full justify-center py-4'>
+                            <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                            Loading fields…
+                          </div>
+                        ) : availableFields.length === 0 ? (
+                          <p className='text-xs text-gray-400'>No fields match your search.</p>
+                        ) : availableFields.map((f) => {
+                          const on = activeFieldSet.has(f.apiName);
+                          return (
+                            <button
+                              key={f.apiName} onClick={() => toggleField(f.apiName)}
+                              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                                on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                              }`}
+                            >
+                              {f.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className='px-3 py-2 border-t border-gray-100 bg-gray-50 text-xs text-gray-400'>
+                        {activeFieldSet.size} of {sourceFields.length} fields selected · showing {availableFields.length}
+                      </div>
+                    </>
+                  )}
                 </div>
 
               </div>
