@@ -43,9 +43,13 @@ export interface RestoreEdgeCases {
   onDuplicateRecord?:          'OVERWRITE' | 'SKIP' | 'CREATE_NEW_COPY_WITH_SUFFIX' | 'USE_DESTINATION_IF_NEWER';
   parentMissing?:              'RE_PARENT_TO_PLACEHOLDER' | 'RESTORE_PARENT_FIRST' | 'SKIP';
   missingFieldInDestination?:  'SKIP_THE_FIELD' | 'MAP_TO_EXISTING_FIELD' | 'FAIL_THE_RECORD';
+  // When missingFieldInDestination = MAP_TO_EXISTING_FIELD
+  fieldMappings?: { sourceField: string; destinationField: string }[];
   ownerInactive?:              'REASSIGN_TO_SPECIFIED_USER' | 'REASSIGN_TO_MANAGER' | 'REASSIGN_TO_QUEUE' | 'SKIP_RECORD';
   ownerInactiveFallbackUserId?: string;
   recordTypeMissing?:          'MAP_TO_DEFAULT' | 'MAP_MANUALLY' | 'SKIP';
+  // When recordTypeMissing = MAP_MANUALLY
+  recordTypeMappings?: { sourceRecordType: string; destinationRecordType: string }[];
   missingRequiredFieldValue?:  'USE_SPECIFIED_DEFAULT_PER_FIELD' | 'USE_LAST_KNOWN_VALUE_FROM_HISTORY' | 'SKIP_THE_RECORD' | 'SKIP_THE_OBJECT';
   fieldDefaults?: {
     object: string;
