@@ -97,7 +97,7 @@ export interface RestoreMissingRequiredFieldValue {
 }
 
 export interface RestoreEdgeCases {
-  onDuplicateRecord?: 'SKIP' | 'OVERWRITE';
+  onDuplicateRecord?: string;
   missingFieldInDestination?: RestoreMissingFieldInDestination;
   ownerInactive?: RestoreOwnerInactive;
   parentMissing?: string;
