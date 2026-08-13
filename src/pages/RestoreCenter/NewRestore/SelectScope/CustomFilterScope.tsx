@@ -30,7 +30,6 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const activeCfg: FilterConfig = configByObj[modalObj ?? ''] ?? { rows: [], orGroups: [], filterLogic: '' };
   const filterRows  = activeCfg.rows;
   const orGroups    = activeCfg.orGroups;
-  const filterLogic = activeCfg.filterLogic;
   const soqlWhere   = soqlByObj[modalObj ?? ''] ?? '';
 
   const setCfg = (obj: string, patch: Partial<FilterConfig>) =>
