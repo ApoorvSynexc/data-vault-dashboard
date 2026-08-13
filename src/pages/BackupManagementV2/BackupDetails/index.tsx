@@ -205,13 +205,11 @@ export default function BackupDetails() {
         </div>
       </div>
 
-      {/* Tab Content - Scrollable */}
-      <div className='flex-grow overflow-y-auto min-h-0 bg-gray-50 p-4'>
+      {/* Tab Content */}
+      <div className={`flex-1 min-h-0 bg-gray-50 p-4 ${activeTab === 'history' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
         {activeTab === 'overview' && <Overview backup={backupData} onViewTriggers={() => setActiveTab('triggers')} />}
         {activeTab === 'history' && <BackupHistory backup={backupData} />}
         {activeTab === 'triggers' && <TriggerRecords backup={backupData} />}
-        {/* Objects & Data tab - commented out */}
-        {/* {activeTab === 'objects' && <ObjectsNData backup={backupData} />} */}
       </div>
     </div>
   );
