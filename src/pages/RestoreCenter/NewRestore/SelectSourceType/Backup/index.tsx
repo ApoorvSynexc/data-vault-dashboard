@@ -99,9 +99,18 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   };
 
   // ── Phase 2: restore type + date range ───────────────────────────────────
-  const toDatetimeLocal = (iso: string) => iso ? iso.slice(0, 16) : '';
+  // datetime-local inputs compare against local time, so convert UTC → local
+  const toDatetimeLocal = (iso: string): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
   const minDatetime = toDatetimeLocal(selectedBackupCreatedAt);
   const maxDatetime = toDatetimeLocal(new Date().toISOString());
+  const createdAtReadable = selectedBackupCreatedAt
+    ? new Date(selectedBackupCreatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    : '';
 
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
   const [startDate, setStartDate] = useState('');
@@ -123,16 +132,17 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       setScopeType('ENTIRE');
       setStartDate('');
       setEndDate('');
-      setSelectedBackupCreatedAt('');
     }
   }, [selectedBackupConfigId]);
 
   // Emit selection whenever type/dates are valid — backend resolves jobs
   useEffect(() => {
     if (!selectedBackupConfigId) return;
-    if (type === 'CHANGED_BETWEEN' && (!startDate || !endDate)) {
-      onSelectionChange(null);
-      return;
+    if (type === 'CHANGED_BETWEEN') {
+      if (!startDate || !endDate) { onSelectionChange(null); return; }
+      const now = toDatetimeLocal(new Date().toISOString());
+      const invalid = startDate > now || endDate > now || (minDatetime && startDate < minDatetime) || (minDatetime && endDate < minDatetime) || endDate < startDate;
+      if (invalid) { onSelectionChange(null); return; }
     }
     onSelectionChange({
       backupConfigId: selectedBackupConfigId,
@@ -400,8 +410,17 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       setStartDate(newStart);
                       if (endDate && newStart && endDate < newStart) setEndDate('');
                     }}
-                    className='h-10 text-sm border-2 border-gray-200 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors'
+                    className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
+                      startDate && (startDate > maxDatetime || (minDatetime && startDate < minDatetime))
+                        ? 'border-red-400' : 'border-gray-200'
+                    }`}
                   />
+                  {startDate && startDate > maxDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
+                  )}
+                  {startDate && minDatetime && startDate < minDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
+                  )}
                 </div>
                 <div className='flex flex-col gap-1.5'>
                   <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
@@ -412,11 +431,22 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     max={maxDatetime || undefined}
                     onChange={(e) => {
                       const newEnd = e.target.value;
-                      if (startDate && newEnd < startDate) return;
                       setEndDate(newEnd);
                     }}
-                    className='h-10 text-sm border-2 border-gray-200 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors'
+                    className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
+                      endDate && (endDate > maxDatetime || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
+                        ? 'border-red-400' : 'border-gray-200'
+                    }`}
                   />
+                  {endDate && endDate > maxDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
+                  )}
+                  {endDate && minDatetime && endDate < minDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
+                  )}
+                  {endDate && startDate && endDate < startDate && !(endDate < minDatetime) && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before start time</p>
+                  )}
                 </div>
               </div>
               {(!startDate || !endDate) && (
