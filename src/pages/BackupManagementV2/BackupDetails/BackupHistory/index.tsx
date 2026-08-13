@@ -292,7 +292,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
   ];
 
   return (
-    <div className='flex flex-col h-full gap-2'>
+    <div className='flex flex-col flex-1 min-h-0 gap-2'>
       {/* Stats Cards - Fixed Height */}
       <div className='bg-white rounded border border-gray-200 p-4 flex-shrink-0'>
         <div className='grid grid-cols-4 gap-3'>

@@ -237,6 +237,9 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
           <table className='w-full' style={{ borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1.5px solid #E8EDF5', background: '#fff' }}>
+                <th className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide' style={{ color: '#374151', width: '48px' }}>
+                  SL No.
+                </th>
                 <th
                   className='px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide cursor-pointer select-none'
                   style={{ color: '#374151', width: '22%' }}
@@ -271,7 +274,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
             <tbody>
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
+                  <td colSpan={8} className='px-5 py-12 text-center text-sm' style={{ color: '#64748B' }}>
                     No objects found.
                   </td>
                 </tr>
@@ -281,6 +284,10 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                   style={{ borderBottom: !expandedRows.has(item.id) && idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}
                   className='hover:bg-gray-50 transition-colors'
                 >
+                  {/* SL No. */}
+                  <td className='px-5 py-3.5'>
+                    <span className='text-sm' style={{ color: '#6B7280' }}>{startIdx + idx + 1}</span>
+                  </td>
                   {/* Object Name */}
                   <td className='px-5 py-3.5'>
                     <span className='text-sm font-medium' style={{ color: '#111827' }}>{item.name}</span>
@@ -323,7 +330,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                 {/* Expanded detail row */}
                 {expandedRows.has(item.id) && (
                   <tr style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
-                    <td colSpan={7} className='px-5 pb-3.5 pt-0'>
+                    <td colSpan={8} className='px-5 pb-3.5 pt-0'>
                       {item.errorMessage ? (
                         <div className='flex items-start gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.2)' }}>
                           <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='mt-0.5 shrink-0'>

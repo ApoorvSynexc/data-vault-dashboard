@@ -147,7 +147,6 @@ export default function Table<TRow>({
   pagination,
   paginationConfig,
   showPagination = false,
-  height = 'h-96',
   itemsPerPage = 10,
 
   paginationClassName,
@@ -192,8 +191,6 @@ export default function Table<TRow>({
     else setInternalPage(clamped);
   };
 
-  const scrollContainerHeight =
-    height === 'h-96' ? 'max-h-96' : height.startsWith('h-') ? `max-${height}` : height;
 
   // ── Column count (for colSpan) ─────────────────────────────────────────────
 
@@ -229,10 +226,10 @@ export default function Table<TRow>({
         {/* Vertical scroll wrapper */}
         <div
           className={
-            !isLegacyPagination && !pagination?.onPageChange
-              ? `overflow-y-auto ${scrollContainerHeight} h-full relative`
-              : maxHeightClassName
-                ? `overflow-y-auto ${maxHeightClassName} h-full relative`
+            maxHeightClassName
+              ? `overflow-y-auto ${maxHeightClassName} h-full relative`
+              : isCursorPagination || (!isLegacyPagination && !pagination?.onPageChange)
+                ? 'overflow-y-auto h-full relative'
                 : 'h-full relative'
           }
         >
