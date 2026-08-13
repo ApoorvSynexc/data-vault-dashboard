@@ -416,7 +416,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     }`}
                   />
                   {startDate && startDate > maxDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future — valid range: {createdAtReadable} to now</p>
                   )}
                   {startDate && minDatetime && startDate < minDatetime && (
                     <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
@@ -439,7 +439,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     }`}
                   />
                   {endDate && endDate > maxDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future — valid range: {createdAtReadable} to now</p>
                   )}
                   {endDate && minDatetime && endDate < minDatetime && (
                     <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
