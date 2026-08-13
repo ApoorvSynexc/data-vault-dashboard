@@ -83,7 +83,6 @@ function sourceTypeLabel(sourceSelection: SourceSelection): string {
   if (!sourceSelection.type) return sourceSelection.configType === 'ARCHIVAL' ? 'Archive Vault' : 'Backup Snapshot';
   switch (sourceSelection.type) {
     case 'ENTIRE':          return 'Full Backup (Entire)';
-    case 'PARTIAL':         return 'Partial Backup';
     case 'CHANGED_BETWEEN': return sourceSelection.startDate && sourceSelection.endDate
       ? `Changed Between ${sourceSelection.startDate} → ${sourceSelection.endDate}`
       : 'Changed Between';

@@ -15,7 +15,7 @@ export interface SourceSelection {
   configType: 'BACKUP' | 'ARCHIVAL';
   backupConfigId: string;
   backupJobIds: string[];
-  type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+  type?: 'ENTIRE' | 'CHANGED_BETWEEN';
   startDate?: string;
   endDate?: string;
   crmId?: string;

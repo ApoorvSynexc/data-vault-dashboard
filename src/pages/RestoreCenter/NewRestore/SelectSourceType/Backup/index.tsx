@@ -11,7 +11,7 @@ type BackupMode = 'list' | 'pit';
 
 const JOBS_PAGE_SIZE = 20;
 
-export type ScopeType = 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+export type ScopeType = 'ENTIRE' | 'CHANGED_BETWEEN';
 
 export interface BackupSelection {
   backupConfigId: string;
@@ -146,9 +146,9 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const jobsRows: any[] = (jobsData as any)?.data ?? [];
   const jobsMeta = (jobsData as any)?.meta ?? { nextCursor: null, totalRecords: 0 };
 
-  // When ENTIRE or CHANGED_BETWEEN scope and jobs load, auto-emit selection so canProceed becomes true
+  // Auto-emit selection whenever jobs load so canProceed becomes true
   useEffect(() => {
-    if ((type === 'ENTIRE' || type === 'CHANGED_BETWEEN') && jobsRows.length > 0) {
+    if (jobsRows.length > 0) {
       onSelectionChange(buildSelection(jobsRows.map((j: any) => j.backupJobId), type, startDate, endDate));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,7 +170,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   };
 
 
-  const isEntireScope = type === 'ENTIRE' || type === 'CHANGED_BETWEEN';
+  const isEntireScope = true; // ENTIRE and CHANGED_BETWEEN both auto-select all jobs
 
   const buildSelection = (ids: string[], scope = type, sDate = startDate, eDate = endDate): BackupSelection => ({
     backupConfigId: selectedBackupConfigId,
@@ -194,10 +194,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
   // Re-emit selection whenever scope/dates change so parent always has latest
   const emitScopeChange = (newScope: ScopeType, newStart = startDate, newEnd = endDate) => {
-    const ids = (newScope === 'ENTIRE' || newScope === 'CHANGED_BETWEEN')
-      ? jobsRows.map((j: any) => j.backupJobId)
-      : Array.from(selectedJobIds);
-    if (newScope === 'ENTIRE' || newScope === 'CHANGED_BETWEEN' || ids.length > 0) {
+    const ids = jobsRows.map((j: any) => j.backupJobId);
+    if (ids.length > 0) {
       onSelectionChange(buildSelection(ids, newScope, newStart, newEnd));
     }
   };
@@ -497,11 +495,10 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       {showJobsPhase && (
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <p className='text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3'>Restore Type</p>
-          <div className={`grid gap-3 ${isRealtime ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <div className='grid gap-3 grid-cols-2'>
             {([
                 { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup policy' },
                 { id: 'CHANGED_BETWEEN' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>, title: 'Changed Between', desc: 'Restore only records changed within a specific time range' },
-                ...(!isRealtime ? [{ id: 'PARTIAL' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path d='M12 2a10 10 0 0 1 0 20'/><path d='M12 2v20'/></svg>, title: 'Partial', desc: 'Restore a specific subset of records from the selected backup policy' }] : []),
               ] as { id: ScopeType; icon: React.ReactNode; title: string; desc: string }[]
             ).map(({ id, icon, title, desc }) => {
               const active = type === id;
