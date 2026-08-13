@@ -3,6 +3,7 @@
 
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import type { RestoreEdgeCases } from '../../../../services/restore/restore.service';
 
 type FieldMapRow = { id: number; objectName: string; sourceField: string; destField: string };
@@ -64,14 +65,7 @@ function ProgressBar({ active }: { active: number }) {
 // ── Tooltip helper ────────────────────────────────────────────────────────────
 
 function Tip({ text }: { text: string }) {
-  return (
-    <span className='relative group inline-flex items-center ml-1 cursor-help align-middle'>
-      <span className='w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold flex items-center justify-center'>i</span>
-      <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-60 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-50 shadow-lg pointer-events-none'>
-        {text}
-      </span>
-    </span>
-  );
+  return <InfoTooltip text={text} className='ml-1' />;
 }
 
 // ── Field defaults data ───────────────────────────────────────────────────────
