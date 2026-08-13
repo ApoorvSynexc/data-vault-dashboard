@@ -5,11 +5,8 @@ import type { TableColumn } from '../../../../../components/Table';
 import Typography from '../../../../../components/Typography';
 import { useBackupConfigService } from '../../../../../services/backup-config/backup-config.service';
 import { formatBytes, formatDateTime } from '../../../../../utils';
-import dayjs from 'dayjs';
 
 type BackupMode = 'list' | 'pit';
-
-const JOBS_PAGE_SIZE = 20;
 
 export type ScopeType = 'ENTIRE' | 'CHANGED_BETWEEN';
 
@@ -33,13 +30,12 @@ interface Props {
   onSelectedJobIdsChange?: (ids: string[]) => void;
 }
 
-export default function BackupPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedRow = null, initialSelectedConfigId = '', initialSelectedJobIds = [], onSelectedRowChange, onSelectedConfigIdChange, onSelectedJobIdsChange }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange }: Props) {
   const backupConfigService = useBackupConfigService();
 
-  // ── Config list (phase 1) ────────────────────────────────────────────────
+  // ── Phase 1: config list ──────────────────────────────────────────────────
   const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(initialSelectedConfigId ? new Set([initialSelectedConfigId]) : new Set());
-  const [selectedBackupRow, setSelectedBackupRow] = useState<any>(initialSelectedRow);
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>(initialSelectedConfigId);
 
   const [backupSearch, setBackupSearch] = useState('');
@@ -54,7 +50,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [pitDate, setPitDate] = useState('2026-05-23');
   const [pitTime, setPitTime] = useState('14:23');
 
-  // Debounce: fire query only after user stops typing for 400ms, and reset to page 1
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -66,7 +61,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [backupSearch]);
 
-  // Reset pagination when type filter changes
   useEffect(() => {
     setBackupCursorStack([]);
     setBackupCurrentPage(1);
@@ -103,104 +97,39 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     else goToBackupPage(1, null);
   };
 
-
-  // ── Jobs list (phase 2) ──────────────────────────────────────────────────
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set(initialSelectedJobIds));
-  const [jobsCursor, setJobsCursor] = useState<string | null>(null);
-  const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
-  const [jobsCursorStack, setJobsCursorStack] = useState<{ page: number; cursor: string }[]>([]);
-
-  // Scope selection state
-  const isRealtime = selectedBackupRow?.schedule === 'REALTIME';
+  // ── Phase 2: restore type + date range ───────────────────────────────────
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Reset jobs selection + scope when the backup config changes
+  // Reset type/dates when config changes
   const prevConfigIdRef = useRef(selectedBackupConfigId);
   useEffect(() => {
     if (prevConfigIdRef.current !== selectedBackupConfigId) {
       prevConfigIdRef.current = selectedBackupConfigId;
-      setSelectedJobIds(new Set());
-      setJobsCursor(null);
-      setJobsCurrentPage(1);
-      setJobsCursorStack([]);
       setScopeType('ENTIRE');
       setStartDate('');
       setEndDate('');
     }
   }, [selectedBackupConfigId]);
 
-  const selectedBackupSlug = selectedBackupRow?.slug ?? selectedBackupRow?.backupConfigId ?? '';
-
-  const jobsStartDate = type === 'CHANGED_BETWEEN' && startDate ? new Date(startDate).toISOString() : undefined;
-  const jobsEndDate   = type === 'CHANGED_BETWEEN' && endDate   ? new Date(endDate).toISOString()   : undefined;
-
-  const { data: jobsData, isLoading: isLoadingJobs, isFetching: isFetchingJobs } = useQuery({
-    queryKey: ['restore-backup-jobs', selectedBackupSlug, jobsCursor, jobsStartDate, jobsEndDate],
-    queryFn: () => backupConfigService.listBackupJobs(selectedBackupSlug, true, jobsCursor ?? undefined, JOBS_PAGE_SIZE, undefined, jobsStartDate, jobsEndDate),
-    enabled: showJobsPhase && !!selectedBackupSlug && (type !== 'CHANGED_BETWEEN' || (!!startDate && !!endDate)),
-    staleTime: 0,
-  });
-
-  const jobsRows: any[] = (jobsData as any)?.data ?? [];
-  const jobsMeta = (jobsData as any)?.meta ?? { nextCursor: null, totalRecords: 0 };
-
-  // Auto-emit selection whenever jobs load so canProceed becomes true
+  // Emit selection whenever type/dates are valid — backend resolves jobs
   useEffect(() => {
-    if (jobsRows.length > 0) {
-      onSelectionChange(buildSelection(jobsRows.map((j: any) => j.backupJobId), type, startDate, endDate));
+    if (!selectedBackupConfigId) return;
+    if (type === 'CHANGED_BETWEEN' && (!startDate || !endDate)) {
+      onSelectionChange(null);
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, jobsRows.length, selectedBackupConfigId, startDate, endDate]);
-
-  const goJobsNext = () => {
-    if (!jobsMeta.nextCursor) return;
-    setJobsCursorStack((prev) => [...prev, { page: jobsCurrentPage, cursor: jobsCursor ?? '' }]);
-    setJobsCurrentPage((p) => p + 1);
-    setJobsCursor(jobsMeta.nextCursor);
-  };
-
-  const goJobsPrev = () => {
-    const stack = [...jobsCursorStack];
-    const prev = stack.pop();
-    setJobsCursorStack(stack);
-    setJobsCurrentPage(prev ? prev.page : 1);
-    setJobsCursor(prev ? (prev.cursor || null) : null);
-  };
-
-
-  const isEntireScope = true; // ENTIRE and CHANGED_BETWEEN both auto-select all jobs
-
-  const buildSelection = (ids: string[], scope = type, sDate = startDate, eDate = endDate): BackupSelection => ({
-    backupConfigId: selectedBackupConfigId,
-    backupJobIds: ids,
-    type: scope,
-    ...(scope === 'CHANGED_BETWEEN' ? { startDate: sDate, endDate: eDate } : {}),
-  });
-
-  const toggleJob = (id: string) => {
-    if (isEntireScope) return; // locked when ENTIRE
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      const ids = Array.from(next);
-      onSelectedJobIdsChange?.(ids);
-      onSelectionChange(next.size > 0 ? buildSelection(ids) : null);
-      return next;
+    onSelectionChange({
+      backupConfigId: selectedBackupConfigId,
+      backupJobIds: [],
+      type,
+      ...(type === 'CHANGED_BETWEEN' ? { startDate, endDate } : {}),
     });
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, startDate, endDate, selectedBackupConfigId]);
 
-  // Re-emit selection whenever scope/dates change so parent always has latest
-  const emitScopeChange = (newScope: ScopeType, newStart = startDate, newEnd = endDate) => {
-    const ids = jobsRows.map((j: any) => j.backupJobId);
-    if (ids.length > 0) {
-      onSelectionChange(buildSelection(ids, newScope, newStart, newEnd));
-    }
-  };
-
-  // ── Columns ──────────────────────────────────────────────────────────────
+  // ── Config table columns ──────────────────────────────────────────────────
   const configColumns: TableColumn<any>[] = [
     {
       key: 'radio',
@@ -213,7 +142,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
           checked={selectedBackup.has(row.backupConfigId)}
           onChange={() => {
             setSelectedBackup(new Set([row.backupConfigId]));
-            setSelectedBackupRow(row);
             setSelectedBackupConfigId(row.backupConfigId);
             onSelectedRowChange?.(row);
             onSelectedConfigIdChange?.(row.backupConfigId);
@@ -287,108 +215,10 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     },
   ];
 
-  const jobsColumns: TableColumn<any>[] = [
-    {
-      key: 'checkbox',
-      header: '',
-      width: '40px',
-      render: (job) => (
-        <input
-          type='checkbox'
-          checked={isEntireScope || selectedJobIds.has(job.backupJobId)}
-          disabled={isEntireScope}
-          onChange={() => toggleJob(job.backupJobId)}
-          onClick={(e) => e.stopPropagation()}
-          className={`w-4 h-4 accent-blue-600 ${isEntireScope ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-        />
-      ),
-    },
-    {
-      key: 'slNo',
-      header: 'SL No.',
-      width: '60px',
-      render: (_row, index) => <span className='text-sm text-gray-600'>{(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + index + 1}</span>,
-    },
-    {
-      key: 'startedAt',
-      header: 'Start Time',
-      render: (job) => <span className='text-xs text-gray-700 whitespace-nowrap'>{job.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY h:mm A') : '--'}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (job) => {
-        const upper = (job.status ?? '').toUpperCase();
-        const isPartial = upper === 'SUCCESS' && (job.object ?? []).some((o: any) => o.status?.toUpperCase() === 'FAILED');
-        const styles: Record<string, string> = {
-          SUCCESS: isPartial ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700',
-          FAILED: 'bg-red-100 text-red-700',
-          RUNNING: 'bg-yellow-100 text-yellow-700',
-          PENDING: 'bg-blue-100 text-blue-700',
-        };
-        const label = isPartial ? 'Partially Failed'
-          : upper === 'SUCCESS' ? 'Completed'
-          : upper === 'FAILED' ? 'Failed'
-          : upper === 'RUNNING' ? 'In Progress'
-          : upper === 'PENDING' ? 'Pending'
-          : job.status ?? '';
-        return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${styles[upper] ?? 'bg-gray-100 text-gray-700'}`}>{label}</span>;
-      },
-    },
-    {
-      key: 'duration',
-      header: 'Duration',
-      render: (job) => {
-        const end = job.completedAt ?? job.lastCompletedAt;
-        if (!job.startedAt || !end) return <span className='text-xs text-gray-500'>--</span>;
-        const ms = dayjs(end).diff(dayjs(job.startedAt), 'ms');
-        if (ms < 0) return <span className='text-xs text-gray-500'>--</span>;
-        const m = Math.floor(ms / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
-        return <span className='text-xs text-gray-700'>{m > 0 ? `${m}m ${s}s` : `${s}s`}</span>;
-      },
-    },
-    {
-      key: 'dataSize',
-      header: 'Data Size',
-      render: (job) => {
-        const bytes = Array.isArray(job.object)
-          ? job.object.reduce((sum: number, o: any) => sum + (o.sizeInBytes ?? 0), 0)
-          : (job.sizeInBytes ?? 0);
-        return <span className='text-xs text-gray-700 tabular-nums'>{formatBytes(bytes)}</span>;
-      },
-    },
-    {
-      key: 'objects',
-      header: 'Objects',
-      render: (job) => <span className='text-xs text-gray-700 tabular-nums'>{job.object?.length ?? 0}</span>,
-    },
-    {
-      key: 'jobType',
-      header: 'Backup Type',
-      render: (job) => {
-        if (job.jobType === 'BULK' && isRealtime) {
-          return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700'>Initial Backup</span>;
-        }
-        if (job.jobType === 'BULK') {
-          return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700'>Scheduled</span>;
-        }
-        return <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700'>Realtime</span>;
-      },
-    },
-    {
-      key: 'errorMessage',
-      header: 'Error',
-      render: (job) => job.errorMessage
-        ? <span className='text-xs text-red-600 truncate max-w-[160px] block' title={job.errorMessage}>{job.errorMessage.length > 50 ? job.errorMessage.slice(0, 50) + '…' : job.errorMessage}</span>
-        : <span className='text-xs text-gray-400'>--</span>,
-    },
-  ];
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Phase 1 — config list */}
+      {/* Phase 1 — config picker */}
       {!showJobsPhase && (
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
@@ -491,28 +321,30 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
         </div>
       )}
 
-      {/* Phase 2 — scope selector (own card) */}
+      {/* Phase 2 — restore type picker (no jobs table) */}
       {showJobsPhase && (
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <p className='text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3'>Restore Type</p>
           <div className='grid gap-3 grid-cols-2'>
             {([
-                { id: 'ENTIRE' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>, title: 'Entire', desc: 'Restore all records from the selected backup policy' },
-                { id: 'CHANGED_BETWEEN' as ScopeType, icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>, title: 'Changed Between', desc: 'Restore only records changed within a specific time range' },
-              ] as { id: ScopeType; icon: React.ReactNode; title: string; desc: string }[]
-            ).map(({ id, icon, title, desc }) => {
+              {
+                id: 'ENTIRE' as ScopeType,
+                icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10'/><path d='M12 8v4l3 3'/></svg>,
+                title: 'Entire',
+                desc: 'Restore all records from the selected backup policy',
+              },
+              {
+                id: 'CHANGED_BETWEEN' as ScopeType,
+                icon: <svg width='16' height='16' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/></svg>,
+                title: 'Changed Between',
+                desc: 'Restore only records changed within a specific time range',
+              },
+            ]).map(({ id, icon, title, desc }) => {
               const active = type === id;
               return (
                 <button
                   key={id}
-                  onClick={() => {
-                    setScopeType(id);
-                    if (id === 'CHANGED_BETWEEN' && (!startDate || !endDate)) {
-                      onSelectionChange(null);
-                    } else {
-                      emitScopeChange(id);
-                    }
-                  }}
+                  onClick={() => setScopeType(id)}
                   className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${active ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'}`}
                 >
                   <div className='flex items-center justify-between'>
@@ -537,7 +369,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                 <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24'>
                   <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
                 </svg>
-                <p className='text-sm font-semibold text-blue-700'>Select time range to search backup jobs</p>
+                <p className='text-sm font-semibold text-blue-700'>Select time range</p>
               </div>
               <div className='grid grid-cols-2 gap-5'>
                 <div className='flex flex-col gap-1.5'>
@@ -548,10 +380,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     onChange={(e) => {
                       const newStart = e.target.value;
                       setStartDate(newStart);
-                      if (endDate && newStart && endDate < newStart) {
-                        setEndDate('');
-                        onSelectionChange(null);
-                      }
+                      if (endDate && newStart && endDate < newStart) setEndDate('');
                     }}
                     className='h-10 text-sm border-2 border-gray-200 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors'
                   />
@@ -574,7 +403,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               {(!startDate || !endDate) && (
                 <div className='mt-3 flex items-center gap-2'>
                   <div className='w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse' />
-                  <p className='text-xs text-blue-600 font-medium'>Fill both dates above to load matching backup jobs</p>
+                  <p className='text-xs text-blue-600 font-medium'>Fill both dates to proceed</p>
                 </div>
               )}
               {startDate && endDate && (
@@ -582,48 +411,13 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                   <svg width='13' height='13' fill='none' stroke='#16a34a' strokeWidth='2.5' viewBox='0 0 24 24'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/>
                   </svg>
-                  <p className='text-xs text-green-700 font-medium'>Time range set — loading matching jobs below</p>
+                  <p className='text-xs text-green-700 font-medium'>Time range set — ready to proceed</p>
                 </div>
               )}
             </div>
           )}
         </div>
       )}
-
-      {/* Phase 2 — jobs list */}
-      {showJobsPhase && (type !== 'CHANGED_BETWEEN' || (!!startDate && !!endDate)) && (
-        <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
-          <div className='flex-shrink-0 flex items-center gap-3 border-b border-gray-100 px-5 py-3'>
-            <Typography as='h3' variant='sectionTitle' color='secondary'>Backup Jobs</Typography>
-            {selectedBackupRow?.name && (
-              <span className='ml-1 text-xs font-medium text-gray-500'>— {selectedBackupRow.name}</span>
-            )}
-          </div>
-
-          <Table
-            columns={jobsColumns}
-            rows={jobsRows}
-            getRowKey={(job: any) => job.backupJobId}
-            loading={isLoadingJobs || isFetchingJobs}
-            skeletonConfig={{ rows: 8, colWidths: ['w-8', 'w-12', 'w-36', 'w-24', 'w-16', 'w-20', 'w-12', 'w-20', 'w-32'] }}
-            headerVariant='uppercase'
-            borderless
-            getRowClassName={(job: any) => `border-b border-gray-50 transition-colors ${isEntireScope ? 'bg-blue-50/60 cursor-default' : `cursor-pointer ${selectedJobIds.has(job.backupJobId) ? 'bg-blue-50' : 'hover:bg-gray-50'}`}`}
-            onRowClick={(job: any) => { if (!isEntireScope) toggleJob(job.backupJobId); }}
-            emptyState='No backup jobs found for this backup config.'
-            height='auto'
-            paginationConfig={{
-              type: 'cursor',
-              hasPrev: jobsCurrentPage > 1,
-              hasNext: !!jobsMeta.nextCursor,
-              onPrev: goJobsPrev,
-              onNext: goJobsNext,
-              label: type === 'CHANGED_BETWEEN' ? undefined : `Showing ${jobsRows.length > 0 ? (jobsCurrentPage - 1) * JOBS_PAGE_SIZE + 1 : 0} to ${(jobsCurrentPage - 1) * JOBS_PAGE_SIZE + jobsRows.length} of ${jobsMeta.totalRecords ?? jobsRows.length}`,
-            }}
-          />
-        </div>
-      )}
     </>
   );
 }
-
