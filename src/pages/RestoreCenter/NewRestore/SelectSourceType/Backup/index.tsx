@@ -102,6 +102,14 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const dateRangeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (type === 'CHANGED_BETWEEN') {
+      setTimeout(() => dateRangeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
+  }, [type]);
+
   // Reset type/dates when config changes
   const prevConfigIdRef = useRef(selectedBackupConfigId);
   useEffect(() => {
@@ -365,7 +373,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
           {/* Date range — only for Changed Between */}
           {type === 'CHANGED_BETWEEN' && (
-            <div className='mt-4 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5'>
+            <div ref={dateRangeRef} className='mt-4 rounded-xl border border-blue-200 bg-blue-50 px-6 py-5'>
               <div className='flex items-center gap-2 mb-4'>
                 <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24'>
                   <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
