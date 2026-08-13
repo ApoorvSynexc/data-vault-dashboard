@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
@@ -77,14 +78,7 @@ const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
 // ── Tooltip helper ────────────────────────────────────────────────────────────
 
 function Tip({ text }: { text: string }) {
-  return (
-    <span className='relative group inline-flex items-center ml-1 cursor-help align-middle'>
-      <span className='w-3.5 h-3.5 rounded-full bg-gray-200 text-gray-500 text-[9px] font-bold flex items-center justify-center'>i</span>
-      <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-56 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-[9999] shadow-lg pointer-events-none'>
-        {text}
-      </span>
-    </span>
-  );
+  return <InfoTooltip text={text} className='ml-1' />;
 }
 
 // ── Sub-configs ───────────────────────────────────────────────────────────────
@@ -93,7 +87,7 @@ function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername
   const [tag, setTag] = useState('Restored via DataCraft {job-id}');
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+    <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
       <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
         <span className='text-base'>🏠</span>
         <span className='text-sm font-semibold text-gray-800'>Same Org Configuration</span>
@@ -320,7 +314,7 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   const destFieldApiNames = new Set(destFieldList.map((f) => f.apiName));
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+    <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
       <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
         <span className='text-base'>🔄</span>
         <span className='text-sm font-semibold text-gray-800'>Different Org Configuration</span>
@@ -361,7 +355,7 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
             <p className='text-sm text-gray-400'>Select a destination org connection above to configure object mapping.</p>
           </div>
         ) : (
-          <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #F97316' }}>
+          <div className='rounded-xl' style={{ border: '1px solid #F97316' }}>
             <div className='flex items-center justify-between gap-2 border-b px-5 py-3' style={{ borderColor: '#FED7AA', background: '#FFF7ED' }}>
               <div className='flex items-center gap-2'>
                 <span className='text-base'>🔁</span>
@@ -460,7 +454,7 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
             <p className='text-sm text-gray-400'>Confirm object mapping above to configure field mapping.</p>
           </div>
         ) : (
-        <div className='rounded-xl border border-gray-200 overflow-hidden'>
+        <div className='rounded-xl border border-gray-200'>
           <div className='flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-3'>
             <div className='flex items-center gap-2'>
               <span className='text-base'>🔣</span>
@@ -544,7 +538,7 @@ function ExportOnlyConfig() {
   const [includeSchemaHeader, setIncludeSchemaHeader] = useState(true);
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+    <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
       <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
         <span className='text-base'>⬇</span>
         <span className='text-sm font-semibold text-gray-800'>Export Only Configuration</span>
@@ -671,7 +665,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           </div>
         </div>
 
-        <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
             <Tip text="Pick where the restored data goes. The configuration changes based on your selection." />

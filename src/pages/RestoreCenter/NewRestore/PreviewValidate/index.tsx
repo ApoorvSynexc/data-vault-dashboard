@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { SourceSelection } from '../SelectSourceType';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
@@ -60,18 +61,6 @@ function ProgressBar({ active }: { active: number }) {
   );
 }
 
-// ── Info tooltip ──────────────────────────────────────────────────────────────
-function InfoTip({ text }: { text: string }) {
-  return (
-    <span className='group relative flex-shrink-0 cursor-default'>
-      <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
-      <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
-        {text}
-        <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
-      </div>
-    </span>
-  );
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -255,14 +244,14 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         <div className='flex flex-col gap-4'>
 
           {/* Schema Mismatch Report — no issues */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
             <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
               <div className='flex items-center gap-2'>
                 <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                   <polyline points='20 6 9 17 4 12'/>
                 </svg>
                 <span className='text-sm font-semibold text-gray-800'>Schema Mismatch Report</span>
-                <InfoTip text='Checks if fields and object types in the backup match the current destination schema. Mismatches can cause fields to be skipped during restore.' />
+                <InfoTooltip text='Checks if fields and object types in the backup match the current destination schema. Mismatches can cause fields to be skipped during restore.' />
               </div>
               <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-700'>
                 No Issues
@@ -279,7 +268,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
           </div>
 
           {/* Tabbed: Dry-Run + Diff */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
 
             {/* Tab bar */}
             <div className='flex border-b border-gray-200'>
@@ -291,7 +280,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
               >
                 <span className='flex items-center gap-1.5'>
                   Dry-Run Mode
-                  <InfoTip text='Simulates the restore without writing any data. Shows exactly how many records will be created or updated before you commit.' />
+                  <InfoTooltip text='Simulates the restore without writing any data. Shows exactly how many records will be created or updated before you commit.' />
                 </span>
               </button>
               <button
@@ -302,7 +291,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
               >
                 <span className='flex items-center gap-1.5'>
                   Snapshot vs Current Diff
-                  <InfoTip text='Compares the backup snapshot values against the current live data in the destination. Highlights fields that have changed since the snapshot was taken.' />
+                  <InfoTooltip text='Compares the backup snapshot values against the current live data in the destination. Highlights fields that have changed since the snapshot was taken.' />
                 </span>
                 {dryRunDone && diffRows.length > 0 && (
                   <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700'>

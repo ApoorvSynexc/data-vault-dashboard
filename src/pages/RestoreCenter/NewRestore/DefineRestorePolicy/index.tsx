@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import InfoTooltip from '../../../../components/InfoTooltip';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -60,18 +61,6 @@ function ProgressBar({ active }: { active: number }) {
   );
 }
 
-// ── Info tooltip ──────────────────────────────────────────────────────────────
-function InfoTip({ text }: { text: string }) {
-  return (
-    <span className='group relative flex-shrink-0 cursor-default inline-flex'>
-      <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
-      <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
-        {text}
-        <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
-      </div>
-    </span>
-  );
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -166,7 +155,7 @@ export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUserna
               <label className='text-sm font-medium flex items-center gap-1.5'>
                 <span className='text-red-500'>*</span>
                 <span style={{ color: '#33363F' }}>Restore Job Name</span>
-                <InfoTip text='A unique name to identify this restore job. Use a descriptive name such as incident ticket or date for easy tracking later.' />
+                <InfoTooltip text='A unique name to identify this restore job. Use a descriptive name such as incident ticket or date for easy tracking later.' />
               </label>
               <input
                 type='text'
@@ -180,7 +169,7 @@ export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUserna
             <div className='flex flex-col gap-1.5'>
               <label className='text-sm font-medium text-gray-700 flex items-center gap-1.5'>
                 Tags <span className='text-gray-400 font-normal'>(Optional)</span>
-                <InfoTip text='Comma-separated tags to categorize this job. Useful for filtering restore history by incident, team, or audit period.' />
+                <InfoTooltip text='Comma-separated tags to categorize this job. Useful for filtering restore history by incident, team, or audit period.' />
               </label>
               <input
                 type='text'
@@ -197,7 +186,7 @@ export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUserna
           <div className='flex flex-col gap-1.5'>
             <label className='text-sm font-medium text-gray-700 flex items-center gap-1.5'>
               Description <span className='text-gray-400 font-normal'>(Optional)</span>
-              <InfoTip text='Document the reason for this restore — e.g. "Reverting accidental bulk delete of Q1 leads by user X". Helps with auditing and compliance.' />
+              <InfoTooltip text='Document the reason for this restore — e.g. "Reverting accidental bulk delete of Q1 leads by user X". Helps with auditing and compliance.' />
             </label>
             <textarea
               value={description}
