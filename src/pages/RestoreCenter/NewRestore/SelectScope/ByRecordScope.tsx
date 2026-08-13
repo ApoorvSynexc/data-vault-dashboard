@@ -157,7 +157,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
         ) : sourceObjectNames.length === 0 ? (
           <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
         ) : (
-          <div className='divide-y divide-gray-50' style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
             {sourceObjectNames
               .filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()))
               .map((name) => {
