@@ -99,11 +99,9 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         <SelectSourceType
           onNext={(sel) => {
             setSourceSelection(sel);
-            const source = sel.type === 'PARTIAL'
-              ? { backupConfigId: sel.backupConfigId, backupJobIds: sel.backupJobIds, type: sel.type }
-              : sel.type === 'CHANGED_BETWEEN'
+            const source = sel.type === 'CHANGED_BETWEEN'
               ? { backupConfigId: sel.backupConfigId, backupJobIds: sel.backupJobIds, type: sel.type, ...(sel.startDate ? { startDate: sel.startDate } : {}), ...(sel.endDate ? { endDate: sel.endDate } : {}) }
-              : { backupConfigId: sel.backupConfigId, type: sel.type, ...(sel.startDate ? { startDate: sel.startDate } : {}), ...(sel.endDate ? { endDate: sel.endDate } : {}) };
+              : { backupConfigId: sel.backupConfigId, type: sel.type };
             updatePayload({ source });
             goNext();
           }}

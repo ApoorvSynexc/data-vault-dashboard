@@ -39,7 +39,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
           type: sourceSelection.type ?? 'ENTIRE',
           ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
           ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
-          ...((sourceSelection.type === 'PARTIAL' || sourceSelection.type === 'CHANGED_BETWEEN') && sourceSelection.backupJobIds.length > 0
+          ...(sourceSelection.type === 'CHANGED_BETWEEN' && sourceSelection.backupJobIds.length > 0
             ? { backupJobIds: sourceSelection.backupJobIds }
             : {}),
         },
