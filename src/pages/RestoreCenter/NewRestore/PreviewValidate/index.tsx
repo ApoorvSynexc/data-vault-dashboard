@@ -60,6 +60,19 @@ function ProgressBar({ active }: { active: number }) {
   );
 }
 
+// ── Info tooltip ──────────────────────────────────────────────────────────────
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className='group relative flex-shrink-0 cursor-default'>
+      <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
+      <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
+        {text}
+        <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
+      </div>
+    </span>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DryRunStats { insertCount: number; updateCount: number; totalRowsRaw: number; }
@@ -249,6 +262,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   <polyline points='20 6 9 17 4 12'/>
                 </svg>
                 <span className='text-sm font-semibold text-gray-800'>Schema Mismatch Report</span>
+                <InfoTip text='Checks if fields and object types in the backup match the current destination schema. Mismatches can cause fields to be skipped during restore.' />
               </div>
               <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-700'>
                 No Issues
@@ -275,7 +289,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   activeTab === 'dryrun' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Dry-Run Mode
+                <span className='flex items-center gap-1.5'>
+                  Dry-Run Mode
+                  <InfoTip text='Simulates the restore without writing any data. Shows exactly how many records will be created or updated before you commit.' />
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('diff')}
@@ -283,7 +300,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   activeTab === 'diff' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Snapshot vs Current Diff
+                <span className='flex items-center gap-1.5'>
+                  Snapshot vs Current Diff
+                  <InfoTip text='Compares the backup snapshot values against the current live data in the destination. Highlights fields that have changed since the snapshot was taken.' />
+                </span>
                 {dryRunDone && diffRows.length > 0 && (
                   <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700'>
                     {diffRows.length}

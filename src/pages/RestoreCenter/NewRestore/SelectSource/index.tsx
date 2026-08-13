@@ -60,6 +60,19 @@ function ProgressBar({ active }: { active: number }) {
     </div>
   );
 }
+// ── Info tooltip ──────────────────────────────────────────────────────────────
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className='group relative flex-shrink-0 cursor-default'>
+      <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
+      <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
+        {text}
+        <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
+      </div>
+    </span>
+  );
+}
+
 // ── Available storage providers ───────────────────────────────────────────────
 
 const STORAGE_PROVIDERS = [
@@ -104,7 +117,10 @@ function CloudSourcePicker({
 
         {/* Left — Available Storage Platforms */}
         <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
-          <p className='text-sm font-semibold text-gray-800 mb-3 flex-shrink-0'>Available Source Platform</p>
+          <div className='flex items-center gap-1.5 mb-3 flex-shrink-0'>
+            <p className='text-sm font-semibold text-gray-800'>Available Source Platform</p>
+            <InfoTip text='Select the cloud storage provider where your backup files are stored. Only providers with configured connections are shown.' />
+          </div>
           <div className='flex-1 overflow-y-auto space-y-2 pr-1'>
             {STORAGE_PROVIDERS.map((p) => {
               const isSelected = selectedProvider === p.id;
@@ -140,9 +156,10 @@ function CloudSourcePicker({
 
         {/* Right — Available Connections */}
         <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
-          <p className='text-sm font-semibold text-gray-800 mb-3 flex-shrink-0'>
-            Available {selectedProvider} Connections
-          </p>
+          <div className='flex items-center gap-1.5 mb-3 flex-shrink-0'>
+            <p className='text-sm font-semibold text-gray-800'>Available {selectedProvider} Connections</p>
+            <InfoTip text='Only active connections for the selected platform are listed. Manage your connections in the Connections settings page.' />
+          </div>
           {isLoading ? (
             <div className='flex-1 flex items-center justify-center'>
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
