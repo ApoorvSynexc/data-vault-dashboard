@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Typography from '../../../../components/Typography';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import type { Destination } from '../../../../services/destination/destination.service';
 import BackupPicker from './Backup';
 import type { BackupSelection } from './Backup';
@@ -88,18 +89,21 @@ function ProgressBar({ active }: { active: number }) {
 }
 
 // ── Source type cards ─────────────────────────────────────────────────────────
-const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc: string }[] = [
+
+const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc: string; tip: string }[] = [
   {
     id: 'backup',
     icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><polyline points='23 4 23 10 17 10'/><path d='M20.49 15a9 9 0 1 1-.29-4.36'/></svg>,
     title: 'Backup Snapshot',
     desc: 'Point-in-time backup with change history',
+    tip: 'Restore from a scheduled or on-demand backup snapshot. Select a specific snapshot, then choose Entire or Changed Between to define the time range.',
   },
   {
     id: 'archive',
     icon: <svg width='18' height='18' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path d='M5 8l4 4 4-4'/><rect x='3' y='3' width='18' height='18' rx='2'/></svg>,
     title: 'Archive Vault Entry',
     desc: 'Cold/warm archived records',
+    tip: 'Restore from a long-term archive vault entry. Each archive set is a static store of records moved out of the CRM. Select an entry to restore all its records.',
   },
 ];
 
@@ -201,9 +205,10 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
           </div>
         </div>
 
-        <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-          <div className='border-b border-gray-100 px-5 py-3'>
+        <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className='border-b border-gray-100 px-5 py-3 flex items-center gap-2'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Source Type</Typography>
+            <InfoTooltip text='Pick where the data lives. Backup Snapshot uses scheduled/on-demand backups; Archive Vault Entry uses long-term cold/warm archives.' />
           </div>
           <div className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-3'>
             {SOURCE_TYPES.map((s) => {
@@ -223,6 +228,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
                   <div className='flex items-center gap-2'>
                     <span className={active ? 'text-blue-600' : 'text-gray-500'}>{s.icon}</span>
                     <span className={`text-sm font-semibold ${active ? 'text-blue-600' : 'text-gray-800'}`}>{s.title}</span>
+                    <InfoTooltip text={s.tip} active={active} />
                   </div>
                   <p className='mt-1 text-xs text-gray-500'>{s.desc}</p>
                 </button>

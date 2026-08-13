@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreScope, RestoreScopeFilter } from '../../../../services/restore/restore.service';
 import type { SourceSelection } from '../SelectSourceType';
@@ -143,13 +144,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='px-5 py-3 border-b border-gray-100 flex items-center gap-2'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Restore Scope</Typography>
-            <span className='group relative flex-shrink-0 cursor-default'>
-              <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
-              <div className='pointer-events-none absolute left-0 top-full mt-2 z-50 hidden group-hover:block w-64 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
-                Choose how to scope the data being restored. Select a mode to reveal its configuration below.
-                <div className='absolute left-3 bottom-full w-2 h-2 bg-gray-900 rotate-45 -mb-1' />
-              </div>
-            </span>
+            <InfoTooltip text='Choose how to scope the data being restored. Select a mode to reveal its configuration below.' />
           </div>
           <div className='p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'>
             {SCOPE_MODES.map((m) => {
@@ -168,13 +163,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   <div className='flex-1 min-w-0'>
                     <div className='flex items-center gap-1.5'>
                       <p className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>{m.title}</p>
-                      <span className='group/tip relative flex-shrink-0 cursor-default' onClick={(e) => e.stopPropagation()}>
-                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold leading-none select-none ${active ? 'bg-blue-200 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>i</span>
-                        <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover/tip:block w-48 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
-                          {m.tooltip}
-                          <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
-                        </div>
-                      </span>
+                      <InfoTooltip text={m.tooltip} active={active} />
                     </div>
                     <p className='text-xs text-gray-500 mt-0.5 leading-snug'>{m.desc}</p>
                   </div>

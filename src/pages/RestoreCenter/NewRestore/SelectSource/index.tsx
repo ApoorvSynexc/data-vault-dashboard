@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
+import InfoTooltip from '../../../../components/InfoTooltip';
 import { useDestinationService } from '../../../../services/destination/destination.service';
 import type { Destination } from '../../../../services/destination/destination.service';
 import awsLogo from '../../../../assets/icons/aws_logo.svg';
@@ -60,18 +61,6 @@ function ProgressBar({ active }: { active: number }) {
     </div>
   );
 }
-// ── Info tooltip ──────────────────────────────────────────────────────────────
-function InfoTip({ text }: { text: string }) {
-  return (
-    <span className='group relative flex-shrink-0 cursor-default'>
-      <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
-      <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
-        {text}
-        <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
-      </div>
-    </span>
-  );
-}
 
 // ── Available storage providers ───────────────────────────────────────────────
 
@@ -108,7 +97,7 @@ function CloudSourcePicker({
   useEffect(() => { setSelectedConnection(null); }, [selectedProvider]);
 
   return (
-    <div className='flex-1 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col min-h-0'>
+    <div className='flex-1 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col min-h-0'>
       <div className='flex items-center gap-3 border-b border-gray-100 px-5 py-3 flex-shrink-0'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>Cloud Source</Typography>
         <span className='text-xs text-gray-400'>Select the storage platform and connection to restore from</span>
@@ -119,7 +108,7 @@ function CloudSourcePicker({
         <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
           <div className='flex items-center gap-1.5 mb-3 flex-shrink-0'>
             <p className='text-sm font-semibold text-gray-800'>Available Source Platform</p>
-            <InfoTip text='Select the cloud storage provider where your backup files are stored. Only providers with configured connections are shown.' />
+            <InfoTooltip text='Select the cloud storage provider where your backup files are stored. Only providers with configured connections are shown.' />
           </div>
           <div className='flex-1 overflow-y-auto space-y-2 pr-1'>
             {STORAGE_PROVIDERS.map((p) => {
@@ -158,7 +147,7 @@ function CloudSourcePicker({
         <div className='bg-white rounded-lg border border-gray-200 p-4 flex flex-col min-h-0'>
           <div className='flex items-center gap-1.5 mb-3 flex-shrink-0'>
             <p className='text-sm font-semibold text-gray-800'>Available {selectedProvider} Connections</p>
-            <InfoTip text='Only active connections for the selected platform are listed. Manage your connections in the Connections settings page.' />
+            <InfoTooltip text='Only active connections for the selected platform are listed. Manage your connections in the Connections settings page.' />
           </div>
           {isLoading ? (
             <div className='flex-1 flex items-center justify-center'>

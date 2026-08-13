@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import InfoTooltip from '../../../../components/InfoTooltip';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -62,29 +63,22 @@ function ProgressBar({ active }: { active: number }) {
 // ── Tooltip helper ────────────────────────────────────────────────────────────
 
 function Tip({ text }: { text: string }) {
-  return (
-    <span className='relative group inline-flex items-center ml-1 cursor-help align-middle'>
-      <span className='w-4 h-4 rounded-full bg-blue-100 border border-blue-300 text-blue-600 text-[9px] font-bold flex items-center justify-center'>i</span>
-      <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover:block w-60 bg-gray-800 text-white text-[11px] leading-relaxed rounded-lg px-3 py-2 z-50 shadow-lg pointer-events-none'>
-        {text}
-      </span>
-    </span>
-  );
+  return <InfoTooltip text={text} className='ml-1' />;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type RestoreMode = 'overwrite' | 'append' | 'merge' | 'skip' | 'replace';
 
-const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'overwrite', title: 'Overwrite Existing',    desc: 'Source record replaces destination — every field overwritten', recommended: true },
-  { id: 'append',    title: 'Append as New Records', desc: 'Always insert — creates duplicates if record already exists' },
+const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; tip: string; recommended?: boolean; danger?: boolean }[] = [
+  { id: 'overwrite', title: 'Overwrite Existing',    desc: 'Source record replaces destination — every field overwritten', recommended: true, tip: 'When a record exists in both source and destination (matched by Id / external Id), the destination record is fully replaced by the source record — every field overwritten. Standard disaster-recovery behaviour.' },
+  { id: 'append',    title: 'Append as New Records', desc: 'Always insert — creates duplicates if record already exists', tip: 'Source records are ALWAYS inserted as new records, even when a matching Id exists. This creates side-by-side duplicates. Useful only for niche cases like keeping a historical frozen copy.' },
 ];
 
-const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'skip',    title: 'Skip if Exists',           desc: 'Do not touch records already in destination' },
-  { id: 'merge',   title: 'Merge (per-field rule)',  desc: 'Configurable per-field winner — best for partial / safety-first recovery' },
-  { id: 'replace', title: 'Replace Entire Object',    desc: 'Delete all destination records, then insert from source', danger: true },
+const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; tip: string; recommended?: boolean; danger?: boolean }[] = [
+  { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination',                               tip: 'If a matching Id exists in the destination, leave it alone. Only restore records that are missing in the destination. Standard for filling gaps after a partial delete.' },
+  { id: 'merge',   title: 'Merge (per-field rule)',  desc: 'Configurable per-field winner — best for partial / safety-first recovery',  tip: 'When records exist in both, merge them field by field using the rule below (Source wins / Destination wins / Newest LastModifiedDate / Per-field override). Use this when you want some fields rolled back but newer destination work preserved.' },
+  { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source',                   tip: '⚠ Nuclear option. Deletes ALL records of the target object in the destination, then inserts from source. Use only when you are sure the entire object\'s state must match the source.', danger: true },
 ];
 
 const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
@@ -219,6 +213,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                         <span className={`text-sm font-semibold ${active ? (m.danger ? 'text-red-600' : 'text-blue-600') : 'text-gray-800'}`}>
                           {m.title}
                         </span>
+                        <Tip text={m.tip} />
                         {m.recommended && (
                           <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700'>Recommended</span>
                         )}
