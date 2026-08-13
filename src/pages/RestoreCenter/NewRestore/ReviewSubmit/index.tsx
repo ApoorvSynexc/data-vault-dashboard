@@ -313,9 +313,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   const [isSuccess, setIsSuccess] = useState(false);
   const [showAckModal, setShowAckModal] = useState(false);
 
-  useEffect(() => {
-    console.log('[ReviewSubmit] Final restore payload:', JSON.stringify(restorePayload, null, 2));
-  }, [restorePayload]);
 
   // Editable job detail fields pre-filled from restorePayload
   const [jobName, setJobName]     = useState(restorePayload.jobDetail?.name ?? '');
