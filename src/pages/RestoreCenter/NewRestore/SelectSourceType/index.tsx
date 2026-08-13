@@ -105,7 +105,7 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, onArchivalJobsPhaseChange }: Props) {
+export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
@@ -118,21 +118,13 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
   const [backupSelectedJobIds, setBackupSelectedJobIds] = useState<string[]>([]);
 
   // Archival phase states
-  const [showArchivalJobsPhase, setShowArchivalJobsPhase] = useState(initialArchivalJobsPhase);
-  const [archivalConfigSelected, setArchivalConfigSelected] = useState(initialArchivalJobsPhase);
   const [archivalSelection, setArchivalSelection] = useState<ArchivalSelection | null>(null);
   const [archivalSelectedRow, setArchivalSelectedRow] = useState<any>(null);
   const [archivalSelectedConfigId, setArchivalSelectedConfigId] = useState<string>('');
-  const [archivalSelectedJobIds, setArchivalSelectedJobIds] = useState<string[]>([]);
 
   const setBackupJobsPhase = (v: boolean) => {
     setShowJobsPhase(v);
     onBackupJobsPhaseChange?.(v);
-  };
-
-  const setArchivalJobsPhase = (v: boolean) => {
-    setShowArchivalJobsPhase(v);
-    onArchivalJobsPhaseChange?.(v);
   };
 
   const clearBackup = () => {
@@ -145,27 +137,22 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
   };
 
   const clearArchival = () => {
-    setArchivalConfigSelected(false);
     setArchivalSelection(null);
-    setArchivalJobsPhase(false);
     setArchivalSelectedRow(null);
     setArchivalSelectedConfigId('');
-    setArchivalSelectedJobIds([]);
   };
 
   const canProceed =
     sourceType === 'backup'
       ? (showJobsPhase ? !!backupSelection : configSelected)
       : sourceType === 'archive'
-      ? (showArchivalJobsPhase ? !!archivalSelection : archivalConfigSelected)
+      ? !!archivalSelection
       : false;
 
   const handleNext = () => {
     if (sourceType === 'archive') {
-      if (showArchivalJobsPhase && archivalSelection) {
+      if (archivalSelection) {
         onNext({ configType: 'ARCHIVAL', backupConfigId: archivalSelection.backupConfigId, backupJobIds: archivalSelection.backupJobIds });
-      } else {
-        setArchivalJobsPhase(true);
       }
       return;
     }
@@ -261,15 +248,13 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
 
         {sourceType === 'archive' && (
           <ArchivalPicker
-            showJobsPhase={showArchivalJobsPhase}
-            onConfigSelected={setArchivalConfigSelected}
+            showJobsPhase={false}
+            onConfigSelected={() => {}}
             onSelectionChange={setArchivalSelection}
             initialSelectedRow={archivalSelectedRow}
             initialSelectedConfigId={archivalSelectedConfigId}
-            initialSelectedJobIds={archivalSelectedJobIds}
             onSelectedRowChange={setArchivalSelectedRow}
             onSelectedConfigIdChange={setArchivalSelectedConfigId}
-            onSelectedJobIdsChange={setArchivalSelectedJobIds}
           />
         )}
 
@@ -280,7 +265,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
         <button
           onClick={() => {
             if (sourceType === 'backup' && showJobsPhase) { setBackupJobsPhase(false); }
-            else if (sourceType === 'archive' && showArchivalJobsPhase) { setArchivalJobsPhase(false); }
             else { onBack(); }
           }}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
@@ -295,8 +279,8 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}
           >
-            {(sourceType === 'backup' && !showJobsPhase) || (sourceType === 'archive' && !showArchivalJobsPhase)
-              ? (sourceType === 'backup' ? 'Select Backup Jobs To Restore →' : 'Select Archive Jobs To Restore →')
+            {sourceType === 'backup' && !showJobsPhase
+              ? 'Select Restore Type →'
               : 'Next: Choose Selection Scope →'}
           </button>
         </div>
