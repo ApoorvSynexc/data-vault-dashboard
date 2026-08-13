@@ -132,21 +132,21 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
   return (
     <>
       <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-        <div className='px-5 py-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+        <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
           <Typography as='h3' variant='sectionTitle' color='secondary'>◉ Select Records</Typography>
-          <div className='flex items-center gap-2 flex-wrap'>
-            <div className='relative'>
-              <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
-              </svg>
-              <input value={objSearch} onChange={(e) => setObjSearch(e.target.value)} placeholder='Search objects…'
-                className='pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-44' />
-            </div>
-            {totalSelected > 0 && (
-              <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700'>
-                {addedObjs.length} object{addedObjs.length !== 1 ? 's' : ''} · {totalSelected} record{totalSelected !== 1 ? 's' : ''}
-              </span>
-            )}
+          {totalSelected > 0 && (
+            <span className='text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700'>
+              {addedObjs.length} object{addedObjs.length !== 1 ? 's' : ''} · {totalSelected} record{totalSelected !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <div className='px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
+          <div className='relative max-w-xs'>
+            <svg className='pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+              <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+            </svg>
+            <input value={objSearch} onChange={(e) => setObjSearch(e.target.value)} placeholder='Search objects…'
+              className='h-8 w-full rounded-lg border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-700 outline-none focus:border-blue-400 transition' />
           </div>
         </div>
 
@@ -180,6 +180,10 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
               })}
           </div>
         )}
+
+        <div className='px-5 py-2.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-400'>
+          Showing {sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase())).length} of {sourceObjectNames.length} objects · {addedObjs.length} selected
+        </div>
 
         {totalSelected > 0 && (
           <div className='border-t border-gray-100 px-5 py-3 space-y-1'>
