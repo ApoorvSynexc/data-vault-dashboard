@@ -353,7 +353,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
         </div>
 
         {/* ── All Restores ── */}
-        <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden flex flex-col'>
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col' style={{ height: 'calc(100vh - 420px)', minHeight: 300 }}>
           <div className='flex items-center justify-between px-5 py-3 border-b border-gray-100'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>All Restores</Typography>
           </div>
