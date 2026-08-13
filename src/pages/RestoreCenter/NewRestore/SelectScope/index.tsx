@@ -123,26 +123,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       {/* Scrollable body */}
       <div className='flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-4'>
 
-        {/* Job badge */}
-        <div className='flex-shrink-0 rounded-xl border border-blue-200 bg-white shadow-sm overflow-hidden'>
-          <div className='flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-sm'>
-            <span className='flex items-center gap-1.5 text-gray-500'>
-              <span className='font-semibold text-gray-700'>Restore:</span>
-              <span>Untitled — May 27, 10:30 AM</span>
-              <button className='text-blue-500 hover:text-blue-700 text-xs ml-0.5'>✎</button>
-            </span>
-            <span className='w-px h-4 bg-gray-200 hidden sm:block' />
-            <span className='flex items-center gap-1.5 text-gray-500'>
-              <span className='font-semibold text-gray-700'>Tags:</span> INC-4711
-            </span>
-            <span className='w-px h-4 bg-gray-200 hidden sm:block' />
-            <span className='flex items-center gap-1.5 text-gray-500'>
-              <span className='font-semibold text-gray-700'>Source:</span> Backup · May 27, 06:00 AM
-              <button className='text-blue-500 hover:text-blue-700 text-xs ml-0.5'>✎</button>
-            </span>
-          </div>
-        </div>
-
         {/* Wizard header */}
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2'>
@@ -160,14 +140,14 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         </div>
 
         {/* Scope mode grid */}
-        <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
           <div className='px-5 py-3 border-b border-gray-100 flex items-center gap-2'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Restore Scope</Typography>
             <span className='group relative flex-shrink-0 cursor-default'>
               <span className='inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold leading-none select-none'>i</span>
-              <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block w-64 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
+              <div className='pointer-events-none absolute left-0 top-full mt-2 z-50 hidden group-hover:block w-64 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
                 Choose how to scope the data being restored. Select a mode to reveal its configuration below.
-                <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
+                <div className='absolute left-3 bottom-full w-2 h-2 bg-gray-900 rotate-45 -mb-1' />
               </div>
             </span>
           </div>
@@ -190,7 +170,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                       <p className={`text-sm font-semibold ${active ? 'text-blue-700' : 'text-gray-800'}`}>{m.title}</p>
                       <span className='group/tip relative flex-shrink-0 cursor-default' onClick={(e) => e.stopPropagation()}>
                         <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold leading-none select-none ${active ? 'bg-blue-200 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>i</span>
-                        <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover/tip:block w-52 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
+                        <div className='pointer-events-none absolute left-0 bottom-full mb-2 z-50 hidden group-hover/tip:block w-48 rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'>
                           {m.tooltip}
                           <div className='absolute left-3 top-full w-2 h-2 bg-gray-900 rotate-45 -mt-1' />
                         </div>
