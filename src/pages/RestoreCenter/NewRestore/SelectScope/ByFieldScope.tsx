@@ -121,7 +121,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
             <div className='px-3 py-1.5 bg-gray-50 border-b border-gray-100'>
               <p className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Objects <span className='font-normal normal-case'>(tick to include)</span></p>
             </div>
-            <div className='divide-y divide-gray-50 overflow-y-auto' style={{ maxHeight: 300 }}>
+            <div className='divide-y divide-gray-50 overflow-y-auto' style={{ maxHeight: 600 }}>
               {sourceObjectsLoading ? (
                 <div className='flex items-center justify-center py-6 gap-2 text-xs text-gray-400'>
                   <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />Loading objects…
@@ -155,7 +155,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
           </div>
 
           {/* Right — field picker */}
-          <div className='rounded-lg border border-gray-200 overflow-hidden flex flex-col'>
+          <div className='rounded-lg border border-gray-200 overflow-hidden flex flex-col' style={{ minHeight: 648 }}>
             {!activeObj ? (
               <div className='flex-1 flex flex-col items-center justify-center py-12 px-4 text-center gap-2'>
                 <svg width='32' height='32' fill='none' stroke='#CBD5E1' strokeWidth='1.5' viewBox='0 0 24 24'>
@@ -190,7 +190,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
                     ))}
                   </div>
                 </div>
-                <div className='p-3 flex flex-wrap gap-2 overflow-y-auto' style={{ maxHeight: 200 }}>
+                <div className='p-3 flex flex-wrap gap-2 content-start overflow-y-auto flex-1' style={{ minHeight: 0 }}>
                   {fieldOptionsLoading ? (
                     <div className='flex items-center gap-2 text-xs text-gray-400 w-full justify-center py-4'>
                       <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />Loading fields…
