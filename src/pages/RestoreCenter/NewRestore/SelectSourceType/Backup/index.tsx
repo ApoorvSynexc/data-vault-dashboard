@@ -37,6 +37,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(initialSelectedConfigId ? new Set([initialSelectedConfigId]) : new Set());
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>(initialSelectedConfigId);
+  const [selectedBackupCreatedAt, setSelectedBackupCreatedAt] = useState<string>('');
 
   const [backupSearch, setBackupSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -98,6 +99,10 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   };
 
   // ── Phase 2: restore type + date range ───────────────────────────────────
+  const toDatetimeLocal = (iso: string) => iso ? iso.slice(0, 16) : '';
+  const minDatetime = toDatetimeLocal(selectedBackupCreatedAt);
+  const maxDatetime = toDatetimeLocal(new Date().toISOString());
+
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -118,6 +123,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       setScopeType('ENTIRE');
       setStartDate('');
       setEndDate('');
+      setSelectedBackupCreatedAt('');
     }
   }, [selectedBackupConfigId]);
 
@@ -151,6 +157,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
           onChange={() => {
             setSelectedBackup(new Set([row.backupConfigId]));
             setSelectedBackupConfigId(row.backupConfigId);
+            setSelectedBackupCreatedAt(row.createdAt ?? '');
             onSelectedRowChange?.(row);
             onSelectedConfigIdChange?.(row.backupConfigId);
             onSelectionChange(null);
@@ -386,6 +393,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                   <input
                     type='datetime-local'
                     value={startDate}
+                    min={minDatetime || undefined}
+                    max={maxDatetime || undefined}
                     onChange={(e) => {
                       const newStart = e.target.value;
                       setStartDate(newStart);
@@ -399,7 +408,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                   <input
                     type='datetime-local'
                     value={endDate}
-                    min={startDate || undefined}
+                    min={startDate || minDatetime || undefined}
+                    max={maxDatetime || undefined}
                     onChange={(e) => {
                       const newEnd = e.target.value;
                       if (startDate && newEnd < startDate) return;
