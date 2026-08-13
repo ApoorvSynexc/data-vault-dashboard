@@ -221,6 +221,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {scopeMode === 'filter'  && (
           <CustomFilterScope
             sourceObjectNames={sourceObjectNames}
+            sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setFilterScope}
           />

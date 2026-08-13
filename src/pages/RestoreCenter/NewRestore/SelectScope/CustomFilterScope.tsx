@@ -11,50 +11,51 @@ interface FilterConfig { rows: FilterRow[]; orGroups: OrGroup[]; filterLogic: st
 
 interface Props {
   sourceObjectNames: string[];
+  sourceObjectsLoading: boolean;
   sourceSelection: SourceSelection;
   onChange: (filters: RestoreScopeFilter[]) => void;
 }
 
-export default function CustomFilterScope({ sourceObjectNames, sourceSelection, onChange }: Props) {
+export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange }: Props) {
   const restoreService = useRestoreService();
 
-  const [filterTab,        setFilterTab]        = useState<FilterTab>('visual');
-  const [pickerObj,        setPickerObj]        = useState('');
-  const [addedObjs,        setAddedObjs]        = useState<string[]>([]);
-  const [activeObj,        setActiveObj]        = useState('');
-  const [configByObj,      setConfigByObj]      = useState<Record<string, FilterConfig>>({});
-  const [soqlByObj,        setSoqlByObj]        = useState<Record<string, string>>({});
-  const [pendingPicklist,  setPendingPicklist]  = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
+  const [objSearch,       setObjSearch]       = useState('');
+  const [addedObjs,       setAddedObjs]       = useState<string[]>([]);
+  const [modalObj,        setModalObj]        = useState<string | null>(null);
+  const [filterTab,       setFilterTab]       = useState<FilterTab>('visual');
+  const [configByObj,     setConfigByObj]     = useState<Record<string, FilterConfig>>({});
+  const [soqlByObj,       setSoqlByObj]       = useState<Record<string, string>>({});
+  const [pendingPicklist, setPendingPicklist] = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
 
-  const activeCfg: FilterConfig = configByObj[activeObj] ?? { rows: [], orGroups: [], filterLogic: '' };
+  const activeCfg: FilterConfig = configByObj[modalObj ?? ''] ?? { rows: [], orGroups: [], filterLogic: '' };
   const filterRows  = activeCfg.rows;
   const orGroups    = activeCfg.orGroups;
   const filterLogic = activeCfg.filterLogic;
-  const soqlWhere   = soqlByObj[activeObj] ?? '';
+  const soqlWhere   = soqlByObj[modalObj ?? ''] ?? '';
 
   const setCfg = (obj: string, patch: Partial<FilterConfig>) =>
     setConfigByObj((p) => ({ ...p, [obj]: { ...(p[obj] ?? { rows: [], orGroups: [], filterLogic: '' }), ...patch } }));
 
-  const setSoqlWhere = (val: string) => setSoqlByObj((p) => ({ ...p, [activeObj]: val }));
+  const setSoqlWhere = (val: string) => setSoqlByObj((p) => ({ ...p, [modalObj!]: val }));
 
   const { data: filterFieldsData, isLoading: filterFieldsLoading } = useQuery({
-    queryKey: ['filter-object-fields', activeObj, sourceSelection.backupConfigId],
-    queryFn: () => restoreService.fetchObjectFields(activeObj, sourceSelection.backupConfigId),
-    enabled: !!activeObj && !!sourceSelection.backupConfigId,
+    queryKey: ['filter-object-fields', modalObj, sourceSelection.backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(modalObj!, sourceSelection.backupConfigId),
+    enabled: !!modalObj && !!sourceSelection.backupConfigId,
     staleTime: 60_000,
     retry: 1,
   });
   const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
 
   const { data: picklistData } = useQuery({
-    queryKey: ['restore-picklist', sourceSelection.backupConfigId, activeObj, pendingPicklist?.fieldApiName],
+    queryKey: ['restore-picklist', sourceSelection.backupConfigId, modalObj, pendingPicklist?.fieldApiName],
     queryFn: async () => {
-      const result = await restoreService.getPicklistValues(activeObj, pendingPicklist!.fieldApiName, sourceSelection.backupConfigId);
+      const result = await restoreService.getPicklistValues(modalObj!, pendingPicklist!.fieldApiName, sourceSelection.backupConfigId);
       const payload = (result as any)?.data ?? result;
       const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
       return values as { value: string; label: string }[];
     },
-    enabled: !!pendingPicklist && !!activeObj,
+    enabled: !!pendingPicklist && !!modalObj,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -81,10 +82,10 @@ export default function CustomFilterScope({ sourceObjectNames, sourceSelection, 
   };
 
   const updateFilterRow = (id: string, patch: Partial<FilterRow>) =>
-    setCfg(activeObj, { rows: filterRows.map((r) => r.id === id ? { ...r, ...patch } : r) });
+    setCfg(modalObj!, { rows: filterRows.map((r) => r.id === id ? { ...r, ...patch } : r) });
 
   const removeFilterRow = (id: string) =>
-    setCfg(activeObj, { rows: filterRows.filter((r) => r.id !== id) });
+    setCfg(modalObj!, { rows: filterRows.filter((r) => r.id !== id) });
 
   const handleFilterFieldChange = (id: string, apiName: string) => {
     const dataType = resolveDataType(apiName);
@@ -94,10 +95,10 @@ export default function CustomFilterScope({ sourceObjectNames, sourceSelection, 
   };
 
   const updateOrGroupRow = (groupId: string, rowId: string, patch: Partial<FilterRow>) =>
-    setCfg(activeObj, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }) });
+    setCfg(modalObj!, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.map((r) => r.id === rowId ? { ...r, ...patch } : r) }) });
 
   const removeOrGroupRow = (groupId: string, rowId: string) =>
-    setCfg(activeObj, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }) });
+    setCfg(modalObj!, { orGroups: orGroups.map((g) => g.id !== groupId ? g : { ...g, rows: g.rows.filter((r) => r.id !== rowId) }) });
 
   const handleOrGroupFieldChange = (groupId: string, rowId: string, apiName: string) => {
     const dataType = resolveDataType(apiName);
@@ -106,31 +107,59 @@ export default function CustomFilterScope({ sourceObjectNames, sourceSelection, 
     else setPendingPicklist(null);
   };
 
-  const addObj = () => {
-    if (!pickerObj || addedObjs.includes(pickerObj)) { setActiveObj(pickerObj); return; }
-    setAddedObjs((p) => [...p, pickerObj]);
-    setActiveObj(pickerObj);
-    setConfigByObj((p) => ({ ...p, [pickerObj]: { rows: [], orGroups: [], filterLogic: '' } }));
-  };
-
-  const removeObj = (obj: string) => {
-    setAddedObjs((p) => p.filter((o) => o !== obj));
-    setConfigByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
-    setSoqlByObj((p) => { const n = { ...p }; delete n[obj]; return n; });
-    setActiveObj((prev) => prev === obj ? (addedObjs.find((o) => o !== obj) ?? '') : prev);
-  };
-
-  const buildFilters = (): RestoreScopeFilter[] =>
-    addedObjs.map((obj) => {
-      if (filterTab === 'soql') {
-        const where = soqlByObj[obj] ?? '';
-        return { objectName: obj, filter: { type: 'SOQL' as const, soqlQuery: where.trim() ? `SELECT Id FROM ${obj} WHERE ${where.trim()}` : `SELECT Id FROM ${obj}` } };
+  const toggleObj = (name: string) => {
+    setAddedObjs((prev) => {
+      const next = prev.includes(name) ? prev.filter((o) => o !== name) : [...prev, name];
+      if (!next.includes(name)) {
+        setConfigByObj((p) => { const n = { ...p }; delete n[name]; return n; });
+        setSoqlByObj((p) => { const n = { ...p }; delete n[name]; return n; });
       }
+      buildAndNotify(next);
+      return next;
+    });
+  };
+
+  const buildAndNotify = (objs: string[]) => {
+    const filters: RestoreScopeFilter[] = objs.map((obj) => {
       const cfg = configByObj[obj] ?? { rows: [], orGroups: [], filterLogic: '' };
+      const soql = soqlByObj[obj] ?? '';
+      if (soql.trim()) {
+        return { objectName: obj, filter: { type: 'SOQL' as const, soqlQuery: `SELECT Id FROM ${obj} WHERE ${soql.trim()}` } };
+      }
       return { objectName: obj, filter: { type: 'AND' as const, fields: cfg.rows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
     });
+    onChange(filters);
+  };
 
-  const notify = () => onChange(buildFilters());
+  const hasFilter = (name: string): boolean => {
+    const cfg = configByObj[name];
+    const soql = soqlByObj[name] ?? '';
+    return soql.trim().length > 0 || (cfg?.rows?.length ?? 0) > 0 || (cfg?.orGroups?.length ?? 0) > 0;
+  };
+
+  const filterSummary = (name: string): string => {
+    const soql = soqlByObj[name] ?? '';
+    if (soql.trim()) return `SOQL: ${soql.trim().slice(0, 40)}${soql.trim().length > 40 ? '…' : ''}`;
+    const cfg = configByObj[name];
+    const count = (cfg?.rows?.length ?? 0) + (cfg?.orGroups?.reduce((s, g) => s + g.rows.length, 0) ?? 0);
+    return count > 0 ? `${count} filter condition${count !== 1 ? 's' : ''}` : '';
+  };
+
+  const openModal = (name: string) => {
+    setModalObj(name);
+    setFilterTab('visual');
+    setPendingPicklist(null);
+  };
+
+  const closeModal = () => setModalObj(null);
+
+  const applyModal = () => {
+    buildAndNotify(addedObjs);
+    setModalObj(null);
+  };
+
+  const filteredObjs = sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()));
+  const totalFiltered = addedObjs.filter(hasFilter).length;
 
   const FilterRowEditor = ({ row, onFieldChange, onOpChange, onValueChange, onRemove }: {
     row: FilterRow;
@@ -163,150 +192,206 @@ export default function CustomFilterScope({ sourceObjectNames, sourceSelection, 
   );
 
   return (
-    <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      <div className='px-5 py-3 border-b border-gray-100'>
-        <Typography as='h3' variant='sectionTitle' color='secondary'>⚙ Custom Filter</Typography>
-      </div>
-      <div className='p-5 space-y-4'>
-        {/* Object picker */}
-        <div className='flex items-center gap-3 flex-wrap'>
-          <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Add Object</label>
-          <select value={pickerObj} onChange={(e) => setPickerObj(e.target.value)}
-            className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-52'>
-            <option value=''>— Select an object —</option>
-            {sourceObjectNames.filter((n) => !addedObjs.includes(n)).map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-          <button onClick={addObj} disabled={!pickerObj}
-            className='h-8 px-3 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'>
-            + Add Object
-          </button>
+    <>
+      <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+        <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
+          <Typography as='h3' variant='sectionTitle' color='secondary'>⚙ Custom Filter</Typography>
+          {totalFiltered > 0 && (
+            <span className='text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700'>
+              {totalFiltered} object{totalFiltered !== 1 ? 's' : ''} filtered
+            </span>
+          )}
         </div>
 
-        {/* Object tabs */}
-        {addedObjs.length > 0 && (
-          <div className='flex gap-1.5 flex-wrap border-b border-gray-200 pb-0'>
-            {addedObjs.map((obj) => (
-              <button key={obj} onClick={() => setActiveObj(obj)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-t-lg border border-b-0 transition-colors ${activeObj === obj ? 'bg-white border-gray-200 text-blue-600' : 'bg-gray-50 border-transparent text-gray-500 hover:text-gray-700'}`}>
-                {obj}
-                <span onClick={(e) => { e.stopPropagation(); removeObj(obj); notify(); }}
-                  className='ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:text-white hover:bg-red-500 transition-colors flex-shrink-0 text-[11px] font-bold cursor-pointer'>×</span>
-              </button>
-            ))}
+        {/* Search bar */}
+        <div className='px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
+          <div className='relative max-w-xs'>
+            <svg className='pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+              <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
+            </svg>
+            <input value={objSearch} onChange={(e) => setObjSearch(e.target.value)} placeholder='Search objects…'
+              className='h-8 w-full rounded-lg border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-700 outline-none focus:border-blue-400 transition' />
+          </div>
+        </div>
+
+        {/* Object list */}
+        {sourceObjectsLoading ? (
+          <div className='flex items-center justify-center py-10 gap-2 text-xs text-gray-400'>
+            <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />Loading objects…
+          </div>
+        ) : sourceObjectNames.length === 0 ? (
+          <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
+        ) : (
+          <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
+            {filteredObjs.map((name) => {
+              const isTicked  = addedObjs.includes(name);
+              const hasF      = hasFilter(name);
+              const summary   = filterSummary(name);
+              return (
+                <div key={name} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isTicked ? 'bg-blue-50/40' : 'bg-white hover:bg-gray-50'}`}>
+                  <input type='checkbox' checked={isTicked} onChange={() => toggleObj(name)}
+                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0' />
+                  <div className='flex-1 min-w-0'>
+                    <span className={`text-sm font-mono truncate block ${isTicked ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
+                    {isTicked && summary && (
+                      <span className='text-[11px] text-blue-600 font-medium'>{summary}</span>
+                    )}
+                  </div>
+                  {isTicked && (
+                    <button onClick={() => openModal(name)}
+                      className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${hasF ? 'border-blue-400 bg-blue-600 text-white hover:bg-blue-700' : 'border-blue-300 text-blue-600 hover:bg-blue-50'}`}>
+                      {hasF ? (
+                        <>
+                          <svg width='11' height='11' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'><polyline points='20 6 9 17 4 12'/></svg>
+                          Edit Filter
+                        </>
+                      ) : 'Apply Filter →'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {addedObjs.length === 0 ? (
-          <p className='text-xs text-gray-400 py-4 text-center'>Add at least one object above to start building filters.</p>
-        ) : !activeObj ? (
-          <p className='text-xs text-gray-400 py-4 text-center'>Select an object tab to configure its filters.</p>
-        ) : (
-          <>
-            {/* Visual / SOQL tabs */}
-            <div className='flex border-b border-gray-200'>
+        <div className='px-5 py-2.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-400'>
+          Showing {filteredObjs.length} of {sourceObjectNames.length} objects · {addedObjs.length} selected
+        </div>
+      </div>
+
+      {/* Filter Modal */}
+      {modalObj && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4' onClick={closeModal}>
+          <div className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
+            style={{ width: 780, maxHeight: '90vh', border: '1px solid #E2E8F0' }}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
+              <div>
+                <h2 className='text-base font-bold text-gray-900 font-mono'>{modalObj}</h2>
+                <p className='text-xs text-gray-400 mt-0.5'>Define filter conditions for this object</p>
+              </div>
+              <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'>
+                <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className='flex border-b border-gray-200 px-6 flex-shrink-0'>
               {(['visual', 'soql'] as FilterTab[]).map((t) => (
                 <button key={t} onClick={() => setFilterTab(t)}
-                  className={`pb-2 px-4 text-sm font-semibold border-b-2 transition-colors ${filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                  className={`pb-3 pt-2 px-4 text-sm font-semibold border-b-2 transition-colors ${filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                   {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
                 </button>
               ))}
             </div>
 
-            {filterTab === 'visual' && (
-              <div className='space-y-4'>
-                {filterFieldsLoading && (
-                  <div className='flex items-center gap-2 text-xs text-gray-400'>
-                    <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
-                    Loading fields for {activeObj}…
-                  </div>
-                )}
-                <p className='text-xs text-gray-500'>Object: <strong className='text-gray-800'>{activeObj}</strong> · Filters in a group combine with AND. Use OR groups for alternatives.</p>
+            {/* Tab content */}
+            <div className='flex-1 min-h-0 overflow-y-auto px-6 py-5'>
 
-                <div className='space-y-2'>
-                  {filterRows.map((row, idx) => (
-                    <div key={row.id} className='flex items-center gap-2 flex-wrap'>
-                      <span className='text-xs text-gray-400 font-semibold w-4 flex-shrink-0'>{idx + 1}</span>
-                      <FilterRowEditor
-                        row={row}
-                        onFieldChange={(v) => { handleFilterFieldChange(row.id, v); notify(); }}
-                        onOpChange={(v) => { updateFilterRow(row.id, { op: v }); notify(); }}
-                        onValueChange={(v) => { updateFilterRow(row.id, { value: v }); notify(); }}
-                        onRemove={() => { removeFilterRow(row.id); notify(); }}
-                      />
+              {filterTab === 'visual' && (
+                <div className='space-y-4'>
+                  {filterFieldsLoading ? (
+                    <div className='flex items-center gap-2 text-xs text-gray-400 py-4 justify-center'>
+                      <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' />
+                      Loading fields for {modalObj}…
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <>
+                      <p className='text-xs text-gray-500'>Filters within a group are combined with AND. Use OR groups for alternative conditions.</p>
 
-                {orGroups.map((group) => (
-                  <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
-                    <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
-                    {group.rows.map((row) => (
-                      <FilterRowEditor
-                        key={row.id}
-                        row={row}
-                        onFieldChange={(v) => { handleOrGroupFieldChange(group.id, row.id, v); notify(); }}
-                        onOpChange={(v) => { updateOrGroupRow(group.id, row.id, { op: v }); notify(); }}
-                        onValueChange={(v) => { updateOrGroupRow(group.id, row.id, { value: v }); notify(); }}
-                        onRemove={() => { group.rows.length === 1 ? setCfg(activeObj, { orGroups: orGroups.filter((g) => g.id !== group.id) }) : removeOrGroupRow(group.id, row.id); notify(); }}
-                      />
-                    ))}
-                    <button onClick={() => { setCfg(activeObj, { orGroups: orGroups.map((g) => g.id !== group.id ? g : { ...g, rows: [...g.rows, makeBlankRow()] }) }); notify(); }}
-                      className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'>
-                      + Add filter to this OR group
-                    </button>
-                  </div>
-                ))}
+                      {/* AND rows */}
+                      <div className='space-y-2'>
+                        {filterRows.map((row, idx) => (
+                          <div key={row.id} className='flex items-center gap-2 flex-wrap'>
+                            <span className='text-xs text-gray-400 font-semibold w-5 flex-shrink-0 text-right'>{idx + 1}</span>
+                            <FilterRowEditor
+                              row={row}
+                              onFieldChange={(v) => handleFilterFieldChange(row.id, v)}
+                              onOpChange={(v) => updateFilterRow(row.id, { op: v })}
+                              onValueChange={(v) => updateFilterRow(row.id, { value: v })}
+                              onRemove={() => removeFilterRow(row.id)}
+                            />
+                          </div>
+                        ))}
+                        {filterRows.length === 0 && (
+                          <p className='text-xs text-gray-400 py-2'>No conditions yet. Click <strong>+ Add filter</strong> to start.</p>
+                        )}
+                      </div>
 
-                <div className='flex gap-2'>
-                  <button onClick={() => { setCfg(activeObj, { rows: [...filterRows, makeBlankRow()] }); notify(); }}
-                    className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
-                  <button onClick={() => { setCfg(activeObj, { orGroups: [...orGroups, { id: String(Date.now()), rows: [makeBlankRow()] }] }); notify(); }}
-                    className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
-                </div>
+                      {/* OR groups */}
+                      {orGroups.map((group) => (
+                        <div key={group.id} className='relative rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 space-y-2'>
+                          <span className='absolute -top-2.5 left-3 bg-white px-2 text-[10px] font-bold text-orange-500 border border-orange-400 rounded-full'>OR</span>
+                          {group.rows.map((row) => (
+                            <FilterRowEditor
+                              key={row.id}
+                              row={row}
+                              onFieldChange={(v) => handleOrGroupFieldChange(group.id, row.id, v)}
+                              onOpChange={(v) => updateOrGroupRow(group.id, row.id, { op: v })}
+                              onValueChange={(v) => updateOrGroupRow(group.id, row.id, { value: v })}
+                              onRemove={() => group.rows.length === 1
+                                ? setCfg(modalObj!, { orGroups: orGroups.filter((g) => g.id !== group.id) })
+                                : removeOrGroupRow(group.id, row.id)}
+                            />
+                          ))}
+                          <button onClick={() => setCfg(modalObj!, { orGroups: orGroups.map((g) => g.id !== group.id ? g : { ...g, rows: [...g.rows, makeBlankRow()] }) })}
+                            className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-white transition-colors'>
+                            + Add filter to this OR group
+                          </button>
+                        </div>
+                      ))}
 
-                <div className='rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-1.5'>
-                  <div className='flex items-center gap-3 flex-wrap'>
-                    <label className='text-xs font-semibold text-gray-700 flex-shrink-0'>Filter Logic</label>
-                    <input value={filterLogic} onChange={(e) => { setCfg(activeObj, { filterLogic: e.target.value }); notify(); }}
-                      placeholder='e.g. (1 OR 2) AND (3 OR 4)'
-                      className='h-7 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 flex-1 min-w-0 sm:w-48 sm:flex-none' />
-                  </div>
-                  <p className='text-[11px] text-gray-400'>Default is AND between all rows. Override only if you need nested boolean logic.</p>
-                </div>
-              </div>
-            )}
-
-            {filterTab === 'soql' && (
-              <div className='space-y-4'>
-                <p className='text-xs text-gray-500'>Write only the WHERE clause for <strong className='text-gray-800'>{activeObj}</strong>. The full query is built automatically.</p>
-                <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
-                  <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{activeObj}</span>
-                  {soqlWhere.trim() && (
-                    <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
+                      {/* Actions */}
+                      <div className='flex gap-2'>
+                        <button onClick={() => setCfg(modalObj!, { rows: [...filterRows, makeBlankRow()] })}
+                          className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ Add filter</button>
+                        <button onClick={() => setCfg(modalObj!, { orGroups: [...orGroups, { id: String(Date.now()), rows: [makeBlankRow()] }] })}
+                          className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors'>+ OR group</button>
+                      </div>
+                    </>
                   )}
                 </div>
-                <div className='space-y-1.5'>
-                  <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
-                  <textarea value={soqlWhere} onChange={(e) => { setSoqlWhere(e.target.value); notify(); }} rows={4}
-                    placeholder={`e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01`}
-                    className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50' />
+              )}
+
+              {filterTab === 'soql' && (
+                <div className='space-y-4'>
+                  <p className='text-xs text-gray-500'>Write only the WHERE clause for <strong className='text-gray-800'>{modalObj}</strong>. The full query is built automatically.</p>
+                  <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
+                    <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{modalObj}</span>
+                    {soqlWhere.trim() && (
+                      <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
+                    )}
+                  </div>
+                  <div className='space-y-1.5'>
+                    <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
+                    <textarea value={soqlWhere} onChange={(e) => setSoqlWhere(e.target.value)} rows={5}
+                      placeholder={`e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01`}
+                      className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50' />
+                  </div>
                 </div>
-                <div className='flex justify-end'>
-                  <button type='button' disabled={!soqlWhere.trim()}
-                    className='inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'>
-                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='20 6 9 17 4 12' />
-                    </svg>
-                    Validate Query
-                  </button>
-                </div>
+              )}
+            </div>
+
+            {/* Modal footer */}
+            <div className='flex-shrink-0 px-6 py-4 border-t border-gray-100 flex items-center justify-between'>
+              <button onClick={() => {
+                setCfg(modalObj!, { rows: [], orGroups: [], filterLogic: '' });
+                setSoqlByObj((p) => ({ ...p, [modalObj!]: '' }));
+              }} className='text-xs font-medium text-gray-500 hover:text-red-500 transition-colors'>
+                Clear all filters
+              </button>
+              <div className='flex items-center gap-3'>
+                <button onClick={closeModal} className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
+                <button onClick={applyModal} className='px-6 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Apply Filter</button>
               </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
