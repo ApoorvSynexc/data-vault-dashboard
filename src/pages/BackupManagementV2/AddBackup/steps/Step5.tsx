@@ -68,19 +68,66 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     setAllObjects((allObjectsData as any) ?? []);
   }, [allObjectsData]);
 
-  // NEW API — v1/objects/list — just logging response for now
+  // V1: crm-metadata/objects/list — full object list, becomes the source of truth
   const v2Type = strategy === 'realtime' ? 'realtime' : 'schedule';
 
-  const { data: objectsV2Data } = useQuery({
-    queryKey: ['objects-v2', crmId, v2Type],
+  type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
+  const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
+  const masterChunkRef = useRef(0);
+  const [masterDataMap, setMasterDataMap] = useState<Record<string, V1Object>>({});
+
+  const { data: objectsV1Data } = useQuery({
+    queryKey: ['crm-objects-v1', crmId, v2Type],
     queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
     enabled: !!crmId,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
-    if (!objectsV2Data) return;
-    console.log('[v1/objects/list] response:', objectsV2Data);
-  }, [objectsV2Data]);
+    if (!objectsV1Data?.data) return;
+    const raw = objectsV1Data.data as any;
+    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+    setObjectsV1(list);
+  }, [objectsV1Data]);
+
+  // Fire master/list in 20-object chunks sequentially after V1 loads
+  const CHUNK_SIZE = 20;
+
+  useEffect(() => {
+    if (objectsV1.length === 0) return;
+
+    const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
+
+    const fireNextChunk = async (chunkIndex: number) => {
+      if (chunkIndex >= totalChunks) return;
+
+      const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
+      const objectNames = chunk.map((o) => o.name);
+
+      try {
+        const response = await crmMetadataService.getMasterObjectList(objectNames);
+
+        const masterItems: any[] = (response?.data as any)?.data;
+        if (Array.isArray(masterItems)) {
+          setMasterDataMap((prev) => {
+            const updated = { ...prev };
+            masterItems.forEach((obj: any) => {
+              if (obj.name) updated[obj.name] = obj;
+            });
+            return updated;
+          });
+        }
+
+        fireNextChunk(chunkIndex + 1);
+      } catch {
+        fireNextChunk(chunkIndex + 1);
+      }
+    };
+
+    masterChunkRef.current = 0;
+    setMasterDataMap({});
+    fireNextChunk(0);
+  }, [objectsV1]);
 
   // Filter + paginate from raw allObjects first (no counts yet)
   const allFilteredObjects = useMemo(() => {
