@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import { useCrmMetadataService, type MasterObjectItem } from '../../../../services/crm-metadata/crm-metadata.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -37,45 +36,25 @@ interface BackupObject {
 
 export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange }: Step5Props) {
   const navigate = useNavigate();
-  const backupConfigService = useBackupConfigService();
   const crmMetadataService = useCrmMetadataService();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 20;
 
-  const getMaxSteps = () => {
-    return strategy === 'realtime' ? 6 : 7;
-  };
-  const maxSteps = getMaxSteps();
-
-  // Fetch all objects ONCE and keep in state
-  const mode = strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE';
-
-  const [allObjects, setAllObjects] = useState<BackupObject[]>([]);
-
-  const { data: allObjectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
-    queryKey: ['backup-objects-all-v3', crmId, mode],
-    queryFn: () => backupConfigService.getObjectList(crmId ?? '', mode),
-    enabled: !!crmId,
-  });
-
-  // When data arrives from API, store it in state
-  useEffect(() => {
-    if (!allObjectsData) return;
-    setAllObjects((allObjectsData as any) ?? []);
-  }, [allObjectsData]);
-
-  // V1: crm-metadata/objects/list — full object list, becomes the source of truth
+  const maxSteps = strategy === 'realtime' ? 6 : 7;
   const v2Type = strategy === 'realtime' ? 'realtime' : 'schedule';
 
+  // V1: crm-metadata/objects/list — full source with label, custom, count
   type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
   const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
-  const masterChunkRef = useRef(0);
-  const [masterDataMap, setMasterDataMap] = useState<Record<string, MasterObjectItem>>({});
 
-  const { data: objectsV1Data } = useQuery({
+  // V3: progressively accumulated display objects (allowed by V2 filter)
+  const [displayObjects, setDisplayObjects] = useState<BackupObject[]>([]);
+  const [chunksComplete, setChunksComplete] = useState(false);
+
+  const { data: objectsV1Data, isLoading: isLoadingObjects, error: objectsError } = useQuery({
     queryKey: ['crm-objects-v1', crmId, v2Type],
     queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
     enabled: !!crmId,
@@ -83,51 +62,63 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   useEffect(() => {
     if (!objectsV1Data?.data) return;
-    const raw = objectsV1Data.data as any;
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+    // api.ts returns the envelope directly: response.data = the array
+    const list: V1Object[] = Array.isArray(objectsV1Data.data) ? (objectsV1Data.data as unknown as V1Object[]) : [];
     setObjectsV1(list);
   }, [objectsV1Data]);
 
-  // Fire master/list in 20-object chunks sequentially after V1 loads
+  // V2: fire master/list in 20-object chunks — filters allowed objects, look up in V1, accumulate into V3
   const CHUNK_SIZE = 20;
 
   useEffect(() => {
     if (objectsV1.length === 0) return;
 
+    // Build a lookup map from V1 for O(1) access
+    const v1Map = new Map<string, V1Object>(objectsV1.map((o) => [o.name, o]));
     const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
+    setDisplayObjects([]);
+    setChunksComplete(false);
 
     const fireNextChunk = async (chunkIndex: number) => {
-      if (chunkIndex >= totalChunks) return;
+      if (chunkIndex >= totalChunks) {
+        setChunksComplete(true);
+        return;
+      }
 
       const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-      const objectNames = chunk.map((o) => o.name);
-
       try {
-        const response = await crmMetadataService.getMasterObjectList(objectNames);
-
-        const masterItems: any[] = (response?.data as any)?.data;
-        if (Array.isArray(masterItems)) {
-          setMasterDataMap((prev) => {
-            const updated = { ...prev };
-            masterItems.forEach((obj: any) => {
-              if (obj.objectName) updated[obj.objectName] = obj;
-            });
-            return updated;
-          });
+        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name));
+        // api.ts returns the envelope directly: response.data = string[]
+        const allowedNames: string[] = Array.isArray(response?.data) ? (response.data as unknown as string[]) : [];
+        if (Array.isArray(allowedNames) && allowedNames.length > 0) {
+          const newRows: BackupObject[] = allowedNames
+            .map((name) => v1Map.get(name))
+            .filter((o): o is V1Object => !!o)
+            .map((o) => ({
+              id: o.name,
+              name: o.label,
+              type: 'Object',
+              estimatedSize: '--',
+              isCustom: o.custom,
+              recordCount: o.count,
+            }));
+          setDisplayObjects((prev) => [...prev, ...newRows]);
         }
+      } catch { /* continue on error */ }
 
-        fireNextChunk(chunkIndex + 1);
-      } catch {
-        fireNextChunk(chunkIndex + 1);
-      }
+      fireNextChunk(chunkIndex + 1);
     };
 
-    masterChunkRef.current = 0;
-    setMasterDataMap({});
     fireNextChunk(0);
   }, [objectsV1]);
 
-  // Filter + paginate from raw allObjects first (no counts yet)
+  // allObjects = V3 display list
+  const allObjects = displayObjects;
+
+  const isLoading = isLoadingObjects || (!chunksComplete && displayObjects.length === 0);
+  const error = objectsError;
+
+  // Filter + paginate
   const allFilteredObjects = useMemo(() => {
     return allObjects.filter((obj) => {
       const matchesSearch = (obj.name ?? '').toLowerCase().includes(debouncedSearchQuery.toLowerCase());
@@ -139,57 +130,17 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const totalRecords = allFilteredObjects.length;
   const offset = currentPage * ITEMS_PER_PAGE;
-  const currentPageObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
-
-  // Fetch counts only for the objects visible on the current page
-  const currentPageIds = currentPageObjects.map((o) => o.id);
-
-  const { data: countResponse } = useQuery({
-    queryKey: ['backup-objects-count', crmId, currentPageIds],
-    queryFn: async () => {
-      if (currentPageIds.length === 0) return { objectCounts: {} };
-      try {
-        const response = await backupConfigService.getObjectCountList(crmId ?? '', currentPageIds);
-        const objectCounts: Record<string, number> = {};
-        const results = (response?.data as any)?.results;
-        if (Array.isArray(results)) {
-          results.forEach((obj: any) => {
-            const key = obj.apiName ?? obj.objectApiName;
-            if (key && obj.recordCount !== undefined) {
-              objectCounts[key] = obj.recordCount;
-            }
-          });
-        }
-        return { objectCounts };
-      } catch (error) {
-        console.error('Failed to fetch object counts:', error);
-        return { objectCounts: {} };
-      }
-    },
-    enabled: !!crmId && currentPageIds.length > 0,
-  });
-
-  // Merge counts into the current page objects
-  const filteredObjects = useMemo(() => {
-    return currentPageObjects.map((obj) => ({
-      ...obj,
-      recordCount: countResponse?.objectCounts?.[obj.id] ?? undefined,
-    }));
-  }, [currentPageObjects, countResponse?.objectCounts]);
-
-
-  const isLoading = isLoadingObjects && allObjects.length === 0;
-  const error = objectsError;
+  const filteredObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
   const autoSelectedRef = useRef(false);
 
-  // Notify parent of selection changes so it can persist across back/forward navigation
+  // Notify parent of selection changes
   useEffect(() => {
     onSelectionChange?.(Array.from(selectedObjects));
   }, [selectedObjects]);
 
-  // Auto-select all objects if entire dataset is selected — only once on first load
+  // Auto-select all if entire dataset selected — only once
   useEffect(() => {
     if (_entireDatasetSelected && allObjects.length > 0 && !autoSelectedRef.current) {
       autoSelectedRef.current = true;
@@ -197,7 +148,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     }
   }, [_entireDatasetSelected, allObjects]);
 
-  // When search/filter changes, reset to first page
+  // Reset to first page on search/filter change
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchQuery, selectedFilter]);
@@ -337,12 +288,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
                   }
                   emptyState='No objects found matching your search.'
-                  pagination={{
-                    currentPage: 1,
-                    displayPage: currentPage + 1,
-                    pageSize: ITEMS_PER_PAGE,
-                    totalRecords,
-                    onPageChange: (p) => setCurrentPage(p - 1),
+                  paginationConfig={{
+                    type: 'cursor',
+                    hasPrev: currentPage > 0,
+                    hasNext: offset + ITEMS_PER_PAGE < totalRecords,
+                    onPrev: () => setCurrentPage((p) => p - 1),
+                    onNext: () => setCurrentPage((p) => p + 1),
+                    label: `Showing ${totalRecords === 0 ? 0 : offset + 1}–${Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of ${totalRecords}`,
                   }}
                 />
               )}
