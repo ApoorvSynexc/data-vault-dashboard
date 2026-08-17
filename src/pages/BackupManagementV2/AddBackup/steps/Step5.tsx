@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -37,6 +38,7 @@ interface BackupObject {
 export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange }: Step5Props) {
   const navigate = useNavigate();
   const backupConfigService = useBackupConfigService();
+  const crmMetadataService = useCrmMetadataService();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
@@ -48,8 +50,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   };
   const maxSteps = getMaxSteps();
 
-  // Fetch all objects ONCE and cache them
+  // Fetch all objects ONCE and keep in state
   const mode = strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE';
+
+  const [allObjects, setAllObjects] = useState<BackupObject[]>([]);
 
   const { data: allObjectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
     queryKey: ['backup-objects-all-v3', crmId, mode],
@@ -58,7 +62,25 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     staleTime: Infinity,
   });
 
-  const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
+  // When data arrives from API, store it in state
+  useEffect(() => {
+    if (!allObjectsData) return;
+    setAllObjects((allObjectsData as any) ?? []);
+  }, [allObjectsData]);
+
+  // NEW API — v1/objects/list — just logging response for now
+  const v2Type = strategy === 'realtime' ? 'realtime' : 'schedule';
+
+  const { data: objectsV2Data } = useQuery({
+    queryKey: ['objects-v2', crmId, v2Type],
+    queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
+    enabled: !!crmId,
+  });
+
+  useEffect(() => {
+    if (!objectsV2Data) return;
+    console.log('[v1/objects/list] response:', objectsV2Data);
+  }, [objectsV2Data]);
 
   // Filter + paginate from raw allObjects first (no counts yet)
   const allFilteredObjects = useMemo(() => {
@@ -111,7 +133,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   }, [currentPageObjects, countResponse?.objectCounts]);
 
 
-  const isLoading = isLoadingObjects;
+  const isLoading = isLoadingObjects && allObjects.length === 0;
   const error = objectsError;
 
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
