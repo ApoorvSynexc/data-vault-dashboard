@@ -18,6 +18,27 @@ export type CrmMetadataObject = {
   [key: string]: unknown;
 };
 
+export type MasterObjectItem = {
+  objectName: string;
+  objectDescription: {
+    name: string;
+    label: string;
+    labelPlural: string;
+    custom: boolean;
+    queryable: boolean;
+    createable: boolean;
+    deletable: boolean;
+    updateable: boolean;
+    fields: {
+      name: string;
+      label: string;
+      type: string;
+      [key: string]: unknown;
+    }[];
+    [key: string]: unknown;
+  };
+};
+
 type ObjectListResponse = {
   success: boolean;
   message: string;
@@ -27,7 +48,7 @@ type ObjectListResponse = {
 type MasterObjectListResponse = {
   success: boolean;
   message: string;
-  data: CrmMetadataObject[];
+  data: MasterObjectItem[];
 };
 
 export function useCrmMetadataService() {
