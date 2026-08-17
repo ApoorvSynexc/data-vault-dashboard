@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
+import { useCrmMetadataService, type MasterObjectItem } from '../../../../services/crm-metadata/crm-metadata.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -59,7 +59,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     queryKey: ['backup-objects-all-v3', crmId, mode],
     queryFn: () => backupConfigService.getObjectList(crmId ?? '', mode),
     enabled: !!crmId,
-    staleTime: Infinity,
   });
 
   // When data arrives from API, store it in state
@@ -74,13 +73,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
   const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
   const masterChunkRef = useRef(0);
-  const [masterDataMap, setMasterDataMap] = useState<Record<string, V1Object>>({});
+  const [masterDataMap, setMasterDataMap] = useState<Record<string, MasterObjectItem>>({});
 
   const { data: objectsV1Data } = useQuery({
     queryKey: ['crm-objects-v1', crmId, v2Type],
     queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
     enabled: !!crmId,
-    staleTime: Infinity,
   });
 
   useEffect(() => {
@@ -112,7 +110,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           setMasterDataMap((prev) => {
             const updated = { ...prev };
             masterItems.forEach((obj: any) => {
-              if (obj.name) updated[obj.name] = obj;
+              if (obj.objectName) updated[obj.objectName] = obj;
             });
             return updated;
           });
