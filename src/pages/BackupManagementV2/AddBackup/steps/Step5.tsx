@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -16,10 +14,13 @@ type Step5Props = {
   onNext: (selectedObjects: SelectedObject[]) => void;
   onBack: () => void;
   entireDatasetSelected?: boolean;
-  crmId?: string | null;
   selectedObjectIds?: string[];
   strategy?: 'realtime' | 'scheduled';
   onSelectionChange?: (selectedIds: string[]) => void;
+  displayObjects: BackupObject[];
+  chunksComplete: boolean;
+  isLoadingObjects: boolean;
+  objectsError: Error | null;
 };
 
 interface BackupObject {
@@ -34,9 +35,8 @@ interface BackupObject {
   schedule?: 'realtime' | 'schedule' | null;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, crmId, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange, displayObjects, chunksComplete, isLoadingObjects, objectsError }: Step5Props) {
   const navigate = useNavigate();
-  const crmMetadataService = useCrmMetadataService();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
@@ -44,82 +44,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const ITEMS_PER_PAGE = 20;
 
   const maxSteps = strategy === 'realtime' ? 6 : 7;
-  const v2Type = strategy === 'realtime' ? 'realtime' : 'schedule';
 
-  // V1: crm-metadata/objects/list — full source with label, custom, count
-  type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
-  const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
-
-  // V3: progressively accumulated display objects (allowed by V2 filter)
-  const [displayObjects, setDisplayObjects] = useState<BackupObject[]>([]);
-  const [chunksComplete, setChunksComplete] = useState(false);
-
-  const { data: objectsV1Data, isLoading: isLoadingObjects, error: objectsError } = useQuery({
-    queryKey: ['crm-objects-v1', crmId, v2Type],
-    queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
-    enabled: !!crmId,
-  });
-
-  useEffect(() => {
-    if (!objectsV1Data?.data) return;
-    // api.ts returns the envelope directly: response.data = the array
-    const list: V1Object[] = Array.isArray(objectsV1Data.data) ? (objectsV1Data.data as unknown as V1Object[]) : [];
-    setObjectsV1(list);
-  }, [objectsV1Data]);
-
-  // V2: fire master/list in 20-object chunks — filters allowed objects, look up in V1, accumulate into V3
-  const CHUNK_SIZE = 20;
-
-  useEffect(() => {
-    if (objectsV1.length === 0) return;
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    const v1Map = new Map<string, V1Object>(objectsV1.map((o) => [o.name, o]));
-    const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
-    setDisplayObjects([]);
-    setChunksComplete(false);
-
-    const fireNextChunk = async (chunkIndex: number) => {
-      if (signal.aborted || chunkIndex >= totalChunks) {
-        if (!signal.aborted) setChunksComplete(true);
-        return;
-      }
-
-      const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-      try {
-        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name), signal);
-        if (signal.aborted) return;
-
-        const rawData: any[] = Array.isArray(response?.data) ? (response.data as any) : [];
-        if (rawData.length > 0) {
-          const newRows: BackupObject[] = rawData
-            .filter((item) => item?.name)
-            .map((item) => {
-              const v1 = v1Map.get(item.name);
-              return {
-                id: item.name,
-                name: item.label ?? v1?.label ?? item.name,
-                type: 'Object',
-                estimatedSize: '--',
-                isCustom: item.custom ?? v1?.custom ?? false,
-                recordCount: v1?.count,
-              };
-            });
-          setDisplayObjects((prev) => [...prev, ...newRows]);
-        }
-      } catch { /* aborted or network error — stop chain */ return; }
-
-      fireNextChunk(chunkIndex + 1);
-    };
-
-    fireNextChunk(0);
-
-    return () => controller.abort();
-  }, [objectsV1]);
-
-  // allObjects = V3 display list
   const allObjects = displayObjects;
 
   const isLoading = isLoadingObjects || (!chunksComplete && displayObjects.length === 0);

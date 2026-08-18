@@ -9,6 +9,20 @@ import Step5 from './steps/Step5';
 import Step6 from './steps/Step6';
 import FinalStep from './steps/FinalStep';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
+import { useCrmMetadataService } from '../../../services/crm-metadata/crm-metadata.service';
+
+type BackupObject = {
+  id: string;
+  name: string;
+  type: string;
+  estimatedSize: string;
+  isCustom: boolean;
+  recordCount?: number;
+};
+
+type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
+
+const CHUNK_SIZE = 20;
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
@@ -57,6 +71,70 @@ export default function AddBackup() {
   const [prefilled, setPrefilled] = useState(false);
 
   const navigate = useNavigate();
+  const crmMetadataService = useCrmMetadataService();
+
+  // --- Object list fetch (lives here so it survives step navigation) ---
+  const v2Type = selectedStrategy === 'realtime' ? 'realtime' : 'schedule';
+  const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
+  const [displayObjects, setDisplayObjects] = useState<BackupObject[]>([]);
+  const [chunksComplete, setChunksComplete] = useState(false);
+
+  const { data: objectsV1Data, isLoading: isLoadingObjects, error: objectsError } = useQuery({
+    queryKey: ['crm-objects-v1', selectedPlatformId, v2Type],
+    queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
+    enabled: !!selectedPlatformId,
+  });
+
+  useEffect(() => {
+    if (!objectsV1Data?.data) return;
+    const list: V1Object[] = Array.isArray(objectsV1Data.data) ? (objectsV1Data.data as unknown as V1Object[]) : [];
+    setObjectsV1(list);
+  }, [objectsV1Data]);
+
+  useEffect(() => {
+    if (objectsV1.length === 0) return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+    const v1Map = new Map<string, V1Object>(objectsV1.map((o) => [o.name, o]));
+    const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
+    setDisplayObjects([]);
+    setChunksComplete(false);
+
+    const fireNextChunk = async (chunkIndex: number) => {
+      if (signal.aborted || chunkIndex >= totalChunks) {
+        if (!signal.aborted) setChunksComplete(true);
+        return;
+      }
+      const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
+      try {
+        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name), signal);
+        if (signal.aborted) return;
+        const rawData: any[] = Array.isArray(response?.data) ? (response.data as any) : [];
+        if (rawData.length > 0) {
+          const newRows: BackupObject[] = rawData
+            .filter((item) => item?.name)
+            .map((item) => {
+              const v1 = v1Map.get(item.name);
+              return {
+                id: item.name,
+                name: item.label ?? v1?.label ?? item.name,
+                type: 'Object',
+                estimatedSize: '--',
+                isCustom: item.custom ?? v1?.custom ?? false,
+                recordCount: v1?.count,
+              };
+            });
+          setDisplayObjects((prev) => [...prev, ...newRows]);
+        }
+      } catch { return; }
+      fireNextChunk(chunkIndex + 1);
+    };
+
+    fireNextChunk(0);
+    return () => controller.abort();
+  }, [objectsV1]);
+  // --- End object list fetch ---
 
   const saveStateAndNavigate = (to: string) => {
     sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify({
@@ -230,10 +308,13 @@ export default function AddBackup() {
       )}
       {currentStep === 5 && (
         <Step5
-          crmId={selectedPlatformId}
           entireDatasetSelected={entireDatasetSelected}
           selectedObjectIds={selectedObjects.map((o) => o.id)}
           strategy={selectedStrategy}
+          displayObjects={displayObjects}
+          chunksComplete={chunksComplete}
+          isLoadingObjects={isLoadingObjects}
+          objectsError={objectsError}
           onSelectionChange={(ids) => {
             setSelectedObjects(ids.map((id) => {
               const existing = selectedObjects.find((o) => o.id === id);
