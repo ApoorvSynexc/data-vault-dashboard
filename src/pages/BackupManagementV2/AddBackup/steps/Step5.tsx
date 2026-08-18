@@ -294,7 +294,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     hasNext: offset + ITEMS_PER_PAGE < totalRecords,
                     onPrev: () => setCurrentPage((p) => p - 1),
                     onNext: () => setCurrentPage((p) => p + 1),
-                    label: `Showing ${totalRecords === 0 ? 0 : offset + 1}–${Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of ${totalRecords}`,
+                    label: chunksComplete
+                      ? `Showing ${totalRecords === 0 ? 0 : offset + 1}–${Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of ${totalRecords}`
+                      : `Loading objects…`,
                   }}
                 />
               )}
