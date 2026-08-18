@@ -22,7 +22,7 @@ type BackupObject = {
 
 type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
 
-const CHUNK_SIZE = 20;
+const CHUNK_SIZE = 50;
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
@@ -74,15 +74,17 @@ export default function AddBackup() {
   const crmMetadataService = useCrmMetadataService();
 
   // --- Object list fetch (lives here so it survives step navigation) ---
-  const v2Type = selectedStrategy === 'realtime' ? 'realtime' : 'schedule';
+  // Only starts after user confirms strategy on Step 4
+  const [objectFetchReady, setObjectFetchReady] = useState(false);
+  const [objectFetchType, setObjectFetchType] = useState<'realtime' | 'schedule' | null>(null);
   const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
   const [displayObjects, setDisplayObjects] = useState<BackupObject[]>([]);
   const [chunksComplete, setChunksComplete] = useState(false);
 
   const { data: objectsV1Data, isLoading: isLoadingObjects, error: objectsError } = useQuery({
-    queryKey: ['crm-objects-v1', selectedPlatformId, v2Type],
-    queryFn: () => crmMetadataService.getObjectList('backup', v2Type),
-    enabled: !!selectedPlatformId,
+    queryKey: ['crm-objects-v1', selectedPlatformId, objectFetchType],
+    queryFn: () => crmMetadataService.getObjectList('backup', objectFetchType!),
+    enabled: !!selectedPlatformId && objectFetchReady && !!objectFetchType,
   });
 
   useEffect(() => {
@@ -214,8 +216,15 @@ export default function AddBackup() {
     if (strategyChanged || entireDatasetToggled) {
       setSelectedObjects([]);
     }
+    if (strategyChanged) {
+      setObjectsV1([]);
+      setDisplayObjects([]);
+      setChunksComplete(false);
+    }
     setSelectedStrategy(strategy);
     setEntireDatasetSelected(entireDataset);
+    setObjectFetchType(strategy === 'realtime' ? 'realtime' : 'schedule');
+    setObjectFetchReady(true);
     handleNextStep();
   };
 
