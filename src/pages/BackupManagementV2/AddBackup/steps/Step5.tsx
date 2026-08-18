@@ -88,20 +88,22 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
       try {
         const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name));
-        // api.ts returns the envelope directly: response.data = string[]
-        const allowedNames: string[] = Array.isArray(response?.data) ? (response.data as unknown as string[]) : [];
-        if (Array.isArray(allowedNames) && allowedNames.length > 0) {
-          const newRows: BackupObject[] = allowedNames
-            .map((name) => v1Map.get(name))
-            .filter((o): o is V1Object => !!o)
-            .map((o) => ({
-              id: o.name,
-              name: o.label,
-              type: 'Object',
-              estimatedSize: '--',
-              isCustom: o.custom,
-              recordCount: o.count,
-            }));
+        // response.data = array of full SF describe objects: { name, label, custom, fields[], ... }
+        const rawData: any[] = Array.isArray(response?.data) ? (response.data as any) : [];
+        if (rawData.length > 0) {
+          const newRows: BackupObject[] = rawData
+            .filter((item) => item?.name)
+            .map((item) => {
+              const v1 = v1Map.get(item.name);
+              return {
+                id: item.name,
+                name: item.label ?? v1?.label ?? item.name,
+                type: 'Object',
+                estimatedSize: '--',
+                isCustom: item.custom ?? v1?.custom ?? false,
+                recordCount: v1?.count,
+              };
+            });
           setDisplayObjects((prev) => [...prev, ...newRows]);
         }
       } catch { /* continue on error */ }
@@ -294,9 +296,17 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     hasNext: offset + ITEMS_PER_PAGE < totalRecords,
                     onPrev: () => setCurrentPage((p) => p - 1),
                     onNext: () => setCurrentPage((p) => p + 1),
-                    label: chunksComplete
-                      ? `Showing ${totalRecords === 0 ? 0 : offset + 1}–${Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of ${totalRecords}`
-                      : `Loading objects…`,
+                    labelNode: (
+                      <span className='flex items-center gap-1.5 text-sm text-gray-600'>
+                        Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of{' '}
+                        {chunksComplete ? totalRecords : (
+                          <svg className='animate-spin h-3.5 w-3.5 text-gray-400' viewBox='0 0 24 24' fill='none'>
+                            <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                            <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
+                          </svg>
+                        )}
+                      </span>
+                    ),
                   }}
                 />
               )}

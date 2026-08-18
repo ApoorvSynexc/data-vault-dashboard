@@ -45,6 +45,8 @@ export type CursorPaginationConfig = {
   onNext: () => void;
   /** e.g. "Showing 1–20 of 143" — computed by caller */
   label?: string;
+  /** ReactNode override for label — use when you need inline spinner etc. */
+  labelNode?: React.ReactNode;
 };
 
 type PaginationConfig = PagePaginationConfig | CursorPaginationConfig;
@@ -385,7 +387,7 @@ export default function Table<TRow>({
             const cp = paginationConfig as CursorPaginationConfig;
             return (
               <>
-                <p className='text-sm text-gray-600'>{cp.label ?? ''}</p>
+                <p className='text-sm text-gray-600'>{cp.labelNode ?? cp.label ?? ''}</p>
                 <div className='flex items-center gap-2'>
                   <button
                     type='button'
