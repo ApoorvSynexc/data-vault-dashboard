@@ -32,9 +32,7 @@ export function useCrmMetadataService() {
         query: { mode, ...(type ? { type } : {}) },
       }),
 
-    getMasterObjectList: (objectNames: string[]) =>
-      api.post<MasterObjectListResponse>(CRM_METADATA_ENDPOINTS.masterObjectList, {
-        objectNames,
-      }),
+    getMasterObjectList: (objectNames: string[], signal?: AbortSignal) =>
+      api.post<MasterObjectListResponse>(CRM_METADATA_ENDPOINTS.masterObjectList, { objectNames }, { signal }),
   };
 }
