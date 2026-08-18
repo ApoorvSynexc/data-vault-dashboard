@@ -73,22 +73,25 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   useEffect(() => {
     if (objectsV1.length === 0) return;
 
-    // Build a lookup map from V1 for O(1) access
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const v1Map = new Map<string, V1Object>(objectsV1.map((o) => [o.name, o]));
     const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
     setDisplayObjects([]);
     setChunksComplete(false);
 
     const fireNextChunk = async (chunkIndex: number) => {
-      if (chunkIndex >= totalChunks) {
-        setChunksComplete(true);
+      if (signal.aborted || chunkIndex >= totalChunks) {
+        if (!signal.aborted) setChunksComplete(true);
         return;
       }
 
       const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
       try {
-        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name));
-        // response.data = array of full SF describe objects: { name, label, custom, fields[], ... }
+        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name), signal);
+        if (signal.aborted) return;
+
         const rawData: any[] = Array.isArray(response?.data) ? (response.data as any) : [];
         if (rawData.length > 0) {
           const newRows: BackupObject[] = rawData
@@ -106,12 +109,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             });
           setDisplayObjects((prev) => [...prev, ...newRows]);
         }
-      } catch { /* continue on error */ }
+      } catch { /* aborted or network error — stop chain */ return; }
 
       fireNextChunk(chunkIndex + 1);
     };
 
     fireNextChunk(0);
+
+    return () => controller.abort();
   }, [objectsV1]);
 
   // allObjects = V3 display list
