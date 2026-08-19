@@ -313,11 +313,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   {Array.from({ length: 3 }).map((_, i) => <div key={i} className='h-10 bg-gray-100 rounded-xl animate-pulse' />)}
                 </div>
               ) : describeData?.data ? (() => {
-                const d = describeData.data as { children?: { name: string }[]; parent?: { name: string }[] };
+                const d = describeData.data as {
+                  children?: { name: string; restrictedDelete: boolean; cascadeDelete: boolean }[];
+                  parent?: { name: string; nillable: boolean; cascadeDelete: boolean }[];
+                };
                 const children = d.children ?? [];
                 const parents = d.parent ?? [];
 
-                const ObjectPill = ({ name, variant }: { name: string; variant: 'child' | 'parent' }) => (
+                const ObjectPill = ({ name, cascadeDelete, restrictedDelete, variant }: { name: string; restrictedDelete?: boolean; cascadeDelete?: boolean; nillable?: boolean; variant: 'child' | 'parent' }) => (
                   <div className='flex items-center gap-3 px-3 py-2.5 rounded-xl border'
                     style={variant === 'child'
                       ? { background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.2)' }
@@ -337,7 +340,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                       style={variant === 'child'
                         ? { background: 'rgba(16,185,129,0.1)', color: '#059669' }
                         : { background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>
-                      {variant === 'child' ? 'Child' : 'Parent'}
+                      {variant === 'child' ? (!cascadeDelete && !restrictedDelete ? 'Lookup' : cascadeDelete ? 'Master Detail' : restrictedDelete ? 'Lookup Required' : 'Child') : 'Parent'}
                     </span>
                   </div>
                 );
@@ -362,7 +365,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                           <span className='text-xs font-semibold px-1.5 py-0.5 rounded-full' style={{ background: 'rgba(16,185,129,0.1)', color: '#059669' }}>{children.length}</span>
                         </div>
                         <div className='flex flex-col gap-1.5'>
-                          {children.map((c) => <ObjectPill key={c.name} name={c.name} variant='child' />)}
+                          {children.map((c) => <ObjectPill key={c.name} name={c.name} restrictedDelete={c.restrictedDelete} cascadeDelete={c.cascadeDelete} variant='child' />)}
                         </div>
                       </div>
                     )}
@@ -375,7 +378,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                           <span className='text-xs font-semibold px-1.5 py-0.5 rounded-full' style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>{parents.length}</span>
                         </div>
                         <div className='flex flex-col gap-1.5'>
-                          {parents.map((p) => <ObjectPill key={p.name} name={p.name} variant='parent' />)}
+                          {parents.map((p) => <ObjectPill key={p.name} name={p.name} nillable={p.nillable} cascadeDelete={p.cascadeDelete} variant='parent' />)}
                         </div>
                       </div>
                     )}
