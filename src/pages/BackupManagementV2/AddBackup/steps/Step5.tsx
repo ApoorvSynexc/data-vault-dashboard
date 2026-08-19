@@ -18,7 +18,6 @@ type Step5Props = {
   strategy?: 'realtime' | 'scheduled';
   onSelectionChange?: (selectedIds: string[]) => void;
   displayObjects: BackupObject[];
-  chunksComplete: boolean;
   isLoadingObjects: boolean;
   objectsError: Error | null;
 };
@@ -35,7 +34,7 @@ interface BackupObject {
   schedule?: 'realtime' | 'schedule' | null;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange, displayObjects, chunksComplete, isLoadingObjects, objectsError }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange, displayObjects, isLoadingObjects, objectsError }: Step5Props) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 700);
@@ -47,7 +46,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   const allObjects = displayObjects;
 
-  const isLoading = isLoadingObjects || (!chunksComplete && displayObjects.length === 0);
+  const isLoading = isLoadingObjects;
   const error = objectsError;
 
   // Filter + paginate
@@ -228,13 +227,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     onNext: () => setCurrentPage((p) => p + 1),
                     labelNode: (
                       <span className='flex items-center gap-1.5 text-sm text-gray-600'>
-                        Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of{' '}
-                        {chunksComplete ? totalRecords : (
-                          <svg className='animate-spin h-3.5 w-3.5 text-gray-400' viewBox='0 0 24 24' fill='none'>
-                            <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
-                            <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
-                          </svg>
-                        )}
+                        Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
                       </span>
                     ),
                   }}

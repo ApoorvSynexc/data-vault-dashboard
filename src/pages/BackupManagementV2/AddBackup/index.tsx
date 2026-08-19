@@ -20,10 +20,6 @@ type BackupObject = {
   recordCount?: number;
 };
 
-type V1Object = { name: string; label: string; custom: boolean; count: number; [key: string]: unknown };
-
-const CHUNK_SIZE = 50;
-
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
@@ -77,65 +73,29 @@ export default function AddBackup() {
   // Only starts after user confirms strategy on Step 4
   const [objectFetchReady, setObjectFetchReady] = useState(false);
   const [objectFetchType, setObjectFetchType] = useState<'realtime' | 'schedule' | null>(null);
-  const [objectsV1, setObjectsV1] = useState<V1Object[]>([]);
   const [displayObjects, setDisplayObjects] = useState<BackupObject[]>([]);
-  const [chunksComplete, setChunksComplete] = useState(false);
 
-  const { data: objectsV1Data, isLoading: isLoadingObjects, error: objectsError } = useQuery({
+  const { data: objectsData, isLoading: isLoadingObjects, error: objectsError } = useQuery({
     queryKey: ['crm-objects-v1', selectedPlatformId, objectFetchType],
     queryFn: () => crmMetadataService.getObjectList('backup', objectFetchType!),
     enabled: !!selectedPlatformId && objectFetchReady && !!objectFetchType,
   });
 
   useEffect(() => {
-    if (!objectsV1Data?.data) return;
-    const list: V1Object[] = Array.isArray(objectsV1Data.data) ? (objectsV1Data.data as unknown as V1Object[]) : [];
-    setObjectsV1(list);
-  }, [objectsV1Data]);
-
-  useEffect(() => {
-    if (objectsV1.length === 0) return;
-
-    const controller = new AbortController();
-    const { signal } = controller;
-    const v1Map = new Map<string, V1Object>(objectsV1.map((o) => [o.name, o]));
-    const totalChunks = Math.ceil(objectsV1.length / CHUNK_SIZE);
-    setDisplayObjects([]);
-    setChunksComplete(false);
-
-    const fireNextChunk = async (chunkIndex: number) => {
-      if (signal.aborted || chunkIndex >= totalChunks) {
-        if (!signal.aborted) setChunksComplete(true);
-        return;
-      }
-      const chunk = objectsV1.slice(chunkIndex * CHUNK_SIZE, (chunkIndex + 1) * CHUNK_SIZE);
-      try {
-        const response = await crmMetadataService.getMasterObjectList(chunk.map((o) => o.name), signal);
-        if (signal.aborted) return;
-        const rawData: any[] = Array.isArray(response?.data) ? (response.data as any) : [];
-        if (rawData.length > 0) {
-          const newRows: BackupObject[] = rawData
-            .filter((item) => item?.name)
-            .map((item) => {
-              const v1 = v1Map.get(item.name);
-              return {
-                id: item.name,
-                name: item.label ?? v1?.label ?? item.name,
-                type: 'Object',
-                estimatedSize: '--',
-                isCustom: item.custom ?? v1?.custom ?? false,
-                recordCount: v1?.count,
-              };
-            });
-          setDisplayObjects((prev) => [...prev, ...newRows]);
-        }
-      } catch { return; }
-      fireNextChunk(chunkIndex + 1);
-    };
-
-    fireNextChunk(0);
-    return () => controller.abort();
-  }, [objectsV1]);
+    if (!objectsData?.data) return;
+    const raw = Array.isArray(objectsData.data) ? (objectsData.data as any[]) : [];
+    const mapped: BackupObject[] = raw
+      .filter((item) => item?.name)
+      .map((item) => ({
+        id: item.name,
+        name: item.label ?? item.name,
+        type: 'Object',
+        estimatedSize: '--',
+        isCustom: item.custom ?? false,
+        recordCount: item.count,
+      }));
+    setDisplayObjects(mapped);
+  }, [objectsData]);
   // --- End object list fetch ---
 
   const saveStateAndNavigate = (to: string) => {
@@ -217,9 +177,7 @@ export default function AddBackup() {
       setSelectedObjects([]);
     }
     if (strategyChanged) {
-      setObjectsV1([]);
       setDisplayObjects([]);
-      setChunksComplete(false);
     }
     setSelectedStrategy(strategy);
     setEntireDatasetSelected(entireDataset);
@@ -321,7 +279,6 @@ export default function AddBackup() {
           selectedObjectIds={selectedObjects.map((o) => o.id)}
           strategy={selectedStrategy}
           displayObjects={displayObjects}
-          chunksComplete={chunksComplete}
           isLoadingObjects={isLoadingObjects}
           objectsError={objectsError}
           onSelectionChange={(ids) => {
