@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { parseSalesforceError } from '../../../../utils';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 
 type SelectedObject = {
   id: string;
@@ -36,18 +38,29 @@ interface BackupObject {
 
 export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange, displayObjects, isLoadingObjects, objectsError }: Step5Props) {
   const navigate = useNavigate();
+  const crmMetadataService = useCrmMetadataService();
+
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 700);
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   const [currentPage, setCurrentPage] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
+  // Panel state: which object's fields panel is open
+  const [panelObjectId, setPanelObjectId] = useState<string | null>(null);
+  const panelObject = displayObjects.find((o) => o.id === panelObjectId) ?? null;
+
   const maxSteps = strategy === 'realtime' ? 6 : 7;
-
   const allObjects = displayObjects;
-
   const isLoading = isLoadingObjects;
   const error = objectsError;
+
+  // Describe API — fires when an object row is selected (panelObjectId set)
+  const { data: describeData, isLoading: isLoadingDescribe } = useQuery({
+    queryKey: ['crm-object-describe', panelObjectId],
+    queryFn: () => crmMetadataService.getObjectDescribe(panelObjectId!),
+    enabled: !!panelObjectId,
+  });
 
   // Filter + paginate
   const allFilteredObjects = useMemo(() => {
@@ -84,11 +97,16 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     setCurrentPage(0);
   }, [debouncedSearchQuery, selectedFilter]);
 
-
+  // When a row checkbox is selected, open the panel for that object
+  const handleSelectionChange = (newSelected: Set<string>) => {
+    const added = [...newSelected].find((id) => !selectedObjects.has(id));
+    if (added) setPanelObjectId(added);
+    setSelectedObjects(newSelected);
+  };
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      {/* Header with Step Indicator */}
+      {/* Header */}
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
           <h1 className='text-2xl font-bold text-gray-900'>Data Scope</h1>
@@ -100,143 +118,291 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       </div>
 
       {/* Main Content */}
-      <div className='bg-white rounded-xl mx-6 mb-4 flex flex-col flex-1 min-h-0 overflow-hidden'
-        style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+      <div className='flex flex-1 min-h-0 mx-6 mb-4 overflow-hidden'>
 
-        {/* Toolbar */}
-        <div className='flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0'>
-          {/* Search */}
-          <div className='relative flex-shrink-0' style={{ width: 200 }}>
-            <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
+        {/* Table card */}
+        <div className='bg-white rounded-xl flex flex-col min-h-0 overflow-hidden flex-1'
+          style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+
+          {/* Toolbar */}
+          <div className='flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0'>
+            <div className='relative flex-shrink-0' style={{ width: 200 }}>
+              <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                </svg>
+              </span>
+              <input
+                type='text'
+                placeholder='Search Objects'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className='w-full pl-8 pr-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
+                style={{ border: '1px solid #E2E8F0' }}
+              />
+            </div>
+
+            <div className='flex rounded-lg overflow-hidden flex-shrink-0' style={{ border: '1px solid #E2E8F0' }}>
+              {(['All', 'Custom', 'Standard'] as const).map((f) => (
+                <button key={f} onClick={() => setSelectedFilter(f)}
+                  className={`px-4 py-1.5 text-sm font-medium transition-colors ${selectedFilter === f ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            <div className='flex-1' />
+
+            <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm flex-shrink-0'
+              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
               <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                <polyline points='20 6 9 17 4 12' />
               </svg>
-            </span>
-            <input
-              type='text'
-              placeholder='Search Objects'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className='w-full pl-8 pr-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30'
-              style={{ border: '1px solid #E2E8F0' }}
-            />
+              <span className='font-medium'>{selectedObjects.size} objects selected</span>
+            </div>
+
+            <button
+              onClick={() => setSelectedObjects(new Set())}
+              className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
+              Clear All
+            </button>
           </div>
 
-          {/* Type filter tabs */}
-          <div className='flex rounded-lg overflow-hidden flex-shrink-0' style={{ border: '1px solid #E2E8F0' }}>
-            {(['All', 'Custom', 'Standard'] as const).map((f) => (
-              <button key={f} onClick={() => setSelectedFilter(f)}
-                className={`px-4 py-1.5 text-sm font-medium transition-colors ${selectedFilter === f ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                {f}
-              </button>
-            ))}
-          </div>
+          {/* Table */}
+          {(() => {
+            const columns: TableColumn<BackupObject>[] = [
+              {
+                key: 'name',
+                header: 'Object',
+                render: (obj) => <span className='text-sm font-medium text-gray-800'>{obj.name}</span>,
+              },
+              {
+                key: 'type',
+                header: 'Type',
+                render: (obj) => <span className='text-xs font-medium text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</span>,
+              },
+              {
+                key: 'records',
+                header: 'Records',
+                render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount !== undefined ? obj.recordCount.toLocaleString() : '--'}</span>,
+              },
+              {
+                key: 'dataSize',
+                header: 'Estimated Data Size',
+                render: (obj) => {
+                  const rc = obj.recordCount;
+                  if (rc === undefined) return <span className='text-sm text-gray-600'>--</span>;
+                  if (rc === 0) return <span className='text-sm text-gray-600'>0 KB</span>;
+                  const kb = rc * 2;
+                  const size = kb >= 1024 * 1024
+                    ? `${(kb / (1024 * 1024)).toFixed(2)} GB`
+                    : kb >= 1024
+                      ? `${(kb / 1024).toFixed(2)} MB`
+                      : `${kb} KB`;
+                  return <span className='text-sm text-gray-600'>{size}</span>;
+                },
+              },
+              {
+                key: 'actions',
+                header: '',
+                render: (obj) => (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPanelObjectId(panelObjectId === obj.id ? null : obj.id);
+                    }}
+                    className='px-3 py-1 text-xs font-medium rounded-md border transition-colors whitespace-nowrap bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  >
+                    Relationships
+                  </button>
+                ),
+              },
+            ];
 
-          <div className='flex-1' />
-
-          {/* Selected badge */}
-          <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm flex-shrink-0'
-            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
-            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-              <polyline points='20 6 9 17 4 12' />
-            </svg>
-            <span className='font-medium'>{selectedObjects.size} objects selected</span>
-          </div>
-
-          {/* Clear */}
-          <button
-            onClick={() => setSelectedObjects(new Set())}
-            className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
-            Clear All
-          </button>
+            return (
+              <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+                {error ? (
+                  <div className='mx-5 my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-4 flex items-start gap-3'>
+                    <svg className='h-5 w-5 shrink-0 text-red-500 mt-0.5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                    </svg>
+                    <div>
+                      <p className='text-sm font-semibold text-red-700'>{parseSalesforceError(error).title}</p>
+                      <p className='text-sm text-red-600 mt-0.5'>{parseSalesforceError(error).detail}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <Table<BackupObject>
+                    columns={columns}
+                    rows={filteredObjects}
+                    getRowKey={(obj) => obj.id}
+                    loading={isLoading}
+                    skeletonConfig={{ rows: 8, colWidths: ['w-40', 'w-16', 'w-20', 'w-24', 'w-20'] }}
+                    headerVariant='uppercase'
+                    borderless
+                    cellPaddingClassName='px-3 py-2.5'
+                    showSerialNumber
+                    serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
+                    showCheckbox
+                    selectedIds={selectedObjects}
+                    getRowId={(obj) => obj.id}
+                    onSelectionChange={handleSelectionChange}
+                    getRowClassName={(_obj, isSelected) =>
+                      `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
+                    }
+                    emptyState='No objects found matching your search.'
+                    paginationConfig={{
+                      type: 'cursor',
+                      hasPrev: currentPage > 0,
+                      hasNext: offset + ITEMS_PER_PAGE < totalRecords,
+                      onPrev: () => setCurrentPage((p) => p - 1),
+                      onNext: () => setCurrentPage((p) => p + 1),
+                      labelNode: (
+                        <span className='flex items-center gap-1.5 text-sm text-gray-600'>
+                          Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
+                        </span>
+                      ),
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Table */}
-        {(() => {
-          const columns: TableColumn<BackupObject>[] = [
-            {
-              key: 'name',
-              header: 'Object',
-              render: (obj) => <span className='text-sm font-medium text-gray-800'>{obj.name}</span>,
-            },
-            {
-              key: 'type',
-              header: 'Type',
-              render: (obj) => <span className='text-xs font-medium text-blue-600'>{obj.isCustom ? 'Custom' : 'Standard'}</span>,
-            },
-            {
-              key: 'records',
-              header: 'Records',
-              render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount !== undefined ? obj.recordCount.toLocaleString() : '--'}</span>,
-            },
-            {
-              key: 'dataSize',
-              header: 'Estimated Data Size',
-              render: (obj) => {
-                const rc = obj.recordCount;
-                if (rc === undefined) return <span className='text-sm text-gray-600'>--</span>;
-                if (rc === 0) return <span className='text-sm text-gray-600'>0 KB</span>;
-                const kb = rc * 2;
-                const size = kb >= 1024 * 1024
-                  ? `${(kb / (1024 * 1024)).toFixed(2)} GB`
-                  : kb >= 1024
-                    ? `${(kb / 1024).toFixed(2)} MB`
-                    : `${kb} KB`;
-                return <span className='text-sm text-gray-600'>{size}</span>;
-              },
-            },
-          ];
+      </div>
 
-          return (
-            <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
-              {error ? (
-                <div className='mx-5 my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-4 flex items-start gap-3'>
-                  <svg className='h-5 w-5 shrink-0 text-red-500 mt-0.5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+      {/* Relationships modal */}
+      {panelObjectId && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center' style={{ background: 'rgba(0,0,0,0.4)' }} onClick={() => setPanelObjectId(null)}>
+          <div className='bg-white rounded-2xl flex flex-col overflow-hidden w-[520px] max-h-[75vh]'
+            style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}
+            onClick={(e) => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className='flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0'>
+              <div className='flex items-center gap-3 min-w-0'>
+                <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(21,93,252,0.1)' }}>
+                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='5' r='2' /><circle cx='5' cy='19' r='2' /><circle cx='19' cy='19' r='2' />
+                    <line x1='12' y1='7' x2='5' y2='17' /><line x1='12' y1='7' x2='19' y2='17' />
+                  </svg>
+                </div>
+                <div className='min-w-0'>
+                  <p className='text-sm font-semibold text-gray-900 truncate'>{panelObject?.name ?? panelObjectId}</p>
+                  <p className='text-xs text-gray-400 mt-0.5'>Object relationships</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPanelObjectId(null)}
+                className='ml-3 flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'
+              >
+                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className='flex-1 overflow-y-auto px-5 py-4'>
+              {isLoadingDescribe ? (
+                <div className='flex flex-col gap-3'>
+                  <div className='h-4 w-24 bg-gray-100 rounded animate-pulse' />
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className='h-10 bg-gray-100 rounded-xl animate-pulse' />)}
+                  <div className='h-4 w-24 bg-gray-100 rounded animate-pulse mt-2' />
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className='h-10 bg-gray-100 rounded-xl animate-pulse' />)}
+                </div>
+              ) : describeData?.data ? (() => {
+                const d = describeData.data as { children?: { name: string }[]; parent?: { name: string }[] };
+                const children = d.children ?? [];
+                const parents = d.parent ?? [];
+
+                const ObjectPill = ({ name, variant }: { name: string; variant: 'child' | 'parent' }) => (
+                  <div className='flex items-center gap-3 px-3 py-2.5 rounded-xl border'
+                    style={variant === 'child'
+                      ? { background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.2)' }
+                      : { background: 'rgba(139,92,246,0.05)', borderColor: 'rgba(139,92,246,0.2)' }}>
+                    <div className='w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0'
+                      style={{ background: variant === 'child' ? 'rgba(16,185,129,0.12)' : 'rgba(139,92,246,0.12)' }}>
+                      <svg width='11' height='11' viewBox='0 0 24 24' fill='none'
+                        stroke={variant === 'child' ? '#10B981' : '#8B5CF6'}
+                        strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        {variant === 'child'
+                          ? <><polyline points='6 9 12 15 18 9' /></>
+                          : <><polyline points='18 15 12 9 6 15' /></>}
+                      </svg>
+                    </div>
+                    <span className='text-sm font-medium text-gray-800'>{name}</span>
+                    <span className='ml-auto text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0'
+                      style={variant === 'child'
+                        ? { background: 'rgba(16,185,129,0.1)', color: '#059669' }
+                        : { background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>
+                      {variant === 'child' ? 'Child' : 'Parent'}
+                    </span>
+                  </div>
+                );
+
+                return (
+                  <div className='flex flex-col gap-5'>
+                    {/* Info banner */}
+                    <div className='flex items-start gap-2 rounded-xl px-3 py-2.5' style={{ background: 'rgba(21,93,252,0.05)', border: '1px solid rgba(21,93,252,0.12)' }}>
+                      <svg className='mt-0.5 flex-shrink-0' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                      </svg>
+                      <p className='text-xs text-blue-700 leading-relaxed'>
+                        All related objects below will be <span className='font-semibold'>automatically included</span> in the backup when <span className='font-semibold'>{panelObject?.name ?? panelObjectId}</span> is selected.
+                      </p>
+                    </div>
+
+                    {/* Children */}
+                    {children.length > 0 && (
+                      <div className='flex flex-col gap-2'>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Child Objects</span>
+                          <span className='text-xs font-semibold px-1.5 py-0.5 rounded-full' style={{ background: 'rgba(16,185,129,0.1)', color: '#059669' }}>{children.length}</span>
+                        </div>
+                        <div className='flex flex-col gap-1.5'>
+                          {children.map((c) => <ObjectPill key={c.name} name={c.name} variant='child' />)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Parents */}
+                    {parents.length > 0 && (
+                      <div className='flex flex-col gap-2'>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Parent Objects</span>
+                          <span className='text-xs font-semibold px-1.5 py-0.5 rounded-full' style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>{parents.length}</span>
+                        </div>
+                        <div className='flex flex-col gap-1.5'>
+                          {parents.map((p) => <ObjectPill key={p.name} name={p.name} variant='parent' />)}
+                        </div>
+                      </div>
+                    )}
+
+                    {children.length === 0 && parents.length === 0 && (
+                      <div className='flex flex-col items-center justify-center py-10 text-center'>
+                        <svg width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
+                          <circle cx='12' cy='5' r='2' /><circle cx='5' cy='19' r='2' /><circle cx='19' cy='19' r='2' />
+                          <line x1='12' y1='7' x2='5' y2='17' /><line x1='12' y1='7' x2='19' y2='17' />
+                        </svg>
+                        <p className='text-sm text-gray-400 mt-3'>No relationships found for this object.</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })() : (
+                <div className='flex flex-col items-center justify-center py-10 text-center'>
+                  <svg width='36' height='36' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
                     <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
                   </svg>
-                  <div>
-                    <p className='text-sm font-semibold text-red-700'>{parseSalesforceError(error).title}</p>
-                    <p className='text-sm text-red-600 mt-0.5'>{parseSalesforceError(error).detail}</p>
-                  </div>
+                  <p className='text-sm text-gray-400 mt-3'>No relationship data available.</p>
                 </div>
-              ) : (
-                <Table<BackupObject>
-                  columns={columns}
-                  rows={filteredObjects}
-                  getRowKey={(obj) => obj.id}
-                  loading={isLoading}
-                  skeletonConfig={{ rows: 8, colWidths: ['w-40', 'w-16', 'w-20', 'w-24'] }}
-                  headerVariant='uppercase'
-                  borderless
-                  cellPaddingClassName='px-3 py-2.5'
-                  showSerialNumber
-                  serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
-                  showCheckbox
-                  selectedIds={selectedObjects}
-                  getRowId={(obj) => obj.id}
-                  onSelectionChange={setSelectedObjects}
-                  getRowClassName={(_obj, isSelected) =>
-                    `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
-                  }
-                  emptyState='No objects found matching your search.'
-                  paginationConfig={{
-                    type: 'cursor',
-                    hasPrev: currentPage > 0,
-                    hasNext: offset + ITEMS_PER_PAGE < totalRecords,
-                    onPrev: () => setCurrentPage((p) => p - 1),
-                    onNext: () => setCurrentPage((p) => p + 1),
-                    labelNode: (
-                      <span className='flex items-center gap-1.5 text-sm text-gray-600'>
-                        Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords}
-                      </span>
-                    ),
-                  }}
-                />
               )}
             </div>
-          );
-        })()}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className='flex-shrink-0 flex justify-between px-8 py-4 bg-gray-50 border-t border-gray-200'>
@@ -258,18 +424,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               const selectedObjectsData = Array.from(selectedObjects).map((id) => {
                 const obj = allObjects.find((o) => o.id === id);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                return {
-                  id,
-                  type,
-                };
+                return { id, type };
               });
               onNext(selectedObjectsData);
             }}
             disabled={selectedObjects.size === 0}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedObjects.size > 0
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             Next Step →
           </button>
