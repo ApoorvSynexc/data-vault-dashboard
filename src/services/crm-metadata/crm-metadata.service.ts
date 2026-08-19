@@ -2,7 +2,7 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 const CRM_METADATA_ENDPOINTS = {
   objectList: '/v1/crm-metadata/objects/list',
-  masterObjectList: '/v1/crm-metadata/objects/master/list',
+  objectDescribe: '/v1/crm-metadata/objects/describe',
 } as const;
 
 export type CrmMetadataObject = {
@@ -18,10 +18,7 @@ export type CrmMetadataObject = {
   [key: string]: unknown;
 };
 
-
 type ObjectListResponse = CrmMetadataObject[];
-
-type MasterObjectListResponse = string[];
 
 export function useCrmMetadataService() {
   const api = useHttpRequest();
@@ -32,7 +29,9 @@ export function useCrmMetadataService() {
         query: { mode, ...(type ? { type } : {}) },
       }),
 
-    getMasterObjectList: (objectNames: string[], signal?: AbortSignal) =>
-      api.post<MasterObjectListResponse>(CRM_METADATA_ENDPOINTS.masterObjectList, { objectNames }, { signal }),
+    getObjectDescribe: (objectName: string) =>
+      api.get<unknown>(CRM_METADATA_ENDPOINTS.objectDescribe, {
+        query: { objectName },
+      }),
   };
 }
