@@ -320,7 +320,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 const children = d.children ?? [];
                 const parents = d.parent ?? [];
 
-                const ObjectPill = ({ name, cascadeDelete, restrictedDelete, variant }: { name: string; restrictedDelete?: boolean; cascadeDelete?: boolean; nillable?: boolean; variant: 'child' | 'parent' }) => (
+                const ObjectPill = ({ name, cascadeDelete, restrictedDelete, nillable, variant }: { name: string; restrictedDelete?: boolean; cascadeDelete?: boolean; nillable?: boolean; variant: 'child' | 'parent' }) => (
                   <div className='flex items-center gap-3 px-3 py-2.5 rounded-xl border'
                     style={variant === 'child'
                       ? { background: 'rgba(16,185,129,0.05)', borderColor: 'rgba(16,185,129,0.2)' }
@@ -340,7 +340,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                       style={variant === 'child'
                         ? { background: 'rgba(16,185,129,0.1)', color: '#059669' }
                         : { background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>
-                      {variant === 'child' ? (!cascadeDelete && !restrictedDelete ? 'Lookup' : cascadeDelete ? 'Master Detail' : restrictedDelete ? 'Lookup Required' : 'Child') : 'Parent'}
+                      {variant === 'child'
+                        ? (!cascadeDelete && !restrictedDelete ? 'Lookup' : cascadeDelete && restrictedDelete ? 'Master Detail' : cascadeDelete ? 'Master Detail' : restrictedDelete ? 'Lookup Required' : 'Child' )
+                        : (cascadeDelete && nillable ? 'Master Detail' : cascadeDelete ? 'Master Detail' : nillable ? 'Lookup' : !cascadeDelete && !nillable ? 'Lookup Required' : 'Parent' )}
                     </span>
                   </div>
                 );
