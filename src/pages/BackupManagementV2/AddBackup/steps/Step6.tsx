@@ -120,6 +120,9 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
 
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentTime = dayjs().format('HH:mm');
+
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dayMap: Record<string, string> = {
     'Mon': 'MON',
@@ -257,6 +260,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                     <input
                       type='date'
                       value={startDate}
+                      min={today}
                       onChange={(e) => setStartDate(e.target.value)}
                       placeholder='Select Date'
                       className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -267,6 +271,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                     <input
                       type='time'
                       value={startTime}
+                      min={startDate === today ? currentTime : undefined}
                       onChange={(e) => setStartTime(e.target.value)}
                       className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                     />
@@ -531,6 +536,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='date'
                   value={endDate}
+                  min={startDate > today ? startDate : today}
                   onChange={(e) => setEndDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
