@@ -19,6 +19,7 @@ type Step5Props = {
   onBack: () => void;
   entireDatasetSelected?: boolean;
   selectedObjectIds?: string[];
+  initialSelectedObjects?: SelectedObject[];
   strategy?: 'realtime' | 'scheduled';
   onSelectionChange?: (selectedUuids: string[]) => void;
   displayObjects: BackupObject[];
@@ -39,7 +40,7 @@ interface BackupObject {
   schedule?: 'realtime' | 'schedule' | null;
 }
 
-export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], strategy = 'realtime', onSelectionChange, displayObjects, isLoadingObjects, objectsError }: Step5Props) {
+export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDatasetSelected = false, selectedObjectIds: initialSelectedObjectIds = [], initialSelectedObjects = [], strategy = 'realtime', onSelectionChange, displayObjects, isLoadingObjects, objectsError }: Step5Props) {
   const navigate = useNavigate();
   const crmMetadataService = useCrmMetadataService();
 
@@ -118,8 +119,43 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const offset = currentPage * ITEMS_PER_PAGE;
   const filteredObjects = allFilteredObjects.slice(offset, offset + ITEMS_PER_PAGE);
 
-  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set(initialSelectedObjectIds));
+  const [selectedObjects, setSelectedObjects] = useState<Set<string>>(new Set());
   const autoSelectedRef = useRef(false);
+  const initialSyncDone = useRef(false);
+  // Stable refs so effects don't re-run on every parent render
+  const initialSelectedRef = useRef(initialSelectedObjectIds);
+  const initialSelectedObjectsRef = useRef(initialSelectedObjects);
+
+  // Once displayObjects loads, resolve SF API names → fresh uuids and rebuild parentChildMap
+  useEffect(() => {
+    if (initialSyncDone.current || allObjects.length === 0) return;
+    const sfNames = initialSelectedRef.current;
+    if (sfNames.length === 0) return;
+
+    const resolvedUuids = sfNames
+      .map((sfName) => allObjects.find((o) => o.id === sfName)?.uuid)
+      .filter((u): u is string => !!u);
+    if (resolvedUuids.length === 0) return;
+
+    setSelectedObjects(new Set(resolvedUuids));
+
+    // Rebuild parentChildMap: for each child that has parentObjects, map parent uuid -> child uuids
+    const newMap = new Map<string, string[]>();
+    initialSelectedObjectsRef.current.forEach((sel) => {
+      if (!sel.parentObjects?.length) return;
+      const childUuid = allObjects.find((o) => o.id === sel.id)?.uuid;
+      if (!childUuid) return;
+      sel.parentObjects.forEach((parent) => {
+        const parentUuid = allObjects.find((o) => o.id === parent.name)?.uuid;
+        if (!parentUuid) return;
+        const existing = newMap.get(parentUuid) ?? [];
+        newMap.set(parentUuid, [...existing, childUuid]);
+      });
+    });
+    if (newMap.size > 0) setParentChildMap(newMap);
+
+    initialSyncDone.current = true;
+  }, [allObjects]);
 
   // Notify parent of selection changes
   useEffect(() => {

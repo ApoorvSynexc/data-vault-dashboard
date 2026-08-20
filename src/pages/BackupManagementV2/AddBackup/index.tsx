@@ -145,8 +145,10 @@ export default function AddBackup() {
     setSelectedStrategy(strat);
 
     const objs: SelectedObject[] = (item.objects ?? []).map((o: any) => ({
+      uuid: o.id,
       id: o.name ?? o.id,
       type: (o.type === 'CUSTOM' ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
+      parentObjects: o.parentObjects,
     }));
     setSelectedObjects(objs);
 
@@ -280,17 +282,18 @@ export default function AddBackup() {
       {currentStep === 5 && (
         <Step5
           entireDatasetSelected={entireDatasetSelected}
-          selectedObjectIds={selectedObjects.map((o) => o.uuid)}
+          selectedObjectIds={selectedObjects.map((o) => o.id)}
+          initialSelectedObjects={selectedObjects}
           strategy={selectedStrategy}
           displayObjects={displayObjects}
           isLoadingObjects={isLoadingObjects}
           objectsError={objectsError}
           onSelectionChange={(uuids) => {
             setSelectedObjects(uuids.map((uuid) => {
-              const existing = selectedObjects.find((o) => o.uuid === uuid);
-              if (existing) return existing;
-              const obj = displayObjects.find((o) => o.uuid === uuid);
-              return { uuid, id: obj?.id ?? uuid, type: (obj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM' };
+              const displayObj = displayObjects.find((o) => o.uuid === uuid);
+              const existing = selectedObjects.find((o) => o.uuid === uuid || (displayObj && o.id === displayObj.id));
+              if (existing) return { ...existing, uuid };
+              return { uuid, id: displayObj?.id ?? uuid, type: (displayObj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM' };
             }));
           }}
           onNext={(objects) => {
