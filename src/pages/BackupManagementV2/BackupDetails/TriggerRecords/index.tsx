@@ -108,7 +108,7 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
 
       {/* Table */}
       <div className='bg-white rounded-lg border border-gray-200 overflow-x-auto'>
-        <table className='table-fixed text-xs' style={{ minWidth: '1200px', width: '100%' }}>
+        <table className='table-fixed text-xs w-full' style={{ minWidth: '900px' }}>
           <thead>
             <tr className='bg-gray-50 border-b border-gray-200'>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '44px' }}>SL</th>
@@ -117,7 +117,7 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '190px' }}>Delete Flow</th>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '110px' }}>Flow Status</th>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '130px' }}>Permission Set</th>
-              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide'>Error</th>
+              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '220px' }}>Error</th>
             </tr>
           </thead>
           <tbody>
