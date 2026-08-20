@@ -57,12 +57,40 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   // Tracks the last selected object to fire describe API once on selection
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [describeFetchCount, setDescribeFetchCount] = useState(0);
+  // Map of parentId -> auto-selected child ids (master-detail)
+  const [parentChildMap, setParentChildMap] = useState<Map<string, string[]>>(new Map());
+  // Toast message
+  const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
 
-  const { data: describeData, isLoading: isLoadingDescribe } = useQuery({
-    queryKey: ['crm-object-describe', lastSelectedId],
+  // Flat set of all currently locked child ids
+  const autoSelectedIds = useMemo(() => {
+    const locked = new Set<string>();
+    parentChildMap.forEach((children) => children.forEach((c) => locked.add(c)));
+    return locked;
+  }, [parentChildMap]);
+
+  const { data: describeData } = useQuery({
+    queryKey: ['crm-object-describe', lastSelectedId, describeFetchCount],
     queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedId!),
     enabled: !!lastSelectedId,
   });
+
+  // When describe data arrives, auto-select master-detail children and show toast
+  useEffect(() => {
+    if (!describeData?.data || !lastSelectedId) return;
+    const d = describeData.data as { children?: { name: string }[] };
+    const children = (d.children ?? []).map((c) => c.name);
+    if (children.length === 0) return;
+
+    const selectedObj = displayObjects.find((o) => o.id === lastSelectedId);
+    setParentChildMap((prev) => new Map(prev).set(lastSelectedId, children));
+    setSelectedObjects((prev) => new Set([...prev, ...children]));
+    setToast({ objectName: selectedObj?.name ?? lastSelectedId, children });
+
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [describeData, lastSelectedId]);
 
   // Filter + paginate
   const allFilteredObjects = useMemo(() => {
@@ -102,6 +130,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+
+      {/* Master-detail toast */}
+      {toast && (
+        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ border: '1px solid rgba(21,93,252,0.2)' }}>
+          <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
+            <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(21,93,252,0.1)' }}>
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='12' cy='5' r='2' /><circle cx='5' cy='19' r='2' /><circle cx='19' cy='19' r='2' />
+                <line x1='12' y1='7' x2='5' y2='17' /><line x1='12' y1='7' x2='19' y2='17' />
+              </svg>
+            </div>
+            <div className='flex-1 min-w-0'>
+              <p className='text-sm font-semibold text-gray-900'>Master-Detail relationships detected</p>
+              <p className='text-xs text-gray-500 mt-0.5 leading-relaxed'>
+                <span className='font-medium text-blue-600'>{toast.children.join(', ')}</span> are in a Master-Detail relationship with <span className='font-medium'>{toast.objectName}</span> and will be automatically backed up.
+              </p>
+            </div>
+            <button onClick={() => setToast(null)} className='flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mt-0.5'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
+              </svg>
+            </button>
+          </div>
+          {/* Auto-dismiss progress bar */}
+          <div className='h-0.5 bg-blue-600' style={{ animation: 'shrink 6s linear forwards' }} />
+          <style>{`@keyframes shrink { from { width: 100% } to { width: 0% } }`}</style>
+        </div>
+      )}
       {/* Header */}
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
@@ -229,11 +286,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     getRowId={(obj) => obj.id}
                     onSelectionChange={(newSelected) => {
                       const added = [...newSelected].find((id) => !selectedObjects.has(id));
-                      if (added) setLastSelectedId(added);
-                      setSelectedObjects(newSelected);
+                      if (added) {
+                        setLastSelectedId(added);
+                        setDescribeFetchCount((c) => c + 1);
+                      }
+
+                      // Detect removed parents and unselect their locked children
+                      const removedParents = [...parentChildMap.keys()].filter((pid) => !newSelected.has(pid));
+                      if (removedParents.length > 0) {
+                        const toRemove = new Set<string>();
+                        const updatedMap = new Map(parentChildMap);
+                        removedParents.forEach((pid) => {
+                          (parentChildMap.get(pid) ?? []).forEach((c) => {
+                            // Only remove child if no other remaining parent also owns it
+                            const stillOwnedByOther = [...updatedMap.entries()]
+                              .filter(([k]) => k !== pid)
+                              .some(([, v]) => v.includes(c));
+                            if (!stillOwnedByOther) toRemove.add(c);
+                          });
+                          updatedMap.delete(pid);
+                        });
+                        setParentChildMap(updatedMap);
+                        setSelectedObjects(new Set([...newSelected].filter((id) => !toRemove.has(id))));
+                      } else {
+                        setSelectedObjects(newSelected);
+                      }
                     }}
-                    getRowClassName={(_obj, isSelected) =>
-                      `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
+                    isRowSelectable={(obj) => !autoSelectedIds.has(obj.id)}
+                    getRowClassName={(obj, isSelected) =>
+                      `border-b border-gray-100 transition-colors ${autoSelectedIds.has(obj.id) ? 'bg-blue-50/40 opacity-70 cursor-not-allowed' : `cursor-pointer ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}`
                     }
                     emptyState='No objects found matching your search.'
                     paginationConfig={{
@@ -290,7 +371,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
             {/* Modal body */}
             <div className='flex-1 overflow-y-auto px-5 py-4'>
-              {isLoadingDescribe ? (
+              {false ? (
                 <div className='flex flex-col gap-3'>
                   <div className='h-4 w-24 bg-gray-100 rounded animate-pulse' />
                   {Array.from({ length: 3 }).map((_, i) => <div key={i} className='h-10 bg-gray-100 rounded-xl animate-pulse' />)}
