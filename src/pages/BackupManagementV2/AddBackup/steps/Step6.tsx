@@ -95,15 +95,15 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
       };
     }
     return {
-      frequency: 'Daily' as FrequencyType,
+      frequency: null as FrequencyType | null,
       runMode: 'runNow' as const,
-      selectedDays: ['Mon'],
-      selectedMonths: ['Jan'],
-      dayOfMonth: '01',
-      startTime: '12:00',
+      selectedDays: [] as string[],
+      selectedMonths: [] as string[],
+      dayOfMonth: '',
+      startTime: '',
       timeZone: getDefaultTimezone().value,
-      startDate: dayjs().format('YYYY-MM-DD'),
-      endDate: dayjs().add(7, 'days').format('YYYY-MM-DD'),
+      startDate: '',
+      endDate: '',
     };
   };
 
@@ -197,12 +197,14 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
 
         {/* Prompt when previous config was One Time */}
         {frequency === null && (
-          <div className='flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4'>
-            <svg className='mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-              <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+          <div className='flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4'>
+            <svg className='mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+              <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
             </svg>
-            <p className='text-sm text-amber-800'>
-              Your previous backup was set to <span className='font-semibold'>One Time</span>. Please select a recurring schedule from the options above to continue.
+            <p className='text-sm text-blue-800'>
+              {hideOnce
+                ? <>Your previous backup was set to <span className='font-semibold'>One Time</span>. Please select a recurring schedule from the options above to continue.</>
+                : 'Please select a schedule type from the options above to continue.'}
             </p>
           </div>
         )}
@@ -333,6 +335,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='date'
                   value={startDate}
+                  min={today}
                   onChange={(e) => setStartDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -342,6 +345,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='time'
                   value={startTime}
+                  min={startDate === today ? currentTime : undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -358,6 +362,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='time'
                   value={startTime}
+                  min={startDate === today ? currentTime : undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -382,6 +387,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               <input
                 type='date'
                 value={startDate}
+                min={today}
                 onChange={(e) => setStartDate(e.target.value)}
                 className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
@@ -415,6 +421,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='time'
                   value={startTime}
+                  min={startDate === today ? currentTime : undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -439,6 +446,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               <input
                 type='date'
                 value={startDate}
+                min={today}
                 onChange={(e) => setStartDate(e.target.value)}
                 className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               />
@@ -474,6 +482,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   onChange={(e) => setDayOfMonth(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
+                  <option value=''>Select day</option>
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
                     <option key={day} value={String(day).padStart(2, '0')}>
                       {String(day).padStart(2, '0')}
@@ -486,6 +495,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='time'
                   value={startTime}
+                  min={startDate === today ? currentTime : undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -511,6 +521,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='date'
                   value={startDate}
+                  min={today}
                   onChange={(e) => setStartDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -527,6 +538,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='date'
                   value={startDate}
+                  min={today}
                   onChange={(e) => setStartDate(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
@@ -560,6 +572,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <input
                   type='time'
                   value={startTime}
+                  min={startDate === today ? currentTime : undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
