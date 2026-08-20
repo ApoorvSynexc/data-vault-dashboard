@@ -70,7 +70,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     return locked;
   }, [parentChildMap]);
 
-  const { data: describeData } = useQuery({
+  const { data: describeData, isFetching: isDescribeFetching } = useQuery({
     queryKey: ['crm-object-describe', lastSelectedId, describeFetchCount],
     queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedId!),
     enabled: !!lastSelectedId,
@@ -476,17 +476,31 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       )}
 
       {/* Action Buttons */}
-      <div className='flex-shrink-0 flex justify-between px-8 py-4 bg-gray-50 border-t border-gray-200'>
+      <div className='flex-shrink-0 flex justify-between items-center px-8 py-4 bg-gray-50 border-t border-gray-200'>
         <button
           onClick={() => navigate('/backup-management')}
-          className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+          disabled={isDescribeFetching}
+          className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
         >
           Cancel
         </button>
+
+        {/* Fetching indicator */}
+        {isDescribeFetching && (
+          <div className='flex items-center gap-2 text-sm text-blue-600'>
+            <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24' fill='none'>
+              <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+              <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
+            </svg>
+            <span className='font-medium'>Analysing relationships…</span>
+          </div>
+        )}
+
         <div className='flex gap-4'>
           <button
             onClick={onBack}
-            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'
+            disabled={isDescribeFetching}
+            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
           >
             ← Back
           </button>
@@ -499,8 +513,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               });
               onNext(selectedObjectsData);
             }}
-            disabled={selectedObjects.size === 0}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedObjects.size > 0
+            disabled={selectedObjects.size === 0 || isDescribeFetching}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedObjects.size > 0 && !isDescribeFetching
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
