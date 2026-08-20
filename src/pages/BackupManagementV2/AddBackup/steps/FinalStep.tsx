@@ -127,7 +127,7 @@ export default function FinalStep({
   });
 
   const buildPayload = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ id, type: 'STANDARD' as const }));
+    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, parentObjects: undefined }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
       crmId, name: policyName, description, destinationId,
