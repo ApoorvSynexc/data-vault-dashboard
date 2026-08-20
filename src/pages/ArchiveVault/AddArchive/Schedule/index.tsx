@@ -55,6 +55,9 @@ const OPERATOR_MAP: Record<string, string> = {
 export default function Step4({ crmId, destinationId, policyName = '', description = '', selectedObjects = [], initialScheduleConfig, onNext, onBack, editMode = false }: Step4Props) {
   const navigate = useNavigate();
 
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentTime = dayjs().format('HH:mm');
+
   const scheduledObjects = selectedObjects.filter((o) => !!o.scheduleConfig);
   const unscheduledObjects = selectedObjects.filter((o) => !o.scheduleConfig);
   const allScheduled = unscheduledObjects.length === 0;
@@ -67,30 +70,30 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
         // In edit mode, never default to "One Time" — fall back to Daily
         frequency: (editMode && mappedFreq === 'One Time') ? 'Daily' as FrequencyType : mappedFreq,
         runMode: (!s.startDate && !s.startTime) ? 'runNow' as const : 'scheduleRun' as const,
-        selectedDays: s.weekDays ? s.weekDays.map((d) => backDayMap[d] || d) : ['Mon'],
-        selectedMonths: s.selectedMonths ? s.selectedMonths.map((m) => backMonthMap[m] || m) : ['Jan'],
-        dayOfMonth: String(s.monthDate || '01').padStart(2, '0'),
-        startTime: s.startTime || '12:00',
+        selectedDays: s.weekDays ? s.weekDays.map((d) => backDayMap[d] || d) : [],
+        selectedMonths: s.selectedMonths ? s.selectedMonths.map((m) => backMonthMap[m] || m) : [],
+        dayOfMonth: s.monthDate ? String(s.monthDate).padStart(2, '0') : '',
+        startTime: s.startTime || '',
         timeZone: initialScheduleConfig.timeZone,
-        startDate: s.startDate || dayjs().format('YYYY-MM-DD'),
-        endDate: s.endDate || dayjs().add(7, 'days').format('YYYY-MM-DD'),
+        startDate: s.startDate || '',
+        endDate: s.endDate || '',
       };
     }
     return {
-      frequency: 'Daily' as FrequencyType,
+      frequency: null as FrequencyType | null,
       runMode: 'runNow' as const,
-      selectedDays: ['Mon'],
-      selectedMonths: ['Jan'],
-      dayOfMonth: '01',
-      startTime: '12:00',
+      selectedDays: [] as string[],
+      selectedMonths: [] as string[],
+      dayOfMonth: '',
+      startTime: '',
       timeZone: getDefaultTimezone().value,
-      startDate: dayjs().format('YYYY-MM-DD'),
-      endDate: dayjs().add(7, 'days').format('YYYY-MM-DD'),
+      startDate: '',
+      endDate: '',
     };
   };
 
   const initial = init();
-  const [frequency, setFrequency] = useState<FrequencyType>(initial.frequency);
+  const [frequency, setFrequency] = useState<FrequencyType | null>(initial.frequency);
   const [runMode, setRunMode] = useState<'runNow' | 'scheduleRun'>(initial.runMode);
   const [selectedDays, setSelectedDays] = useState<string[]>(initial.selectedDays);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(initial.selectedMonths);
@@ -106,7 +109,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
 
   const buildScheduleConfig = (): ArchiveScheduleConfig => {
     const scheduling: any = {
-      frequency: frequency === 'One Time' ? 'ONCE' : frequency.toUpperCase(),
+      frequency: frequency === 'One Time' ? 'ONCE' : (frequency ?? 'DAILY').toUpperCase(),
       interval: 1,
     };
     if (frequency === 'One Time') {
@@ -158,6 +161,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
 
   const handleNext = () => {
     if (!allScheduled) {
+      if (!frequency) { alert('Please select a frequency'); return; }
       if (frequency !== 'One Time' && !startDate) { alert('Please select a start date'); return; }
       if (frequency !== 'One Time' && !startTime) { alert('Please select a starting time'); return; }
       if (frequency === 'One Time' && runMode === 'scheduleRun' && !startDate) { alert('Please select a start date'); return; }
@@ -269,6 +273,16 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
 
               <div>
 
+                {/* No frequency selected yet */}
+                {!frequency && (
+                  <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200'>
+                    <svg className='w-5 h-5 text-blue-600 flex-shrink-0' fill='currentColor' viewBox='0 0 20 20'>
+                      <path fillRule='evenodd' d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z' clipRule='evenodd' />
+                    </svg>
+                    <p className='text-sm text-blue-700'>Please select a schedule frequency above to configure the schedule.</p>
+                  </div>
+                )}
+
                 {/* One Time */}
                 {frequency === 'One Time' && (
                   <div className='space-y-5 w-full'>
@@ -301,11 +315,11 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                         <div className='grid grid-cols-2 gap-5'>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
-                            <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                            <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                           </div>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                            <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                            <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                           </div>
                         </div>
                         <div>
@@ -339,11 +353,11 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                       </div>
                     </div>
                   </div>
@@ -355,7 +369,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -366,7 +380,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                     </div>
                   </div>
                 )}
@@ -389,7 +403,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -400,7 +414,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                     </div>
                   </div>
                 )}
@@ -424,6 +438,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
                         <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
+                          <option value=''>Select day</option>
                           {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
@@ -431,7 +446,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-5'>
@@ -443,7 +458,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                       </div>
                     </div>
                   </div>
@@ -455,11 +470,11 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On Date</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
-                        <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+                        <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate > today ? startDate : today} className={inputCls} />
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-5'>
@@ -471,7 +486,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} />
+                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} min={startDate === today ? currentTime : undefined} className={inputCls} />
                       </div>
                     </div>
                     <div>
