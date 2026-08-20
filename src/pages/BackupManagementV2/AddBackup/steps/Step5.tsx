@@ -55,11 +55,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const isLoading = isLoadingObjects;
   const error = objectsError;
 
-  // Describe API — fires when an object row is selected (panelObjectId set)
+  // Tracks the last selected object to fire describe API once on selection
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+
   const { data: describeData, isLoading: isLoadingDescribe } = useQuery({
-    queryKey: ['crm-object-describe', panelObjectId],
-    queryFn: () => crmMetadataService.getObjectDescribe(panelObjectId!),
-    enabled: !!panelObjectId,
+    queryKey: ['crm-object-describe', lastSelectedId],
+    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedId!),
+    enabled: !!lastSelectedId,
   });
 
   // Filter + paginate
@@ -97,12 +99,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     setCurrentPage(0);
   }, [debouncedSearchQuery, selectedFilter]);
 
-  // When a row checkbox is selected, open the panel for that object
-  const handleSelectionChange = (newSelected: Set<string>) => {
-    const added = [...newSelected].find((id) => !selectedObjects.has(id));
-    if (added) setPanelObjectId(added);
-    setSelectedObjects(newSelected);
-  };
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -202,21 +198,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   return <span className='text-sm text-gray-600'>{size}</span>;
                 },
               },
-              {
-                key: 'actions',
-                header: '',
-                render: (obj) => (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPanelObjectId(panelObjectId === obj.id ? null : obj.id);
-                    }}
-                    className='px-3 py-1 text-xs font-medium rounded-md border transition-colors whitespace-nowrap bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                  >
-                    Relationships
-                  </button>
-                ),
-              },
             ];
 
             return (
@@ -246,7 +227,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     showCheckbox
                     selectedIds={selectedObjects}
                     getRowId={(obj) => obj.id}
-                    onSelectionChange={handleSelectionChange}
+                    onSelectionChange={(newSelected) => {
+                      const added = [...newSelected].find((id) => !selectedObjects.has(id));
+                      if (added) setLastSelectedId(added);
+                      setSelectedObjects(newSelected);
+                    }}
                     getRowClassName={(_obj, isSelected) =>
                       `border-b border-gray-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`
                     }
