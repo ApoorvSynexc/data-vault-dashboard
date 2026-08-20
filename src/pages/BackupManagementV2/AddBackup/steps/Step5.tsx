@@ -8,8 +8,10 @@ import { parseSalesforceError } from '../../../../utils';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 
 type SelectedObject = {
+  uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
+  parentObjects?: { id: string; name: string }[];
 };
 
 type Step5Props = {
@@ -18,13 +20,14 @@ type Step5Props = {
   entireDatasetSelected?: boolean;
   selectedObjectIds?: string[];
   strategy?: 'realtime' | 'scheduled';
-  onSelectionChange?: (selectedIds: string[]) => void;
+  onSelectionChange?: (selectedUuids: string[]) => void;
   displayObjects: BackupObject[];
   isLoadingObjects: boolean;
   objectsError: Error | null;
 };
 
 interface BackupObject {
+  uuid: string;
   id: string;
   name: string;
   type: string;
@@ -55,15 +58,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const isLoading = isLoadingObjects;
   const error = objectsError;
 
-  // Tracks the last selected object to fire describe API once on selection
-  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  // Tracks the last selected object (SF API name) to fire describe API once on selection
+  const [lastSelectedSfName, setLastSelectedSfName] = useState<string | null>(null);
   const [describeFetchCount, setDescribeFetchCount] = useState(0);
-  // Map of parentId -> auto-selected child ids (master-detail)
+  // Map of parent uuid -> auto-selected child uuids (master-detail)
   const [parentChildMap, setParentChildMap] = useState<Map<string, string[]>>(new Map());
-  // Toast message
+  // Toast message (child labels for display)
   const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
 
-  // Flat set of all currently locked child ids
+  // Flat set of all currently locked child uuids
   const autoSelectedIds = useMemo(() => {
     const locked = new Set<string>();
     parentChildMap.forEach((children) => children.forEach((c) => locked.add(c)));
@@ -71,26 +74,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   }, [parentChildMap]);
 
   const { data: describeData, isFetching: isDescribeFetching } = useQuery({
-    queryKey: ['crm-object-describe', lastSelectedId, describeFetchCount],
-    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedId!),
-    enabled: !!lastSelectedId,
+    queryKey: ['crm-object-describe', lastSelectedSfName, describeFetchCount],
+    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedSfName!),
+    enabled: !!lastSelectedSfName,
   });
 
   // When describe data arrives, auto-select master-detail children and show toast
   useEffect(() => {
-    if (!describeData?.data || !lastSelectedId) return;
+    if (!describeData?.data || !lastSelectedSfName) return;
     const d = describeData.data as { children?: { name: string }[] };
-    const children = (d.children ?? []).map((c) => c.name);
-    if (children.length === 0) return;
+    const childSfNames = (d.children ?? []).map((c) => c.name);
+    if (childSfNames.length === 0) return;
 
-    const selectedObj = displayObjects.find((o) => o.id === lastSelectedId);
-    setParentChildMap((prev) => new Map(prev).set(lastSelectedId, children));
-    setSelectedObjects((prev) => new Set([...prev, ...children]));
-    setToast({ objectName: selectedObj?.name ?? lastSelectedId, children });
+    // Map SF API names -> uuids via displayObjects
+    const childUuids = childSfNames
+      .map((sfName) => displayObjects.find((o) => o.id === sfName)?.uuid)
+      .filter((u): u is string => !!u);
+    const childLabels = childSfNames
+      .map((sfName) => displayObjects.find((o) => o.id === sfName)?.name ?? sfName);
+
+    const parentObj = displayObjects.find((o) => o.id === lastSelectedSfName);
+    const parentUuid = parentObj?.uuid ?? lastSelectedSfName;
+
+    setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
+    setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
+    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: childLabels });
 
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
-  }, [describeData, lastSelectedId]);
+  }, [describeData, lastSelectedSfName]);
 
   // Filter + paginate
   const allFilteredObjects = useMemo(() => {
@@ -118,7 +130,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   useEffect(() => {
     if (_entireDatasetSelected && allObjects.length > 0 && !autoSelectedRef.current) {
       autoSelectedRef.current = true;
-      setSelectedObjects(new Set(allObjects.map((obj) => obj.id)));
+      setSelectedObjects(new Set(allObjects.map((obj) => obj.uuid)));
     }
   }, [_entireDatasetSelected, allObjects]);
 
@@ -273,7 +285,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   <Table<BackupObject>
                     columns={columns}
                     rows={filteredObjects}
-                    getRowKey={(obj) => obj.id}
+                    getRowKey={(obj) => obj.uuid}
                     loading={isLoading}
                     skeletonConfig={{ rows: 8, colWidths: ['w-40', 'w-16', 'w-20', 'w-24', 'w-20'] }}
                     headerVariant='uppercase'
@@ -283,11 +295,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
                     showCheckbox
                     selectedIds={selectedObjects}
-                    getRowId={(obj) => obj.id}
+                    getRowId={(obj) => obj.uuid}
                     onSelectionChange={(newSelected) => {
-                      const added = [...newSelected].find((id) => !selectedObjects.has(id));
-                      if (added) {
-                        setLastSelectedId(added);
+                      const addedUuid = [...newSelected].find((uuid) => !selectedObjects.has(uuid));
+                      if (addedUuid) {
+                        const sfName = displayObjects.find((o) => o.uuid === addedUuid)?.id ?? null;
+                        setLastSelectedSfName(sfName);
                         setDescribeFetchCount((c) => c + 1);
                       }
 
@@ -312,9 +325,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                         setSelectedObjects(newSelected);
                       }
                     }}
-                    isRowSelectable={(obj) => !autoSelectedIds.has(obj.id)}
+                    isRowSelectable={(obj) => !autoSelectedIds.has(obj.uuid)}
                     getRowClassName={(obj, isSelected) =>
-                      `border-b border-gray-100 transition-colors ${autoSelectedIds.has(obj.id) ? 'bg-blue-50/40 opacity-70 cursor-not-allowed' : `cursor-pointer ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}`
+                      `border-b border-gray-100 transition-colors ${autoSelectedIds.has(obj.uuid) ? 'bg-blue-50/40 opacity-70 cursor-not-allowed' : `cursor-pointer ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}`
                     }
                     emptyState='No objects found matching your search.'
                     paginationConfig={{
@@ -506,10 +519,22 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </button>
           <button
             onClick={() => {
-              const selectedObjectsData = Array.from(selectedObjects).map((id) => {
-                const obj = allObjects.find((o) => o.id === id);
+              // Build reverse map: child uuid -> list of parent objects
+              const childToParents = new Map<string, { id: string; name: string }[]>();
+              parentChildMap.forEach((childUuids, parentUuid) => {
+                const parentObj = allObjects.find((o) => o.uuid === parentUuid);
+                if (!parentObj) return;
+                childUuids.forEach((childUuid) => {
+                  const existing = childToParents.get(childUuid) ?? [];
+                  childToParents.set(childUuid, [...existing, { id: parentObj.uuid, name: parentObj.name }]);
+                });
+              });
+
+              const selectedObjectsData = Array.from(selectedObjects).map((uuid) => {
+                const obj = allObjects.find((o) => o.uuid === uuid);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                return { id, type };
+                const parentObjects = childToParents.get(uuid);
+                return { uuid, id: obj?.id ?? uuid, type, ...(parentObjects ? { parentObjects } : {}) };
               });
               onNext(selectedObjectsData);
             }}

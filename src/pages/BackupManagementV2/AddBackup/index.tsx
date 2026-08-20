@@ -12,6 +12,7 @@ import { useBackupConfigService } from '../../../services/backup-config/backup-c
 import { useCrmMetadataService } from '../../../services/crm-metadata/crm-metadata.service';
 
 type BackupObject = {
+  uuid: string;
   id: string;
   name: string;
   type: string;
@@ -24,8 +25,10 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
 type SelectedObject = {
+  uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
+  parentObjects?: { id: string; name: string }[];
 };
 
 const WIZARD_STORAGE_KEY = 'addBackupWizardState';
@@ -87,6 +90,7 @@ export default function AddBackup() {
     const mapped: BackupObject[] = raw
       .filter((item) => item?.name)
       .map((item) => ({
+        uuid: crypto.randomUUID(),
         id: item.name,
         name: item.label ?? item.name,
         type: 'Object',
@@ -276,15 +280,17 @@ export default function AddBackup() {
       {currentStep === 5 && (
         <Step5
           entireDatasetSelected={entireDatasetSelected}
-          selectedObjectIds={selectedObjects.map((o) => o.id)}
+          selectedObjectIds={selectedObjects.map((o) => o.uuid)}
           strategy={selectedStrategy}
           displayObjects={displayObjects}
           isLoadingObjects={isLoadingObjects}
           objectsError={objectsError}
-          onSelectionChange={(ids) => {
-            setSelectedObjects(ids.map((id) => {
-              const existing = selectedObjects.find((o) => o.id === id);
-              return existing ?? { id, type: 'STANDARD' as const };
+          onSelectionChange={(uuids) => {
+            setSelectedObjects(uuids.map((uuid) => {
+              const existing = selectedObjects.find((o) => o.uuid === uuid);
+              if (existing) return existing;
+              const obj = displayObjects.find((o) => o.uuid === uuid);
+              return { uuid, id: obj?.id ?? uuid, type: (obj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM' };
             }));
           }}
           onNext={(objects) => {

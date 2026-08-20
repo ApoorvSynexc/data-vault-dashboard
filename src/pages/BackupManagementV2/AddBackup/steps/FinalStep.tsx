@@ -22,8 +22,10 @@ type ScheduleConfig = {
 };
 
 type SelectedObject = {
+  uuid?: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
+  parentObjects?: { id: string; name: string }[];
 };
 
 type FinalStepProps = {
@@ -133,9 +135,18 @@ export default function FinalStep({
       objectNames: objectIds,
       schedule: strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
       objects: objectsToUse.map((obj) => {
-        const objId = typeof obj === 'string' ? obj : obj.id;
+        const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
+        const objName = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
-        return { name: objId, type: objType, condition: { type: 'AND' }, field: [] };
+        const parentObjects = typeof obj !== 'string' && obj.parentObjects?.length ? obj.parentObjects : undefined;
+        return {
+          id: objUuid,
+          name: objName,
+          type: objType,
+          condition: { type: 'AND' },
+          field: [],
+          ...(parentObjects ? { parentObjects } : {}),
+        };
       }),
       status: backupStatus,
     };
