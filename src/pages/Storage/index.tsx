@@ -121,17 +121,13 @@ export default function Storage() {
           <span className='text-xs text-gray-400'>DataCraft storage breakdown</span>
         </div>
         <div className='flex w-full h-3.5 rounded-full overflow-hidden mb-3'>
-          <div style={{ width: '45%', background: '#3b82f6' }} />
-          <div style={{ width: '28%', background: '#7c3aed' }} />
-          <div style={{ width: '18%', background: '#0891b2' }} />
-          <div style={{ width: '9%', background: '#d1d5db' }} />
+          <div style={{ width: '62%', background: '#3b82f6' }} />
+          <div style={{ width: '38%', background: '#7c3aed' }} />
         </div>
-        <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs'>
+        <div className='grid grid-cols-2 gap-3 text-xs'>
           {[
-            { color: '#3b82f6', label: 'Backup Snapshots', val: '70 GB · 45%' },
-            { color: '#7c3aed', label: 'Archive (Hot)', val: '44 GB · 28%' },
-            { color: '#0891b2', label: 'Archive (Cold)', val: '28 GB · 18%' },
-            { color: '#d1d5db', label: 'Logs & Indexes', val: '14 GB · 9%' },
+            { color: '#3b82f6', label: 'Backup Snapshots',  val: '70 GB · 62%' },
+            { color: '#7c3aed', label: 'Archive Snapshots', val: '44 GB · 38%' },
           ].map(({ color, label, val }) => (
             <div key={label} className='flex flex-col gap-1'>
               <div className='flex items-center gap-1.5'>
