@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '../../../../hooks/useDebounce';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { useRestoreService } from '../../../../services/restore/restore.service';
-import type { FetchRecordsPayload } from '../../../../services/restore/restore.service';
 import type { SFRecord } from './types';
 import type { SourceSelection } from '../SelectSourceType';
+
+const COLUMN_NAMES = ['Id', 'Name', 'LastModifiedDate', 'OPERATION'];
 
 interface RecordsByObj { [obj: string]: Set<string> }
 
@@ -20,54 +22,74 @@ interface Props {
 export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange }: Props) {
   const restoreService = useRestoreService();
 
-  const [objSearch,            setObjSearch]            = useState('');
-  const [addedObjs,            setAddedObjs]            = useState<string[]>([]);
-  const [activeObj,            setActiveObj]            = useState('');
-  const [selectedByObj,        setSelectedByObj]        = useState<RecordsByObj>({});
-  const [allRecordsByObj,      setAllRecordsByObj]      = useState<Record<string, SFRecord[]>>({});
-  const [cursorByObj,          setCursorByObj]          = useState<Record<string, string | undefined>>({});
-  const [modalObj,             setModalObj]             = useState<string | null>(null);
-  const [draftSelected,        setDraftSelected]        = useState<Set<string>>(new Set());
-  const [recordSearch,         setRecordSearch]         = useState('');
+  const [objSearch,       setObjSearch]       = useState('');
+  const [addedObjs,       setAddedObjs]       = useState<string[]>([]);
+  const [activeObj,       setActiveObj]       = useState('');
+  const [selectedByObj,   setSelectedByObj]   = useState<RecordsByObj>({});
+  const [allRecordsByObj, setAllRecordsByObj] = useState<Record<string, SFRecord[]>>({});
+  const [cursor,          setCursor]          = useState<string | undefined>(undefined);
+  const [modalObj,        setModalObj]        = useState<string | null>(null);
+  const [draftSelected,   setDraftSelected]   = useState<Set<string>>(new Set());
+  const [recordSearch,    setRecordSearch]    = useState('');
 
-  const activeCursor = cursorByObj[activeObj];
+  const debouncedSearch = useDebounce(recordSearch, 500);
 
-  const fetchPayload: FetchRecordsPayload | null = !!activeObj && !!sourceSelection.backupConfigId
-    ? {
-        source: {
-          backupConfigId: sourceSelection.backupConfigId,
-          type: sourceSelection.type ?? 'ENTIRE',
-          ...(sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
-          ...(sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
-          ...(sourceSelection.type === 'CHANGED_BETWEEN' && sourceSelection.backupJobIds.length > 0
-            ? { backupJobIds: sourceSelection.backupJobIds }
-            : {}),
-        },
-        objectApiName: activeObj,
-        columns: ['Id', 'Name', 'LastModifiedDate'],
+  // Reset cursor and records when object or search changes
+  const prevObjRef    = useRef(activeObj);
+  const prevSearchRef = useRef(debouncedSearch);
+  useEffect(() => {
+    if (prevObjRef.current !== activeObj || prevSearchRef.current !== debouncedSearch) {
+      setCursor(undefined);
+      if (prevObjRef.current !== activeObj) {
+        setAllRecordsByObj((p) => ({ ...p, [activeObj]: [] }));
       }
+      prevObjRef.current    = activeObj;
+      prevSearchRef.current = debouncedSearch;
+    }
+  }, [activeObj, debouncedSearch]);
+
+  const isChangedBetween = sourceSelection.type === 'CHANGED_BETWEEN';
+
+  const fetchPayload = !!activeObj && !!sourceSelection.backupConfigId
+    ? isChangedBetween
+      ? {
+          backupConfigId: sourceSelection.backupConfigId,
+          objectApiName:  activeObj,
+          type:           'CHANGED_BETWEEN' as const,
+          startDate:      sourceSelection.startDate ?? '',
+          endDate:        sourceSelection.endDate   ?? '',
+          columnNames:    COLUMN_NAMES,
+          ...(debouncedSearch ? { searchText: debouncedSearch } : {}),
+          ...(cursor          ? { cursor }                      : {}),
+        }
+      : {
+          backupConfigId: sourceSelection.backupConfigId,
+          objectApiName:  activeObj,
+          type:           'ENTIRE' as const,
+          columnNames:    COLUMN_NAMES,
+          ...(debouncedSearch ? { searchText: debouncedSearch } : {}),
+          ...(cursor          ? { cursor }                      : {}),
+        }
     : null;
 
   const { data: fetchedData, isLoading: isLoadingRecords, isFetching: isFetchingMore } = useQuery({
-    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, sourceSelection.backupJobIds, activeObj, activeCursor],
-    queryFn: () => restoreService.fetchRecords({ ...fetchPayload!, ...(activeCursor ? { cursor: activeCursor } : {}) }),
+    queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, activeObj, debouncedSearch, cursor],
+    queryFn: () => restoreService.fetchRecords(fetchPayload!),
     enabled: !!fetchPayload,
     staleTime: 0,
   });
 
   useEffect(() => {
-    if (!activeObj) return;
-    const rows: { record: SFRecord }[] = (fetchedData as any)?.data?.rows ?? [];
-    const parsed = rows.map((r) => r.record);
-    if (!parsed.length) return;
+    if (!activeObj || !fetchedData) return;
+    const records: SFRecord[] = (fetchedData as any)?.data?.records ?? [];
     setAllRecordsByObj((prev) => ({
       ...prev,
-      [activeObj]: activeCursor ? [...(prev[activeObj] ?? []), ...parsed] : parsed,
+      [activeObj]: cursor ? [...(prev[activeObj] ?? []), ...records] : records,
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchedData]);
 
-  const hasMore: boolean = (fetchedData as any)?.meta?.hasMore ?? false;
+  const hasMore: boolean    = (fetchedData as any)?.meta?.hasMore    ?? false;
   const nextCursor: string | undefined = (fetchedData as any)?.meta?.nextCursor;
 
   const totalSelected = Object.values(selectedByObj).reduce((s, set) => s + set.size, 0);
@@ -78,15 +100,15 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
     setActiveObj(name);
     setAllRecordsByObj((p) => ({ ...p, [name]: [] }));
     setSelectedByObj((p) => ({ ...p, [name]: new Set() }));
-    setCursorByObj((p) => ({ ...p, [name]: undefined }));
+    setCursor(undefined);
   };
 
   const removeObj = (name: string) => {
     setAddedObjs((p) => p.filter((o) => o !== name));
     setAllRecordsByObj((p) => { const n = { ...p }; delete n[name]; return n; });
     setSelectedByObj((p) => { const n = { ...p }; delete n[name]; return n; });
-    setCursorByObj((p) => { const n = { ...p }; delete n[name]; return n; });
     setActiveObj((prev) => prev === name ? (addedObjs.find((o) => o !== name) ?? '') : prev);
+    setCursor(undefined);
   };
 
   const openModal = (name: string) => {
@@ -247,7 +269,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
               )}
               {hasMore && (
                 <div className='px-6 py-3'>
-                  <button onClick={() => setCursorByObj((p) => ({ ...p, [modalObj]: nextCursor }))} disabled={isFetchingMore}
+                  <button onClick={() => setCursor(nextCursor)} disabled={isFetchingMore}
                     className='w-full py-2.5 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50'>
                     {isFetchingMore ? 'Loading…' : `Load more ${modalObj} records`}
                   </button>
