@@ -183,20 +183,25 @@ export interface RestoreSchedule {
 
 // ── fetchRecords payload ──────────────────────────────────────────────────────
 
-export interface FetchRecordsPayload {
-  source: {
-    backupConfigId: string;
-    type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
-    startDate?: string;
-    endDate?: string;
-    backupJobIds?: string[];
-  };
-  objectApiName: string;
-  columns: string[];
-  selection?: unknown;
-  fullRestore?: boolean;
-  cursor?: string;
-}
+export type FetchRecordsPayload =
+  | {
+      backupConfigId: string;
+      objectApiName: string;
+      type: 'ENTIRE';
+      columnNames: string[];
+      searchText?: string;
+      cursor?: string;
+    }
+  | {
+      backupConfigId: string;
+      objectApiName: string;
+      type: 'CHANGED_BETWEEN';
+      startDate: string;
+      endDate: string;
+      columnNames: string[];
+      searchText?: string;
+      cursor?: string;
+    };
 
 // ── showPreview payload ───────────────────────────────────────────────────────
 
