@@ -75,8 +75,10 @@ export default function Storage() {
 
   const overviewData = (overviewQuery.data as any)?.data;
   const backupSize: number = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes ?? 0;
-  const backupRecords: number = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords ?? 0;
-  const archivalSize: number = overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0;
+  const backupUploadedRecords: number   = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords   ?? 0;
+  const archivalUploadedRecords: number = overviewData?.backupConfigSizeRecord?.archival?.uploadedRecords ?? 0;
+  const backupRecords: number = backupUploadedRecords + archivalUploadedRecords;
+  const archivalSize: number = archivalUploadedRecords * 2 * 1024;
   const monthlyStats: MonthlyStat[] = Array.isArray(overviewData?.monthlyStats) ? overviewData.monthlyStats : [];
 
   const chartMonthLabels = monthlyStats.map((s) => {
@@ -121,13 +123,13 @@ export default function Storage() {
           <span className='text-xs text-gray-400'>DataCraft storage breakdown</span>
         </div>
         <div className='flex w-full h-3.5 rounded-full overflow-hidden mb-3'>
-          <div style={{ width: '62%', background: '#3b82f6' }} />
-          <div style={{ width: '38%', background: '#7c3aed' }} />
+          <div style={{ width: '50%', background: '#3b82f6' }} />
+          <div style={{ width: '50%', background: '#7c3aed' }} />
         </div>
         <div className='grid grid-cols-2 gap-3 text-xs'>
           {[
-            { color: '#3b82f6', label: 'Backup Snapshots',  val: '70 GB · 62%' },
-            { color: '#7c3aed', label: 'Archive Snapshots', val: '44 GB · 38%' },
+            { color: '#3b82f6', label: 'Backup Snapshots',  val: '50 GB · 50%' },
+            { color: '#7c3aed', label: 'Archive Snapshots', val: '50 GB · 50%' },
           ].map(({ color, label, val }) => (
             <div key={label} className='flex flex-col gap-1'>
               <div className='flex items-center gap-1.5'>
@@ -149,15 +151,18 @@ export default function Storage() {
         <div className='px-5 py-4'>
           {/* Coverage mini-stats */}
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5'>
-            {[
-              { label: 'Records protected', value: '3.58M' },
-              { label: 'Last successful backup', value: 'Today, 06:00 AM' },
-            ].map(({ label, value }) => (
-              <div key={label} className='rounded-lg border border-gray-200 px-4 py-3'>
-                <p className='text-xs text-gray-400 mb-1'>{label}</p>
-                <p className='text-lg font-bold text-gray-900'>{value}</p>
-              </div>
-            ))}
+            <div className='rounded-lg border border-gray-200 px-4 py-3'>
+              <p className='text-xs text-gray-400 mb-1'>Records protected</p>
+              <p className='text-lg font-bold text-gray-900'>{formatCount(backupRecords)}</p>
+            </div>
+            <div className='rounded-lg border border-gray-200 px-4 py-3'>
+              <p className='text-xs text-gray-400 mb-1'>Last successful backup</p>
+              <p className='text-lg font-bold text-gray-900'>
+                {lastBackupData[0]?.lastBackupAt
+                  ? new Date(lastBackupData[0].lastBackupAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : '—'}
+              </p>
+            </div>
           </div>
           {/* Table header */}
           <div className='flex items-center justify-between mb-3'>

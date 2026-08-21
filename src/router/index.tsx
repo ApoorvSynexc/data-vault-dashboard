@@ -27,9 +27,9 @@ import ArchiveDetailScreen from '../pages/ArchiveVault/DetailScreen';
 import Storage from '../pages/Storage';
 import Notifications from '../pages/Notifications';
 import SalesforceCallback from '../pages/callback/salesforce';
-import ActivityLogs from '../pages/ActivityLogs';
+// import ActivityLogs from '../pages/ActivityLogs';
 import Reports from '../pages/Reports';
-import AuditLogs from '../pages/AuditLogs';
+// import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
 import RestoreCenter from '../pages/RestoreCenter';
 
@@ -43,7 +43,7 @@ const NAV_PERMISSION_ORDER: { to: string; permissions: string[] }[] = [
   { to: '/archive-vault',     permissions: ['archival']                                     },
   { to: '/connections',       permissions: ['sourceConnection', 'destinationConnection']    },
   { to: '/storage',           permissions: ['storage']                                      },
-  { to: '/activity-logs',     permissions: ['activitylogs']                                 },
+  // { to: '/activity-logs',     permissions: ['activitylogs']                                 },
   { to: '/reports',           permissions: ['report']                                       },
   { to: '/settings',          permissions: ['settings']                                     },
 ];
@@ -95,8 +95,8 @@ const router = createBrowserRouter([
           { path: '/notifications',                      element: <Notifications /> },
           { path: '/restore-center',                     element: <PermissionRoute permissions={['restore']}><RestoreCenter /></PermissionRoute> },
           { path: '/restore-center/history/:jobId',      element: <PermissionRoute permissions={['restore']}><RestoreCenter /></PermissionRoute> },
-          { path: '/activity-logs',                      element: <PermissionRoute permissions={['activitylogs']}><ActivityLogs /></PermissionRoute> },
-          { path: '/audit-logs',                         element: <PermissionRoute permissions={['activitylogs']}><AuditLogs /></PermissionRoute> },
+          // { path: '/activity-logs',                      element: <PermissionRoute permissions={['activitylogs']}><ActivityLogs /></PermissionRoute> },
+          // { path: '/audit-logs',                         element: <PermissionRoute permissions={['activitylogs']}><AuditLogs /></PermissionRoute> },
           { path: '/reports',                            element: <PermissionRoute permissions={['report']}><Reports /></PermissionRoute> },
           { path: '/settings',                           element: <PermissionRoute permissions={['settings']}><Settings /></PermissionRoute> },
         ],
