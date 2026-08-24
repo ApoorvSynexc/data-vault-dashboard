@@ -148,7 +148,7 @@ export function ChildRows({
   }).map((r: any) => ({
     uuid: getChildUuid(r.name),
     apiName: r.name,
-    fieldApiName: r.name,
+    fieldApiName: r.field ?? r.name,
     label: r.name,
     relationshipName: r.name,
     relationshipType: r.cascadeDelete ? 'MasterDetail' : r.restrictedDelete ? 'Required Lookup' : 'Lookup',
