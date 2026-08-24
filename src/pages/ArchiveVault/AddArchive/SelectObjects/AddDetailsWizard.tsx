@@ -31,7 +31,7 @@ interface AddDetailsWizardProps {
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
   allowedObjectNames?: Set<string>;
-  onMasterDetailWarning?: (childObject: string, parentObject: string) => void;
+  onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -209,11 +209,11 @@ export default function AddDetailsWizard({
   const archivalService = useArchivalService();
 
   // ── MD warning toast (auto-dismisses after 5s) ────────────────────────────
-  const [mdToast, setMdToast] = useState<{ child: string; parentField: string } | null>(null);
+  const [mdToast, setMdToast] = useState<{ child: string; parentField: string; parentLabel: string } | null>(null);
 
-  const wrappedMdWarning = useCallback((child: string, parent: string) => {
-    onMasterDetailWarning?.(child, parent);
-    setMdToast({ child, parentField: parent });
+  const wrappedMdWarning = useCallback((child: string, parent: string, label: string) => {
+    onMasterDetailWarning?.(child, parent, label);
+    setMdToast({ child, parentField: parent, parentLabel: label });
   }, [onMasterDetailWarning]);
 
   // ── wizard step ────────────────────────────────────────────────────────────
@@ -660,7 +660,7 @@ export default function AddDetailsWizard({
               <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
             </svg>
             <span>
-              <strong>{mdToast.child}</strong> is in a MasterDetail relationship with <strong>{mdToast.parentField}</strong> — please select <strong>{mdToast.parentField}</strong> from the objects list.
+              <strong>{mdToast.child}</strong> is in a MasterDetail relationship with <strong>{mdToast.parentLabel}</strong> — please select <strong>{mdToast.parentLabel}</strong> from the objects list.
             </span>
             <button onClick={() => setMdToast(null)} className='ml-auto flex-shrink-0'>
               <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>

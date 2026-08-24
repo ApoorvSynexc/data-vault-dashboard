@@ -70,16 +70,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   // Each entry: child object that triggered the warning + the parent field/object to select
-  const [mdWarnings, setMdWarnings] = useState<{ child: string; parentField: string }[]>([]);
+  const [mdWarnings, setMdWarnings] = useState<{ child: string; parentField: string; parentLabel: string }[]>([]);
   const [showMdToast, setShowMdToast] = useState(false);
-
-  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
-    setMdWarnings((prev) => {
-      if (prev.some((w) => w.child === childObject && w.parentField === parentField)) return prev;
-      return [...prev, { child: childObject, parentField }];
-    });
-    setShowMdToast(true);
-  }, []);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
     new Set(initialSelectedObjects.map((o) => o.uuid ?? o.id))
@@ -150,6 +142,15 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   // Set of API names from the object list — used to filter child rows
   const allowedObjectNames = useMemo(() => new Set(allObjects.map((o) => o.id)), [allObjects]);
+
+  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
+    const resolvedLabel = allObjects.find((o) => o.id === parentField)?.name ?? parentField;
+    setMdWarnings((prev) => {
+      if (prev.some((w) => w.child === childObject && w.parentField === parentField)) return prev;
+      return [...prev, { child: childObject, parentField, parentLabel: resolvedLabel }];
+    });
+    setShowMdToast(true);
+  }, [allObjects]);
 
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
@@ -502,9 +503,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               <div className='flex-1'>
                 <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
                 <ul className='list-disc list-inside space-y-0.5'>
-                  {mdWarnings.map(({ child, parentField }) => (
-                    <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{parentField}</strong> — please select <strong>{parentField}</strong> from the objects list above.</li>
-                  ))}
+                  {mdWarnings.map(({ child, parentField, parentLabel }) => {
+                    const displayName = parentLabel || parentField;
+                    return (
+                      <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{displayName}</strong> — please select <strong>{displayName}</strong> from the objects list above.</li>
+                    );
+                  })}
                 </ul>
               </div>
               <button onClick={() => setShowMdToast(false)} className='flex-shrink-0 text-amber-600 hover:text-amber-800'>
