@@ -29,9 +29,13 @@ export function useCrmMetadataService() {
         query: { mode, ...(type ? { type } : {}) },
       }),
 
-    getObjectDescribe: (objectName: string) =>
+    getObjectDescribe: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule') =>
       api.get<unknown>(CRM_METADATA_ENDPOINTS.objectDescribe, {
-        query: { objectName },
+        query: {
+          objectName,
+          ...(mode ? { mode } : {}),
+          ...(type ? { type } : {}),
+        },
       }),
   };
 }
