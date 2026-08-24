@@ -16,33 +16,62 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-// ── SVG Area Chart ────────────────────────────────────────────────────────────
+// ── Bar Chart ─────────────────────────────────────────────────────────────────
+
+import { useState } from 'react';
 
 type MonthlyStat = { month: string; sizeInBytes: number; uploadedRecords: number };
 
-function AreaChart({ stats }: { stats: MonthlyStat[] }) {
-  const W = 700, H = 140, PAD = 10;
-  const values = stats.map((s) => s.sizeInBytes);
-  const max = Math.max(...values, 1);
-  const points = values.map((v, i) => {
-    const x = values.length === 1 ? W / 2 : (i / (values.length - 1)) * W;
-    const y = PAD + ((max - v) / max) * (H - PAD * 2);
-    return `${x},${y}`;
-  });
-  const path = `M${points.join(' L')}`;
-  const area = `${path} L${W},${H} L0,${H} Z`;
+function BarChart({ stats }: { stats: MonthlyStat[] }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const max = Math.max(...stats.map((s) => s.sizeInBytes), 1);
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className='w-full h-24' preserveAspectRatio='none'>
-      <defs>
-        <linearGradient id='archGrad' x1='0' x2='0' y1='0' y2='1'>
-          <stop offset='0%' stopColor='#16a34a' stopOpacity='0.35' />
-          <stop offset='100%' stopColor='#16a34a' stopOpacity='0' />
-        </linearGradient>
-      </defs>
-      <path d={area} fill='url(#archGrad)' />
-      <path d={path} fill='none' stroke='#16a34a' strokeWidth='2' strokeLinejoin='round' />
-      <line x1='0' y1={H - PAD} x2={W} y2={H - PAD} stroke='#e5e7eb' strokeWidth='1' />
-    </svg>
+    <div className='flex flex-col gap-1'>
+      {/* Bars */}
+      <div className='flex items-end gap-1 h-28 w-full'>
+        {stats.map((s, i) => {
+          const heightPct = (s.sizeInBytes / max) * 100;
+          const isHovered = hovered === i;
+          const label = new Date(2000, Number(s.month.split('-')[1]) - 1).toLocaleString('default', { month: 'short' });
+          return (
+            <div key={s.month} className='relative flex flex-col items-center flex-1 h-full justify-end'
+              onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
+              {/* Tooltip */}
+              {isHovered && s.sizeInBytes > 0 && (
+                <div className='absolute bottom-full mb-2 z-10 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-lg pointer-events-none'
+                  style={{ background: '#14532d', color: '#fff', left: '50%', transform: 'translateX(-50%)' }}>
+                  <p>{label}</p>
+                  <p>{formatBytes(s.sizeInBytes)}</p>
+                  <div className='absolute left-1/2 -translate-x-1/2 top-full w-0 h-0'
+                    style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #14532d' }} />
+                </div>
+              )}
+              {/* Bar */}
+              <div
+                className='w-full rounded-t-sm transition-colors duration-150'
+                style={{
+                  height: heightPct > 0 ? `${Math.max(heightPct, 2)}%` : '2px',
+                  background: s.sizeInBytes === 0 ? '#e5e7eb' : isHovered ? '#15803d' : '#16a34a',
+                  opacity: s.sizeInBytes === 0 ? 0.5 : 1,
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {/* Month labels */}
+      <div className='flex gap-1'>
+        {stats.map((s) => {
+          const label = new Date(2000, Number(s.month.split('-')[1]) - 1).toLocaleString('default', { month: 'short' });
+          return (
+            <div key={s.month} className='flex-1 text-center'>
+              <span className='text-[10px] text-gray-400'>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -81,10 +110,6 @@ export default function Storage() {
   const archivalSize: number = archivalUploadedRecords * 2 * 1024;
   const monthlyStats: MonthlyStat[] = Array.isArray(overviewData?.monthlyStats) ? overviewData.monthlyStats : [];
 
-  const chartMonthLabels = monthlyStats.map((s) => {
-    const [, mm] = s.month.split('-');
-    return new Date(2000, Number(mm) - 1).toLocaleString('default', { month: 'short' });
-  });
 
   return (
     <div className='flex flex-col gap-5 p-4 sm:p-6 w-full'>
@@ -237,12 +262,7 @@ export default function Storage() {
                 <p className='text-xs text-gray-400'>Monthly sizeInBytes across all backups</p>
               </div>
             </div>
-            <AreaChart stats={monthlyStats} />
-            <div className='flex justify-between mt-1'>
-              {chartMonthLabels.map((m, i) => (
-                <span key={i} className='text-[10px] text-gray-400'>{m}</span>
-              ))}
-            </div>
+            <BarChart stats={monthlyStats} />
           </div>
 
           {/* Archive table */}
