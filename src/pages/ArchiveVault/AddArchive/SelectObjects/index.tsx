@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
@@ -69,6 +69,17 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
+  // warnings: childObject → parentObject, collected from PrefetchDescribe callbacks
+  const [mdWarnings, setMdWarnings] = useState<Record<string, string>>({});
+  const [showMdToast, setShowMdToast] = useState(false);
+
+  const handleMasterDetailWarning = useCallback((childObject: string, parentObject: string) => {
+    setMdWarnings((prev) => {
+      if (prev[childObject] === parentObject) return prev;
+      return { ...prev, [childObject]: parentObject };
+    });
+    setShowMdToast(true);
+  }, []);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
     new Set(initialSelectedObjects.map((o) => o.uuid ?? o.id))
@@ -229,6 +240,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           isParent={wizardTarget.isParent}
           initialConfig={objectConfigs[wizardTarget.objectId]}
           allowedObjectNames={allowedObjectNames}
+          onMasterDetailWarning={handleMasterDetailWarning}
           onSave={(config) => {
             setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
             setWizardTarget(null);
@@ -481,6 +493,25 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
         {/* Sticky Footer */}
         <div className='flex-shrink-0 flex flex-col gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200'>
+          {showMdToast && Object.keys(mdWarnings).length > 0 && (
+            <div className='flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium'
+              style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+              </svg>
+              <div className='flex-1'>
+                <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
+                <ul className='list-disc list-inside space-y-0.5'>
+                  {Object.entries(mdWarnings).map(([child, parent]) => (
+                    <li key={child}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{parent}</strong> — select <strong>{child}</strong> from the objects list above.</li>
+                  ))}
+                </ul>
+              </div>
+              <button onClick={() => setShowMdToast(false)} className='flex-shrink-0 text-amber-600 hover:text-amber-800'>
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+              </button>
+            </div>
+          )}
           {filterError && (
             <div className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium'
               style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -501,7 +532,10 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 ← Back
               </button>
               <button
-                onClick={handleNext}
+                onClick={() => {
+                  if (Object.keys(mdWarnings).length > 0) { setShowMdToast(true); return; }
+                  handleNext();
+                }}
                 disabled={totalSelected === 0}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors ${totalSelected > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
                 Next →

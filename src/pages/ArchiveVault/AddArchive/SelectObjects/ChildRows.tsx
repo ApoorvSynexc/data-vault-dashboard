@@ -18,14 +18,36 @@ import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-met
 
 // Fires the describe API for a MasterDetail child at tier-1 so the data is
 // cached before the user manually expands the row.
-function PrefetchDescribe({ objectName }: { objectName: string }) {
+// Also checks fields[] for cascadeDelete:true — meaning this child itself has a
+// MasterDetail parent elsewhere — and reports it via onMasterDetailField.
+function PrefetchDescribe({
+  objectName,
+  parentObjectName,
+  onMasterDetailField,
+}: {
+  objectName: string;
+  parentObjectName: string;
+  onMasterDetailField: (childObject: string, parentObject: string) => void;
+}) {
   const crmMetadataService = useCrmMetadataService();
-  useQuery({
+  const { data } = useQuery({
     queryKey: ['crm-metadata-describe', objectName, 'archival'],
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
     enabled: !!objectName,
     staleTime: 5 * 60 * 1000,
   });
+
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (!data || reportedRef.current) return;
+    const fields: any[] = (data as any)?.data?.fields ?? [];
+    const hasMdField = fields.some((f: any) => f.cascadeDelete === true);
+    if (hasMdField) {
+      reportedRef.current = true;
+      onMasterDetailField(objectName, parentObjectName);
+    }
+  }, [data, objectName, parentObjectName, onMasterDetailField]);
+
   return null;
 }
 
@@ -66,6 +88,7 @@ export interface ChildRowsProps {
   resetTick?: number;
   relationshipDepth?: number | null;
   allowedObjectNames?: Set<string>;
+  onMasterDetailWarning?: (childObject: string, parentObject: string) => void;
 }
 
 export function ChildRows({
@@ -73,7 +96,7 @@ export function ChildRows({
   selectedChildObjects, toggleChildObject,
   registerChildApiName, registerChildFieldApiName, registerChildParent,
   includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
-  allowedObjectNames,
+  allowedObjectNames, onMasterDetailWarning,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const crmMetadataService = useCrmMetadataService();
@@ -182,7 +205,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} onMasterDetailField={onMasterDetailWarning ?? (() => {})} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
@@ -307,6 +330,7 @@ export function ChildRows({
                 resetTick={resetTick}
                 relationshipDepth={relationshipDepth}
                 allowedObjectNames={allowedObjectNames}
+                onMasterDetailWarning={onMasterDetailWarning}
               />
             )}
           </React.Fragment>
