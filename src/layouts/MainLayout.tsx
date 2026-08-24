@@ -55,7 +55,7 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
   { to: '/storage',            label: 'Storage',             Icon: Icons.storage,    permissions: ['storage']                                   },
   // { to: '/activity-logs',      label: 'Activity Logs',       Icon: Icons.activity,   permissions: ['activitylogs']                              },
   // { to: '/audit-logs',         label: 'Audit Logs',          Icon: Icons.reports,    permissions: ['activitylogs']                              },
-  { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
+  // { to: '/reports',            label: 'Reports & Analytics', Icon: Icons.reports,    permissions: ['report']                                    },
   { to: '/settings',           label: 'Settings',            Icon: Icons.settings,   permissions: ['settings']                                  },
 ];
 
