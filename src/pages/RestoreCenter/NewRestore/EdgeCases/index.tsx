@@ -553,19 +553,19 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                 edgeCases.onDuplicateRecord = DUPLICATE_ENUM[ecDuplicate];
               }
 
-              // missingFieldInDestination — nested object with sourceDestinationMapping
+              // missingFieldInDestination — only include sourceDestinationMapping when type requires it
               edgeCases.missingFieldInDestination = {
                 type: MISSING_FIELD_ENUM[ecMissingField] ?? 'SKIP_THE_FIELD',
-                sourceDestinationMapping: ecMissingField === 'Map to existing field'
-                  ? fieldMapRows
-                      .filter((r) => r.objectName && r.sourceField && r.destField)
-                      .map((r) => ({
-                        sourceObject:      r.objectName,
-                        sourceFields:      r.sourceField,
-                        destinationObject: r.objectName,
-                        destinationFields: r.destField,
-                      }))
-                  : [],
+                ...(ecMissingField === 'Map to existing field' ? {
+                  sourceDestinationMapping: fieldMapRows
+                    .filter((r) => r.objectName && r.sourceField && r.destField)
+                    .map((r) => ({
+                      sourceObject:      r.objectName,
+                      sourceFields:      r.sourceField,
+                      destinationObject: r.objectName,
+                      destinationFields: r.destField,
+                    })),
+                } : {}),
               };
 
               // ownerInactive — only include fallbackValue when type requires it
@@ -577,21 +577,21 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
               // parentMissing — plain string
               edgeCases.parentMissing = ecParent;
 
-              // recordTypeMissing — nested object with objects[]
+              // recordTypeMissing — only include objects when type requires manual mapping
               edgeCases.recordTypeMissing = {
                 type: RECORD_TYPE_ENUM[ecRecordType] ?? 'MAP_TO_DEFAULT',
-                objects: ecRecordType === 'Map manually'
-                  ? (() => {
-                      const objectMap: Record<string, { sourceRecordTypeId: string; destinationRecordTypeId: string }[]> = {};
-                      rtMapRows
-                        .filter((r) => r.objectName && r.source && r.dest)
-                        .forEach((r) => {
-                          if (!objectMap[r.objectName]) objectMap[r.objectName] = [];
-                          objectMap[r.objectName].push({ sourceRecordTypeId: r.source, destinationRecordTypeId: r.dest });
-                        });
-                      return Object.entries(objectMap).map(([name, mapping]) => ({ name, mapping }));
-                    })()
-                  : [],
+                ...(ecRecordType === 'Map manually' ? {
+                  objects: (() => {
+                    const objectMap: Record<string, { sourceRecordTypeId: string; destinationRecordTypeId: string }[]> = {};
+                    rtMapRows
+                      .filter((r) => r.objectName && r.source && r.dest)
+                      .forEach((r) => {
+                        if (!objectMap[r.objectName]) objectMap[r.objectName] = [];
+                        objectMap[r.objectName].push({ sourceRecordTypeId: r.source, destinationRecordTypeId: r.dest });
+                      });
+                    return Object.entries(objectMap).map(([name, mapping]) => ({ name, mapping }));
+                  })(),
+                } : {}),
               };
 
               // missingRequiredFieldValue — only include mapping when type requires field defaults

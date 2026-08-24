@@ -57,7 +57,7 @@ export interface RestoreEdgeCaseFieldMapping {
 
 export interface RestoreMissingFieldInDestination {
   type: string;
-  sourceDestinationMapping: RestoreEdgeCaseFieldMapping[];
+  sourceDestinationMapping?: RestoreEdgeCaseFieldMapping[];
 }
 
 export interface RestoreOwnerInactive {
@@ -77,7 +77,7 @@ export interface RestoreRecordTypeObjectMapping {
 
 export interface RestoreRecordTypeMissing {
   type: string;
-  objects: RestoreRecordTypeObjectMapping[];
+  objects?: RestoreRecordTypeObjectMapping[];
 }
 
 export interface RestoreMissingRequiredField {
