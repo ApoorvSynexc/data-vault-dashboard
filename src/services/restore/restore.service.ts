@@ -62,7 +62,7 @@ export interface RestoreMissingFieldInDestination {
 
 export interface RestoreOwnerInactive {
   type: string;
-  fallbackValue: string;
+  fallbackValue?: string;
 }
 
 export interface RestoreRecordTypeIdMapping {
@@ -93,7 +93,7 @@ export interface RestoreMissingRequiredFieldMapping {
 
 export interface RestoreMissingRequiredFieldValue {
   type: string;
-  mapping: RestoreMissingRequiredFieldMapping[];
+  mapping?: RestoreMissingRequiredFieldMapping[];
 }
 
 export interface RestoreEdgeCases {

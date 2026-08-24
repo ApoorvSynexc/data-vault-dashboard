@@ -568,10 +568,10 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   : [],
               };
 
-              // ownerInactive — nested object
+              // ownerInactive — only include fallbackValue when type requires it
               edgeCases.ownerInactive = {
                 type: OWNER_INACTIVE_ENUM[ecOwner] ?? 'SKIP_RECORD',
-                fallbackValue: ecOwner === 'Reassign to specified user' ? fallbackOwner : '',
+                ...(ecOwner === 'Reassign to specified user' ? { fallbackValue: fallbackOwner } : {}),
               };
 
               // parentMissing — plain string
@@ -594,25 +594,28 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
                   : [],
               };
 
-              // missingRequiredFieldValue — nested object with type + mapping
-              const allFieldRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
-                ...staticDefaults.map((r) => {
-                  const [objectName, fieldName] = r.field.split('.');
-                  return { objectName, fieldName, type: r.type, value: r.value };
-                }),
-                ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
-              ];
-              const fieldMapping = allFieldRows
-                .filter((r) => r.objectName && r.fieldName && r.value)
-                .reduce<{ object: string; fields: { name: string; type: string; value: string }[] }[]>((acc, row) => {
-                  const existing = acc.find((e) => e.object === row.objectName);
-                  if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
-                  else { acc.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
-                  return acc;
-                }, []);
+              // missingRequiredFieldValue — only include mapping when type requires field defaults
               edgeCases.missingRequiredFieldValue = {
                 type: MISS_REQUIRED_ENUM[ecMissRequired] ?? 'SKIP_THE_RECORD',
-                mapping: fieldMapping,
+                ...(ecMissRequired === 'Use specified default per field' ? {
+                  mapping: (() => {
+                    const allFieldRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
+                      ...staticDefaults.map((r) => {
+                        const [objectName, fieldName] = r.field.split('.');
+                        return { objectName, fieldName, type: r.type, value: r.value };
+                      }),
+                      ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
+                    ];
+                    return allFieldRows
+                      .filter((r) => r.objectName && r.fieldName && r.value)
+                      .reduce<{ object: string; fields: { name: string; type: string; value: string }[] }[]>((acc, row) => {
+                        const existing = acc.find((e) => e.object === row.objectName);
+                        if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
+                        else { acc.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
+                        return acc;
+                      }, []);
+                  })(),
+                } : {}),
               };
 
               onNext(edgeCases);

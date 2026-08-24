@@ -319,6 +319,11 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   const [jobTags, setJobTags]     = useState((restorePayload.jobDetail?.tags ?? []).join(', '));
 
   useEffect(() => {
+    console.log('[ReviewSubmit] Final restore payload:', JSON.stringify(restorePayload, null, 2));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     if (isSuccess) {
       const timer = setTimeout(() => onComplete(), 2000);
       return () => clearTimeout(timer);
