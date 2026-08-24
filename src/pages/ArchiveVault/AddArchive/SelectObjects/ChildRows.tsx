@@ -231,7 +231,7 @@ export function ChildRows({
                   {row.relationshipType && (
                     <span className='flex-shrink-0 text-xs px-1.5 py-0.5 rounded-md font-medium'
                       style={{ background: `${accentColor}15`, color: accentColor, border: `1px solid ${accentColor}30` }}>
-                      {row.relationshipType}
+                      {row.relationshipType === 'Required Lookup' ? <><span style={{ color: '#EF4444' }}>*</span> Required Lookup</> : row.relationshipType}
                     </span>
                   )}
                   {canExpand && (
