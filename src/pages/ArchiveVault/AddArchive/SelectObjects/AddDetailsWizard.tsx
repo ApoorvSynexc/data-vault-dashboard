@@ -422,6 +422,11 @@ export default function AddDetailsWizard({
         !customLogicError;
 
   // ── step 2: children ───────────────────────────────────────────────────────
+  const [childLoadingCount, setChildLoadingCount] = useState(0);
+  const handleChildLoadingChange = useCallback((loading: boolean) => {
+    setChildLoadingCount((n) => Math.max(0, n + (loading ? 1 : -1)));
+  }, []);
+
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
   const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
   const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
@@ -969,6 +974,7 @@ export default function AddDetailsWizard({
                         relationshipDepth={relationshipDepth}
                         allowedObjectNames={allowedObjectNames}
                         onMasterDetailWarning={wrappedMdWarning}
+                        onLoadingChange={handleChildLoadingChange}
                       />
                     )}
                   </tbody>
@@ -1218,9 +1224,9 @@ export default function AddDetailsWizard({
               {step < 3 && (
                 <button
                   onClick={step === 1 ? handleNextStep1 : () => { setMdToast(null); setStep((s) => (s + 1) as 2 | 3); }}
-                  disabled={step === 1 && !canProceedFromStep1}
+                  disabled={(step === 1 && !canProceedFromStep1) || (step === 2 && childLoadingCount > 0)}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
-                  Next →
+                  {step === 2 && childLoadingCount > 0 ? 'Loading…' : 'Next →'}
                 </button>
               )}
               {/* Save */}
