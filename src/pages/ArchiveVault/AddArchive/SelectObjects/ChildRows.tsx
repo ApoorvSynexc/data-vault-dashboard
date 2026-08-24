@@ -67,6 +67,17 @@ export function ChildRows({
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
+  // Stable UUID map keyed by (parentUuid, childName) so the same object name under
+  // different parents gets a different UUID, preventing cross-parent selection bleed.
+  const uuidMapRef = useRef<Map<string, string>>(new Map());
+  const getChildUuid = (childName: string): string => {
+    const key = `${parentUuid}::${childName}`;
+    if (!uuidMapRef.current.has(key)) {
+      uuidMapRef.current.set(key, crypto.randomUUID());
+    }
+    return uuidMapRef.current.get(key)!;
+  };
+
   // GET /v1/crm-metadata/objects/describe — fetch children of this parent object.
   // Keyed on objectName so different expanded parents don't share the same cache entry.
   const { data, isLoading } = useQuery({
@@ -86,7 +97,7 @@ export function ChildRows({
     seen.add(r.name);
     return true;
   }).map((r: any) => ({
-    uuid: r.name,
+    uuid: getChildUuid(r.name),
     apiName: r.name,
     fieldApiName: r.name,
     label: r.name,
@@ -95,21 +106,15 @@ export function ChildRows({
     objectType: 'Standard',
   }));
 
-  // autoSelectedRef prevents double-toggling MasterDetail rows on re-renders.
-  // Without it, strict-mode double-invocation would check then immediately uncheck them.
-  // prevResetTickRef lets us detect when resetTick changed so we clear the guard
-  // and force re-auto-selection in the same effect, guaranteeing correct order.
-  const autoSelectedRef = useRef<Set<string>>(new Set());
+  // prevResetTickRef detects when resetTick changes (SOQL re-validate) so we know
+  // selectedChildObjects was just cleared and MasterDetail rows need re-selection.
   const prevResetTickRef = useRef(resetTick);
 
   useEffect(() => {
     if (!data || rawRows.length === 0) return;
 
-    // If resetTick changed, clear the guard so MasterDetail rows are re-selected
-    if (prevResetTickRef.current !== resetTick) {
-      prevResetTickRef.current = resetTick;
-      autoSelectedRef.current.clear();
-    }
+    const resetOccurred = prevResetTickRef.current !== resetTick;
+    if (resetOccurred) prevResetTickRef.current = resetTick;
 
     // Register metadata for every row so buildChildTree() in AddDetailsWizard
     // can reconstruct the correct nested payload when the user hits Save
@@ -118,14 +123,15 @@ export function ChildRows({
       registerChildFieldApiName(r.uuid as string, r.fieldApiName as string);
       registerChildParent(r.uuid as string, parentUuid);
     });
-    // Auto-select MasterDetail children — Salesforce enforces cascade delete on them.
-    // Skip polymorphic ones that are hidden from the list (same condition as visibleRawRows).
+
+    // Auto-select MasterDetail children that are not currently selected.
+    // We check selectedChildObjects directly so Back→Next always re-selects them
+    // if the state was cleared, without relying on a separate ref guard that
+    // can get out of sync with the actual checkbox state.
     const toSelect = rawRows
       .filter((r: any) => r.relationshipType === 'MasterDetail')
       .map((r: any) => r.uuid as string)
-      .filter((k: string) => k && !autoSelectedRef.current.has(k));
-    if (toSelect.length === 0) return;
-    toSelect.forEach((k: string) => { autoSelectedRef.current.add(k); });
+      .filter((k: string) => k && !selectedChildObjects.has(k));
     toSelect.forEach((key) => toggleChildObject(key));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
