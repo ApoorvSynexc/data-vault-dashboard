@@ -143,14 +143,23 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // Set of API names from the object list — used to filter child rows
   const allowedObjectNames = useMemo(() => new Set(allObjects.map((o) => o.id)), [allObjects]);
 
+  // Set of API names of currently selected objects — passed to wizard for MD warning suppression
+  const selectedObjectApiNames = useMemo(
+    () => new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id)),
+    [allObjects, selectedObjects]
+  );
+
   const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
-    const resolvedLabel = allObjects.find((o) => o.id === parentField)?.name ?? parentField;
+    // Check if the required parent object is already selected — skip warning if so
+    const parentObj = allObjects.find((o) => o.id === parentField);
+    if (parentObj && selectedObjects.has(parentObj.uuid)) return;
+    const resolvedLabel = parentObj?.name ?? parentField;
     setMdWarnings((prev) => {
       if (prev.some((w) => w.child === childObject && w.parentField === parentField)) return prev;
       return [...prev, { child: childObject, parentField, parentLabel: resolvedLabel }];
     });
     setShowMdToast(true);
-  }, [allObjects]);
+  }, [allObjects, selectedObjects]);
 
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
@@ -248,6 +257,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           isParent={wizardTarget.isParent}
           initialConfig={objectConfigs[wizardTarget.objectId]}
           allowedObjectNames={allowedObjectNames}
+          selectedObjectApiNames={selectedObjectApiNames}
           onMasterDetailWarning={handleMasterDetailWarning}
           onSave={(config) => {
             setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
