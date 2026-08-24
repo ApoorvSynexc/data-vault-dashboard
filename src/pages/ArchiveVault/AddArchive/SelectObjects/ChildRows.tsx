@@ -14,7 +14,7 @@
 // the parent wizard can build the correct nested payload tree via buildChildTree().
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useArchivalService } from '../../../../services/archival/archival.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 
 // Maximum nesting depth for child objects (reduced by SOQL relationshipDepth)
 export const MAX_CHILD_DEPTH = 5;
@@ -61,20 +61,20 @@ export function ChildRows({
   includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
-  const archivalService = useArchivalService();
+  const crmMetadataService = useCrmMetadataService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
-  // GET /v1/archival-config/object-childs — fetch children of this parent object.
-  // Keyed on parentUuid so different expanded parents don't share the same cache entry.
+  // GET /v1/crm-metadata/objects/describe — fetch children of this parent object.
+  // Keyed on objectName so different expanded parents don't share the same cache entry.
   const { data, isLoading } = useQuery({
-    queryKey: ['archival-object-childs', crmId, parentUuid, objectName],
-    queryFn: () => archivalService.getObjectChilds(crmId, objectName),
-    enabled: !!crmId && !!objectName,
+    queryKey: ['crm-metadata-describe', objectName, 'archival'],
+    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
+    enabled: !!objectName,
     staleTime: 5 * 60 * 1000,
   });
 
-  const rawRows: any[] = data ?? [];
+  const rawRows: any[] = Array.isArray(data) ? data : Array.isArray((data as any)?.data) ? (data as any).data : [];
 
   // autoSelectedRef prevents double-toggling MasterDetail rows on re-renders.
   // Without it, strict-mode double-invocation would check then immediately uncheck them.

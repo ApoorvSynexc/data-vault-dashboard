@@ -75,8 +75,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   }, [parentChildMap]);
 
   const { data: describeData, isFetching: isDescribeFetching } = useQuery({
-    queryKey: ['crm-object-describe', lastSelectedSfName, describeFetchCount],
-    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedSfName!),
+    queryKey: ['crm-object-describe', lastSelectedSfName, 'normal', strategy, describeFetchCount],
+    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedSfName!, 'normal', strategy === 'realtime' ? 'realtime' : 'schedule'),
     enabled: !!lastSelectedSfName,
   });
 
@@ -330,6 +330,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     showSerialNumber
                     serialNumberStart={currentPage * ITEMS_PER_PAGE + 1}
                     showCheckbox
+                    hideSelectAll
                     selectedIds={selectedObjects}
                     getRowId={(obj) => obj.uuid}
                     onSelectionChange={(newSelected) => {

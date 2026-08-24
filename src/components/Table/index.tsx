@@ -16,6 +16,7 @@ export type TableColumn<TRow> = {
 
 export type SelectableTableProps<TRow> = {
   showCheckbox?: boolean;
+  hideSelectAll?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
   getRowId?: (row: TRow) => string;
@@ -158,6 +159,7 @@ export default function Table<TRow>({
   cursorFirstPageFn,
   cursorOnPrev,
   showCheckbox = false,
+  hideSelectAll = false,
   selectedIds,
   onSelectionChange,
   getRowId,
@@ -240,7 +242,8 @@ export default function Table<TRow>({
             {/* ── Head ── */}
             <thead className='sticky top-0 z-20 bg-white'>
               <tr className='border-b border-gray-200 shadow-sm'>
-                {showCheckbox && (
+                {showCheckbox && hideSelectAll && <th className={cellPaddingClassName} />}
+                {showCheckbox && !hideSelectAll && (
                   <th className={`${cellPaddingClassName} text-left`}>
                     <input
                       type='checkbox'
