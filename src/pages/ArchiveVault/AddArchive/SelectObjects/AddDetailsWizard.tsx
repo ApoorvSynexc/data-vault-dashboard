@@ -31,6 +31,7 @@ interface AddDetailsWizardProps {
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
   allowedObjectNames?: Set<string>;
+  selectedObjectApiNames?: Set<string>;
   onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
 }
 
@@ -204,7 +205,7 @@ function FieldDropdown({ value, options, onChange }: {
 
 export default function AddDetailsWizard({
   objectId, objectName, objectLabel, recordCount, crmId,
-  isParent = true, initialConfig, onSave, onClose, allowedObjectNames, onMasterDetailWarning,
+  isParent = true, initialConfig, onSave, onClose, allowedObjectNames, selectedObjectApiNames, onMasterDetailWarning,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
 
@@ -213,8 +214,9 @@ export default function AddDetailsWizard({
 
   const wrappedMdWarning = useCallback((child: string, parent: string, label: string) => {
     onMasterDetailWarning?.(child, parent, label);
+    if (selectedObjectApiNames?.has(parent)) return;
     setMdToast({ child, parentField: parent, parentLabel: label });
-  }, [onMasterDetailWarning]);
+  }, [onMasterDetailWarning, selectedObjectApiNames]);
 
   // ── wizard step ────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2 | 3>(1);
