@@ -72,6 +72,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // All warnings ever fired — stored as a ref so callbacks never go stale.
   // Active warnings are derived by filtering out those whose parent is currently selected.
   const allMdWarningsRef = useRef<{ child: string; parentField: string; parentLabel: string }[]>([]);
+  // Bumped whenever allMdWarningsRef changes so the derived mdWarnings useMemo re-runs.
+  const [warningTick, setWarningTick] = useState(0);
   const [showMdToast, setShowMdToast] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
@@ -156,17 +158,19 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     const already = allMdWarningsRef.current.some((w) => w.child === childObject && w.parentField === parentField);
     if (!already) {
       allMdWarningsRef.current = [...allMdWarningsRef.current, { child: childObject, parentField, parentLabel: resolvedLabel }];
+      setWarningTick((t) => t + 1);
     }
     setShowMdToast(true);
   }, [allObjects]);
 
   // Derive active warnings: all fired warnings minus those whose parent is currently selected.
-  // Recomputed whenever selectedObjects or allObjects changes, so deselecting a parent
-  // immediately re-shows its warning without needing to re-fire the callback.
+  // Recomputed whenever selectedObjects, allObjects, or warningTick changes so both
+  // new warnings being added and selection changes are reflected immediately.
   const mdWarnings = useMemo(() => {
     const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
     return allMdWarningsRef.current.filter((w) => !selectedApiNames.has(w.parentField));
-  }, [selectedObjects, allObjects]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedObjects, allObjects, warningTick]);
 
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
