@@ -423,11 +423,6 @@ export default function Step5({
   };
 
   useEffect(() => {
-    console.log('[Review] Final archival payload on mount:', JSON.stringify(archivalPayload));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (isSuccess) {
       const t = setTimeout(() => navigate('/archive-vault'), 2500);
       return () => clearTimeout(t);
