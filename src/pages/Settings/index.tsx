@@ -1,6 +1,8 @@
 // Settings — matches HTML reference screen-settings
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useSettingsService } from '../../services/settings/settings.service';
 
 // ── Toggle component ──────────────────────────────────────────────────────────
 
@@ -67,6 +69,11 @@ const selectCls = 'h-8 w-full rounded-lg border border-gray-200 px-2 text-sm tex
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Settings() {
+  const settingsService = useSettingsService();
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: () => settingsService.getSettings(),
+  });
 
   // Notification Channels
   const [notifEmail,          setNotifEmail]          = useState(true);
