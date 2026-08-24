@@ -115,6 +115,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [startOutOfRange, setStartOutOfRange] = useState(false);
+  const [endOutOfRange, setEndOutOfRange]   = useState(false);
 
   const dateRangeRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +134,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
       setScopeType('ENTIRE');
       setStartDate('');
       setEndDate('');
+      setStartOutOfRange(false);
+      setEndOutOfRange(false);
     }
   }, [selectedBackupConfigId]);
 
@@ -407,19 +411,29 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     max={maxDatetime || undefined}
                     onChange={(e) => {
                       const newStart = e.target.value;
+                      // Empty string after a change means the browser rejected the typed value (out of min/max range)
+                      if (!newStart && e.nativeEvent instanceof InputEvent) {
+                        setStartOutOfRange(true);
+                        return;
+                      }
+                      setStartOutOfRange(false);
                       setStartDate(newStart);
                       if (endDate && newStart && endDate < newStart) setEndDate('');
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
-                      startDate && (startDate > maxDatetime || (minDatetime && startDate < minDatetime))
+                      startOutOfRange || (startDate && (startDate > maxDatetime || (minDatetime && startDate < minDatetime)))
                         ? 'border-red-400' : 'border-gray-200'
                     }`}
                   />
-                  {startDate && startDate > maxDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future — valid range: {createdAtReadable} to now</p>
+                  <p className='text-[10px] text-gray-400'>Valid range: {createdAtReadable || '—'} → now</p>
+                  {startOutOfRange && (
+                    <p className='text-[10px] text-red-500 font-medium'>Selected time is outside the allowed range ({createdAtReadable} to now)</p>
                   )}
-                  {startDate && minDatetime && startDate < minDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
+                  {!startOutOfRange && startDate && startDate > maxDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
+                  )}
+                  {!startOutOfRange && startDate && minDatetime && startDate < minDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>
                   )}
                 </div>
                 <div className='flex flex-col gap-1.5'>
@@ -431,20 +445,29 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     max={maxDatetime || undefined}
                     onChange={(e) => {
                       const newEnd = e.target.value;
+                      if (!newEnd && e.nativeEvent instanceof InputEvent) {
+                        setEndOutOfRange(true);
+                        return;
+                      }
+                      setEndOutOfRange(false);
                       setEndDate(newEnd);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
-                      endDate && (endDate > maxDatetime || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
+                      endOutOfRange || (endDate && (endDate > maxDatetime || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime)))
                         ? 'border-red-400' : 'border-gray-200'
                     }`}
                   />
-                  {endDate && endDate > maxDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future — valid range: {createdAtReadable} to now</p>
+                  <p className='text-[10px] text-gray-400'>Valid range: {startDate ? startDate.replace('T', ' ') : (createdAtReadable || '—')} → now</p>
+                  {endOutOfRange && (
+                    <p className='text-[10px] text-red-500 font-medium'>Selected time is outside the allowed range (must be after start time and not in the future)</p>
                   )}
-                  {endDate && minDatetime && endDate < minDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date — created on {createdAtReadable}</p>
+                  {!endOutOfRange && endDate && endDate > maxDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
                   )}
-                  {endDate && startDate && endDate < startDate && !(endDate < minDatetime) && (
+                  {!endOutOfRange && endDate && minDatetime && endDate < minDatetime && (
+                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>
+                  )}
+                  {!endOutOfRange && endDate && startDate && endDate < startDate && !(endDate < minDatetime) && (
                     <p className='text-[10px] text-red-500 font-medium'>Cannot be before start time</p>
                   )}
                 </div>
