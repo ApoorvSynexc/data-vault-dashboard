@@ -163,6 +163,13 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   useEffect(() => { setCurrentPage(0); }, [debouncedSearch, selectedFilter]);
 
+  // Remove warnings whose required object has been selected by the user
+  useEffect(() => {
+    if (mdWarnings.length === 0) return;
+    const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
+    setMdWarnings((prev) => prev.filter((w) => !selectedApiNames.has(w.parentField)));
+  }, [selectedObjects, allObjects]);
+
   const totalRecords = allFiltered.length;
   const offset = currentPage * ITEMS_PER_PAGE;
   const displayObjects = allFiltered.slice(offset, offset + ITEMS_PER_PAGE);

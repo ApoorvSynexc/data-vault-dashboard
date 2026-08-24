@@ -1207,7 +1207,7 @@ export default function AddDetailsWizard({
             <div className='flex items-center gap-3'>
               {/* Prev */}
               <button
-                onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)}
+                onClick={() => { setMdToast(null); setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3); }}
                 disabled={step === 1}
                 className='px-5 py-2 text-sm font-medium border border-gray-300 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-700'>
                 ← Prev
@@ -1215,7 +1215,7 @@ export default function AddDetailsWizard({
               {/* Next */}
               {step < 3 && (
                 <button
-                  onClick={step === 1 ? handleNextStep1 : () => setStep((s) => (s + 1) as 2 | 3)}
+                  onClick={step === 1 ? handleNextStep1 : () => { setMdToast(null); setStep((s) => (s + 1) as 2 | 3); }}
                   disabled={step === 1 && !canProceedFromStep1}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
                   Next →
