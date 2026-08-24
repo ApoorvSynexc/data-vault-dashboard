@@ -29,7 +29,7 @@ function PrefetchDescribe({
   objectName: string;
   parentObjectName: string;
   allowedObjectNames?: Set<string>;
-  onMasterDetailField: (childObject: string, parentObject: string) => void;
+  onMasterDetailField: (childObject: string, parentObject: string, parentLabel: string) => void;
 }) {
   const crmMetadataService = useCrmMetadataService();
   const { data } = useQuery({
@@ -38,14 +38,16 @@ function PrefetchDescribe({
     enabled: !!objectName,
   });
 
-  const reportedRef = useRef<Set<string>>(new Set());
+  const reportedRef = useRef<Map<string, string>>(new Map());
   useEffect(() => {
     if (!data) return;
     const fields: any[] = (data as any)?.data?.fields ?? [];
     fields
       .filter((f: any) => {
         if (!f.cascadeDelete) return false;
-        if (reportedRef.current.has(f.name)) return false;
+        // Re-fire if we previously reported without a label but now have one
+        const prevLabel = reportedRef.current.get(f.name);
+        if (prevLabel !== undefined && (prevLabel || !f.label)) return false;
         // Derive the object name from the field name:
         // "Account__c" → "Account", "TEST_OBJECT__c" → "TEST_OBJECT__c" (kept as-is since it's a custom object)
         // Strip trailing "Id" for standard fields like "AccountId" → "Account"
@@ -59,8 +61,8 @@ function PrefetchDescribe({
         return true;
       })
       .forEach((f: any) => {
-        reportedRef.current.add(f.name);
-        onMasterDetailField(objectName, f.name);
+        reportedRef.current.set(f.name, f.label ?? '');
+        onMasterDetailField(objectName, f.name, f.label ?? f.name);
       });
   }, [data, objectName, parentObjectName, allowedObjectNames, onMasterDetailField]);
 
@@ -104,7 +106,7 @@ export interface ChildRowsProps {
   resetTick?: number;
   relationshipDepth?: number | null;
   allowedObjectNames?: Set<string>;
-  onMasterDetailWarning?: (childObject: string, parentObject: string) => void;
+  onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
 }
 
 export function ChildRows({
@@ -221,7 +223,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} onMasterDetailField={onMasterDetailWarning ?? (() => {})} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
@@ -255,6 +257,9 @@ export function ChildRows({
           if (isChildSelected) {
             setIncludeChild((p) => { const n = { ...p }; delete n[childKey]; return n; });
             setExpandedChild((c) => c === childKey ? null : c);
+          } else {
+            setIncludeChild((p) => ({ ...p, [childKey]: true }));
+            setExpandedChild(childKey);
           }
         };
 
