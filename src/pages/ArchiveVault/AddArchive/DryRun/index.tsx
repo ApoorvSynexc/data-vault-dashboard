@@ -19,6 +19,7 @@ import PermissionGate from '../../../../components/PermissionGate';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
 
@@ -111,6 +112,7 @@ interface PreviewModalProps {
 }
 
 function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewModalProps) {
+  const crmMetadataService = useCrmMetadataService();
   const backupConfigService = useBackupConfigService();
   const PAGE_SIZE = 5;
 
@@ -127,18 +129,20 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
 
   // Load fields on mount
   useMemo(() => {
-    if (!crmId || !objectName) return;
+    if (!objectName) return;
     setFieldsLoading(true);
     setFieldsError(null);
-    backupConfigService.getObjectFields(crmId, objectName)
-      .then((fields) => {
-        setAvailableFields(fields.map((f) => ({ apiName: f.name, label: f.label ?? f.name })));
+    crmMetadataService.getObjectFields(objectName)
+      .then((result: any) => {
+        const payload = result?.data ?? result;
+        const arr: any[] = Array.isArray(payload) ? payload : [];
+        setAvailableFields(arr.map((f: any) => ({ apiName: f.name, label: f.label ?? f.name })));
       })
       .catch(() => {
         setFieldsError('Failed to load fields. Please try again.');
       })
       .finally(() => setFieldsLoading(false));
-  }, [objectName, crmId]);
+  }, [objectName]);
 
   function toggleField(apiName: string) {
     setSelectedFields((prev) =>
