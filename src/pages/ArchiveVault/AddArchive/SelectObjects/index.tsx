@@ -69,14 +69,14 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
-  // warnings: childObject → parentObject, collected from PrefetchDescribe callbacks
-  const [mdWarnings, setMdWarnings] = useState<Record<string, string>>({});
+  // Each entry: child object that triggered the warning + the parent field/object to select
+  const [mdWarnings, setMdWarnings] = useState<{ child: string; parentField: string }[]>([]);
   const [showMdToast, setShowMdToast] = useState(false);
 
-  const handleMasterDetailWarning = useCallback((childObject: string, parentObject: string) => {
+  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
     setMdWarnings((prev) => {
-      if (prev[childObject] === parentObject) return prev;
-      return { ...prev, [childObject]: parentObject };
+      if (prev.some((w) => w.child === childObject && w.parentField === parentField)) return prev;
+      return [...prev, { child: childObject, parentField }];
     });
     setShowMdToast(true);
   }, []);
@@ -493,7 +493,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
         {/* Sticky Footer */}
         <div className='flex-shrink-0 flex flex-col gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200'>
-          {showMdToast && Object.keys(mdWarnings).length > 0 && (
+          {showMdToast && mdWarnings.length > 0 && (
             <div className='flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium'
               style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
               <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
@@ -502,8 +502,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               <div className='flex-1'>
                 <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
                 <ul className='list-disc list-inside space-y-0.5'>
-                  {Object.entries(mdWarnings).map(([child, parent]) => (
-                    <li key={child}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{parent}</strong> — select <strong>{child}</strong> from the objects list above.</li>
+                  {mdWarnings.map(({ child, parentField }) => (
+                    <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{parentField}</strong> — please select <strong>{parentField}</strong> from the objects list above.</li>
                   ))}
                 </ul>
               </div>
@@ -533,7 +533,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               </button>
               <button
                 onClick={() => {
-                  if (Object.keys(mdWarnings).length > 0) { setShowMdToast(true); return; }
+                  if (mdWarnings.length > 0) { setShowMdToast(true); return; }
                   handleNext();
                 }}
                 disabled={totalSelected === 0}

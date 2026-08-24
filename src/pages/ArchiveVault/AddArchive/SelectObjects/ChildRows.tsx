@@ -23,10 +23,12 @@ import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-met
 function PrefetchDescribe({
   objectName,
   parentObjectName,
+  allowedObjectNames,
   onMasterDetailField,
 }: {
   objectName: string;
   parentObjectName: string;
+  allowedObjectNames?: Set<string>;
   onMasterDetailField: (childObject: string, parentObject: string) => void;
 }) {
   const crmMetadataService = useCrmMetadataService();
@@ -34,19 +36,29 @@ function PrefetchDescribe({
     queryKey: ['crm-metadata-describe', objectName, 'archival'],
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
     enabled: !!objectName,
-    staleTime: 5 * 60 * 1000,
   });
 
-  const reportedRef = useRef(false);
+  const reportedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!data || reportedRef.current) return;
+    if (!data) return;
     const fields: any[] = (data as any)?.data?.fields ?? [];
-    const hasMdField = fields.some((f: any) => f.cascadeDelete === true);
-    if (hasMdField) {
-      reportedRef.current = true;
-      onMasterDetailField(objectName, parentObjectName);
-    }
-  }, [data, objectName, parentObjectName, onMasterDetailField]);
+    // Each field with cascadeDelete:true is a MasterDetail parent reference.
+    // The field name matches the parent object API name (e.g. "TEST_OBJECT__c").
+    // Only warn for field names that actually exist in the main object list —
+    // this correctly filters out lookup field names like "Account__c" which are
+    // field names not object names, while "TEST_OBJECT__c" matches both.
+    fields
+      .filter((f: any) =>
+        f.cascadeDelete === true &&
+        f.name !== parentObjectName &&
+        (!allowedObjectNames || allowedObjectNames.has(f.name)) &&
+        !reportedRef.current.has(f.name)
+      )
+      .forEach((f: any) => {
+        reportedRef.current.add(f.name);
+        onMasterDetailField(objectName, f.name);
+      });
+  }, [data, objectName, parentObjectName, allowedObjectNames, onMasterDetailField]);
 
   return null;
 }
@@ -205,7 +217,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} onMasterDetailField={onMasterDetailWarning ?? (() => {})} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} onMasterDetailField={onMasterDetailWarning ?? (() => {})} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
