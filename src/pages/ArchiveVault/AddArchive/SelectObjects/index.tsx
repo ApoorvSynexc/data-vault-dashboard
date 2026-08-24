@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import ProgressBar from '../ProgressBar';
 import { parseSalesforceError } from '../../../../utils';
 import AddDetailsWizard from './AddDetailsWizard';
@@ -65,7 +65,7 @@ const OPERATOR_MAP: Record<string, string> = {
 
 export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], onNext, onBack }: Step3Props) {
   const navigate = useNavigate();
-  const backupConfigService = useBackupConfigService();
+  const crmMetadataService = useCrmMetadataService();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
@@ -114,19 +114,28 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   }, [searchQuery]);
 
   const { data: allObjectsData, isLoading, error } = useQuery({
-    queryKey: ['archive-objects-all', crmId],
-    queryFn: async () => {
-      const response = await backupConfigService.getObjectList(crmId ?? '', 'SCHEDULE');
-      return (response as any[]).map((obj: any) => {
-        const existing = initialSelectedObjects.find((o) => o.id === (obj.id ?? obj.apiName));
-        return { ...obj, uuid: obj.uuid ?? existing?.uuid ?? crypto.randomUUID() };
-      });
-    },
-    enabled: !!crmId,
-    staleTime: Infinity,
+    queryKey: ['archive-objects-crm-metadata'],
+    queryFn: () => crmMetadataService.getObjectList('archive'),
   });
 
-  const allObjects: BackupObject[] = (allObjectsData as any) ?? [];
+  const allObjects: BackupObject[] = useMemo(() => {
+    const raw = Array.isArray(allObjectsData) ? allObjectsData : (allObjectsData as any)?.data ?? [];
+    return (raw as any[])
+      .filter((obj: any) => obj?.name)
+      .map((obj: any) => {
+        const existing = initialSelectedObjects.find((o) => o.id === obj.name);
+        return {
+          uuid: existing?.uuid ?? crypto.randomUUID(),
+          id: obj.name,
+          name: obj.label ?? obj.name,
+          type: 'Object',
+          estimatedSize: '--',
+          isCustom: obj.custom ?? false,
+          recordCount: obj.count,
+        };
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allObjectsData]);
 
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
