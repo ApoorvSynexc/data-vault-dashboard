@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import { ChildRows, MAX_CHILD_DEPTH } from './ChildRows';
 import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
@@ -208,6 +209,7 @@ export default function AddDetailsWizard({
   isParent = true, initialConfig, onSave, onClose, allowedObjectNames, selectedObjectApiNames, onMasterDetailWarning,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
+  const crmMetadataService = useCrmMetadataService();
 
   // ── MD warning toast (auto-dismisses after 5s) ────────────────────────────
   const [mdToast, setMdToast] = useState<{ child: string; parentField: string; parentLabel: string } | null>(null);
@@ -253,73 +255,35 @@ export default function AddDetailsWizard({
   const soqlPrefix = `SELECT FIELDS(ALL) FROM ${objectName} WHERE `;
 
   const { data: fieldsData, isLoading: isLoadingFields } = useQuery({
-    queryKey: ['archival-fields', crmId, objectName],
+    queryKey: ['archival-fields', objectName],
     queryFn: async () => {
-      const result = await archivalService.getFields(crmId ?? '', objectName);
+      const result = await crmMetadataService.getObjectFields(objectName, true);
       const payload = (result as any)?.data ?? result;
-      const arr = (payload as any)?.fields ?? payload;
-      return Array.isArray(arr) ? arr : [];
+      return Array.isArray(payload) ? payload : [];
     },
-    enabled: !!crmId && !!objectName,
+    enabled: !!objectName,
     staleTime: 5 * 60 * 1000,
   });
   const fields: any[] = Array.isArray(fieldsData) ? fieldsData : [];
 
-  // Re-hydrate restored conditions when fields load: fix null dataType and queue picklist fetches
+  // Re-hydrate restored conditions when fields load: fix null dataType and populate
+  // picklist values from the inline picklistValues already in the fields response.
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (!fields.length || hydratedRef.current) return;
     hydratedRef.current = true;
     setConditions((prev) => prev.map((cond) => {
       if (!cond.field) return cond;
-      const matched = fields.find((f: any) => f.apiName === cond.field);
+      const matched = fields.find((f: any) => f.name === cond.field);
       if (!matched) return cond;
-      const rawType = (matched.dataType as string | undefined)?.toLowerCase();
+      const rawType = (matched.type as string | undefined)?.toLowerCase();
       const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
-      return { ...cond, dataType };
+      const picklistValues = dataType === 'picklist'
+        ? (matched.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
+        : cond.picklistValues;
+      return { ...cond, dataType, picklistValues };
     }));
   }, [fields]);
-
-  // Tracks the condition+field that needs picklist values fetched (queue: one at a time via TanStack cache)
-  const [pendingPicklist, setPendingPicklist] = useState<{ conditionId: string; fieldApiName: string } | null>(null);
-  // Queue of picklist fetches needed (for restored multi-picklist conditions)
-  const picklistQueueRef = useRef<{ conditionId: string; fieldApiName: string }[]>([]);
-
-  // After fields load, queue fetches for any restored picklist conditions missing their values
-  useEffect(() => {
-    if (!fields.length) return;
-    const toFetch = conditions.filter((cond) => {
-      if (!cond.field) return false;
-      const matched = fields.find((f: any) => f.apiName === cond.field);
-      const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
-      return rawType === 'picklist' && (!cond.picklistValues || cond.picklistValues.length === 0);
-    });
-    if (!toFetch.length) return;
-    picklistQueueRef.current = toFetch.map((c) => ({ conditionId: c.id, fieldApiName: c.field }));
-    setPendingPicklist(picklistQueueRef.current.shift() ?? null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields]);
-
-  const { data: picklistData } = useQuery({
-    queryKey: ['archival-picklist', crmId, objectName, pendingPicklist?.fieldApiName],
-    queryFn: async () => {
-      const result = await archivalService.getPicklistValues(crmId ?? '', objectName, pendingPicklist!.fieldApiName);
-      const payload = (result as any)?.data ?? result;
-      const values = Array.isArray(payload) ? payload : ((payload as any)?.values ?? []);
-      return values as { value: string; label: string }[];
-    },
-    enabled: !!pendingPicklist,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  useEffect(() => {
-    if (!picklistData || !pendingPicklist) return;
-    updateCondition(pendingPicklist.conditionId, { picklistValues: picklistData });
-    // advance queue
-    const next = picklistQueueRef.current.shift() ?? null;
-    setPendingPicklist(next);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picklistData]);
 
   const validateMutation = useMutation({
     mutationFn: ({ soqlClause }: { soqlClause: string }) =>
@@ -369,16 +333,14 @@ export default function AddDetailsWizard({
     setConditions((prev) => prev.map((c) => c.id === id ? { ...c, ...patch } : c));
 
   const handleFieldChange = (id: string, apiName: string) => {
-    const matched = fields.find((f: any) => f.apiName === apiName);
-    const rawType = (matched?.dataType as string | undefined)?.toLowerCase();
+    const matched = fields.find((f: any) => f.name === apiName);
+    const rawType = (matched?.type as string | undefined)?.toLowerCase();
     const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
     const operator = OPERATORS_BY_TYPE[dataType][0];
-    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues: [] });
-    if (dataType === 'picklist' && apiName) {
-      setPendingPicklist({ conditionId: id, fieldApiName: apiName });
-    } else {
-      setPendingPicklist(null);
-    }
+    const picklistValues = dataType === 'picklist'
+      ? (matched?.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
+      : [];
+    updateCondition(id, { field: apiName, dataType, operator, value: '', picklistValues });
   };
 
   const getConditionLabel = (idx: number) => {
@@ -835,7 +797,7 @@ export default function AddDetailsWizard({
                             ) : (
                               <FieldDropdown
                                 value={cond.field}
-                                options={fields.map((f: any) => ({ apiName: f.apiName, label: f.label || f.apiName }))}
+                                options={fields.map((f: any) => ({ apiName: f.name, label: f.label || f.name }))}
                                 onChange={(v) => handleFieldChange(cond.id, v)}
                               />
                             )}

@@ -3,6 +3,7 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 const CRM_METADATA_ENDPOINTS = {
   objectList: '/v1/crm-metadata/objects/list',
   objectDescribe: '/v1/crm-metadata/objects/describe',
+  fieldList: '/v1/crm-metadata/fields/list',
 } as const;
 
 export type CrmMetadataObject = {
@@ -35,6 +36,14 @@ export function useCrmMetadataService() {
           objectName,
           ...(mode ? { mode } : {}),
           ...(type ? { type } : {}),
+        },
+      }),
+
+    getObjectFields: (objectName: string, filterable?: boolean) =>
+      api.get<unknown>(CRM_METADATA_ENDPOINTS.fieldList, {
+        query: {
+          objectName,
+          ...(filterable !== undefined ? { filterable } : {}),
         },
       }),
   };
