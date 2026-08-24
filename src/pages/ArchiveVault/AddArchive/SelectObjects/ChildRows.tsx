@@ -38,31 +38,26 @@ function PrefetchDescribe({
     enabled: !!objectName,
   });
 
-  const reportedRef = useRef<Map<string, string>>(new Map());
+  const reportedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!data) return;
     const fields: any[] = (data as any)?.data?.fields ?? [];
     fields
       .filter((f: any) => {
         if (!f.cascadeDelete) return false;
-        // Re-fire if we previously reported without a label but now have one
-        const prevLabel = reportedRef.current.get(f.name);
-        if (prevLabel !== undefined && (prevLabel || !f.label)) return false;
-        // Derive the object name from the field name:
-        // "Account__c" → "Account", "TEST_OBJECT__c" → "TEST_OBJECT__c" (kept as-is since it's a custom object)
-        // Strip trailing "Id" for standard fields like "AccountId" → "Account"
-        const derivedObject = f.name.endsWith('Id') && !f.name.endsWith('__c')
-          ? f.name.slice(0, -2)
-          : f.name;
-        // Skip if derived object name matches the parent that's already selected
-        if (derivedObject === parentObjectName) return false;
-        // Only warn for names present in the main object list
-        if (allowedObjectNames && !allowedObjectNames.has(derivedObject)) return false;
+        // Use referenceTo[0] as the actual parent object API name
+        const refTo: string = f.referenceTo?.[0] ?? f.name;
+        if (reportedRef.current.has(refTo)) return false;
+        // Skip if the referenced object is the parent that triggered this prefetch
+        if (refTo === parentObjectName) return false;
+        // Only warn for objects present in the main object list
+        if (allowedObjectNames && !allowedObjectNames.has(refTo)) return false;
         return true;
       })
       .forEach((f: any) => {
-        reportedRef.current.set(f.name, f.label ?? '');
-        onMasterDetailField(objectName, f.name, f.label ?? f.name);
+        const refTo: string = f.referenceTo?.[0] ?? f.name;
+        reportedRef.current.add(refTo);
+        onMasterDetailField(objectName, refTo, f.label ?? refTo);
       });
   }, [data, objectName, parentObjectName, allowedObjectNames, onMasterDetailField]);
 
