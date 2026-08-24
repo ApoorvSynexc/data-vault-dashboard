@@ -208,6 +208,19 @@ export default function AddDetailsWizard({
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
 
+  // ── MD warning toast (auto-dismisses after 5s) ────────────────────────────
+  const [mdToast, setMdToast] = useState<{ child: string; parent: string } | null>(null);
+  const mdToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const wrappedMdWarning = useCallback((child: string, parent: string) => {
+    onMasterDetailWarning?.(child, parent);
+    if (mdToastTimerRef.current) clearTimeout(mdToastTimerRef.current);
+    setMdToast({ child, parent });
+    mdToastTimerRef.current = setTimeout(() => setMdToast(null), 5000);
+  }, [onMasterDetailWarning]);
+
+  useEffect(() => () => { if (mdToastTimerRef.current) clearTimeout(mdToastTimerRef.current); }, []);
+
   // ── wizard step ────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -644,6 +657,22 @@ export default function AddDetailsWizard({
           </button>
         </div>
 
+        {/* ── MD warning toast ── */}
+        {mdToast && (
+          <div className='mx-6 mb-2 flex items-start gap-2 px-4 py-2.5 rounded-lg text-sm'
+            style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
+            <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+              <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+            </svg>
+            <span>
+              <strong>{mdToast.child}</strong> is in a MasterDetail relationship with <strong>{mdToast.parent}</strong> — please select <strong>{mdToast.child}</strong> from the objects list.
+            </span>
+            <button onClick={() => setMdToast(null)} className='ml-auto flex-shrink-0'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+            </button>
+          </div>
+        )}
+
         {/* ── stepper ── */}
         <Stepper current={step} />
 
@@ -942,7 +971,7 @@ export default function AddDetailsWizard({
                         resetTick={resetTick}
                         relationshipDepth={relationshipDepth}
                         allowedObjectNames={allowedObjectNames}
-                        onMasterDetailWarning={onMasterDetailWarning}
+                        onMasterDetailWarning={wrappedMdWarning}
                       />
                     )}
                   </tbody>
