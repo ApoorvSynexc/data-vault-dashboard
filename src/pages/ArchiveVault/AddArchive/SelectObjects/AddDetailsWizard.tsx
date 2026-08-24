@@ -31,6 +31,7 @@ interface AddDetailsWizardProps {
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
   allowedObjectNames?: Set<string>;
+  onMasterDetailWarning?: (childObject: string, parentObject: string) => void;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -203,7 +204,7 @@ function FieldDropdown({ value, options, onChange }: {
 
 export default function AddDetailsWizard({
   objectId, objectName, objectLabel, recordCount, crmId,
-  isParent = true, initialConfig, onSave, onClose, allowedObjectNames,
+  isParent = true, initialConfig, onSave, onClose, allowedObjectNames, onMasterDetailWarning,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
 
@@ -941,6 +942,7 @@ export default function AddDetailsWizard({
                         resetTick={resetTick}
                         relationshipDepth={relationshipDepth}
                         allowedObjectNames={allowedObjectNames}
+                        onMasterDetailWarning={onMasterDetailWarning}
                       />
                     )}
                   </tbody>
