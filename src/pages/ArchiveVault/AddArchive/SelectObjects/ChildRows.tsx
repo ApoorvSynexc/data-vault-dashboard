@@ -52,6 +52,7 @@ export interface ChildRowsProps {
   maxDepth?: number;
   resetTick?: number;
   relationshipDepth?: number | null;
+  allowedObjectNames?: Set<string>;
 }
 
 export function ChildRows({
@@ -59,6 +60,7 @@ export function ChildRows({
   selectedChildObjects, toggleChildObject,
   registerChildApiName, registerChildFieldApiName, registerChildParent,
   includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
+  allowedObjectNames,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const crmMetadataService = useCrmMetadataService();
@@ -71,10 +73,27 @@ export function ChildRows({
     queryKey: ['crm-metadata-describe', objectName, 'archival'],
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
     enabled: !!objectName,
-    staleTime: 5 * 60 * 1000,
   });
 
-  const rawRows: any[] = Array.isArray(data) ? data : Array.isArray((data as any)?.data) ? (data as any).data : [];
+  const rawChildren: any[] = (data as any)?.data?.children ?? (Array.isArray((data as any)?.children) ? (data as any).children : Array.isArray(data) ? data : []);
+
+  // Deduplicate by name — API returns duplicate entries for objects with multiple relationships.
+  // Also filter to only objects present in the main object list (allowedObjectNames).
+  const seen = new Set<string>();
+  const rawRows: any[] = rawChildren.filter((r: any) => {
+    if (seen.has(r.name)) return false;
+    if (allowedObjectNames && !allowedObjectNames.has(r.name)) return false;
+    seen.add(r.name);
+    return true;
+  }).map((r: any) => ({
+    uuid: r.name,
+    apiName: r.name,
+    fieldApiName: r.name,
+    label: r.name,
+    relationshipName: r.name,
+    relationshipType: r.cascadeDelete ? 'MasterDetail' : 'Lookup',
+    objectType: 'Standard',
+  }));
 
   // autoSelectedRef prevents double-toggling MasterDetail rows on re-renders.
   // Without it, strict-mode double-invocation would check then immediately uncheck them.
@@ -260,6 +279,7 @@ export function ChildRows({
                 maxDepth={effectiveMax}
                 resetTick={resetTick}
                 relationshipDepth={relationshipDepth}
+                allowedObjectNames={allowedObjectNames}
               />
             )}
           </React.Fragment>

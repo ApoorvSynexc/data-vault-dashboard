@@ -137,6 +137,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allObjectsData]);
 
+  // Set of API names from the object list — used to filter child rows
+  const allowedObjectNames = useMemo(() => new Set(allObjects.map((o) => o.id)), [allObjects]);
+
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
       const matchesSearch = obj.name.toLowerCase().includes(debouncedSearch.toLowerCase());
@@ -225,6 +228,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           crmId={crmId}
           isParent={wizardTarget.isParent}
           initialConfig={objectConfigs[wizardTarget.objectId]}
+          allowedObjectNames={allowedObjectNames}
           onSave={(config) => {
             setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
             setWizardTarget(null);
