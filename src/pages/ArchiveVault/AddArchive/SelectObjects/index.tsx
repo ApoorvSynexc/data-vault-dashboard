@@ -53,7 +53,7 @@ interface Step3Props {
   onBack?: () => void;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 20;
 
 const OPERATOR_MAP: Record<string, string> = {
   'equals': '=', 'not equals': '!=', 'contains': 'LIKE',
@@ -149,7 +149,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   useEffect(() => { setCurrentPage(0); }, [debouncedSearch, selectedFilter]);
 
   const totalRecords = allFiltered.length;
-  const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE) || 1;
   const offset = currentPage * ITEMS_PER_PAGE;
   const displayObjects = allFiltered.slice(offset, offset + ITEMS_PER_PAGE);
 
@@ -454,43 +453,22 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             {/* Pagination */}
             {!isLoading && !error && (
               <div className='flex items-center justify-between px-5 py-3 border-t border-gray-100 flex-shrink-0'>
-                <span className='text-sm text-gray-500'>
-                  Showing {totalRecords > 0 ? offset + 1 : 0}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
+                <span className='text-sm text-gray-600'>
+                  Showing {totalRecords === 0 ? 0 : offset + 1}–{Math.min(offset + ITEMS_PER_PAGE, totalRecords)} of {totalRecords} Objects
                 </span>
-                <div className='flex items-center gap-1'>
-                  <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0}
-                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>‹</button>
-                  {(() => {
-                    const maxVis = 5;
-                    const halfVis = Math.floor(maxVis / 2);
-                    const pages: (number | string)[] = [];
-                    if (totalPages <= maxVis) {
-                      for (let i = 1; i <= totalPages; i++) pages.push(i);
-                    } else {
-                      pages.push(1);
-                      if (currentPage + 1 > halfVis + 1) pages.push('...');
-                      const start = Math.max(2, currentPage + 1 - halfVis);
-                      const end = Math.min(totalPages - 1, currentPage + 1 + halfVis);
-                      for (let i = start; i <= end; i++) pages.push(i);
-                      if (currentPage + 1 < totalPages - halfVis - 1) pages.push('...');
-                      if (!pages.includes(totalPages)) pages.push(totalPages);
-                    }
-                    return pages.map((p, idx) =>
-                      p === '...'
-                        ? <span key={`dots-${idx}`} className='px-1 text-gray-400 text-xs'>...</span>
-                        : <button key={p as number} onClick={() => setCurrentPage((p as number) - 1)}
-                            className='w-7 h-7 rounded-full text-xs font-medium transition-colors flex items-center justify-center'
-                            style={{
-                              background: currentPage === (p as number) - 1 ? '#155DFC' : 'white',
-                              color: currentPage === (p as number) - 1 ? 'white' : '#64748B',
-                              border: currentPage === (p as number) - 1 ? 'none' : '1px solid #E2E8F0',
-                            }}>
-                            {p}
-                          </button>
-                    );
-                  })()}
-                  <button onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= totalPages - 1}
-                    className='px-2 py-1 text-xs text-gray-500 disabled:opacity-30 hover:text-gray-800 transition-colors'>›</button>
+                <div className='flex items-center gap-2'>
+                  <button
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    disabled={currentPage === 0}
+                    className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={offset + ITEMS_PER_PAGE >= totalRecords}
+                    className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'>
+                    Next →
+                  </button>
                 </div>
               </div>
             )}
