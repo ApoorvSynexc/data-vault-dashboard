@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
@@ -69,8 +69,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
-  // Each entry: child object that triggered the warning + the parent field/object to select
-  const [mdWarnings, setMdWarnings] = useState<{ child: string; parentField: string; parentLabel: string }[]>([]);
+  // All warnings ever fired — stored as a ref so callbacks never go stale.
+  // Active warnings are derived by filtering out those whose parent is currently selected.
+  const allMdWarningsRef = useRef<{ child: string; parentField: string; parentLabel: string }[]>([]);
   const [showMdToast, setShowMdToast] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
@@ -150,16 +151,22 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   );
 
   const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
-    // Check if the required parent object is already selected — skip warning if so
     const parentObj = allObjects.find((o) => o.id === parentField);
-    if (parentObj && selectedObjects.has(parentObj.uuid)) return;
     const resolvedLabel = parentObj?.name ?? parentField;
-    setMdWarnings((prev) => {
-      if (prev.some((w) => w.child === childObject && w.parentField === parentField)) return prev;
-      return [...prev, { child: childObject, parentField, parentLabel: resolvedLabel }];
-    });
+    const already = allMdWarningsRef.current.some((w) => w.child === childObject && w.parentField === parentField);
+    if (!already) {
+      allMdWarningsRef.current = [...allMdWarningsRef.current, { child: childObject, parentField, parentLabel: resolvedLabel }];
+    }
     setShowMdToast(true);
-  }, [allObjects, selectedObjects]);
+  }, [allObjects]);
+
+  // Derive active warnings: all fired warnings minus those whose parent is currently selected.
+  // Recomputed whenever selectedObjects or allObjects changes, so deselecting a parent
+  // immediately re-shows its warning without needing to re-fire the callback.
+  const mdWarnings = useMemo(() => {
+    const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
+    return allMdWarningsRef.current.filter((w) => !selectedApiNames.has(w.parentField));
+  }, [selectedObjects, allObjects]);
 
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
@@ -171,13 +178,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   }, [debouncedSearch, selectedFilter, allObjects]);
 
   useEffect(() => { setCurrentPage(0); }, [debouncedSearch, selectedFilter]);
-
-  // Remove warnings whose required object has been selected by the user
-  useEffect(() => {
-    if (mdWarnings.length === 0) return;
-    const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
-    setMdWarnings((prev) => prev.filter((w) => !selectedApiNames.has(w.parentField)));
-  }, [selectedObjects, allObjects]);
 
   const totalRecords = allFiltered.length;
   const offset = currentPage * ITEMS_PER_PAGE;

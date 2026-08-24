@@ -102,6 +102,7 @@ export interface ChildRowsProps {
   relationshipDepth?: number | null;
   allowedObjectNames?: Set<string>;
   onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export function ChildRows({
@@ -109,7 +110,7 @@ export function ChildRows({
   selectedChildObjects, toggleChildObject,
   registerChildApiName, registerChildFieldApiName, registerChildParent,
   includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
-  allowedObjectNames, onMasterDetailWarning,
+  allowedObjectNames, onMasterDetailWarning, onLoadingChange,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const crmMetadataService = useCrmMetadataService();
@@ -134,6 +135,13 @@ export function ChildRows({
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
     enabled: !!objectName,
   });
+
+  // Notify parent wizard whenever this instance's loading state changes.
+  useEffect(() => {
+    onLoadingChange?.(isLoading);
+    return () => onLoadingChange?.(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
 
   const rawChildren: any[] = (data as any)?.data?.children ?? (Array.isArray((data as any)?.children) ? (data as any).children : Array.isArray(data) ? data : []);
 
@@ -347,6 +355,7 @@ export function ChildRows({
                 relationshipDepth={relationshipDepth}
                 allowedObjectNames={allowedObjectNames}
                 onMasterDetailWarning={onMasterDetailWarning}
+                onLoadingChange={onLoadingChange}
               />
             )}
           </React.Fragment>
