@@ -42,18 +42,22 @@ function PrefetchDescribe({
   useEffect(() => {
     if (!data) return;
     const fields: any[] = (data as any)?.data?.fields ?? [];
-    // Each field with cascadeDelete:true is a MasterDetail parent reference.
-    // The field name matches the parent object API name (e.g. "TEST_OBJECT__c").
-    // Only warn for field names that actually exist in the main object list —
-    // this correctly filters out lookup field names like "Account__c" which are
-    // field names not object names, while "TEST_OBJECT__c" matches both.
     fields
-      .filter((f: any) =>
-        f.cascadeDelete === true &&
-        f.name !== parentObjectName &&
-        (!allowedObjectNames || allowedObjectNames.has(f.name)) &&
-        !reportedRef.current.has(f.name)
-      )
+      .filter((f: any) => {
+        if (!f.cascadeDelete) return false;
+        if (reportedRef.current.has(f.name)) return false;
+        // Derive the object name from the field name:
+        // "Account__c" → "Account", "TEST_OBJECT__c" → "TEST_OBJECT__c" (kept as-is since it's a custom object)
+        // Strip trailing "Id" for standard fields like "AccountId" → "Account"
+        const derivedObject = f.name.endsWith('Id') && !f.name.endsWith('__c')
+          ? f.name.slice(0, -2)
+          : f.name;
+        // Skip if derived object name matches the parent that's already selected
+        if (derivedObject === parentObjectName) return false;
+        // Only warn for names present in the main object list
+        if (allowedObjectNames && !allowedObjectNames.has(derivedObject)) return false;
+        return true;
+      })
       .forEach((f: any) => {
         reportedRef.current.add(f.name);
         onMasterDetailField(objectName, f.name);
@@ -183,7 +187,7 @@ export function ChildRows({
     toSelect.forEach((key) => toggleChildObject(key));
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
+  }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick, selectedChildObjects]);
 
   const visibleRawRows = rawRows;
 
