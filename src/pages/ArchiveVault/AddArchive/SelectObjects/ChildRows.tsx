@@ -16,6 +16,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 
+// Fires the describe API for a MasterDetail child at tier-1 so the data is
+// cached before the user manually expands the row.
+function PrefetchDescribe({ objectName }: { objectName: string }) {
+  const crmMetadataService = useCrmMetadataService();
+  useQuery({
+    queryKey: ['crm-metadata-describe', objectName, 'archival'],
+    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
+    enabled: !!objectName,
+    staleTime: 5 * 60 * 1000,
+  });
+  return null;
+}
+
 // Maximum nesting depth for child objects (reduced by SOQL relationshipDepth)
 export const MAX_CHILD_DEPTH = 5;
 // Number of child rows shown per page within this component
@@ -128,11 +141,12 @@ export function ChildRows({
     // We check selectedChildObjects directly so Back→Next always re-selects them
     // if the state was cleared, without relying on a separate ref guard that
     // can get out of sync with the actual checkbox state.
-    const toSelect = rawRows
-      .filter((r: any) => r.relationshipType === 'MasterDetail')
+    const masterDetailRows = rawRows.filter((r: any) => r.relationshipType === 'MasterDetail');
+    const toSelect = masterDetailRows
       .map((r: any) => r.uuid as string)
       .filter((k: string) => k && !selectedChildObjects.has(k));
     toSelect.forEach((key) => toggleChildObject(key));
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
 
@@ -164,6 +178,13 @@ export function ChildRows({
 
   return (
     <>
+      {depth === 1 && rows
+        .filter((r: any) => r.relationshipType === 'MasterDetail')
+        .map((r: any) => (
+          <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
+            <td><PrefetchDescribe objectName={r.apiName} /></td>
+          </tr>
+        ))}
       {pagedRows.map((row: any) => {
         const childKey = row.uuid as string;
         const isChildSelected = selectedChildObjects.has(childKey);
