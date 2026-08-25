@@ -1,24 +1,5 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
-export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id';
-
-export type ObjectField = {
-  name: string;
-  label: string;
-  dataType: FieldDataType;
-};
-
-export type DataScopeRow = {
-  id: string;
-  name: string;
-  type: string;
-  estimatedSize: string;
-  backupMode: 'both' | 'schedule' | 'realtime';
-  isCustom: boolean;
-  isBackedUp?: boolean;
-  schedule?: 'schedule' | 'realtime';
-};
-
 export type CreateBackupPayload = Record<string, unknown>;
 
 export const BACKUP_CONFIG_ENDPOINTS = {
@@ -27,9 +8,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   detail: '/v1/backup-config',
   update: '/v1/backup-config',
   delete: '/v1/backup-config',
-  objectList: '/v1/backup-config/objects',
   objectCountList: '/v1/backup-config/objects-count',
-  objectFields: '/v1/backup-config/fields',
   jobs: '/v1/backup-job/list',
   resume: '/v1/backup-job/resume',
   stats: '/v1/backup-config/stats',
@@ -74,17 +53,9 @@ type BackupConfigListApiResponse = {
   };
 };
 
-type ObjectListApiItem = {
-  label: string;
-  apiName: string;
-  isCustom?: boolean;
-  isBackedUp?: boolean;
-  schedule?: 'schedule' | 'realtime';
-};
-
 type ObjectListApiResponse = {
   success: boolean;
-  objects: ObjectListApiItem[];
+  objects: Record<string, unknown>[];
   message: string | null;
 };
 
