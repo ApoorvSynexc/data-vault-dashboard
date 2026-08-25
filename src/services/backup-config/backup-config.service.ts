@@ -88,20 +88,6 @@ type ObjectListApiResponse = {
   message: string | null;
 };
 
-type ObjectFieldApiItem = {
-  label: string;
-  dataType: string;
-  apiName: string;
-};
-
-type ObjectFieldApiResponse = {
-  success: boolean;
-  objectLabel: string;
-  objectApiName: string;
-  fields: ObjectFieldApiItem[];
-  count: number;
-};
-
 export type BackupJobObject = {
   bulkJobId: string;
   name: string;
@@ -173,27 +159,6 @@ export type BackupStatsApiResponse = {
   };
 };
 
-const FIELD_DATA_TYPE_MAP: Record<string, FieldDataType> = {
-  STRING: 'string',
-  TEXTAREA: 'string',
-  EMAIL: 'string',
-  PHONE: 'string',
-  URL: 'string',
-  PICKLIST: 'string',
-  MULTIPICKLIST: 'string',
-  NUMBER: 'number',
-  DOUBLE: 'number',
-  CURRENCY: 'number',
-  PERCENT: 'number',
-  INT: 'number',
-  INTEGER: 'number',
-  BOOLEAN: 'boolean',
-  DATE: 'date',
-  DATETIME: 'datetime',
-  ID: 'id',
-  REFERENCE: 'id',
-};
-
 export function useBackupConfigService() {
   const api = useHttpRequest();
 
@@ -215,58 +180,6 @@ export function useBackupConfigService() {
 
       return response;
     },
-    getObjectList: async (crmId: string, mode?: 'SCHEDULE' | 'REALTIME') => {
-      const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {
-        query: { crmId, ...(mode ? { mode } : {}) },
-      });
-
-      if (!response.data) {
-        throw new Error('Invalid response from objectList API');
-      }
-
-      return response.data.objects.map(
-        (item): DataScopeRow => ({
-          id: item.apiName,
-          name: item.label,
-          type: 'Object',
-          estimatedSize: '--',
-          backupMode: 'both',
-          isCustom: item.isCustom ?? false,
-          isBackedUp: item.isBackedUp,
-          schedule: item.schedule,
-        }),
-      );
-    },
-    getObjectListPaginated: async (crmId: string, offset: number = 0, limit: number = 20) => {
-      const response = await api.get<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectList, {
-        query: { crmId },
-      });
-
-      if (!response.data) {
-        throw new Error('Invalid response from objectList API');
-      }
-
-      const allObjects = response.data.objects.map(
-        (item): DataScopeRow => ({
-          id: item.apiName,
-          name: item.label,
-          type: 'Object',
-          estimatedSize: '--',
-          backupMode: 'both',
-          isCustom: item.isCustom ?? false,
-          isBackedUp: item.isBackedUp,
-          schedule: item.schedule,
-        }),
-      );
-
-      // Client-side pagination
-      const paginatedObjects = allObjects.slice(offset, offset + limit);
-
-      return {
-        objects: paginatedObjects,
-        totalRecords: allObjects.length,
-      };
-    },
     getObjectCountList: async (crmId: string, objectApiNames: string[]) => {
       const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
         crmId,
@@ -276,30 +189,6 @@ export function useBackupConfigService() {
       return response;
     },
 
-    getArchivalObjectCountList: async (crmId: string, items: { apiName: string; filters?: string[] }[]) => {
-      const response = await api.post<ObjectListApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectCountList, {
-        crmId,
-        items,
-      });
-      return response;
-    },
-    getObjectFields: async (crmId: string, objectName: string) => {
-      const response = await api.get<ObjectFieldApiResponse>(BACKUP_CONFIG_ENDPOINTS.objectFields, {
-        query: { crmId, objectName },
-      });
-
-      if (!response.data) {
-        throw new Error('Invalid response from objectFields API');
-      }
-
-      return response.data.fields.map(
-        (field): ObjectField => ({
-          name: field.apiName,
-          label: field.label,
-          dataType: FIELD_DATA_TYPE_MAP[field.dataType.toUpperCase()] ?? 'string',
-        }),
-      );
-    },
     getBackupConfig: async (slug: string) => {
       const response = await api.get<BackupConfigDetailApiResponse>(BACKUP_CONFIG_ENDPOINTS.detail, {
         query: { slug },
