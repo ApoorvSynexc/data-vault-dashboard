@@ -25,62 +25,6 @@ import ProgressBar from '../ProgressBar';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Walks the archival payload object tree and returns the path of ancestor nodes
- * from the root down to (but not including) the target node.
- * Returns null if the target is not found.
- */
-function findAncestorPath(nodes: any[], targetName: string, path: any[] = []): any[] | null {
-  for (const node of nodes) {
-    if (node.name === targetName) return path;
-    if (node.children?.length) {
-      const result = findAncestorPath(node.children, targetName, [...path, node]);
-      if (result !== null) return result;
-    }
-  }
-  return null;
-}
-
-/**
- * Builds the nested parent chain for getObjectRecords.
- * Given a path [1ob, 2ob, 3ob] for target 4ob, produces:
- * { referenceName: 3ob.fieldApiName, filters: 3ob filters, parent: { referenceName: 2ob.fieldApiName, ... } }
- * The chain runs from immediate parent inward to root.
- */
-function buildParentChain(
-  nodes: any[],
-  targetName: string,
-): Record<string, unknown> | undefined {
-  const ancestorPath = findAncestorPath(nodes, targetName);
-  if (!ancestorPath || ancestorPath.length === 0) return undefined;
-
-  // Each ancestor carries its OWN fieldApiName as referenceName (the lookup on itself to its parent).
-  // Root (i=0) has no parent → no referenceName.
-  // Target is NOT emitted. Target's fieldApiName goes at top-level in the API call (handled by caller).
-
-  let chain: Record<string, unknown> | undefined = undefined;
-  for (let i = 0; i < ancestorPath.length; i++) {
-    const node = ancestorPath[i];
-    const isRoot = i === 0;
-    const entry: Record<string, unknown> = { apiName: node.name };
-    if (!isRoot) entry.referenceName = node.fieldApiName ?? null;
-    entry.filters = buildFilters(node) ?? null;
-    if (chain) entry.parent = chain;
-    chain = entry;
-  }
-  return chain;
-}
-
-/** Extracts filters from an object node's condition/field into a simple shape. */
-function buildFilters(node: any): Record<string, unknown> | null {
-  const condition = node.condition;
-  const fields: any[] = node.field ?? [];
-  if (!condition && fields.length === 0) return null;
-  return {
-    condition: condition ?? null,
-    fields: fields.length > 0 ? fields : null,
-  };
-}
 
 function calcDataSize(records: number): string {
   const kb = records * 2;
@@ -105,13 +49,13 @@ function now(): string {
 type FieldOption = { apiName: string; label: string };
 
 interface PreviewModalProps {
+  objectId: string;
   objectName: string;
-  crmId: string;
-  archivalPayload?: Record<string, unknown> | null;
+  soql: string;
   onClose: () => void;
 }
 
-function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewModalProps) {
+function PreviewModal({ objectId, objectName, soql, onClose }: PreviewModalProps) {
   const crmMetadataService = useCrmMetadataService();
   const backupConfigService = useBackupConfigService();
   const PAGE_SIZE = 5;
@@ -138,9 +82,7 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
         const arr: any[] = Array.isArray(payload) ? payload : [];
         setAvailableFields(arr.map((f: any) => ({ apiName: f.name, label: f.label ?? f.name })));
       })
-      .catch(() => {
-        setFieldsError('Failed to load fields. Please try again.');
-      })
+      .catch(() => setFieldsError('Failed to load fields. Please try again.'))
       .finally(() => setFieldsLoading(false));
   }, [objectName]);
 
@@ -159,26 +101,12 @@ function PreviewModal({ objectName, crmId, archivalPayload, onClose }: PreviewMo
     setShowRecordsTable(true);
     setShowFieldPicker(false);
 
-    const objects = (archivalPayload?.objects as any[]) ?? [];
-    const findNodeDeep = (ns: any[], name: string): any | undefined => {
-      for (const n of ns) {
-        if (n.name === name) return n;
-        if (n.children?.length) { const r = findNodeDeep(n.children, name); if (r) return r; }
-      }
-      return undefined;
-    };
-    const objectConfig = findNodeDeep(objects, objectName);
-    const parent = buildParentChain(objects, objectName);
-    const referenceName = objectConfig?.fieldApiName ?? undefined;
-
     try {
       const res = await backupConfigService.getObjectRecords({
-        crmId,
-        apiName: objectName,
-        fields: selectedFields,
-        objectConfig,
-        ...(referenceName ? { referenceName } : {}),
-        ...(parent ? { parent } : {}),
+        id: objectId,
+        name: objectName,
+        fieldNames: selectedFields,
+        soql,
       });
       const records: Record<string, any>[] = (res as any)?.data?.records ?? (res as any)?.data ?? (res as any)?.records ?? [];
       setPreviewRecords(Array.isArray(records) ? records : []);
@@ -500,8 +428,10 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
   const [impactPage, setImpactPage] = useState(0);
   const PAGE_SIZE = 5;
 
+  const [dryRunResults, setDryRunResults] = useState<any[]>([]);
+
   // Which object's preview modal is open (null = closed)
-  const [previewObject, setPreviewObject] = useState<string | null>(null);
+  const [previewObject, setPreviewObject] = useState<{ id: string; name: string; soql: string } | null>(null);
 
   async function runDryRun() {
     setDryRunState('loading');
@@ -522,6 +452,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
         });
       };
       flattenResults(results);
+      setDryRunResults(results);
       setObjectCountMap(map);
       setFailedObjects(failed);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
@@ -846,7 +777,11 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                           {/* Actions */}
                           <div className='py-3 px-3 flex items-center justify-center'>
                             <button
-                              onClick={() => setPreviewObject(row.name)}
+                              onClick={() => {
+                                const findNode = (items: any[], id: string): any => items.reduce((found, n) => found ?? (n.id === id ? n : findNode(n.children ?? [], id)), null);
+                                const node = findNode(dryRunResults, row.id);
+                                if (node) setPreviewObject({ id: node.id, name: node.name, soql: node.soql ?? '' });
+                              }}
                               className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap'
                               style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.18)' }}
                             >
@@ -957,9 +892,9 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
       {/* Preview Records Modal */}
       {previewObject && (
         <PreviewModal
-          objectName={previewObject}
-          crmId={crmId ?? ''}
-          archivalPayload={archivalPayload}
+          objectId={previewObject.id}
+          objectName={previewObject.name}
+          soql={previewObject.soql}
           onClose={() => setPreviewObject(null)}
         />
       )}
