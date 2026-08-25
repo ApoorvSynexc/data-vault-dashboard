@@ -23,5 +23,7 @@ export function useSettingsService() {
     getSettings: () => api.get<SettingsData>('/v1/settings/'),
     addStandardObject: (name: string) =>
       api.put<SettingsData>('/v1/settings/', { standardObjects: [{ name }] }),
+    removeStandardObject: (name: string) =>
+      api.delete<void>('/v1/settings/standard-object', { query: { name } }),
   };
 }
