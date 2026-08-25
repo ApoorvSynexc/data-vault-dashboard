@@ -425,6 +425,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
   const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [runTime, setRunTime] = useState<string>(initialCache?.runTime ?? '');
   const [duration, setDuration] = useState<string>(initialCache?.duration ?? '');
+  const [apiCallCount, setApiCallCount] = useState<number | null>(null);
   const [impactPage, setImpactPage] = useState(0);
   const PAGE_SIZE = 5;
 
@@ -453,6 +454,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
       };
       flattenResults(results);
       setDryRunResults(results);
+      setApiCallCount(data?.apiCallCount ?? null);
       setObjectCountMap(map);
       setFailedObjects(failed);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
@@ -831,6 +833,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
                 {[
                   { label: 'Dry Run Executed', value: runTime },
                   { label: 'Duration', value: duration },
+                  { label: 'API Calls Used', value: apiCallCount !== null ? String(apiCallCount) : '—' },
                   { label: 'Filter Validity', value: '✓ All valid', green: true },
                 ].map((item) => (
                   <div key={item.label}>
