@@ -223,12 +223,17 @@ export default function Settings() {
     onSuccess: () => queryClient.refetchQueries({ queryKey: ['settings'] }),
   });
 
+  const removeMutation = useMutation({
+    mutationFn: (name: string) => settingsService.removeStandardObject(name),
+    onSuccess: () => queryClient.refetchQueries({ queryKey: ['settings'] }),
+  });
+
   function handleAdd(name: string) {
     addMutation.mutate(name);
   }
 
-  function handleRemove(_name: string) {
-    // remove API TBD
+  function handleRemove(name: string) {
+    removeMutation.mutate(name);
   }
 
   return (
@@ -271,7 +276,7 @@ export default function Settings() {
         objects={objects}
         onAdd={handleAdd}
         onRemove={handleRemove}
-        saving={addMutation.isPending}
+        saving={addMutation.isPending || removeMutation.isPending}
       />
     </div>
   );
