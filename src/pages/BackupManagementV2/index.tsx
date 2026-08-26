@@ -531,6 +531,7 @@ export default function BackupManagementV2() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
+  const [runNowTarget, setRunNowTarget] = useState<{ slug: string; name: string } | null>(null);
   const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean } | null>(null);
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
@@ -627,6 +628,18 @@ export default function BackupManagementV2() {
     onError: (error) => {
       console.error('Failed to update backup status:', error);
       showToast('Failed to update backup status. Please try again.');
+    },
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: (slug: string) => backupConfigService.processBackup(slug),
+    onSuccess: () => {
+      setRunNowTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
+    },
+    onError: (error) => {
+      console.error('Failed to trigger backup run:', error);
+      showToast('Failed to trigger backup run. Please try again.');
     },
   });
 
@@ -788,7 +801,10 @@ export default function BackupManagementV2() {
                   setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
                 },
               }] : []),
-              ...(row.configStatus !== 'DRAFT' && !row.isOneTime && !row.isRealtime && permissions.includes('backup.execute') ? [{ label: 'Run Now' }] : []),
+              ...(row.configStatus !== 'DRAFT' && !row.isOneTime && !row.isRealtime && permissions.includes('backup.execute') ? [{
+                label: 'Run Now',
+                onClick: () => setRunNowTarget({ slug: row.slug, name: row.name }),
+              }] : []),
               ...(row.configStatus !== 'DRAFT' && !row.isOneTime && permissions.includes('backup.write') ? [{
                 label: row.configStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
@@ -988,6 +1004,16 @@ export default function BackupManagementV2() {
         isLoading={updateStatusMutation.isPending}
         onConfirm={() => { updateStatusMutation.mutate({ backupConfigId: pauseTarget!.id, backupStatus: 'PAUSED' }); setPauseTarget(null); }}
         onCancel={() => setPauseTarget(null)}
+      />
+
+      <WarningDialog
+        isOpen={!!runNowTarget}
+        title='Run Backup Now'
+        message={`This will trigger an immediate backup run for "${runNowTarget?.name}" outside the regular schedule. Note: your upcoming scheduled run will be skipped if you run now.`}
+        confirmLabel='Run Now'
+        isLoading={runNowMutation.isPending}
+        onConfirm={() => runNowMutation.mutate(runNowTarget!.slug)}
+        onCancel={() => setRunNowTarget(null)}
       />
 
       {/* Activate DRAFT backup acknowledgement dialog */}

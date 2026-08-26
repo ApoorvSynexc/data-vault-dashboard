@@ -796,7 +796,7 @@ export default function ArchiveVaultHomePage() {
       {confirmRunNow && (
         <ConfirmDialog
           title={`Run "${confirmRunNow.name}" now?`}
-          message='This will trigger an immediate archive run outside the regular schedule.'
+          message='This will trigger an immediate archive run outside the regular schedule. Note: your upcoming scheduled run will be skipped if you run now.'
           confirmLabel='Run Now'
           loading={runNowMutation.isPending}
           onConfirm={() => runNowMutation.mutate(confirmRunNow.backupConfigId)}
