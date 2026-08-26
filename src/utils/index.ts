@@ -23,6 +23,11 @@ export function formatDateTime(date: Date | string | null | undefined, tz?: stri
   return d.format('MMM D, YYYY h:mm A');
 }
 
+export function toUTCISOString(date: string | undefined): string | undefined {
+  if (!date) return date;
+  return dayjs(date).utc().toISOString();
+}
+
 export function capitalize(value: string): string {
   if (!value) {
     return '';
