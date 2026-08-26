@@ -81,10 +81,10 @@ const FIELD_DEFAULTS = [
 // ── Main component ────────────────────────────────────────────────────────────
 
 
-interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; scopeMode: string; restoreMode: string; }
+interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; }
 
-export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Props) {
-  const [ecDuplicate,    setEcDuplicate]    = useState('Use destination if newer');
+export default function EdgeCases({ onNext, onBack }: Props) {
+  const [ecDuplicate] = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
   const [ecParent,       setEcParent]       = useState('Restore parent first');
@@ -182,24 +182,6 @@ export default function EdgeCases({ onNext, onBack, scopeMode, restoreMode }: Pr
               <Tip text="What to do when something doesn't line up cleanly — duplicate Id, missing field in destination, owner no longer active, parent record missing, or record type missing." />
             </div>
             <div className='p-4 flex flex-col divide-y divide-gray-100'>
-              {/* {!((scopeMode === 'full' || scopeMode === 'object' || scopeMode === 'record') && (restoreMode === 'append' || restoreMode === 'skip' || restoreMode === 'replace')
-                || (scopeMode === 'field' && restoreMode === 'skip')
-                || (scopeMode === 'filter' && (restoreMode === 'append' || restoreMode === 'skip'))
-                || (scopeMode === 'deleted' && restoreMode === 'append')
-                || (scopeMode === 'changed' && (restoreMode === 'append' || restoreMode === 'skip'))
-                || (scopeMode === 'csv' && (restoreMode === 'append' || restoreMode === 'skip'))) && (
-              <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
-                  On duplicate records <Tip text='Triggered when a record with the same Id (or external Id) already exists. Overwrite = source wins. Use destination if newer = safer, compares LastModifiedDate. Create new copy = inserts parallel with " (copy)" suffix.' />
-                </span>
-                <select value={ecDuplicate} onChange={(e) => setEcDuplicate(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Overwrite</option>
-                  <option>Skip</option>
-                  <option>Create new copy with suffix</option>
-                  <option>Use destination if newer</option>
-                </select>
-              </div>
-              )} */}
               <div className='py-3 flex flex-col gap-2'>
                 <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                   <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>
