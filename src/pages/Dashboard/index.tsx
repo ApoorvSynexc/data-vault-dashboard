@@ -133,12 +133,6 @@ export default function Dashboard() {
 
   const hasBackups = recentJobs.length > 0;
 
-  const completedJobs = recentJobs.filter((j: any) => j.status === 'SUCCESS' || j.status === 'COMPLETED').length;
-  const runningJobs   = recentJobs.filter((j: any) => j.status === 'RUNNING').length;
-  const failedJobs    = recentJobs.filter((j: any) => j.status === 'FAILED').length;
-  const totalRuns     = completedJobs + runningJobs + failedJobs;
-  const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
-
   const overview = (overviewData as any)?.data ?? {};
   const kpiProtectedRecords = overview?.protectedRecords?.value ?? '--';
   const kpiProtectedChange  = overview?.protectedRecords?.change;
@@ -150,6 +144,19 @@ export default function Dashboard() {
   const kpiSuccessPeriod    = overview?.backupSuccessRate?.period;
   const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
   const kpiRunning          = overview?.activeJobs?.running ?? 0;
+
+  // Backup CONFIG counts by status — for the System Health card.
+  const activeBackups    = overview?.activeBackups ?? 0;
+  const completedBackups = overview?.completedBackups ?? 0;
+  const failedBackups    = overview?.failedBackups ?? 0;
+
+  // Job RUN counts by status — from the dashboard overview API, not derived from
+  // the (capped) recent-jobs list, so they reflect the true totals.
+  const completedJobs = overview?.completedJobs ?? 0;
+  const runningJobs   = overview?.runningJobs ?? 0;
+  const failedJobs    = overview?.failedJobs ?? 0;
+  const totalRuns     = completedJobs + runningJobs + failedJobs;
+  const successRate   = totalRuns > 0 ? ((completedJobs / totalRuns) * 100).toFixed(2) : '0.00';
 
 
   /* ── Recent Jobs columns ── */
@@ -456,9 +463,9 @@ export default function Dashboard() {
             </div>
             <div className='flex flex-col gap-2 mt-2'>
               {[
-                { label: 'Active Backups', value: kpiActiveJobs, color: 'text-blue-600',  dot: '#3B82F6' },
-                { label: 'Completed Jobs', value: completedJobs, color: 'text-green-600', dot: '#16A34A' },
-                { label: 'Failed Jobs',    value: failedJobs,    color: failedJobs > 0 ? 'text-red-600' : 'text-gray-400', dot: failedJobs > 0 ? '#DC2626' : '#9CA3AF' },
+                { label: 'Active Backups',  value: activeBackups,    color: 'text-blue-600',  dot: '#3B82F6' },
+                { label: 'Completed Backup', value: completedBackups, color: 'text-green-600', dot: '#16A34A' },
+                { label: 'Failed backup',    value: failedBackups,    color: failedBackups > 0 ? 'text-red-600' : 'text-gray-400', dot: failedBackups > 0 ? '#DC2626' : '#9CA3AF' },
               ].map(({ label, value, color, dot }) => (
                 <div key={label} className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
