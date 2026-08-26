@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../hooks/useDebounce';
+import { toUTCISOString } from '../../../../utils';
 import Typography from '../../../../components/Typography';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -54,16 +55,18 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
     ? isChangedBetween
       ? {
           backupConfigId: sourceSelection.backupConfigId,
+          configType:     sourceSelection.configType,
           objectApiName:  activeObj,
           type:           'CHANGED_BETWEEN' as const,
-          startDate:      sourceSelection.startDate ?? '',
-          endDate:        sourceSelection.endDate   ?? '',
+          startDate:      toUTCISOString(sourceSelection.startDate) ?? '',
+          endDate:        toUTCISOString(sourceSelection.endDate)   ?? '',
           columnNames:    COLUMN_NAMES,
           ...(debouncedSearch ? { searchText: debouncedSearch } : {}),
           ...(cursor          ? { cursor }                      : {}),
         }
       : {
           backupConfigId: sourceSelection.backupConfigId,
+          configType:     sourceSelection.configType,
           objectApiName:  activeObj,
           type:           'ENTIRE' as const,
           columnNames:    COLUMN_NAMES,
