@@ -140,6 +140,30 @@ export type BackupStatsApiResponse = {
   };
 };
 
+type DashboardKpi = {
+  value?: string | number;
+  change?: string;
+  period?: string;
+  running?: number;
+  [key: string]: unknown;
+};
+
+export type DashboardOverview = {
+  protectedRecords?: DashboardKpi;
+  storageUsed?: DashboardKpi;
+  backupSuccessRate?: DashboardKpi;
+  activeJobs?: DashboardKpi;
+  // Backup CONFIG counts by status (distinct from the job-run counts below).
+  activeBackups?: number;
+  completedBackups?: number;
+  failedBackups?: number;
+  // Job RUN counts by status.
+  completedJobs?: number;
+  runningJobs?: number;
+  failedJobs?: number;
+  [key: string]: unknown;
+};
+
 export function useBackupConfigService() {
   const api = useHttpRequest();
 
@@ -198,7 +222,7 @@ export function useBackupConfigService() {
       return api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats, { query });
     },
     getDashboardOverview: () =>
-      api.get<any>('/v1/dashboard/overview'),
+      api.get<DashboardOverview>('/v1/dashboard/overview'),
     getLastJobs: () =>
       api.get<any>('/v1/dashboard/last-jobs'),
     processBackup: (slug: string) =>
