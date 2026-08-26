@@ -17,7 +17,16 @@ export const ARCHIVAL_ENDPOINTS = {
   stats: '/v1/archival-config/stats',
   dryRun: '/v1/archival-config/dry-run',
   validateSoql: '/v1/archival-config/validate-soql',
+  runNow: '/v1/archival-config/run-now',
 } as const;
+
+// Informational marker the backend attaches (per-object) when a manual Run Now
+// causes that object's next automatically-scheduled run to be skipped.
+export type IUpcomingJob = {
+  skip: boolean;
+  skipReason?: string;
+  skipDateTime?: string;
+};
 
 // Schedule config shape stored inside an archival config object
 export type ObjectScheduleConfig = {
@@ -200,6 +209,11 @@ export function useArchivalService() {
     // relationshipDepth controls how many child levels can be added (MAX_CHILD_DEPTH - depth)
     validateSoql: (payload: { object: unknown; isParent: boolean; crmId: string }): Promise<any> =>
       http.post(ARCHIVAL_ENDPOINTS.validateSoql, payload),
+
+    // GET /v1/archival-config/run-now?backupConfigId=
+    // Manually triggers a job for every currently-eligible object on this config.
+    runNow: (backupConfigId: string): Promise<any> =>
+      http.get(ARCHIVAL_ENDPOINTS.runNow, { query: { backupConfigId } }),
 
     // GET /v1/archival-config/record-errors?backupJobId=&objectId=&page=
     // Returns a page of per-record delete errors stored in S3 (10 records per page).

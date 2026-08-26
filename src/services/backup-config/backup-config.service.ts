@@ -15,7 +15,16 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   processBackup: '/v1/backup-config/initalize-payload-transform',
   syncSchema: '/v1/backup-config/sync-metadata',
   recoverTrigger: '/v1/backup-config/trigger/recover',
+  runNow: '/v1/backup-config/run-now',
 } as const;
+
+// Informational marker the backend attaches when a manual Run Now causes the
+// next automatically-scheduled run to be skipped (so it isn't run twice).
+export type IUpcomingJob = {
+  skip: boolean;
+  skipReason?: string;
+  skipDateTime?: string;
+};
 
 type BackupConfigItem = {
   backupConfigId: string;
@@ -31,6 +40,7 @@ type BackupConfigItem = {
   destinationId?: string;
   crm?: { name: string; crmName: string };
   destination?: { name: string; type: string };
+  upcomingJob?: IUpcomingJob;
   [key: string]: unknown;
 };
 
@@ -194,6 +204,8 @@ export function useBackupConfigService() {
       api.get<any>('/v1/dashboard/last-jobs'),
     processBackup: (slug: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
+    runNow: (backupConfigId: string) =>
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.runNow, { query: { backupConfigId } }),
     syncSchema: (slug: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: { slug } }),
     getObjectRecords: (payload: { id: string; name: string; fieldNames: string[]; soql: string }) =>
