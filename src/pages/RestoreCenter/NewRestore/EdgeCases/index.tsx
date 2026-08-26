@@ -12,6 +12,20 @@ type FieldMapRow = { id: number; objectName: string; committedObjectName: string
 
 interface DestField { name: string; label: string; type: string; }
 
+// A failed request must never be mistaken for "nothing to map" — the empty
+// state below looks identical to a genuine success, so every per-object
+// query in this file checks isError before falling through to it.
+function InlineErrorState({ message }: { message: string }) {
+  return (
+    <div className='flex items-center gap-2 py-2'>
+      <div className='w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0'>
+        <svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' className='w-3 h-3'><line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' /></svg>
+      </div>
+      <p className='text-xs text-red-600'>{message}</p>
+    </div>
+  );
+}
+
 // One "Object" block under "Missing fields in dest → Map to existing field":
 // looks up the fields the backup captured that no longer exist on the live
 // destination object, and lets the user map each to an existing destination
@@ -29,7 +43,7 @@ function MissingFieldsForObject({
 }) {
   const restoreService = useRestoreService();
 
-  const { data: missingData, isLoading: missingLoading } = useQuery({
+  const { data: missingData, isLoading: missingLoading, isError: missingError } = useQuery({
     queryKey: ['missing-fields', backupConfigId, objectName],
     queryFn: () => restoreService.fetchMissingFields(backupConfigId, objectName),
     enabled: !!backupConfigId && !!objectName,
@@ -60,6 +74,10 @@ function MissingFieldsForObject({
         <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking for missing fields…
       </div>
     );
+  }
+
+  if (missingError) {
+    return <InlineErrorState message={`Couldn't check ${objectName} for missing fields — try again.`} />;
   }
 
   if (missingFields.length === 0) {
@@ -176,7 +194,7 @@ function RecordTypeMappingBlock({
 }) {
   const restoreService = useRestoreService();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['missing-record-types', backupConfigId, configType, objectApiNames?.join(',') ?? 'ALL'],
     queryFn: () => restoreService.fetchMissingRecordTypes(backupConfigId, configType, objectApiNames),
     enabled: !!backupConfigId,
@@ -192,6 +210,10 @@ function RecordTypeMappingBlock({
         <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking for missing or inactive record types…
       </div>
     );
+  }
+
+  if (isError) {
+    return <InlineErrorState message="Couldn't check for missing or inactive record types — try again." />;
   }
 
   if (objectMappings.length === 0) {
@@ -311,7 +333,7 @@ function RequiredFieldsForObject({
 }) {
   const restoreService = useRestoreService();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['required-fields', backupConfigId, objectApiName],
     queryFn: () => restoreService.fetchRequiredFields(backupConfigId, objectApiName),
     enabled: !!backupConfigId && !!objectApiName,
@@ -332,6 +354,10 @@ function RequiredFieldsForObject({
         <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking required fields…
       </div>
     );
+  }
+
+  if (isError) {
+    return <InlineErrorState message={`Couldn't check ${objectApiName} for required fields — try again.`} />;
   }
 
   if (fields.length === 0) {
