@@ -60,6 +60,19 @@ export interface RestoreMissingFieldInDestination {
   sourceDestinationMapping?: RestoreEdgeCaseFieldMapping[];
 }
 
+// ── Missing-field detection (fetch-missing-fields) ─────────────────────────────
+
+export interface MissingSourceField {
+  apiName: string;
+  label: string;
+  type: string;
+}
+
+export interface FetchMissingFieldsResult {
+  hasMissingFields: boolean;
+  missingFields: MissingSourceField[];
+}
+
 export interface RestoreOwnerInactive {
   type: string;
   fallbackValue?: string;
@@ -78,6 +91,34 @@ export interface RestoreRecordTypeObjectMapping {
 export interface RestoreRecordTypeMissing {
   type: string;
   objects?: RestoreRecordTypeObjectMapping[];
+}
+
+// ── Missing/inactive record type detection (fetch-missing-record-types) ────────
+
+export interface RecordTypeMappingCandidate {
+  sourceRecordTypeId: string;
+  sourceRecordTypeName: string;
+  status: 'MISSING' | 'INACTIVE';
+}
+
+export interface ObjectRecordTypeMapping {
+  objectApiName: string;
+  recordTypes: RecordTypeMappingCandidate[];
+}
+
+export interface DestinationRecordType {
+  recordTypeId: string;
+  name: string;
+  active: boolean;
+}
+
+// ── Required-field detection (required-fields) ──────────────────────────────
+
+export interface RequiredField {
+  fieldApiName: string;
+  fieldLabel: string;
+  dataType: string;
+  picklistValues?: string[];
 }
 
 export interface RestoreMissingRequiredField {
@@ -249,6 +290,10 @@ const RESTORE_ENDPOINTS = {
   objectListByConfigId: '/v1/restore/get-objectlist-by-configid',
   fetchObjectCounts:    '/v1/restore/retrieve/fetch-count',
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
+  fetchMissingFields:   '/v1/restore/retrieve/fetch-missing-fields',
+  fetchMissingRecordTypes: '/v1/restore/retrieve/fetch-missing-record-types',
+  crmRecordTypes:       '/v1/crm-metadata/record-types/list',
+  requiredFields:       '/v1/restore/retrieve/required-fields',
   picklistValues:       '/v1/restore/get-picklist-field-values',
   createRestoreJob:     '/v1/restore',
   listRestoreJobs:      '/v1/restore/config/list',
@@ -275,8 +320,30 @@ export function useRestoreService() {
     getCrmObjects: (crmId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.crmObjects, { query: { crmId } }),
 
-    getCrmFields: (crmId: string, objectName: string) =>
-      api.get<unknown>(RESTORE_ENDPOINTS.crmFields, { query: { crmId, objectName } }),
+    getCrmFields: (crmId: string, objectName: string, excludeSystemFields?: boolean) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.crmFields, {
+        query: { crmId, objectName, ...(excludeSystemFields ? { excludeSystemFields: true } : {}) },
+      }),
+
+    fetchMissingFields: (backupConfigId: string, objectApiName: string) =>
+      api.post<FetchMissingFieldsResult>(RESTORE_ENDPOINTS.fetchMissingFields, { backupConfigId, objectApiName }),
+
+    // objectApiNames omitted resolves to every restorable object on the config
+    // (an ENTIRE restore) — the backend does that resolution, not the caller.
+    fetchMissingRecordTypes: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL', objectApiNames?: string[]) =>
+      api.post<ObjectRecordTypeMapping[]>(RESTORE_ENDPOINTS.fetchMissingRecordTypes, {
+        backupConfigId,
+        configType,
+        ...(objectApiNames?.length ? { objectApiNames } : {}),
+      }),
+
+    getCrmRecordTypes: (crmId: string, objectName: string, activeOnly?: boolean) =>
+      api.get<DestinationRecordType[]>(RESTORE_ENDPOINTS.crmRecordTypes, {
+        query: { crmId, objectName, ...(activeOnly ? { activeOnly: true } : {}) },
+      }),
+
+    fetchRequiredFields: (backupConfigId: string, objectApiName: string) =>
+      api.post<RequiredField[]>(RESTORE_ENDPOINTS.requiredFields, { backupConfigId, objectApiName }),
 
     getObjectListByConfigId: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL') =>
       api.get<{ data: RestoreSourceObject[] }>(RESTORE_ENDPOINTS.objectListByConfigId, { query: { backupConfigId, configType } }),
