@@ -263,9 +263,8 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     retry: 1,
   });
 
-  const sourceObjects: string[] = [
-    ...new Set(((sourceObjectsData as any)?.data ?? []).map((o: { name: string }) => o.name)),
-  ];
+  const sourceObjectRows: { name: string }[] = (sourceObjectsData as any)?.data ?? [];
+  const sourceObjects: string[] = Array.from(new Set(sourceObjectRows.map((o) => o.name)));
 
   const { data: crmObjectsData, isLoading: crmObjectsLoading } = useQuery({
     queryKey: ['crm-objects', destOrg],

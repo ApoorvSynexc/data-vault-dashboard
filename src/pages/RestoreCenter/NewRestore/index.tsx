@@ -153,8 +153,6 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
             goNext();
           }}
           onBack={goBack}
-          scopeMode={scopeMode}
-          restoreMode={restoreMode}
         />
       </div>
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
