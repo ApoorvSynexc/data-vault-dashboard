@@ -50,6 +50,8 @@ type BackupRow = {
   lastRun: string;
   dataSize: string;
   backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
+  isRealtime: boolean;
+  isOneTime: boolean;
 };
 
 function Panel({
@@ -697,6 +699,8 @@ export default function BackupManagementV2() {
       lastRun: formatDateTime(item.lastBackupAt),
       dataSize: formatBytes(item.sizeInBytes),
       backupStatus: (item.backupStatus as BackupStatus) || '' as any,
+      isRealtime: item.schedule === 'REALTIME',
+      isOneTime: item.scheduleConfig?.scheduling?.frequency === 'ONCE',
     };
   });
 
@@ -784,8 +788,8 @@ export default function BackupManagementV2() {
                   setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
                 },
               }] : []),
-              ...(row.configStatus !== 'DRAFT' && permissions.includes('backup.execute') ? [{ label: 'Run Now' }] : []),
-              ...(row.configStatus !== 'DRAFT' && permissions.includes('backup.write') ? [{
+              ...(row.configStatus !== 'DRAFT' && !row.isOneTime && !row.isRealtime && permissions.includes('backup.execute') ? [{ label: 'Run Now' }] : []),
+              ...(row.configStatus !== 'DRAFT' && !row.isOneTime && permissions.includes('backup.write') ? [{
                 label: row.configStatus === 'PAUSED' ? 'Resume' : 'Pause',
                 onClick: () => {
                   if (row.configStatus === 'PAUSED') {
