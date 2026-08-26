@@ -1,15 +1,37 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Typography from '../../../../components/Typography';
+import type { RestoreSourceObject, RestoreObjectRecordCount } from '../../../../services/restore/restore.service';
 
 interface Props {
-  sourceObjectNames: string[];
+  sourceObjects: RestoreSourceObject[];
   sourceObjectsLoading: boolean;
+  recordCounts: RestoreObjectRecordCount[];
+  recordCountsLoading: boolean;
   onChange: (objects: string[]) => void;
 }
 
-export default function ByObjectScope({ sourceObjectNames, sourceObjectsLoading, onChange }: Props) {
+function TypeBadge({ type }: { type: string }) {
+  const isCustom = type === 'CUSTOM';
+  return (
+    <span
+      className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+        isCustom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+      }`}
+    >
+      {isCustom ? 'Custom' : 'Standard'}
+    </span>
+  );
+}
+
+export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, recordCounts, recordCountsLoading, onChange }: Props) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const sourceObjectNames = sourceObjects.map((o) => o.name);
+  const countByName = useMemo(
+    () => new Map(recordCounts.map((c) => [c.objectApiName, c])),
+    [recordCounts]
+  );
 
   const toggle = (name: string) => {
     setSelected((prev) => {
@@ -28,7 +50,7 @@ export default function ByObjectScope({ sourceObjectNames, sourceObjectsLoading,
     onChange([...next]);
   };
 
-  const filtered = sourceObjectNames.filter((n) => n.toLowerCase().includes(search.toLowerCase()));
+  const filtered = sourceObjects.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -67,23 +89,46 @@ export default function ByObjectScope({ sourceObjectNames, sourceObjectsLoading,
       ) : filtered.length === 0 ? (
         <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
       ) : (
-        <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
-          {filtered.map((name) => (
-            <div
-              key={name}
-              onClick={() => toggle(name)}
-              className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
-            >
-              <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
-                className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0' onClick={(e) => e.stopPropagation()} />
-              <span className={`text-sm font-mono ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className='px-5 py-1.5 border-b border-gray-100 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide text-gray-400'>
+            <span className='w-4 flex-shrink-0' />
+            <span className='flex-1'>Name</span>
+            <span className='w-20 flex-shrink-0 text-right'>Records</span>
+            <span className='w-16 flex-shrink-0 text-right'>Type</span>
+          </div>
+          <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
+            {filtered.map(({ name, type }) => {
+              const countEntry = countByName.get(name);
+              return (
+                <div
+                  key={name}
+                  onClick={() => toggle(name)}
+                  className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
+                >
+                  <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
+                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0' onClick={(e) => e.stopPropagation()} />
+                  <span className={`flex-1 text-sm font-mono ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
+                  <span className='w-20 flex-shrink-0 text-right text-xs text-gray-500 tabular-nums'>
+                    {recordCountsLoading ? (
+                      <span className='inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin align-middle' />
+                    ) : countEntry?.ok ? (
+                      countEntry.count.toLocaleString()
+                    ) : (
+                      '—'
+                    )}
+                  </span>
+                  <div className='w-16 flex-shrink-0 flex justify-end'>
+                    <TypeBadge type={type} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <div className='px-5 py-2.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-400'>
-        Showing {filtered.length} of {sourceObjectNames.length} objects
+        Showing {filtered.length} of {sourceObjects.length} objects
       </div>
     </div>
   );

@@ -264,9 +264,7 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   });
 
   const sourceObjects: string[] = [
-    ...new Set(
-      Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]
-    ),
+    ...new Set(((sourceObjectsData as any)?.data ?? []).map((o: { name: string }) => o.name)),
   ];
 
   const { data: crmObjectsData, isLoading: crmObjectsLoading } = useQuery({

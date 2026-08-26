@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
-import type { RestoreScope, RestoreScopeFilter } from '../../../../services/restore/restore.service';
+import type { RestoreScope, RestoreScopeFilter, RestoreSourceObject, RestoreObjectRecordCount } from '../../../../services/restore/restore.service';
 import type { SourceSelection } from '../SelectSourceType';
 import { SCOPE_MODES } from './types';
 import type { ScopeMode } from './types';
@@ -90,11 +90,21 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
 
-  const sourceObjectNames: string[] = [
-    ...new Set(Object.values((sourceObjectsData as any)?.data ?? {}).flat() as string[]),
-  ];
+  const sourceObjects: RestoreSourceObject[] = (sourceObjectsData as any)?.data ?? [];
+  const sourceObjectNames: string[] = [...new Set(sourceObjects.map((o) => o.name))];
 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
+
+  // Only the object-scope table shows a Records column, so the (concurrent,
+  // per-object Athena) count query only runs once that tab is open.
+  const { data: recordCountsData, isLoading: recordCountsLoading } = useQuery({
+    queryKey: ['source-object-counts', sourceSelection.backupConfigId, sourceSelection.configType],
+    queryFn: () => restoreService.getObjectRecordCounts(sourceSelection.backupConfigId, sourceSelection.configType),
+    enabled: !!sourceSelection.backupConfigId && scopeMode === 'object',
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const recordCounts: RestoreObjectRecordCount[] = (recordCountsData as any)?.data ?? [];
 
   // Each scope component reports its latest value here via onChange
   const [selectedObjects, setSelectedObjects]   = useState<string[]>([]);
@@ -182,8 +192,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         {scopeMode === 'full'    && <FullRestoreScope />}
         {scopeMode === 'object'  && (
           <ByObjectScope
-            sourceObjectNames={sourceObjectNames}
+            sourceObjects={sourceObjects}
             sourceObjectsLoading={sourceObjectsLoading}
+            recordCounts={recordCounts}
+            recordCountsLoading={recordCountsLoading}
             onChange={setSelectedObjects}
           />
         )}
