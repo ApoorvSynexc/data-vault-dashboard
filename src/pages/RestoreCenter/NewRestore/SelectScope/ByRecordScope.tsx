@@ -84,7 +84,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
 
   useEffect(() => {
     if (!activeObj || !fetchedData) return;
-    const records: SFRecord[] = (fetchedData as any)?.data?.records ?? [];
+    const records: SFRecord[] = ((fetchedData as any)?.data?.rows ?? []).map((r: any) => r.record);
     setAllRecordsByObj((prev) => ({
       ...prev,
       [activeObj]: cursor ? [...(prev[activeObj] ?? []), ...records] : records,

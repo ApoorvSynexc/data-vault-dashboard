@@ -667,7 +667,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
             <span className='text-sm font-semibold text-gray-800'>Destination Type</span>
             <Tip text="Pick where the restored data goes. The configuration changes based on your selection." />
           </div>
-          <div className='p-4 grid grid-cols-1 sm:grid-cols-3 gap-3'>
+          <div className='p-4 grid grid-cols-1 sm:grid-cols-2 gap-3'>
             {DEST_TYPES.map((dt) => {
               const active = destType === dt.id;
               return (

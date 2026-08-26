@@ -23,11 +23,27 @@ import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
 import type { SourceSelection } from './SelectSourceType';
-import type { RestoreRetrievePayload } from '../../../services/restore/restore.service';
+import type { RestoreRetrievePayload, RestoreScope } from '../../../services/restore/restore.service';
 import type { ConflictOutput } from './ConflictConfig';
 import { toUTCISOString } from '../../../utils';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+// The objects a restore scope touches, when the scope shape says so directly.
+// ALL/CHANGE_SINCE/DELETED_ONLY/INSERTS_ONLY carry no explicit per-object
+// list — undefined lets the backend resolve every restorable object itself
+// (see fetch-missing-record-types), same as an ENTIRE restore already does
+// for object-level record counts.
+const scopeObjectApiNames = (scope: RestoreScope): string[] | undefined => {
+  switch (scope.type) {
+    case 'OBJECT': return scope.objects;
+    case 'RECORD': return Array.from(new Set(scope.records.map((r) => r.objectName)));
+    case 'FIELD': return Array.from(new Set(scope.fields.map((f) => f.objectName)));
+    case 'FILTER': return Array.from(new Set(scope.filters.map((f) => f.objectName)));
+    case 'BULK_CSV': return Array.from(new Set(scope.bulkCsvIds.map((b) => b.objectName)));
+    default: return undefined;
+  }
+};
 
 interface NewRestoreProps {
   onBack: () => void;
@@ -151,6 +167,10 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
             goNext();
           }}
           onBack={goBack}
+          backupConfigId={sourceSelection.backupConfigId}
+          configType={sourceSelection.configType}
+          destinationCrmId={restorePayload.destination.crmId || sourceSelection.crmId}
+          scopeObjectApiNames={scopeObjectApiNames(restorePayload.selection.restoreScope)}
         />
       </div>
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}

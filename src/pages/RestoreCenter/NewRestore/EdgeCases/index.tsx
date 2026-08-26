@@ -1,13 +1,225 @@
 // EdgeCases — Step 7 of 9 in the New Restore wizard.
 // Edge Case Handling + Field Defaults configuration.
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import InfoTooltip from '../../../../components/InfoTooltip';
-import type { RestoreEdgeCases } from '../../../../services/restore/restore.service';
+import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { RestoreEdgeCases, MissingSourceField, ObjectRecordTypeMapping, DestinationRecordType, RequiredField } from '../../../../services/restore/restore.service';
 
-type FieldMapRow = { id: number; objectName: string; sourceField: string; destField: string };
-type RecordTypeMapRow = { id: number; objectName: string; source: string; dest: string };
+type FieldMapRow = { id: number; objectName: string; committedObjectName: string; destFieldBySource: Record<string, string> };
+
+interface DestField { name: string; label: string; type: string; }
+
+// One "Object" block under "Missing fields in dest → Map to existing field":
+// looks up the fields the backup captured that no longer exist on the live
+// destination object, and lets the user map each to an existing destination
+// field. Needs its own component (not inlined in a .map()) since each block
+// runs its own queries, and hooks can't run inside a loop.
+function MissingFieldsForObject({
+  backupConfigId, crmId, objectName, destFieldBySource, onDestFieldChange, onMissingFieldsLoaded,
+}: {
+  backupConfigId: string;
+  crmId?: string;
+  objectName: string;
+  destFieldBySource: Record<string, string>;
+  onDestFieldChange: (sourceApiName: string, destApiName: string) => void;
+  onMissingFieldsLoaded: (objectName: string, fields: MissingSourceField[]) => void;
+}) {
+  const restoreService = useRestoreService();
+
+  const { data: missingData, isLoading: missingLoading } = useQuery({
+    queryKey: ['missing-fields', backupConfigId, objectName],
+    queryFn: () => restoreService.fetchMissingFields(backupConfigId, objectName),
+    enabled: !!backupConfigId && !!objectName,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const missingFields: MissingSourceField[] = missingData?.data?.missingFields ?? [];
+
+  useEffect(() => {
+    if (missingData?.data) onMissingFieldsLoaded(objectName, missingData.data.missingFields);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objectName, missingData]);
+
+  const { data: destFieldsData } = useQuery({
+    queryKey: ['dest-fields-for-mapping', crmId, objectName],
+    queryFn: () => restoreService.getCrmFields(crmId ?? '', objectName, true),
+    enabled: !!objectName && missingFields.length > 0,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const destFieldList: DestField[] = Array.isArray((destFieldsData as any)?.data) ? (destFieldsData as any).data : [];
+
+  if (missingLoading) {
+    return (
+      <div className='flex items-center gap-2 text-xs text-gray-400 py-2'>
+        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking for missing fields…
+      </div>
+    );
+  }
+
+  if (missingFields.length === 0) {
+    return (
+      <div className='flex items-center gap-2 py-2'>
+        <div className='w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
+          <svg viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='3' className='w-3 h-3'><polyline points='20 6 9 17 4 12' /></svg>
+        </div>
+        <p className='text-xs text-gray-600'>No missing fields for <strong className='font-mono'>{objectName}</strong> — nothing to map.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <div className='grid grid-cols-[1fr_1fr] gap-2'>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Source Field</span>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Destination Field</span>
+      </div>
+      {missingFields.map((field) => (
+        <div key={field.apiName} className='grid grid-cols-[1fr_1fr] gap-2 items-center'>
+          <input
+            value={field.apiName}
+            disabled
+            readOnly
+            className='h-9 px-3 rounded-lg text-xs outline-none bg-gray-50 text-gray-500 font-mono cursor-not-allowed'
+            style={{ border: '1px solid #E2E8F0' }}
+          />
+          <select
+            value={destFieldBySource[field.apiName] ?? ''}
+            onChange={(e) => onDestFieldChange(field.apiName, e.target.value)}
+            className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+          >
+            <option value=''>Select a field…</option>
+            {destFieldList.map((df) => (
+              <option key={df.name} value={df.name}>{df.name} ({df.label})</option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// One object's record-type mapping rows under "Record type missing → Map
+// manually" — the destination record type list is object-scoped, so this
+// runs its own query per object (same reason MissingFieldsForObject does).
+function RecordTypeMappingForObject({
+  crmId, objectApiName, recordTypes, mappingBySource, onMappingChange,
+}: {
+  crmId?: string;
+  objectApiName: string;
+  recordTypes: ObjectRecordTypeMapping['recordTypes'];
+  mappingBySource: Record<string, string>;
+  onMappingChange: (sourceRecordTypeId: string, destinationRecordTypeId: string) => void;
+}) {
+  const restoreService = useRestoreService();
+
+  const { data: destData } = useQuery({
+    queryKey: ['dest-record-types', crmId, objectApiName],
+    queryFn: () => restoreService.getCrmRecordTypes(crmId ?? '', objectApiName, true),
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const destRecordTypes: DestinationRecordType[] = Array.isArray(destData?.data) ? destData.data : [];
+
+  return (
+    <div className='rounded-lg p-3 flex flex-col gap-2' style={{ border: '1px solid #E2E8F0' }}>
+      <p className='text-xs font-bold text-gray-800 font-mono'>{objectApiName}</p>
+      <div className='grid grid-cols-[1fr_1fr] gap-2'>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Source Record Type</span>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Destination Record Type</span>
+      </div>
+      {recordTypes.map((rt) => (
+        <div key={rt.sourceRecordTypeId} className='grid grid-cols-[1fr_1fr] gap-2 items-center'>
+          <div className='h-9 px-3 rounded-lg text-xs bg-gray-50 text-gray-600 flex items-center gap-1.5' style={{ border: '1px solid #E2E8F0' }}>
+            <span className='truncate'>{rt.sourceRecordTypeName}</span>
+            <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${rt.status === 'MISSING' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'}`}>
+              {rt.status === 'MISSING' ? 'Missing' : 'Inactive'}
+            </span>
+          </div>
+          <select
+            value={mappingBySource[rt.sourceRecordTypeId] ?? ''}
+            onChange={(e) => onMappingChange(rt.sourceRecordTypeId, e.target.value)}
+            className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+          >
+            <option value=''>Select a record type…</option>
+            {destRecordTypes.map((d) => (
+              <option key={d.recordTypeId} value={d.recordTypeId}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// "Record type missing → Map manually" — calls fetch-missing-record-types
+// once for the whole restore (not once per object: with an ENTIRE restore
+// there could be hundreds of objects, and the backend already resolves the
+// object scope itself when objectApiNames is omitted), then renders one
+// RecordTypeMappingForObject block per object the response says needs one.
+function RecordTypeMappingBlock({
+  backupConfigId, configType, crmId, objectApiNames, mappingByObject, onMappingChange,
+}: {
+  backupConfigId: string;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  crmId?: string;
+  objectApiNames?: string[];
+  mappingByObject: Record<string, Record<string, string>>;
+  onMappingChange: (objectApiName: string, sourceRecordTypeId: string, destinationRecordTypeId: string) => void;
+}) {
+  const restoreService = useRestoreService();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['missing-record-types', backupConfigId, configType, objectApiNames?.join(',') ?? 'ALL'],
+    queryFn: () => restoreService.fetchMissingRecordTypes(backupConfigId, configType, objectApiNames),
+    enabled: !!backupConfigId,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const objectMappings: ObjectRecordTypeMapping[] = data?.data ?? [];
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center gap-2 text-xs text-gray-400 py-2'>
+        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking for missing or inactive record types…
+      </div>
+    );
+  }
+
+  if (objectMappings.length === 0) {
+    return (
+      <div className='flex items-center gap-2 py-2'>
+        <div className='w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
+          <svg viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='3' className='w-3 h-3'><polyline points='20 6 9 17 4 12' /></svg>
+        </div>
+        <p className='text-xs text-gray-600'>No missing or inactive record types found — nothing to map.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-3'>
+      {objectMappings.map((om) => (
+        <RecordTypeMappingForObject
+          key={om.objectApiName}
+          crmId={crmId}
+          objectApiName={om.objectApiName}
+          recordTypes={om.recordTypes}
+          mappingBySource={mappingByObject[om.objectApiName] ?? {}}
+          onMappingChange={(sourceId, destId) => onMappingChange(om.objectApiName, sourceId, destId)}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -68,22 +280,179 @@ function Tip({ text }: { text: string }) {
   return <InfoTooltip text={text} className='ml-1' />;
 }
 
-// ── Field defaults data ───────────────────────────────────────────────────────
+// ── Field defaults ────────────────────────────────────────────────────────────
 
-const FIELD_DEFAULTS = [
-  { field: 'Account.Industry',      sub: 'Picklist · Required', type: 'Picklist', options: ['Other', 'Technology', 'Finance', 'Healthcare'] },
-  { field: 'Account.Type',          sub: 'Picklist · Required', type: 'Picklist', options: ['Customer', 'Prospect', 'Partner', 'Other'] },
-  { field: 'Contact.Email',         sub: 'Email · Required',    type: 'Email',    options: [] },
-  { field: 'Opportunity.StageName', sub: 'Picklist · Required', type: 'Picklist', options: ['Prospecting', 'Qualification', 'Closed Lost'] },
-  { field: 'Case.Status',           sub: 'Picklist · Required', type: 'Picklist', options: ['New', 'Working', 'Escalated', 'Closed'] },
-];
+// Salesforce field describe `type` -> the HTML input type that fits it best.
+// Picklist is handled separately (a <select> off picklistValues, never this).
+const inputTypeForDataType = (dataType: string): string => {
+  switch (dataType) {
+    case 'date': return 'date';
+    case 'datetime': return 'datetime-local';
+    case 'int': case 'double': case 'currency': case 'percent': return 'number';
+    case 'email': return 'email';
+    case 'phone': return 'tel';
+    case 'url': return 'url';
+    default: return 'text';
+  }
+};
+
+// One object's required-field default-value rows under "Missing required
+// field value → Use specified default per field". Own component (not
+// inlined in a .map()) for the same reason MissingFieldsForObject /
+// RecordTypeMappingForObject are: it runs its own per-object query.
+function RequiredFieldsForObject({
+  backupConfigId, objectApiName, values, onValueChange, onFieldsLoaded,
+}: {
+  backupConfigId: string;
+  objectApiName: string;
+  values: Record<string, string>;
+  onValueChange: (fieldApiName: string, value: string) => void;
+  onFieldsLoaded: (objectApiName: string, fields: RequiredField[]) => void;
+}) {
+  const restoreService = useRestoreService();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['required-fields', backupConfigId, objectApiName],
+    queryFn: () => restoreService.fetchRequiredFields(backupConfigId, objectApiName),
+    enabled: !!backupConfigId && !!objectApiName,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const fields = data?.data ?? [];
+
+  useEffect(() => {
+    if (data?.data) onFieldsLoaded(objectApiName, data.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objectApiName, data]);
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center gap-2 text-xs text-gray-400 py-2'>
+        <div className='w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin' /> Checking required fields…
+      </div>
+    );
+  }
+
+  if (fields.length === 0) {
+    return (
+      <div className='flex items-center gap-2 py-2'>
+        <div className='w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
+          <svg viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='3' className='w-3 h-3'><polyline points='20 6 9 17 4 12' /></svg>
+        </div>
+        <p className='text-xs text-gray-600'>No required fields detected for <strong className='font-mono'>{objectApiName}</strong> — nothing to configure.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <div className='grid grid-cols-[1.4fr_0.8fr_1fr] gap-2'>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Field</span>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Data Type</span>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Default Value</span>
+      </div>
+      {fields.map((f) => (
+        <div key={f.fieldApiName} className='grid grid-cols-[1.4fr_0.8fr_1fr] gap-2 items-center'>
+          <div>
+            <p className='text-xs font-semibold text-gray-800'>{f.fieldLabel}</p>
+            <p className='text-[10px] text-gray-400 font-mono'>{f.fieldApiName}</p>
+          </div>
+          <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 w-fit'>{f.dataType}</span>
+          {f.dataType === 'picklist' ? (
+            <select
+              value={values[f.fieldApiName] ?? ''}
+              onChange={(e) => onValueChange(f.fieldApiName, e.target.value)}
+              className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+            >
+              <option value=''>Select a value…</option>
+              {(f.picklistValues ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          ) : f.dataType === 'boolean' ? (
+            <input
+              type='checkbox'
+              checked={values[f.fieldApiName] === 'true'}
+              onChange={(e) => onValueChange(f.fieldApiName, e.target.checked ? 'true' : 'false')}
+              className='w-4 h-4 accent-blue-600'
+            />
+          ) : (
+            <input
+              type={inputTypeForDataType(f.dataType)}
+              value={values[f.fieldApiName] ?? ''}
+              onChange={(e) => onValueChange(f.fieldApiName, e.target.value)}
+              placeholder='Default value'
+              className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// One "Object" block under Field Defaults — picks a single restore object
+// (never "ALL": the required-fields API always needs one concrete
+// objectApiName) and shows its required-field rows once picked.
+function RequiredFieldDefaultBlock({
+  backupConfigId, objectApiName, objectOptions, onObjectChange, onRemove, canRemove, values, onValueChange, onFieldsLoaded,
+}: {
+  backupConfigId: string;
+  objectApiName: string;
+  objectOptions: string[];
+  onObjectChange: (objectApiName: string) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+  values: Record<string, string>;
+  onValueChange: (fieldApiName: string, value: string) => void;
+  onFieldsLoaded: (objectApiName: string, fields: RequiredField[]) => void;
+}) {
+  return (
+    <div className='rounded-lg p-3 flex flex-col gap-2' style={{ border: '1px solid #E2E8F0' }}>
+      <div className='flex items-center gap-2'>
+        <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide flex-shrink-0'>Object</span>
+        <select
+          value={objectApiName}
+          onChange={(e) => onObjectChange(e.target.value)}
+          className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
+          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+        >
+          <option value=''>Select an object…</option>
+          {objectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        {canRemove && (
+          <button onClick={onRemove} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'>
+            <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+          </button>
+        )}
+      </div>
+      {objectApiName && (
+        <RequiredFieldsForObject
+          backupConfigId={backupConfigId}
+          objectApiName={objectApiName}
+          values={values}
+          onValueChange={onValueChange}
+          onFieldsLoaded={onFieldsLoaded}
+        />
+      )}
+    </div>
+  );
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 
-interface Props { onNext: (edgeCases: RestoreEdgeCases) => void; onBack: () => void; }
+interface Props {
+  onNext: (edgeCases: RestoreEdgeCases) => void;
+  onBack: () => void;
+  backupConfigId: string;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  destinationCrmId?: string;
+  scopeObjectApiNames?: string[];
+}
 
-export default function EdgeCases({ onNext, onBack }: Props) {
+export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames }: Props) {
   const [ecDuplicate] = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
@@ -92,48 +461,84 @@ export default function EdgeCases({ onNext, onBack }: Props) {
   const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
 
-  // Field mapping rows for "Map to existing field"
+  // Object blocks for "Map to existing field" — one per object, each showing
+  // the fields /retrieve/fetch-missing-fields reports as missing for it.
   const [fieldMapRows, setFieldMapRows] = useState<FieldMapRow[]>([
-    { id: 1, objectName: '', sourceField: '', destField: '' },
+    { id: 1, objectName: '', committedObjectName: '', destFieldBySource: {} },
   ]);
-  const addFieldMapRow = () => setFieldMapRows((p) => [...p, { id: Date.now(), objectName: '', sourceField: '', destField: '' }]);
+  const addFieldMapRow = () => setFieldMapRows((p) => [...p, { id: Date.now(), objectName: '', committedObjectName: '', destFieldBySource: {} }]);
   const removeFieldMapRow = (id: number) => setFieldMapRows((p) => p.filter((r) => r.id !== id));
   const updateFieldMapRow = (id: number, patch: Partial<FieldMapRow>) =>
     setFieldMapRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+  // Object name is only "committed" (triggers the missing-fields lookup) on
+  // blur — firing the API on every keystroke would spam it with partial names.
+  const commitFieldMapObjectName = (id: number, objectName: string) =>
+    setFieldMapRows((p) => p.map((r) => r.id === id
+      ? { ...r, committedObjectName: objectName.trim(), destFieldBySource: r.committedObjectName === objectName.trim() ? r.destFieldBySource : {} }
+      : r));
+  const setFieldMapDestField = (id: number, sourceApiName: string, destApiName: string) =>
+    setFieldMapRows((p) => p.map((r) => r.id === id
+      ? { ...r, destFieldBySource: { ...r.destFieldBySource, [sourceApiName]: destApiName } }
+      : r));
 
-  // Record type mapping rows for "Map manually"
-  const [rtMapRows, setRtMapRows] = useState<RecordTypeMapRow[]>([
-    { id: 1, objectName: '', source: 'Support Case', dest: 'Support Case' },
-    { id: 2, objectName: '', source: 'Escalation',   dest: '' },
-  ]);
-  const addRtMapRow = () => setRtMapRows((p) => [...p, { id: Date.now(), objectName: '', source: '', dest: '' }]);
-  const removeRtMapRow = (id: number) => setRtMapRows((p) => p.filter((r) => r.id !== id));
-  const updateRtMapRow = (id: number, patch: Partial<RecordTypeMapRow>) =>
-    setRtMapRows((p) => p.map((r) => r.id === id ? { ...r, ...patch } : r));
+  // objectName -> the missing fields last reported for it, kept in sync by
+  // each MissingFieldsForObject block — needed at submit time to know which
+  // source fields actually have a mapping to send.
+  const [missingFieldsByObject, setMissingFieldsByObject] = useState<Record<string, MissingSourceField[]>>({});
+  const onMissingFieldsLoaded = (objectName: string, fields: MissingSourceField[]) =>
+    setMissingFieldsByObject((prev) => ({ ...prev, [objectName]: fields }));
+
+  // Record type mapping selections for "Map manually" — objectApiName ->
+  // sourceRecordTypeId -> destinationRecordTypeId. The candidate rows
+  // themselves come from RecordTypeMappingBlock's fetch-missing-record-types
+  // call, not typed in here.
+  const [rtMappingByObject, setRtMappingByObject] = useState<Record<string, Record<string, string>>>({});
+  const updateRtMapping = (objectApiName: string, sourceRecordTypeId: string, destinationRecordTypeId: string) =>
+    setRtMappingByObject((prev) => ({
+      ...prev,
+      [objectApiName]: { ...(prev[objectApiName] ?? {}), [sourceRecordTypeId]: destinationRecordTypeId },
+    }));
 
   const fieldDefaultsRef = useRef<HTMLDivElement>(null);
 
-  type StaticDefault = { field: string; sub: string; type: string; options: string[]; value: string };
-  const [staticDefaults, setStaticDefaults] = useState<StaticDefault[]>(
-    FIELD_DEFAULTS.map((r) => ({ ...r, value: r.options[0] ?? 'noreply@acme.com' }))
-  );
-  const updateStaticDefault = (field: string, value: string) =>
-    setStaticDefaults((prev) => prev.map((r) => r.field === field ? { ...r, value } : r));
+  // Object blocks for Field Defaults — one per object, never "ALL" (the
+  // required-fields API always needs one concrete objectApiName). Restore
+  // scope already names the objects when it can (same scopeObjectApiNames
+  // fetch-missing-record-types uses); only ALL/CHANGE_SINCE/etc scopes need
+  // the actual object list looked up.
+  const restoreService = useRestoreService();
+  const { data: objectListData } = useQuery({
+    queryKey: ['object-list', backupConfigId, configType],
+    queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType),
+    enabled: !scopeObjectApiNames?.length && !!backupConfigId && ecMissRequired === 'Use specified default per field',
+    staleTime: 60_000,
+    retry: 1,
+  });
+  const reqFieldObjectOptions: string[] = scopeObjectApiNames?.length
+    ? scopeObjectApiNames
+    : Array.from(new Set(((objectListData as any)?.data ?? []).map((o: { name: string }) => o.name)));
 
-  type CustomRow = { id: number; objectName: string; fieldName: string; type: string; value: string };
-  const [customRows, setCustomRows] = useState<CustomRow[]>([]);
-  const [addedMsg, setAddedMsg] = useState(false);
+  type ReqFieldBlock = { id: number; objectApiName: string };
+  const [reqFieldBlocks, setReqFieldBlocks] = useState<ReqFieldBlock[]>([{ id: 1, objectApiName: '' }]);
+  const addReqFieldBlock = () => setReqFieldBlocks((p) => [...p, { id: Date.now(), objectApiName: '' }]);
+  const removeReqFieldBlock = (id: number) => setReqFieldBlocks((p) => p.filter((r) => r.id !== id));
+  const updateReqFieldBlockObject = (id: number, objectApiName: string) =>
+    setReqFieldBlocks((p) => p.map((r) => r.id === id ? { ...r, objectApiName } : r));
 
-  const addCustomRow = () => {
-    const id = Date.now();
-    setCustomRows((prev) => [...prev, { id, objectName: '', fieldName: '', type: 'Text', value: '' }]);
-    setAddedMsg(true);
-    setTimeout(() => setAddedMsg(false), 2500);
-  };
+  // objectApiName -> fieldApiName -> configured default value.
+  const [reqFieldValuesByObject, setReqFieldValuesByObject] = useState<Record<string, Record<string, string>>>({});
+  const updateReqFieldValue = (objectApiName: string, fieldApiName: string, value: string) =>
+    setReqFieldValuesByObject((prev) => ({
+      ...prev,
+      [objectApiName]: { ...(prev[objectApiName] ?? {}), [fieldApiName]: value },
+    }));
 
-  const removeCustomRow = (id: number) => setCustomRows((prev) => prev.filter((r) => r.id !== id));
-  const updateCustomRow = (id: number, patch: Partial<CustomRow>) =>
-    setCustomRows((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
+  // objectApiName -> the required fields last reported for it, kept in sync
+  // by each RequiredFieldsForObject block — needed at submit time for each
+  // field's dataType (the payload's `type`), which isn't in reqFieldValuesByObject.
+  const [requiredFieldsByObject, setRequiredFieldsByObject] = useState<Record<string, RequiredField[]>>({});
+  const onRequiredFieldsLoaded = (objectApiName: string, fields: RequiredField[]) =>
+    setRequiredFieldsByObject((prev) => ({ ...prev, [objectApiName]: fields }));
 
   const selectClass = 'h-9 w-full px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white';
   const selectStyle = { border: '1px solid #E2E8F0', color: '#33363F' };
@@ -194,44 +599,38 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                   </select>
                 </div>
                 {ecMissingField === 'Map to existing field' && (
-                  <div className='ml-0 sm:ml-48 flex flex-col gap-2'>
-                    <div className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2'>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Object</span>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Source Field</span>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Destination Field</span>
-                      <span />
-                    </div>
+                  <div className='ml-0 sm:ml-48 flex flex-col gap-3'>
                     {fieldMapRows.map((row) => (
-                      <div key={row.id} className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
-                        <input
-                          value={row.objectName}
-                          onChange={(e) => updateFieldMapRow(row.id, { objectName: e.target.value })}
-                          placeholder='e.g. Account'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        <input
-                          value={row.sourceField}
-                          onChange={(e) => updateFieldMapRow(row.id, { sourceField: e.target.value })}
-                          placeholder='e.g. Legacy_ID__c'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        <input
-                          value={row.destField}
-                          onChange={(e) => updateFieldMapRow(row.id, { destField: e.target.value })}
-                          placeholder='e.g. ExternalId__c'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        {fieldMapRows.length > 1 && (
-                          <button onClick={() => removeFieldMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'>
-                            <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-                          </button>
+                      <div key={row.id} className='rounded-lg p-3 flex flex-col gap-2' style={{ border: '1px solid #E2E8F0' }}>
+                        <div className='flex items-center gap-2'>
+                          <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide flex-shrink-0'>Object</span>
+                          <input
+                            value={row.objectName}
+                            onChange={(e) => updateFieldMapRow(row.id, { objectName: e.target.value })}
+                            onBlur={(e) => commitFieldMapObjectName(row.id, e.target.value)}
+                            placeholder='e.g. Account'
+                            className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
+                            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+                          />
+                          {fieldMapRows.length > 1 && (
+                            <button onClick={() => removeFieldMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'>
+                              <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                            </button>
+                          )}
+                        </div>
+                        {row.committedObjectName && (
+                          <MissingFieldsForObject
+                            backupConfigId={backupConfigId}
+                            crmId={destinationCrmId}
+                            objectName={row.committedObjectName}
+                            destFieldBySource={row.destFieldBySource}
+                            onDestFieldChange={(sourceApiName, destApiName) => setFieldMapDestField(row.id, sourceApiName, destApiName)}
+                            onMissingFieldsLoaded={onMissingFieldsLoaded}
+                          />
                         )}
                       </div>
                     ))}
-                    <button onClick={addFieldMapRow} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add mapping</button>
+                    <button onClick={addFieldMapRow} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add object</button>
                   </div>
                 )}
               </div>
@@ -249,11 +648,11 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                 </div>
                 {ecOwner === 'Reassign to specified user' && (
                   <div className='ml-0 sm:ml-48 flex flex-col gap-1'>
-                    <span className='text-xs text-gray-500'>Fallback owner</span>
+                    <span className='text-xs text-gray-500'>Fallback owner ID</span>
                     <input
                       value={fallbackOwner}
                       onChange={(e) => setFallbackOwner(e.target.value)}
-                      placeholder='Search users…'
+                      placeholder='e.g. 005XXXXXXXXXXXXXXX'
                       className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30'
                       style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                     />
@@ -282,42 +681,15 @@ export default function EdgeCases({ onNext, onBack }: Props) {
                   </select>
                 </div>
                 {ecRecordType === 'Map manually' && (
-                  <div className='ml-0 sm:ml-48 flex flex-col gap-2'>
-                    <div className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2'>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Object</span>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Source Record Type</span>
-                      <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Destination Record Type</span>
-                      <span />
-                    </div>
-                    {rtMapRows.map((row) => (
-                      <div key={row.id} className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
-                        <input
-                          value={row.objectName}
-                          onChange={(e) => updateRtMapRow(row.id, { objectName: e.target.value })}
-                          placeholder='e.g. Case'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        <input
-                          value={row.source}
-                          onChange={(e) => updateRtMapRow(row.id, { source: e.target.value })}
-                          placeholder='e.g. Support Case'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        <input
-                          value={row.dest}
-                          onChange={(e) => updateRtMapRow(row.id, { dest: e.target.value })}
-                          placeholder='e.g. Standard Case'
-                          className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
-                          style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-                        />
-                        <button onClick={() => removeRtMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'>
-                          <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-                        </button>
-                      </div>
-                    ))}
-                    <button onClick={addRtMapRow} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add mapping</button>
+                  <div className='ml-0 sm:ml-48'>
+                    <RecordTypeMappingBlock
+                      backupConfigId={backupConfigId}
+                      configType={configType}
+                      crmId={destinationCrmId}
+                      objectApiNames={scopeObjectApiNames}
+                      mappingByObject={rtMappingByObject}
+                      onMappingChange={updateRtMapping}
+                    />
                   </div>
                 )}
               </div>
@@ -349,129 +721,27 @@ export default function EdgeCases({ onNext, onBack }: Props) {
 
           {/* Field Defaults — only when "Use specified default per field" is selected */}
           {ecMissRequired === 'Use specified default per field' && <div ref={fieldDefaultsRef} className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-              <div className='flex items-center gap-1.5'>
-                <span className='text-base'>🏷</span>
-                <span className='text-sm font-semibold text-gray-800'>Field Defaults</span>
-                <Tip text='For each mandatory field in your selected objects, define a fallback value to use when the source record does not have one. Only fills in when the field is blank in source — existing values are not overwritten.' />
-              </div>
-              <span className='text-xs text-gray-400'>5 mandatory fields detected</span>
+            <div className='flex items-center gap-1.5 border-b border-gray-100 px-5 py-3'>
+              <span className='text-base'>🏷</span>
+              <span className='text-sm font-semibold text-gray-800'>Field Defaults</span>
+              <Tip text='For each required field on an object, define a fallback value to use when the source record does not have one. Only fills in when the field is blank in source — existing values are not overwritten.' />
             </div>
-            <div className='flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50 flex-wrap'>
-              <span className='text-xs font-semibold text-gray-600'>Filter:</span>
-              <select className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none'>
-                <option>All objects</option><option>Account</option><option>Contact</option><option>Opportunity</option><option>Case</option>
-              </select>
-              <input placeholder='Search fields…' className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none flex-1 sm:w-40 sm:flex-none' />
-              <span className='ml-auto text-xs text-gray-400 hidden sm:inline'>Showing 5 of 5 mandatory fields</span>
-            </div>
-            <div className='overflow-x-auto'>
-              <table className='w-full text-xs'>
-                <thead>
-                  <tr className='border-b border-gray-100 bg-gray-50'>
-                    <th className='text-left py-2 px-4 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Object</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Field</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Type</th>
-                    <th className='text-left py-2 px-3 font-semibold text-gray-600 uppercase tracking-wide text-[10px]'>Default Value</th>
-                    <th className='w-8' />
-                  </tr>
-                </thead>
-                <tbody>
-                  {staticDefaults.map((row) => {
-                    const [objName, fieldName] = row.field.split('.');
-                    return (
-                      <tr key={row.field} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                        <td className='py-3 px-4'>
-                          <p className='font-semibold text-gray-800 font-mono'>{objName}</p>
-                        </td>
-                        <td className='py-3 px-3'>
-                          <p className='font-semibold text-gray-800 font-mono'>{fieldName}</p>
-                          <p className='text-gray-400 mt-0.5'>{row.sub}</p>
-                        </td>
-                        <td className='py-3 px-3'>
-                          <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600'>{row.type}</span>
-                        </td>
-                        <td className='py-3 px-3'>
-                          {row.options.length > 0 ? (
-                            <select
-                              value={row.value}
-                              onChange={(e) => updateStaticDefault(row.field, e.target.value)}
-                              className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white text-gray-700 outline-none w-full max-w-[160px]'
-                            >
-                              {row.options.map((o) => <option key={o}>{o}</option>)}
-                            </select>
-                          ) : (
-                            <input
-                              type='text'
-                              value={row.value}
-                              onChange={(e) => updateStaticDefault(row.field, e.target.value)}
-                              className='h-8 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 w-full max-w-[160px]'
-                              style={{ border: '1px solid #E2E8F0' }}
-                            />
-                          )}
-                        </td>
-                        <td className='py-3 px-3 w-8' />
-                      </tr>
-                    );
-                  })}
-                  {customRows.map((row) => (
-                    <tr key={row.id} className='border-b border-blue-50 bg-blue-50/40'>
-                      <td className='py-2 px-4'>
-                        <input
-                          value={row.objectName}
-                          onChange={(e) => updateCustomRow(row.id, { objectName: e.target.value })}
-                          placeholder='e.g. Account'
-                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400 font-mono'
-                        />
-                      </td>
-                      <td className='py-2 px-3'>
-                        <input
-                          value={row.fieldName}
-                          onChange={(e) => updateCustomRow(row.id, { fieldName: e.target.value })}
-                          placeholder='e.g. Industry'
-                          className='h-8 w-full px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400 font-mono'
-                        />
-                      </td>
-                      <td className='py-2 px-3'>
-                        <select
-                          value={row.type}
-                          onChange={(e) => updateCustomRow(row.id, { type: e.target.value })}
-                          className='h-8 text-xs border border-blue-200 rounded-lg px-2 bg-white text-gray-700 outline-none'
-                        >
-                          <option>Text</option>
-                          <option>Picklist</option>
-                          <option>Email</option>
-                          <option>Number</option>
-                          <option>Date</option>
-                          <option>Checkbox</option>
-                        </select>
-                      </td>
-                      <td className='py-2 px-3'>
-                        <input
-                          value={row.value}
-                          onChange={(e) => updateCustomRow(row.id, { value: e.target.value })}
-                          placeholder='Default value'
-                          className='h-8 w-full max-w-[160px] px-3 rounded-lg text-xs border border-blue-200 bg-white text-gray-800 outline-none focus:border-blue-400'
-                        />
-                      </td>
-                      <td className='py-2 px-3 w-8'>
-                        <button onClick={() => removeCustomRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors'>
-                          <svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className='relative px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400'>
-              Mandatory fields are detected automatically from the destination schema.{' '}
-              <button onClick={addCustomRow} className='text-blue-600 hover:underline font-medium'>+ Add custom default rule</button>
-              {addedMsg && (
-                <span className='ml-3 inline-flex items-center gap-1 text-xs font-semibold text-gray-800 bg-gray-900 text-white px-3 py-1.5 rounded-lg'>
-                  ✓ Custom default row added — fill in the field, type, and value.
-                </span>
-              )}
+            <div className='p-4 flex flex-col gap-3'>
+              {reqFieldBlocks.map((block) => (
+                <RequiredFieldDefaultBlock
+                  key={block.id}
+                  backupConfigId={backupConfigId}
+                  objectApiName={block.objectApiName}
+                  objectOptions={reqFieldObjectOptions}
+                  onObjectChange={(name) => updateReqFieldBlockObject(block.id, name)}
+                  onRemove={() => removeReqFieldBlock(block.id)}
+                  canRemove={reqFieldBlocks.length > 1}
+                  values={reqFieldValuesByObject[block.objectApiName] ?? {}}
+                  onValueChange={(fieldApiName, value) => updateReqFieldValue(block.objectApiName, fieldApiName, value)}
+                  onFieldsLoaded={onRequiredFieldsLoaded}
+                />
+              ))}
+              <button onClick={addReqFieldBlock} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add object</button>
             </div>
           </div>}
 
@@ -539,14 +809,17 @@ export default function EdgeCases({ onNext, onBack }: Props) {
               edgeCases.missingFieldInDestination = {
                 type: MISSING_FIELD_ENUM[ecMissingField] ?? 'SKIP_THE_FIELD',
                 ...(ecMissingField === 'Map to existing field' ? {
-                  sourceDestinationMapping: fieldMapRows
-                    .filter((r) => r.objectName && r.sourceField && r.destField)
-                    .map((r) => ({
-                      sourceObject:      r.objectName,
-                      sourceFields:      r.sourceField,
-                      destinationObject: r.objectName,
-                      destinationFields: r.destField,
-                    })),
+                  sourceDestinationMapping: fieldMapRows.flatMap((r) => {
+                    const missing = missingFieldsByObject[r.committedObjectName] ?? [];
+                    return missing
+                      .filter((f) => r.destFieldBySource[f.apiName])
+                      .map((f) => ({
+                        sourceObject:      r.committedObjectName,
+                        sourceFields:      f.apiName,
+                        destinationObject: r.committedObjectName,
+                        destinationFields: r.destFieldBySource[f.apiName],
+                      }));
+                  }),
                 } : {}),
               };
 
@@ -563,16 +836,14 @@ export default function EdgeCases({ onNext, onBack }: Props) {
               edgeCases.recordTypeMissing = {
                 type: RECORD_TYPE_ENUM[ecRecordType] ?? 'MAP_TO_DEFAULT',
                 ...(ecRecordType === 'Map manually' ? {
-                  objects: (() => {
-                    const objectMap: Record<string, { sourceRecordTypeId: string; destinationRecordTypeId: string }[]> = {};
-                    rtMapRows
-                      .filter((r) => r.objectName && r.source && r.dest)
-                      .forEach((r) => {
-                        if (!objectMap[r.objectName]) objectMap[r.objectName] = [];
-                        objectMap[r.objectName].push({ sourceRecordTypeId: r.source, destinationRecordTypeId: r.dest });
-                      });
-                    return Object.entries(objectMap).map(([name, mapping]) => ({ name, mapping }));
-                  })(),
+                  objects: Object.entries(rtMappingByObject)
+                    .map(([name, bySource]) => ({
+                      name,
+                      mapping: Object.entries(bySource)
+                        .filter(([, destinationRecordTypeId]) => destinationRecordTypeId)
+                        .map(([sourceRecordTypeId, destinationRecordTypeId]) => ({ sourceRecordTypeId, destinationRecordTypeId })),
+                    }))
+                    .filter((o) => o.mapping.length > 0),
                 } : {}),
               };
 
@@ -580,23 +851,20 @@ export default function EdgeCases({ onNext, onBack }: Props) {
               edgeCases.missingRequiredFieldValue = {
                 type: MISS_REQUIRED_ENUM[ecMissRequired] ?? 'SKIP_THE_RECORD',
                 ...(ecMissRequired === 'Use specified default per field' ? {
-                  mapping: (() => {
-                    const allFieldRows: { objectName: string; fieldName: string; type: string; value: string }[] = [
-                      ...staticDefaults.map((r) => {
-                        const [objectName, fieldName] = r.field.split('.');
-                        return { objectName, fieldName, type: r.type, value: r.value };
-                      }),
-                      ...customRows.map((r) => ({ objectName: r.objectName, fieldName: r.fieldName, type: r.type, value: r.value })),
-                    ];
-                    return allFieldRows
-                      .filter((r) => r.objectName && r.fieldName && r.value)
-                      .reduce<{ object: string; fields: { name: string; type: string; value: string }[] }[]>((acc, row) => {
-                        const existing = acc.find((e) => e.object === row.objectName);
-                        if (existing) { existing.fields.push({ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }); }
-                        else { acc.push({ object: row.objectName, fields: [{ name: row.fieldName, type: row.type.toUpperCase(), value: row.value }] }); }
-                        return acc;
-                      }, []);
-                  })(),
+                  mapping: reqFieldBlocks
+                    .map((b) => b.objectApiName)
+                    .filter((name, i, arr) => name && arr.indexOf(name) === i)
+                    .map((objectApiName) => {
+                      const fieldsForObject = requiredFieldsByObject[objectApiName] ?? [];
+                      const values = reqFieldValuesByObject[objectApiName] ?? {};
+                      return {
+                        object: objectApiName,
+                        fields: fieldsForObject
+                          .filter((f) => values[f.fieldApiName])
+                          .map((f) => ({ name: f.fieldApiName, type: f.dataType.toUpperCase(), value: values[f.fieldApiName] })),
+                      };
+                    })
+                    .filter((o) => o.fields.length > 0),
                 } : {}),
               };
 
