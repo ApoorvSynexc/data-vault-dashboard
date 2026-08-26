@@ -61,7 +61,6 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
 
   // Shared state for conditional UI across steps
   const [scopeMode, setScopeMode] = useState<string>('full');
-  const [restoreMode, setRestoreMode] = useState<string>('overwrite');
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 9) as Step);
   const goBack = () => {
@@ -132,7 +131,6 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       <div className={currentStep === 6 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <ConflictConfig
           onNext={(conflict: ConflictOutput) => {
-            setRestoreMode(conflict.restoreMode);
             updatePayload({
               conflict: {
                 ...restorePayload.conflict,
