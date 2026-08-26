@@ -25,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { useBackupConfigService } from '../../../services/backup-config/backup-config.service';
 import type { BackupJobItem } from '../../../services/backup-config/backup-config.service';
-import { formatBytes } from '../../../utils';
+import { formatBytes, formatDateTime } from '../../../utils';
 import ArchiveJobDetailsModal from './ArchiveJobDetailsModal';
 
 function StatusDot({ status }: { status: string }) {
@@ -144,6 +144,8 @@ export default function ArchiveDetailScreen() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [processError, setProcessError] = useState<string | null>(null);
   const [processSuccess, setProcessSuccess] = useState(false);
+  const [runNowError, setRunNowError] = useState<string | null>(null);
+  const [runNowSuccess, setRunNowSuccess] = useState(false);
   const queryClient = useQueryClient();
   const [filterCollapsedIds, setFilterCollapsedIds] = useState<Set<string>>(new Set());
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
@@ -199,6 +201,28 @@ export default function ArchiveDetailScreen() {
     },
     onError: (err: any) => {
       setProcessError(err?.response?.data?.message ?? err?.message ?? 'Failed to process backup.');
+    },
+  });
+
+  const flattenObjects = (items: any[]): any[] =>
+    items.flatMap((o) => [o, ...flattenObjects(o.children ?? [])]);
+
+  const hasEligibleObject = flattenObjects(item?.objects ?? []).some((o) =>
+    o.scheduleConfig?.type === 'INCREMENTAL' ||
+    (o.scheduleConfig?.type === 'ONE_TIME' && !item?.lastBackupAt)
+  );
+
+  const runNowMutation = useMutation({
+    mutationFn: () => archivalService.runNow(item?.backupConfigId),
+    onSuccess: () => {
+      setRunNowSuccess(true);
+      setRunNowError(null);
+      queryClient.invalidateQueries({ queryKey: ['archival-config-detail', slug] });
+      queryClient.invalidateQueries({ queryKey: ['archival-jobs', slug] });
+      setTimeout(() => setRunNowSuccess(false), 3000);
+    },
+    onError: (err: any) => {
+      setRunNowError(err?.response?.data?.message ?? err?.message ?? 'Failed to trigger archive run.');
     },
   });
 
@@ -364,6 +388,25 @@ export default function ArchiveDetailScreen() {
             </button>
             <button
               type='button'
+              disabled={runNowMutation.isPending || !hasEligibleObject}
+              title={!hasEligibleObject ? 'No eligible objects to run' : undefined}
+              onClick={() => { setRunNowError(null); runNowMutation.mutate(); }}
+              className='flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {runNowMutation.isPending ? (
+                <>
+                  <span className='h-3 w-3 rounded-full border-2 border-blue-300 border-t-blue-600 animate-spin' />
+                  Starting…
+                </>
+              ) : runNowSuccess ? (
+                <>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>
+                  Done!
+                </>
+              ) : 'Run Now'}
+            </button>
+            <button
+              type='button'
               className='flex-shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'
             >
               Full Restore
@@ -371,6 +414,9 @@ export default function ArchiveDetailScreen() {
           </div>
           {processError && (
             <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>{processError}</p>
+          )}
+          {runNowError && (
+            <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>{runNowError}</p>
           )}
         </div>
       </div>
@@ -721,6 +767,15 @@ export default function ArchiveDetailScreen() {
                                 )}
                                 {oscDate && (
                                   <p className='text-[10px] text-gray-400'>from {oscDate}</p>
+                                )}
+                                {obj.upcomingJob?.skip && (
+                                  <p className='mt-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 leading-snug max-w-[190px]'
+                                    title={obj.upcomingJob.skipReason ?? undefined}>
+                                    {obj.upcomingJob.skipReason ?? 'Next automatic run will be skipped.'}
+                                    {obj.upcomingJob.skipDateTime && (
+                                      <> Next real run: {formatDateTime(obj.upcomingJob.skipDateTime)}</>
+                                    )}
+                                  </p>
                                 )}
                               </div>
                             ) : (

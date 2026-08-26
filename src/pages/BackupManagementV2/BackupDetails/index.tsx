@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
 import TriggerRecords from './TriggerRecords';
@@ -32,6 +32,7 @@ const mockBackupData = {
 export default function BackupDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const backupConfigService = useBackupConfigService();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -60,6 +61,22 @@ export default function BackupDetails() {
 
   const backupData = (backupDetail as any) || mockBackupData;
 
+  const [runNowMessage, setRunNowMessage] = useState<{ text: string; variant: 'success' | 'error' } | null>(null);
+  const runNowMutation = useMutation({
+    mutationFn: () => backupConfigService.runNow(backupData.backupConfigId),
+    onSuccess: (response: any) => {
+      setRunNowMessage({ text: response?.message ?? 'Backup run started.', variant: 'success' });
+      queryClient.invalidateQueries({ queryKey: ['backup-detail', slug] });
+      setTimeout(() => setRunNowMessage(null), 4000);
+    },
+    onError: (err: any) => {
+      setRunNowMessage({ text: err?.message ?? 'Failed to trigger backup run.', variant: 'error' });
+    },
+  });
+
+  const isRealtimeBackup = backupData?.schedule === 'REALTIME';
+  const oneTimeAlreadyRan = backupData?.scheduleConfig?.type === 'ONE_TIME' && !!backupData?.lastBackupAt;
+
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
@@ -73,7 +90,7 @@ export default function BackupDetails() {
     <div className='h-full bg-gray-50 flex flex-col overflow-hidden'>
       {/* Header - Fixed */}
       <div className='flex-shrink-0 bg-gray-50 border-b border-gray-200 px-6 pt-3 pb-0'>
-        <div className='flex items-center justify-between mb-3'>
+        <div className='relative flex items-center justify-between mb-3'>
           <div className='flex items-center gap-4'>
             <button
               onClick={() => navigate(-1)}
@@ -151,7 +168,36 @@ export default function BackupDetails() {
               )}
               {isProcessingBackup ? 'Processing...' : 'Process Backup'}
             </button>
+            {!isRealtimeBackup && (
+              <button
+                type='button'
+                onClick={() => runNowMutation.mutate()}
+                disabled={runNowMutation.isPending || oneTimeAlreadyRan}
+                title={oneTimeAlreadyRan ? 'This one-time backup has already run' : undefined}
+                className='inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {runNowMutation.isPending ? (
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='animate-spin'>
+                    <path d='M21 12a9 9 0 11-6.219-8.56' />
+                  </svg>
+                ) : (
+                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <polygon points='5 3 19 12 5 21 5 3' />
+                  </svg>
+                )}
+                {runNowMutation.isPending ? 'Starting...' : 'Run Now'}
+              </button>
+            )}
           </div>
+          {runNowMessage && (
+            <p className={`absolute right-6 top-16 text-xs rounded-lg px-3 py-1.5 border ${
+              runNowMessage.variant === 'success'
+                ? 'text-green-600 bg-green-50 border-green-200'
+                : 'text-red-500 bg-red-50 border-red-200'
+            }`}>
+              {runNowMessage.text}
+            </p>
+          )}
         </div>
 
         {/* Tabs */}
