@@ -119,6 +119,12 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [endDate, setEndDate] = useState(initialState.endDate);
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   const today = dayjs().format('YYYY-MM-DD');
   const currentTime = dayjs().format('HH:mm');
@@ -163,6 +169,12 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
 
   return (
     <div className='h-full bg-gray-50 p-8 flex flex-col overflow-hidden'>
+      {toast && (
+        <div className='fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border border-red-100 text-sm text-red-700 font-medium min-w-[260px] max-w-[420px]'>
+          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+          {toast}
+        </div>
+      )}
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-8 flex-shrink-0'>
         <div>
@@ -619,27 +631,27 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               if (!frequency) return;
               // Validate required fields
               if (frequency !== 'One Time' && !startDate) {
-                alert('Please select a start date');
+                showToast('Please select a start date');
                 return;
               }
               if (frequency !== 'One Time' && !startTime) {
-                alert('Please select a starting time');
+                showToast('Please select a starting time');
                 return;
               }
               if (frequency === 'One Time' && runMode === 'scheduleRun' && !startDate) {
-                alert('Please select a start date');
+                showToast('Please select a start date');
                 return;
               }
               if (frequency === 'One Time' && runMode === 'scheduleRun' && !startTime) {
-                alert('Please select a starting time');
+                showToast('Please select a starting time');
                 return;
               }
               if (frequency === 'Weekly' && selectedDays.length === 0) {
-                alert('Please select at least one day');
+                showToast('Please select at least one day');
                 return;
               }
               if (frequency === 'Monthly' && selectedMonths.length === 0) {
-                alert('Please select at least one month');
+                showToast('Please select at least one month');
                 return;
               }
 
@@ -667,7 +679,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               } else if (frequency === 'Monthly') {
                 const dayNum = parseInt(dayOfMonth);
                 if (dayNum < 1 || dayNum > 31) {
-                  alert('Please enter a valid day of month (1-31)');
+                  showToast('Please enter a valid day of month (1-31)');
                   return;
                 }
                 scheduling.monthDate = dayNum;
@@ -679,7 +691,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 scheduling.interval = 1;
                 scheduling.startDate = startDate;
                 if (!endDate || endDate === '') {
-                  alert('Please select an end date for custom schedule');
+                  showToast('Please select an end date for custom schedule');
                   return;
                 }
                 scheduling.endDate = endDate;

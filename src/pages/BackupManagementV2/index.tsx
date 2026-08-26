@@ -532,6 +532,12 @@ export default function BackupManagementV2() {
   const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean } | null>(null);
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   // Page + cursor both live in the URL so back-navigation restores them exactly.
   // URL shape: /backup-management?page=2&cursor=XXXXXX
@@ -618,7 +624,7 @@ export default function BackupManagementV2() {
     },
     onError: (error) => {
       console.error('Failed to update backup status:', error);
-      alert('Failed to update backup status. Please try again.');
+      showToast('Failed to update backup status. Please try again.');
     },
   });
 
@@ -805,6 +811,12 @@ export default function BackupManagementV2() {
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
+      {toast && (
+        <div className='fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border border-red-100 text-sm text-red-700 font-medium min-w-[260px] max-w-[420px]'>
+          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+          {toast}
+        </div>
+      )}
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
       <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm'>
         <div>

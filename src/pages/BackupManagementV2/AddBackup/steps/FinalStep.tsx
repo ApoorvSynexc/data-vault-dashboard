@@ -86,6 +86,12 @@ export default function FinalStep({
   const [acceptanceText, setAcceptanceText] = useState('');
   const [acceptanceError, setAcceptanceError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   const activeCrm = platforms?.find((p) => p.crmId === crmId);
   const { data: activeDestinationDetail } = useQuery({
@@ -155,8 +161,8 @@ export default function FinalStep({
   };
 
   const createBackupWithStatus = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    if (!crmId) { alert('Please select a platform'); return; }
-    if (!destinationId) { alert('Please select a destination'); return; }
+    if (!crmId) { showToast('Please select a platform'); return; }
+    if (!destinationId) { showToast('Please select a destination'); return; }
     setIsLoading(true);
     setApiError(null);
     const payload = buildPayload(backupStatus);
@@ -173,8 +179,8 @@ export default function FinalStep({
     if (isRealTime && acceptanceText.toLowerCase() !== 'accept') { setAcceptanceError(true); return; }
     setShowRunConfirmation(false);
     setSuccessType('run');
-    if (!crmId) { alert('Please select a platform'); return; }
-    if (!destinationId) { alert('Please select a destination'); return; }
+    if (!crmId) { showToast('Please select a platform'); return; }
+    if (!destinationId) { showToast('Please select a destination'); return; }
     setIsLoading(true);
     setApiError(null);
     try {
@@ -250,6 +256,12 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
 
   return (
     <div className='h-full bg-gray-50 p-6 flex flex-col overflow-hidden'>
+      {toast && (
+        <div className='fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border border-red-100 text-sm text-red-700 font-medium min-w-[260px] max-w-[420px]'>
+          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+          {toast}
+        </div>
+      )}
       {/* Header */}
       <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
@@ -325,8 +337,8 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
           {(isScheduledNonDraft || isRealtimeNonDraft) ? (
             <button
               onClick={() => {
-                if (!crmId) { alert('Please select a platform'); return; }
-                if (!destinationId) { alert('Please select a destination'); return; }
+                if (!crmId) { showToast('Please select a platform'); return; }
+                if (!destinationId) { showToast('Please select a destination'); return; }
                 setIsLoading(true);
                 setApiError(null);
                 const payload = buildPayload('ACTIVE');
