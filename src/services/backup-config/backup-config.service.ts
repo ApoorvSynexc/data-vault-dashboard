@@ -14,6 +14,7 @@ export const BACKUP_CONFIG_ENDPOINTS = {
   stats: '/v1/backup-config/stats',
   processBackup: '/v1/backup-config/initalize-payload-transform',
   syncSchema: '/v1/backup-config/sync-metadata',
+  recoverTrigger: '/v1/backup-config/trigger/recover',
   runNow: '/v1/backup-config/run-now',
 } as const;
 
@@ -233,5 +234,7 @@ export function useBackupConfigService() {
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: { slug } }),
     getObjectRecords: (payload: { id: string; name: string; fieldNames: string[]; soql: string }) =>
       api.post<any>('/v1/archival-config/object-records', payload),
+    recoverTrigger: (payload: { backupConfigId: string; objectApiName: string; recordId: string }) =>
+      api.post<{ triggerName: string; status: string }>(BACKUP_CONFIG_ENDPOINTS.recoverTrigger, payload),
   };
 }

@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import RecoveryModal from './RecoveryModal';
 
-type FlowResult = {
+type TriggerResult = {
   objectApiName: string;
-  flowNames: string[];
+  triggerName?: string;
   status: string;
   permissionSetStatus?: string;
   permissionSetError?: string;
+  error?: string;
+  needsRecoveryRecordId?: boolean;
 };
 
 type TriggerRecordsProps = {
@@ -18,29 +21,30 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
   const [search, setSearch] = useState('');
   const [expandedError, setExpandedError] = useState<string | null>(null);
+  const [recoveryTarget, setRecoveryTarget] = useState<string | null>(null);
 
-  const flows: FlowResult[] = backup?.triggerResults ?? [];
+  const triggers: TriggerResult[] = backup?.triggerResults ?? [];
 
-  const created = flows.filter((f) => f.status === 'CREATED').length;
-  const failed  = flows.filter((f) => f.status === 'FAILED').length;
+  const created = triggers.filter((t) => t.status === 'CREATED' || t.status === 'EXIST').length;
+  const failed  = triggers.filter((t) => t.status === 'FAILED').length;
 
-  const filtered = flows.filter((f) => {
+  const filtered = triggers.filter((t) => {
     const matchesFilter =
       filter === 'all' ||
-      (filter === 'created' && f.status === 'CREATED') ||
-      (filter === 'failed' && f.status === 'FAILED');
-    const matchesSearch = (f.objectApiName ?? '').toLowerCase().includes(search.toLowerCase());
+      (filter === 'created' && (t.status === 'CREATED' || t.status === 'EXIST')) ||
+      (filter === 'failed' && t.status === 'FAILED');
+    const matchesSearch = (t.objectApiName ?? '').toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  if (!flows.length) {
+  if (!triggers.length) {
     return (
       <div className='flex flex-col items-center justify-center py-20 text-gray-400'>
         <svg className='w-12 h-12 mb-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
           <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={1.5} d='M13 10V3L4 14h7v7l9-11h-7z' />
         </svg>
-        <p className='text-sm font-medium'>No flow records found</p>
-        <p className='text-xs mt-1'>This backup does not have any flow records.</p>
+        <p className='text-sm font-medium'>No trigger records found</p>
+        <p className='text-xs mt-1'>This backup does not have any real-time trigger records.</p>
       </div>
     );
   }
@@ -61,10 +65,10 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
       <div className='grid grid-cols-3 gap-3'>
         <div className='bg-white rounded-lg border border-gray-200 p-4'>
           <p className='text-xs text-gray-500 mb-1'>Total Objects</p>
-          <p className='text-2xl font-bold text-gray-900'>{flows.length}</p>
+          <p className='text-2xl font-bold text-gray-900'>{triggers.length}</p>
         </div>
         <div className='bg-white rounded-lg border border-gray-200 p-4'>
-          <p className='text-xs text-gray-500 mb-1'>Flows Created</p>
+          <p className='text-xs text-gray-500 mb-1'>Triggers Created</p>
           <p className='text-2xl font-bold text-green-600'>{created}</p>
         </div>
         <div className='bg-white rounded-lg border border-gray-200 p-4'>
@@ -91,7 +95,7 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
                 <span className='ml-1.5 font-semibold'>
-                  {f === 'all' ? flows.length : f === 'created' ? created : failed}
+                  {f === 'all' ? triggers.length : f === 'created' ? created : failed}
                 </span>
               </button>
             ))}
@@ -112,39 +116,34 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
           <thead>
             <tr className='bg-gray-50 border-b border-gray-200'>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '44px' }}>SL</th>
-              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '120px' }}>Object</th>
-              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '190px' }}>Upsert Flow</th>
-              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '190px' }}>Delete Flow</th>
-              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '110px' }}>Flow Status</th>
+              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '150px' }}>Object</th>
+              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '220px' }}>Apex Trigger</th>
+              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '110px' }}>Trigger Status</th>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '130px' }}>Permission Set</th>
               <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '220px' }}>Error</th>
+              <th className='px-3 py-3 text-left font-semibold text-gray-500 uppercase tracking-wide' style={{ width: '90px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className='px-4 py-10 text-center text-gray-400'>No flows match your filter.</td>
+                <td colSpan={7} className='px-4 py-10 text-center text-gray-400'>No triggers match your filter.</td>
               </tr>
             ) : (
-              filtered.map((f, idx) => {
-                const upsertFlow = f.flowNames?.[0] ?? '—';
-                const deleteFlow = f.flowNames?.[1] ?? '—';
-                const errorMsg = f.permissionSetError ?? null;
-                const isExpanded = expandedError === f.objectApiName;
+              filtered.map((t, idx) => {
+                const errorMsg = t.error ?? t.permissionSetError ?? null;
+                const isExpanded = expandedError === t.objectApiName;
                 return (
-                  <tr key={f.objectApiName} className={`border-b border-gray-100 ${f.status === 'FAILED' ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                  <tr key={t.objectApiName} className={`border-b border-gray-100 ${t.status === 'FAILED' ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                     <td className='px-3 py-3 text-gray-500'>{idx + 1}</td>
-                    <td className='px-3 py-3 font-semibold text-gray-800 truncate'>{f.objectApiName}</td>
+                    <td className='px-3 py-3 font-semibold text-gray-800 truncate'>{t.objectApiName}</td>
                     <td className='px-3 py-3'>
-                      <span className='font-mono text-gray-600 block truncate' title={upsertFlow}>{upsertFlow}</span>
+                      <span className='font-mono text-gray-600 block truncate' title={t.triggerName}>{t.triggerName ?? '—'}</span>
                     </td>
+                    <td className='px-3 py-3'><StatusBadge status={t.status} /></td>
                     <td className='px-3 py-3'>
-                      <span className='font-mono text-gray-600 block truncate' title={deleteFlow}>{deleteFlow}</span>
-                    </td>
-                    <td className='px-3 py-3'><StatusBadge status={f.status} /></td>
-                    <td className='px-3 py-3'>
-                      {f.permissionSetStatus
-                        ? <StatusBadge status={f.permissionSetStatus} />
+                      {t.permissionSetStatus
+                        ? <StatusBadge status={t.permissionSetStatus} />
                         : <span className='text-gray-400'>—</span>}
                     </td>
                     <td className='px-3 py-3'>
@@ -153,13 +152,25 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
                           <p className={`text-red-600 break-words ${!isExpanded ? 'line-clamp-2' : ''}`}>{errorMsg}</p>
                           {errorMsg.length > 80 && (
                             <button
-                              onClick={() => setExpandedError(isExpanded ? null : f.objectApiName)}
+                              onClick={() => setExpandedError(isExpanded ? null : t.objectApiName)}
                               className='text-blue-500 hover:underline mt-0.5 text-xs'
                             >
                               {isExpanded ? 'Show less' : 'Show more'}
                             </button>
                           )}
                         </div>
+                      ) : (
+                        <span className='text-gray-400'>—</span>
+                      )}
+                    </td>
+                    <td className='px-3 py-3'>
+                      {t.status === 'FAILED' && t.needsRecoveryRecordId ? (
+                        <button
+                          onClick={() => setRecoveryTarget(t.objectApiName)}
+                          className='px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors'
+                        >
+                          Recover
+                        </button>
                       ) : (
                         <span className='text-gray-400'>—</span>
                       )}
@@ -171,6 +182,15 @@ export default function TriggerRecords({ backup }: TriggerRecordsProps) {
           </tbody>
         </table>
       </div>
+
+      {recoveryTarget && (
+        <RecoveryModal
+          backupConfigId={backup?.backupConfigId}
+          slug={backup?.slug}
+          objectApiName={recoveryTarget}
+          onClose={() => setRecoveryTarget(null)}
+        />
+      )}
     </div>
   );
 }
