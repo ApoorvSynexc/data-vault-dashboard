@@ -71,7 +71,7 @@ type DestType = 'same' | 'diff' | 'export';
 
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
   { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
-  { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
+  // { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
   { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
 ];
 
