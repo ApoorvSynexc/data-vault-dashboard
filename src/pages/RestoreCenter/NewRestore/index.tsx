@@ -25,6 +25,7 @@ import type { Destination } from '../../../services/destination/destination.serv
 import type { SourceSelection } from './SelectSourceType';
 import type { RestoreRetrievePayload } from '../../../services/restore/restore.service';
 import type { ConflictOutput } from './ConflictConfig';
+import { toUTCISOString } from '../../../utils';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -100,8 +101,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onNext={(sel) => {
             setSourceSelection(sel);
             const source = sel.type === 'CHANGED_BETWEEN'
-              ? { backupConfigId: sel.backupConfigId, backupJobIds: sel.backupJobIds, type: sel.type, ...(sel.startDate ? { startDate: sel.startDate } : {}), ...(sel.endDate ? { endDate: sel.endDate } : {}) }
-              : { backupConfigId: sel.backupConfigId, type: sel.type };
+              ? { backupConfigId: sel.backupConfigId, configType: sel.configType, backupJobIds: sel.backupJobIds, type: sel.type, ...(sel.startDate ? { startDate: toUTCISOString(sel.startDate) } : {}), ...(sel.endDate ? { endDate: toUTCISOString(sel.endDate) } : {}) }
+              : { backupConfigId: sel.backupConfigId, configType: sel.configType, type: sel.type };
             updatePayload({ source });
             goNext();
           }}

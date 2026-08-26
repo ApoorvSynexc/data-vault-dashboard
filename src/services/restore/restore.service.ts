@@ -137,6 +137,7 @@ export interface RestoreRetrievePayload {
 
   source: {
     backupConfigId: string;
+    configType?: 'BACKUP' | 'ARCHIVAL';
     type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
     startDate?: string;
     endDate?: string;
@@ -186,6 +187,7 @@ export interface RestoreSchedule {
 export type FetchRecordsPayload =
   | {
       backupConfigId: string;
+      configType: 'BACKUP' | 'ARCHIVAL';
       objectApiName: string;
       type: 'ENTIRE';
       columnNames: string[];
@@ -194,6 +196,7 @@ export type FetchRecordsPayload =
     }
   | {
       backupConfigId: string;
+      configType: 'BACKUP' | 'ARCHIVAL';
       objectApiName: string;
       type: 'CHANGED_BETWEEN';
       startDate: string;
@@ -208,6 +211,7 @@ export type FetchRecordsPayload =
 export interface ShowPreviewPayload {
   source: {
     backupConfigId: string;
+    configType?: 'BACKUP' | 'ARCHIVAL';
     type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
     backupJobIds?: string[];
     startDate?: string;
