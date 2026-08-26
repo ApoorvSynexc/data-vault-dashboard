@@ -90,11 +90,11 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
         <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
       ) : (
         <>
-          <div className='px-5 py-1.5 border-b border-gray-100 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide text-gray-400'>
-            <span className='w-4 flex-shrink-0' />
-            <span className='flex-1'>Name</span>
-            <span className='w-20 flex-shrink-0 text-right'>Records</span>
-            <span className='w-16 flex-shrink-0 text-right'>Type</span>
+          <div className='grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-1.5 border-b border-gray-100 text-[10px] font-bold uppercase tracking-wide text-gray-400'>
+            <span />
+            <span>Name</span>
+            <span className='text-right'>Records</span>
+            <span className='text-right'>Type</span>
           </div>
           <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
             {filtered.map(({ name, type }) => {
@@ -103,12 +103,12 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
                 <div
                   key={name}
                   onClick={() => toggle(name)}
-                  className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
+                  className={`grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
                 >
                   <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
-                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0' onClick={(e) => e.stopPropagation()} />
-                  <span className={`flex-1 text-sm font-mono ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
-                  <span className='w-20 flex-shrink-0 text-right text-xs text-gray-500 tabular-nums'>
+                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
+                  <span className={`text-sm font-mono truncate ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
+                  <span className='text-right text-xs text-gray-500 tabular-nums'>
                     {recordCountsLoading ? (
                       <span className='inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin align-middle' />
                     ) : countEntry?.ok ? (
@@ -117,7 +117,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
                       '—'
                     )}
                   </span>
-                  <div className='w-16 flex-shrink-0 flex justify-end'>
+                  <div className='flex justify-end'>
                     <TypeBadge type={type} />
                   </div>
                 </div>
