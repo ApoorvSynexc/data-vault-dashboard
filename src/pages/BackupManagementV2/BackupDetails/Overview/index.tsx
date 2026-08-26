@@ -217,6 +217,14 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                     displayData?.scheduleConfig?.timeZone
                   )}
                 </p>
+                {displayData?.upcomingJob?.skip && (
+                  <p className='mt-1 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 leading-snug'>
+                    {displayData.upcomingJob.skipReason ?? 'The next automatic run will be skipped.'}
+                    {displayData.upcomingJob.skipDateTime && (
+                      <> Next real run: {formatDateTime(displayData.upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</>
+                    )}
+                  </p>
+                )}
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time Zone</p>

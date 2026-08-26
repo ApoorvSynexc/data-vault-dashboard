@@ -48,6 +48,7 @@ type BackupRow = {
   backupType: BackupType;
   scheduleFrequency: string;
   lastRun: string;
+  lastBackupAt?: string;
   dataSize: string;
   backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
   isRealtime: boolean;
@@ -371,6 +372,8 @@ function ConfigStatusBadge({ status }: { status: string }) {
 type DropdownMenuItem = {
   label: string;
   danger?: boolean;
+  disabled?: boolean;
+  title?: string;
   onClick?: () => void;
 };
 
@@ -494,13 +497,18 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
             <button
               key={item.label}
               type='button'
+              disabled={item.disabled}
+              title={item.title}
               onClick={() => {
+                if (item.disabled) return;
                 item.onClick?.();
                 setOpen(false);
               }}
               className={[
                 'flex w-full items-center px-3 py-2 text-left text-xs font-medium transition',
-                item.danger
+                item.disabled
+                  ? 'cursor-not-allowed opacity-40'
+                  : item.danger
                   ? 'text-red-600 hover:bg-red-50'
                   : 'text-gray-700 hover:bg-gray-50',
               ].join(' ')}
@@ -531,14 +539,14 @@ export default function BackupManagementV2() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
-  const [runNowTarget, setRunNowTarget] = useState<{ slug: string; name: string } | null>(null);
+  const [runNowTarget, setRunNowTarget] = useState<{ id: string; name: string } | null>(null);
   const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean } | null>(null);
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
 
-  function showToast(msg: string) {
-    setToast(msg);
+  function showToast(message: string, variant: 'success' | 'error' = 'error') {
+    setToast({ message, variant });
     setTimeout(() => setToast(null), 4000);
   }
 
@@ -632,14 +640,15 @@ export default function BackupManagementV2() {
   });
 
   const runNowMutation = useMutation({
-    mutationFn: (slug: string) => backupConfigService.processBackup(slug),
-    onSuccess: () => {
+    mutationFn: (backupConfigId: string) => backupConfigService.runNow(backupConfigId),
+    onSuccess: (response: any) => {
       setRunNowTarget(null);
+      showToast(response?.message ?? 'Backup run started.', 'success');
       queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
     },
-    onError: (error) => {
-      console.error('Failed to trigger backup run:', error);
-      showToast('Failed to trigger backup run. Please try again.');
+    onError: (error: any) => {
+      setRunNowTarget(null);
+      showToast(error?.message ?? 'Failed to trigger backup run. Please try again.');
     },
   });
 
@@ -710,6 +719,7 @@ export default function BackupManagementV2() {
       backupType: item.schedule === 'REALTIME' ? 'Realtime' : 'Schedule',
       scheduleFrequency: getScheduleFrequencyDisplay(item.scheduleConfig?.scheduling?.frequency),
       lastRun: formatDateTime(item.lastBackupAt),
+      lastBackupAt: item.lastBackupAt,
       dataSize: formatBytes(item.sizeInBytes),
       backupStatus: (item.backupStatus as BackupStatus) || '' as any,
       isRealtime: item.schedule === 'REALTIME',
@@ -801,9 +811,11 @@ export default function BackupManagementV2() {
                   setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
                 },
               }] : []),
-              ...(row.configStatus !== 'DRAFT' && !row.isOneTime && !row.isRealtime && permissions.includes('backup.execute') ? [{
+              ...(row.configStatus !== 'DRAFT' && !row.isRealtime && permissions.includes('backup.execute') ? [{
                 label: 'Run Now',
-                onClick: () => setRunNowTarget({ slug: row.slug, name: row.name }),
+                disabled: row.isOneTime && !!row.lastBackupAt,
+                title: row.isOneTime && !!row.lastBackupAt ? 'This one-time backup has already run' : undefined,
+                onClick: () => setRunNowTarget({ id: row.id, name: row.name }),
               }] : []),
               ...(row.configStatus !== 'DRAFT' && !row.isOneTime && permissions.includes('backup.write') ? [{
                 label: row.configStatus === 'PAUSED' ? 'Resume' : 'Pause',
@@ -832,9 +844,15 @@ export default function BackupManagementV2() {
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
       {toast && (
-        <div className='fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border border-red-100 text-sm text-red-700 font-medium min-w-[260px] max-w-[420px]'>
-          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
-          {toast}
+        <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border text-sm font-medium min-w-[260px] max-w-[420px] ${
+          toast.variant === 'success' ? 'border-green-100 text-green-700' : 'border-red-100 text-red-700'
+        }`}>
+          {toast.variant === 'success' ? (
+            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-green-500'><polyline points='20 6 9 17 4 12'/></svg>
+          ) : (
+            <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+          )}
+          {toast.message}
         </div>
       )}
       <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
@@ -1012,7 +1030,7 @@ export default function BackupManagementV2() {
         message={`This will trigger an immediate backup run for "${runNowTarget?.name}" outside the regular schedule. Note: your upcoming scheduled run will be skipped if you run now.`}
         confirmLabel='Run Now'
         isLoading={runNowMutation.isPending}
-        onConfirm={() => runNowMutation.mutate(runNowTarget!.slug)}
+        onConfirm={() => runNowMutation.mutate(runNowTarget!.id)}
         onCancel={() => setRunNowTarget(null)}
       />
 
