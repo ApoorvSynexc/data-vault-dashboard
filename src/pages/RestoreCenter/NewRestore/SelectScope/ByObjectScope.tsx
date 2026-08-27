@@ -1,12 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Typography from '../../../../components/Typography';
-import type { RestoreSourceObject, RestoreObjectRecordCount } from '../../../../services/restore/restore.service';
+import type { RestoreSourceObject } from '../../../../services/restore/restore.service';
 
 interface Props {
   sourceObjects: RestoreSourceObject[];
   sourceObjectsLoading: boolean;
-  recordCounts: RestoreObjectRecordCount[];
-  recordCountsLoading: boolean;
   onChange: (objects: string[]) => void;
 }
 
@@ -23,15 +21,11 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, recordCounts, recordCountsLoading, onChange }: Props) {
+export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onChange }: Props) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const sourceObjectNames = sourceObjects.map((o) => o.name);
-  const countByName = useMemo(
-    () => new Map(recordCounts.map((c) => [c.objectApiName, c])),
-    [recordCounts]
-  );
 
   const toggle = (name: string) => {
     setSelected((prev) => {
@@ -90,39 +84,24 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
         <p className='text-xs text-gray-400 py-8 text-center'>No objects found.</p>
       ) : (
         <>
-          <div className='grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-1.5 border-b border-gray-100 text-[10px] font-bold uppercase tracking-wide text-gray-400'>
+          <div className='grid grid-cols-[1.5rem_1fr_auto] items-center gap-3 px-5 py-1.5 border-b border-gray-100 text-[10px] font-bold uppercase tracking-wide text-gray-400'>
             <span />
             <span>Name</span>
-            <span className='text-right'>Records</span>
-            <span className='text-right'>Type</span>
+            <span>Type</span>
           </div>
           <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
-            {filtered.map(({ name, type }) => {
-              const countEntry = countByName.get(name);
-              return (
-                <div
-                  key={name}
-                  onClick={() => toggle(name)}
-                  className={`grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
-                >
-                  <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
-                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
-                  <span className={`text-sm font-mono truncate ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
-                  <span className='text-right text-xs text-gray-500 tabular-nums'>
-                    {recordCountsLoading ? (
-                      <span className='inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin align-middle' />
-                    ) : countEntry?.ok ? (
-                      countEntry.count.toLocaleString()
-                    ) : (
-                      '—'
-                    )}
-                  </span>
-                  <div className='flex justify-end'>
-                    <TypeBadge type={type} />
-                  </div>
-                </div>
-              );
-            })}
+            {filtered.map(({ name, type }) => (
+              <div
+                key={name}
+                onClick={() => toggle(name)}
+                className={`grid grid-cols-[1.5rem_1fr_auto] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
+              >
+                <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
+                  className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
+                <span className={`text-sm font-mono truncate ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
+                <TypeBadge type={type} />
+              </div>
+            ))}
           </div>
         </>
       )}
