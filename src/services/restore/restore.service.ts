@@ -272,13 +272,6 @@ export interface RestoreSourceObject {
   type: 'STANDARD' | 'CUSTOM' | string;
 }
 
-export interface RestoreObjectRecordCount {
-  objectApiName: string;
-  ok: boolean;
-  count: number;
-  error?: string;
-}
-
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
 const RESTORE_ENDPOINTS = {
@@ -288,7 +281,6 @@ const RESTORE_ENDPOINTS = {
   crmObjects:           '/v1/crm-metadata/objects/list',
   crmFields:            '/v1/crm-metadata/fields/list',
   objectListByConfigId: '/v1/restore/get-objectlist-by-configid',
-  fetchObjectCounts:    '/v1/restore/retrieve/fetch-count',
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
   fetchMissingFields:   '/v1/restore/retrieve/fetch-missing-fields',
   fetchMissingRecordTypes: '/v1/restore/retrieve/fetch-missing-record-types',
@@ -356,9 +348,6 @@ export function useRestoreService() {
 
     getObjectListByConfigId: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL') =>
       api.get<{ data: RestoreSourceObject[] }>(RESTORE_ENDPOINTS.objectListByConfigId, { query: { backupConfigId, configType } }),
-
-    getObjectRecordCounts: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL') =>
-      api.get<{ data: RestoreObjectRecordCount[] }>(RESTORE_ENDPOINTS.fetchObjectCounts, { query: { backupConfigId, configType } }),
 
     fetchObjectFields: (objectApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId } }),
