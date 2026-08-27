@@ -103,10 +103,11 @@ export default function Storage() {
   const lastArchivalData: any[] = Array.isArray((lastArchivalQuery.data as any)?.data) ? (lastArchivalQuery.data as any).data : [];
 
   const overviewData = (overviewQuery.data as any)?.data;
-  const backupSize: number     = (overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes   ?? 0)
-                               + (overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0);
-  const backupRecords: number  = overviewData?.backupConfigSizeRecord?.backup?.completedRecordCount   ?? 0;
-  const archivalRecords: number = overviewData?.backupConfigSizeRecord?.archival?.completedRecordCount ?? 0;
+  const backupSize: number      = (overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes   ?? 0)
+                                + (overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0);
+  const backupRecords: number   = overviewData?.backupConfigSizeRecord?.backup?.completedRecordCount    ?? 0;
+  const archivalRecords: number = overviewData?.backupConfigSizeRecord?.archival?.completedRecordCount  ?? 0;
+  const sfStorageSaved: number  = (overviewData?.backupConfigSizeRecord?.archival?.deletedRecordCount ?? 0) * 2 * 1024;
   const monthlyStats: MonthlyStat[] = Array.isArray(overviewData?.monthlyStats) ? overviewData.monthlyStats : [];
 
 
@@ -140,7 +141,7 @@ export default function Storage() {
         </div>
         <div className='rounded-xl shadow-sm px-4 py-3.5' style={{ background: 'linear-gradient(180deg,#eef9f1,#fff)', border: '1px solid #16a34a' }}>
           <p className='text-xs font-semibold text-green-700'>Salesforce Storage Saved</p>
-          <p className='text-xl font-bold mt-1 text-green-700'>--</p>
+          <p className='text-xl font-bold mt-1 text-green-700'>{formatBytes(sfStorageSaved)}</p>
           <p className='text-xs mt-1 text-gray-400'>Freed by Archive Vault</p>
         </div>
       </div>
