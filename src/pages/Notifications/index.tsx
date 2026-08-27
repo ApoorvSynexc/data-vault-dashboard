@@ -1,4 +1,5 @@
-import { useState, type JSX } from 'react';
+import { useState, useEffect, type JSX } from 'react';
+import { useNotificationService, type NotificationItem as ApiNotifItem } from '../../services/notification/notification.service';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -257,9 +258,34 @@ const prefRows: { key: PrefKey; label: string; description: string }[] = [
 ];
 
 export default function Notifications() {
+  const notificationService = useNotificationService();
   const [notifications, setNotifications] = useState(initialNotifications);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [prefs, setPrefs] = useState(initialPrefs);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    notificationService.listNotifications()
+      .then((res) => {
+        const items = (res as any)?.data?.data ?? (res as any)?.data ?? [];
+        if (Array.isArray(items) && items.length > 0) {
+          setNotifications(
+            items.map((n: ApiNotifItem) => ({
+              id: n.id as number,
+              type: (n.type as Notification['type']) ?? 'info',
+              category: (n.category as Notification['category']) ?? 'system',
+              title: n.title,
+              description: n.description,
+              time: n.time ?? n.createdAt ?? '',
+              read: n.read ?? false,
+            }))
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -340,7 +366,11 @@ export default function Notifications() {
 
             {/* List */}
             <div className='flex flex-col gap-2 p-4'>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <div className='flex items-center justify-center py-16'>
+                  <div className='h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className='flex flex-col items-center justify-center py-16 text-center'>
                   <div className='mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100'>
                     <svg viewBox='0 0 24 24' fill='none' stroke='#9ca3af' strokeWidth='1.8' strokeLinecap='round' className='h-6 w-6'>
