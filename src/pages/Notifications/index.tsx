@@ -143,10 +143,14 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => n.status === 'UNREAD').length;
 
   function markAllRead() {
-    notifications
-      .filter((n) => n.status === 'UNREAD')
-      .forEach((n) => notificationService.updateStatus(n.notificationId, 'READ').catch(() => {}));
-    setNotifications((prev) => prev.map((n) => ({ ...n, status: 'READ' })));
+    notificationService.markAllRead()
+      .then((res) => {
+        const updated = (res as any)?.data?.updatedCount ?? (res as any)?.updatedCount ?? 0;
+        if (updated > 0) {
+          setNotifications((prev) => prev.map((n) => ({ ...n, status: 'READ' })));
+        }
+      })
+      .catch(() => {});
   }
 
   function markRead(id: string) {
