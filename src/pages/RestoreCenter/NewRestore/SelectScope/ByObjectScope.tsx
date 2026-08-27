@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Typography from '../../../../components/Typography';
 import type { RestoreSourceObject, RestoreObjectRecordCount } from '../../../../services/restore/restore.service';
-import { resolveAutoSelectedChildren, formatAutoSelectMessage } from './objectDependencies';
-import { useAutoSelectToast } from './useAutoSelectToast';
-import AutoSelectToast from './AutoSelectToast';
 
 interface Props {
   sourceObjects: RestoreSourceObject[];
@@ -28,11 +25,7 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, recordCounts, recordCountsLoading, onChange }: Props) {
   const [search, setSearch] = useState('');
-  // The user's own ticks — auto-selected children are never added here, so
-  // they naturally drop out the moment nothing manually selected still needs
-  // them (see effectiveSelected below).
-  const [manuallySelected, setManuallySelected] = useState<Set<string>>(new Set());
-  const { toastMessage, showToast } = useAutoSelectToast();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const sourceObjectNames = sourceObjects.map((o) => o.name);
   const countByName = useMemo(
@@ -40,68 +33,33 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
     [recordCounts]
   );
 
-  const childrenByObject = useMemo(
-    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectChildren ?? []])),
-    [sourceObjects]
-  );
-
-  const { autoSelected, reasons } = useMemo(
-    () => resolveAutoSelectedChildren(manuallySelected, childrenByObject),
-    [manuallySelected, childrenByObject]
-  );
-  const autoSelectedSet = useMemo(() => new Set(autoSelected), [autoSelected]);
-  const effectiveSelected = useMemo(
-    () => new Set([...manuallySelected, ...autoSelected]),
-    [manuallySelected, autoSelected]
-  );
-
-  // Notify the parent whenever the effective (manual + auto) selection changes.
-  useEffect(() => {
-    onChange([...effectiveSelected]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveSelected]);
-
-  // Toast only for parents that are newly required since the last render —
-  // an already-auto-selected parent staying selected (e.g. a second object
-  // that also depends on it) never re-fires.
-  const prevAutoRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const newlyAdded = autoSelected.filter((p) => !prevAutoRef.current.has(p));
-    if (newlyAdded.length) showToast(formatAutoSelectMessage(newlyAdded, reasons));
-    prevAutoRef.current = new Set(autoSelected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSelected]);
-
-  const isAutoOnly = (name: string) => autoSelectedSet.has(name) && !manuallySelected.has(name);
-
   const toggle = (name: string) => {
-    if (isAutoOnly(name)) return; // cascade-required child — not user-toggleable
-    setManuallySelected((prev) => {
+    setSelected((prev) => {
       const next = new Set(prev);
       next.has(name) ? next.delete(name) : next.add(name);
+      onChange([...next]);
       return next;
     });
   };
 
   const toggleAll = () => {
-    setManuallySelected(
-      effectiveSelected.size === sourceObjectNames.length && sourceObjectNames.length > 0
-        ? new Set<string>()
-        : new Set(sourceObjectNames)
-    );
+    const next = selected.size === sourceObjectNames.length && sourceObjectNames.length > 0
+      ? new Set<string>()
+      : new Set(sourceObjectNames);
+    setSelected(next);
+    onChange([...next]);
   };
 
   const filtered = sourceObjects.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      <AutoSelectToast message={toastMessage} />
       {/* Header */}
       <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>◫ Select Objects</Typography>
-        {effectiveSelected.size > 0 && (
+        {selected.size > 0 && (
           <span className='text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700'>
-            {effectiveSelected.size} selected
+            {selected.size} selected
           </span>
         )}
       </div>
@@ -119,7 +77,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
           />
         </div>
         <button onClick={toggleAll} className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 text-gray-600 transition-colors whitespace-nowrap'>
-          {effectiveSelected.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? 'Deselect all' : 'Select all'}
+          {selected.size === sourceObjectNames.length && sourceObjectNames.length > 0 ? 'Deselect all' : 'Select all'}
         </button>
       </div>
 
@@ -141,30 +99,15 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
           <div className='divide-y divide-gray-50' style={{ maxHeight: 600, overflowY: 'auto' }}>
             {filtered.map(({ name, type }) => {
               const countEntry = countByName.get(name);
-              const autoOnly = isAutoOnly(name);
               return (
                 <div
                   key={name}
                   onClick={() => toggle(name)}
-                  className={`grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-3 transition-colors ${autoOnly ? 'cursor-not-allowed' : 'cursor-pointer'} ${effectiveSelected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
+                  className={`grid grid-cols-[1.5rem_1fr_1fr_1fr] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${selected.has(name) ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}
                 >
-                  <input
-                    type='checkbox'
-                    checked={effectiveSelected.has(name)}
-                    disabled={autoOnly}
-                    onChange={() => toggle(name)}
-                    onClick={(e) => e.stopPropagation()}
-                    className='w-4 h-4 accent-blue-600 rounded'
-                    style={{ cursor: autoOnly ? 'not-allowed' : 'pointer', opacity: autoOnly ? 0.6 : 1 }}
-                  />
-                  <span className='flex items-center gap-1.5 min-w-0'>
-                    <span className={`text-sm font-mono truncate ${effectiveSelected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
-                    {autoOnly && (
-                      <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — cascade-deletes with a selected object'>
-                        Auto
-                      </span>
-                    )}
-                  </span>
+                  <input type='checkbox' checked={selected.has(name)} onChange={() => toggle(name)}
+                    className='w-4 h-4 accent-blue-600 cursor-pointer rounded' onClick={(e) => e.stopPropagation()} />
+                  <span className={`text-sm font-mono truncate ${selected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
                   <span className='text-right text-xs text-gray-500 tabular-nums'>
                     {recordCountsLoading ? (
                       <span className='inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin align-middle' />

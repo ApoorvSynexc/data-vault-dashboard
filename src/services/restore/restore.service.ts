@@ -270,11 +270,6 @@ export interface ShowPreviewPayload {
 export interface RestoreSourceObject {
   name: string;
   type: 'STANDARD' | 'CUSTOM' | string;
-  // Child objects (present in this same backup config) the restore UI
-  // should auto-select whenever this object is selected — objects whose
-  // relationship back to this one is cascadeDelete or restrictedDelete.
-  // Absent/empty when this object has none.
-  autoSelectChildren?: string[];
 }
 
 export interface RestoreObjectRecordCount {
