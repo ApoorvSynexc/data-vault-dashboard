@@ -1,21 +1,22 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
-export type NotificationItem = {
-  id: string | number;
-  type: string;
-  category: string;
+export type INotification = {
+  notificationId: string;
+  userId: string;
+  crmId: string;
   title: string;
-  description: string;
-  time?: string;
-  createdAt?: string;
-  read: boolean;
-  [key: string]: unknown;
+  body: string;
+  targetScreen?: string;
+  targetId?: string;
+  status: 'UNREAD' | 'READ' | 'DELETED' | string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type NotificationListResponse = {
   success: boolean;
   message: string;
-  data: NotificationItem[];
+  data: INotification[];
   meta?: {
     limit: number;
     nextCursor: string | null;
