@@ -405,18 +405,11 @@ export default function ArchiveDetailScreen() {
                 </>
               ) : 'Run Now'}
             </button>
-            <button
-              type='button'
-              className='flex-shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600'
-            >
-              Full Restore
-            </button>
           </div>
-          {processError && (
-            <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>{processError}</p>
-          )}
-          {runNowError && (
-            <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>{runNowError}</p>
+          {(processError || runNowError) && (
+            <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>
+              {processError ?? runNowError}
+            </p>
           )}
         </div>
       </div>
