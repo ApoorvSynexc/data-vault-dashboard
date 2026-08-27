@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsService, type StandardObject } from '../../services/settings/settings.service';
+import { useCrmMetadataService, type CrmMetadataObject } from '../../services/crm-metadata/crm-metadata.service';
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
@@ -53,46 +54,88 @@ const selectCls = 'h-8 rounded-lg border border-gray-200 px-2 text-sm text-gray-
 
 // ── Standard Objects ──────────────────────────────────────────────────────────
 
-function AddObjectInput({ existing, onAdd, saving }: { existing: StandardObject[]; onAdd: (name: string) => void; saving: boolean }) {
-  const [value, setValue] = useState('');
+function AddObjectInput({ existing, onAdd }: { existing: StandardObject[]; onAdd: (name: string) => void }) {
+  const crmMetadataService = useCrmMetadataService();
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const trimmed = value.trim();
-  const alreadyIn = existing.some((o) => o.name.toLowerCase() === trimmed.toLowerCase());
+  const { data: crmObjects = [], isFetching } = useQuery<CrmMetadataObject[]>({
+    queryKey: ['crm-metadata-objects-settings'],
+    queryFn: async () => {
+      const res = await crmMetadataService.getObjectList('backup');
+      return Array.isArray(res) ? res : (res as any)?.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  function submit() {
-    if (!trimmed) return;
-    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(trimmed)) { setError('Invalid API name — letters, numbers, underscores only.'); return; }
-    if (alreadyIn) { setError('Already in the list.'); return; }
+  const existingNames = new Set(existing.map((o) => o.name.toLowerCase()));
+
+  const filtered = crmObjects.filter((o) => {
+    if (o.custom) return false;
+    if (existingNames.has(o.name.toLowerCase())) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return o.name.toLowerCase().includes(q) || o.label?.toLowerCase().includes(q);
+  });
+
+  function handleSelect(obj: CrmMetadataObject) {
     setError('');
-    onAdd(trimmed);
-    setValue('');
-    inputRef.current?.focus();
+    setSearch('');
+    setOpen(false);
+    onAdd(obj.name);
+  }
+
+  // close dropdown on outside click
+  function handleBlur(e: React.FocusEvent) {
+    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+      setOpen(false);
+    }
   }
 
   return (
-    <div className='flex flex-col gap-1.5'>
+    <div className='flex flex-col gap-1.5' ref={containerRef} onBlur={handleBlur}>
       <div className='flex gap-2'>
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => { setValue(e.target.value); setError(''); }}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder='e.g. ServiceContract'
-          className='h-8 flex-1 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500/20 bg-white'
-        />
-        <button
-          onClick={submit}
-          disabled={saving || !trimmed}
-          className='h-8 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0'
-        >
-          {saving ? 'Saving…' : 'Add'}
-        </button>
+        <div className='relative flex-1'>
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setOpen(true); setError(''); }}
+            onFocus={() => setOpen(true)}
+            placeholder={isFetching ? 'Loading objects…' : 'Search by name or label…'}
+            disabled={isFetching}
+            className='h-8 w-full rounded-lg border border-gray-200 px-3 text-sm text-gray-800 outline-none focus:ring-2 focus:ring-blue-500/20 bg-white disabled:opacity-60'
+          />
+          {open && !isFetching && (
+            <div className='absolute left-0 bottom-9 z-50 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden'>
+              {filtered.length === 0 ? (
+                <p className='px-3 py-2.5 text-xs text-gray-400'>No objects found</p>
+              ) : (
+                <ul className='max-h-52 overflow-y-auto divide-y divide-gray-50'>
+                  {filtered.map((obj) => (
+                    <li key={obj.name}>
+                      <button
+                        type='button'
+                        tabIndex={0}
+                        onMouseDown={(e) => { e.preventDefault(); handleSelect(obj); }}
+                        className='flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-blue-50 transition-colors'
+                      >
+                        <span className='text-sm text-gray-800 font-medium truncate'>{obj.name}</span>
+                        {obj.label && obj.label !== obj.name && (
+                          <span className='text-xs text-gray-400 shrink-0 truncate max-w-[40%]'>{obj.label}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       {error
         ? <p className='text-xs text-red-500'>{error}</p>
-        : <p className='text-xs text-gray-400'>Enter the Salesforce API name of the object.</p>
+        : <p className='text-xs text-gray-400'>Select from your connected Salesforce objects.</p>
       }
     </div>
   );
@@ -109,9 +152,9 @@ function StandardObjectsSection({
   const customCount = objects.filter((o) => !o.isDefault).length;
 
   return (
-    <div className='bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden'>
+    <div className='bg-white rounded-xl border border-gray-200 shadow-sm'>
       {/* Header */}
-      <div className='px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4'>
+      <div className='px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4 rounded-t-xl overflow-hidden'>
         <div>
           <p className='text-sm font-semibold text-gray-900'>Standard Objects</p>
           <p className='text-xs text-gray-400 mt-0.5'>
@@ -129,7 +172,7 @@ function StandardObjectsSection({
       </div>
 
       {/* Object list */}
-      <div className='divide-y divide-gray-50'>
+      <div className='divide-y divide-gray-50 overflow-hidden'>
         {objects.map((obj) => (
           <div key={obj.name} className='flex items-center justify-between gap-3 px-6 py-2.5 hover:bg-gray-50/60 transition-colors'>
             <div className='flex items-center gap-3 min-w-0'>
@@ -156,10 +199,10 @@ function StandardObjectsSection({
         ))}
       </div>
 
-      {/* Add row */}
-      <div className='px-6 py-4 border-t border-gray-100 bg-gray-50/40'>
+      {/* Add row — overflow visible so dropdown is not clipped */}
+      <div className='px-6 py-4 border-t border-gray-100 bg-gray-50/40 rounded-b-xl relative'>
         <p className='text-xs font-semibold text-gray-500 mb-2'>Add object by API name</p>
-        <AddObjectInput existing={objects} onAdd={onAdd} saving={saving} />
+        <AddObjectInput existing={objects} onAdd={onAdd} />
       </div>
     </div>
   );
