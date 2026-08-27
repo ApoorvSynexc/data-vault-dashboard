@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import { useRestoreService } from '../../../../services/restore/restore.service';
+import type { RestoreSourceObject } from '../../../../services/restore/restore.service';
 import type { FieldOption } from './types';
 import type { SourceSelection } from '../SelectSourceType';
+import { resolveAutoSelectedParents, formatAutoSelectMessage } from './objectDependencies';
+import { useAutoSelectToast } from './useAutoSelectToast';
+import AutoSelectToast from './AutoSelectToast';
 
 interface Props {
-  sourceObjectNames: string[];
+  sourceObjects: RestoreSourceObject[];
   sourceObjectsLoading: boolean;
   sourceSelection: SourceSelection;
   onChange: (fields: { objectName: string; fieldNames: string[] }[]) => void;
@@ -23,15 +27,95 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange }: Props) {
+// Fetches one object's fields in the background regardless of whether it's
+// the currently active (visible) panel — needed so an auto-selected parent
+// gets its fields default-selected even if the user never clicks "Select
+// Fields →" on it. Shares its react-query cache key with the visible panel's
+// own fetch (same queryKey shape), so activating this object later reads
+// from cache instead of re-fetching. Renders nothing.
+function FieldsAutoLoader({
+  objectName, backupConfigId, alreadyInitialized, onFieldsLoaded,
+}: {
+  objectName: string;
+  backupConfigId: string;
+  alreadyInitialized: boolean;
+  onFieldsLoaded: (objectName: string, fields: FieldOption[]) => void;
+}) {
   const restoreService = useRestoreService();
+  const { data } = useQuery({
+    queryKey: ['source-object-fields', objectName, backupConfigId],
+    queryFn: () => restoreService.fetchObjectFields(objectName, backupConfigId),
+    enabled: !!objectName && !!backupConfigId && !alreadyInitialized,
+    staleTime: 60_000,
+    retry: 1,
+  });
 
-  const [objSearch,      setObjSearch]      = useState('');
-  const [selectedObjs,   setSelectedObjs]   = useState<Set<string>>(new Set());
-  const [activeObj,      setActiveObj]      = useState('');
-  const [selectedFields, setSelectedFields] = useState<Record<string, Set<string>>>({});
-  const [fieldFilter,    setFieldFilter]    = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
-  const [fieldSearch,    setFieldSearch]    = useState('');
+  useEffect(() => {
+    if (!alreadyInitialized && data?.data) onFieldsLoaded(objectName, (data as any).data ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, alreadyInitialized]);
+
+  return null;
+}
+
+export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sourceSelection, onChange }: Props) {
+  const restoreService = useRestoreService();
+  const { toastMessage, showToast } = useAutoSelectToast();
+
+  const [objSearch,          setObjSearch]          = useState('');
+  // The user's own ticks — auto-selected parents are never added here (same
+  // convention as ByObjectScope), so they drop out once nothing manually
+  // selected still needs them.
+  const [manuallySelectedObjs, setManuallySelectedObjs] = useState<Set<string>>(new Set());
+  const [activeObj,          setActiveObj]          = useState('');
+  const [selectedFields,     setSelectedFields]     = useState<Record<string, Set<string>>>({});
+  const [fieldFilter,        setFieldFilter]        = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
+  const [fieldSearch,        setFieldSearch]        = useState('');
+
+  const sourceObjectNames = useMemo(() => sourceObjects.map((o) => o.name), [sourceObjects]);
+  const parentsByObject = useMemo(
+    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectParents ?? []])),
+    [sourceObjects]
+  );
+
+  const { autoSelected, reasons } = useMemo(
+    () => resolveAutoSelectedParents(manuallySelectedObjs, parentsByObject),
+    [manuallySelectedObjs, parentsByObject]
+  );
+  const autoSelectedSet = useMemo(() => new Set(autoSelected), [autoSelected]);
+  const effectiveSelectedObjs = useMemo(
+    () => new Set([...manuallySelectedObjs, ...autoSelected]),
+    [manuallySelectedObjs, autoSelected]
+  );
+  const isAutoOnly = (name: string) => autoSelectedSet.has(name) && !manuallySelectedObjs.has(name);
+
+  // Toast only for newly-required parents since the last render.
+  const prevAutoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const newlyAdded = autoSelected.filter((p) => !prevAutoRef.current.has(p));
+    if (newlyAdded.length) showToast(formatAutoSelectMessage(newlyAdded, reasons));
+    prevAutoRef.current = new Set(autoSelected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelected]);
+
+  // Default-select every field the first time an object's fields load — for
+  // every effectively selected object, not just the active one. Never
+  // overwrites a field set that already exists (user edits or a prior
+  // default-init survive reloads/re-selection).
+  const onFieldsLoaded = (objectName: string, fields: FieldOption[]) => {
+    setSelectedFields((prev) => {
+      if (prev[objectName]) return prev;
+      return { ...prev, [objectName]: new Set(fields.map((f) => f.apiName)) };
+    });
+  };
+
+  // Report the final object+field selection to the parent whenever either changes.
+  useEffect(() => {
+    onChange(
+      [...effectiveSelectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(selectedFields[obj] ?? [])] }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSelectedObjs, selectedFields]);
 
   const { data: fieldOptionsData, isLoading: fieldOptionsLoading } = useQuery({
     queryKey: ['source-object-fields', activeObj, sourceSelection.backupConfigId],
@@ -52,13 +136,10 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
   const activeFieldSet = selectedFields[activeObj] ?? new Set<string>();
 
   const toggleObj = (name: string) => {
-    setSelectedObjs((prev) => {
+    if (isAutoOnly(name)) return; // required by dependency — not user-toggleable
+    setManuallySelectedObjs((prev) => {
       const next = new Set(prev);
       if (next.has(name)) { next.delete(name); } else { next.add(name); setActiveObj(name); }
-      const fields = Object.entries(selectedFields)
-        .filter(([obj]) => next.has(obj))
-        .map(([obj, set]) => ({ objectName: obj, fieldNames: [...set] }));
-      onChange(fields);
       return next;
     });
   };
@@ -67,44 +148,47 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
     setSelectedFields((prev) => {
       const cur = new Set(prev[activeObj] ?? []);
       cur.has(apiName) ? cur.delete(apiName) : cur.add(apiName);
-      const next = { ...prev, [activeObj]: cur };
-      onChange([...selectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(next[obj] ?? [])] })));
-      return next;
+      return { ...prev, [activeObj]: cur };
     });
   };
 
   const selectAllFields = () => {
-    setSelectedFields((prev) => {
-      const next = { ...prev, [activeObj]: new Set(availableFields.map((f) => f.apiName)) };
-      onChange([...selectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(next[obj] ?? [])] })));
-      return next;
-    });
+    setSelectedFields((prev) => ({ ...prev, [activeObj]: new Set(availableFields.map((f) => f.apiName)) }));
   };
 
   const deselectAllFields = () => {
-    setSelectedFields((prev) => {
-      const next = { ...prev, [activeObj]: new Set<string>() };
-      onChange([...selectedObjs].map((obj) => ({ objectName: obj, fieldNames: [...(next[obj] ?? [])] })));
-      return next;
-    });
+    setSelectedFields((prev) => ({ ...prev, [activeObj]: new Set<string>() }));
   };
 
-  const totalFields = Object.values(selectedFields).reduce((s, f) => s + f.size, 0);
+  const totalFields = [...effectiveSelectedObjs].reduce((s, obj) => s + (selectedFields[obj]?.size ?? 0), 0);
   const filteredObjs = sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()));
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+      <AutoSelectToast message={toastMessage} />
+      {/* Background field loaders — one per effectively selected object, so
+          an auto-selected parent's fields get default-selected even if the
+          user never opens its field panel. No UI of their own. */}
+      {[...effectiveSelectedObjs].map((obj) => (
+        <FieldsAutoLoader
+          key={obj}
+          objectName={obj}
+          backupConfigId={sourceSelection.backupConfigId}
+          alreadyInitialized={!!selectedFields[obj]}
+          onFieldsLoaded={onFieldsLoaded}
+        />
+      ))}
       <div className='px-5 py-3 border-b border-gray-100 flex items-center justify-between'>
         <Typography as='h3' variant='sectionTitle' color='secondary'>▤ Pick Fields per Object</Typography>
-        {selectedObjs.size > 0 && (
+        {effectiveSelectedObjs.size > 0 && (
           <span className='text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700'>
-            {selectedObjs.size} object{selectedObjs.size !== 1 ? 's' : ''} · {totalFields} fields
+            {effectiveSelectedObjs.size} object{effectiveSelectedObjs.size !== 1 ? 's' : ''} · {totalFields} fields
           </span>
         )}
       </div>
       <div className='p-5 space-y-4'>
         <InfoCallout>
-          Tick objects to include them. Click <strong>Select Fields →</strong> on any ticked object to choose which fields to restore.
+          Tick objects to include them — all of an object's fields are selected by default, and required parent objects are added automatically. Click <strong>Select Fields →</strong> on any ticked object to fine-tune which fields to restore.
         </InfoCallout>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {/* Left — object list */}
@@ -129,14 +213,28 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
               ) : sourceObjectNames.length === 0 ? (
                 <p className='text-xs text-gray-400 py-6 text-center'>No objects found.</p>
               ) : filteredObjs.map((name) => {
-                const isTicked   = selectedObjs.has(name);
+                const isTicked   = effectiveSelectedObjs.has(name);
+                const autoOnly   = isAutoOnly(name);
                 const isActive   = activeObj === name;
                 const fieldCount = selectedFields[name]?.size ?? 0;
                 return (
                   <div key={name} className={`flex items-center gap-2.5 px-3 py-2.5 transition-colors ${isActive ? 'bg-blue-50' : isTicked ? 'bg-gray-50/60' : 'bg-white'}`}>
-                    <input type='checkbox' checked={isTicked} onChange={() => toggleObj(name)}
-                      className='w-3.5 h-3.5 accent-blue-600 cursor-pointer flex-shrink-0' />
-                    <span className={`text-xs font-mono flex-1 min-w-0 truncate ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800' : 'text-gray-500'}`}>{name}</span>
+                    <input
+                      type='checkbox'
+                      checked={isTicked}
+                      disabled={autoOnly}
+                      onChange={() => toggleObj(name)}
+                      className='w-3.5 h-3.5 accent-blue-600 flex-shrink-0'
+                      style={{ cursor: autoOnly ? 'not-allowed' : 'pointer', opacity: autoOnly ? 0.6 : 1 }}
+                    />
+                    <span className={`text-xs font-mono flex-1 min-w-0 truncate flex items-center gap-1.5 ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800' : 'text-gray-500'}`}>
+                      <span className='truncate'>{name}</span>
+                      {autoOnly && (
+                        <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — a ticked object depends on it'>
+                          Auto
+                        </span>
+                      )}
+                    </span>
                     {isTicked ? (
                       <button onClick={() => { setActiveObj(name); setFieldSearch(''); setFieldFilter('All'); }}
                         className={`flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-md border transition-colors ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-300 text-blue-600 hover:bg-blue-50'}`}>

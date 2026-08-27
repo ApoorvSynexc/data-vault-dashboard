@@ -209,7 +209,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         )}
         {scopeMode === 'field'   && (
           <ByFieldScope
-            sourceObjectNames={sourceObjectNames}
+            sourceObjects={sourceObjects}
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setFieldScope}
