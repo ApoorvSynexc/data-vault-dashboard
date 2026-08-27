@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Typography from '../../../../components/Typography';
 import type { RestoreSourceObject, RestoreObjectRecordCount } from '../../../../services/restore/restore.service';
-import { resolveAutoSelectedParents, formatAutoSelectMessage } from './objectDependencies';
+import { resolveAutoSelectedChildren, formatAutoSelectMessage } from './objectDependencies';
 import { useAutoSelectToast } from './useAutoSelectToast';
 import AutoSelectToast from './AutoSelectToast';
 
@@ -28,7 +28,7 @@ function TypeBadge({ type }: { type: string }) {
 
 export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, recordCounts, recordCountsLoading, onChange }: Props) {
   const [search, setSearch] = useState('');
-  // The user's own ticks — auto-selected parents are never added here, so
+  // The user's own ticks — auto-selected children are never added here, so
   // they naturally drop out the moment nothing manually selected still needs
   // them (see effectiveSelected below).
   const [manuallySelected, setManuallySelected] = useState<Set<string>>(new Set());
@@ -40,14 +40,14 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
     [recordCounts]
   );
 
-  const parentsByObject = useMemo(
-    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectParents ?? []])),
+  const childrenByObject = useMemo(
+    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectChildren ?? []])),
     [sourceObjects]
   );
 
   const { autoSelected, reasons } = useMemo(
-    () => resolveAutoSelectedParents(manuallySelected, parentsByObject),
-    [manuallySelected, parentsByObject]
+    () => resolveAutoSelectedChildren(manuallySelected, childrenByObject),
+    [manuallySelected, childrenByObject]
   );
   const autoSelectedSet = useMemo(() => new Set(autoSelected), [autoSelected]);
   const effectiveSelected = useMemo(
@@ -75,7 +75,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
   const isAutoOnly = (name: string) => autoSelectedSet.has(name) && !manuallySelected.has(name);
 
   const toggle = (name: string) => {
-    if (isAutoOnly(name)) return; // required by dependency — not user-toggleable
+    if (isAutoOnly(name)) return; // cascade-required child — not user-toggleable
     setManuallySelected((prev) => {
       const next = new Set(prev);
       next.has(name) ? next.delete(name) : next.add(name);
@@ -160,7 +160,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, rec
                   <span className='flex items-center gap-1.5 min-w-0'>
                     <span className={`text-sm font-mono truncate ${effectiveSelected.has(name) ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
                     {autoOnly && (
-                      <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — a selected object depends on it'>
+                      <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — cascade-deletes with a selected object'>
                         Auto
                       </span>
                     )}
