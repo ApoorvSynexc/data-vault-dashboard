@@ -83,8 +83,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // When describe data arrives, auto-select master-detail children and show toast
   useEffect(() => {
     if (!describeData?.data || !lastSelectedSfName) return;
-    const d = describeData.data as { children?: { name: string }[] };
-    const childSfNames = (d.children ?? []).map((c) => c.name);
+    const d = describeData.data as { children?: { name: string; cascadeDelete: boolean; restrictedDelete: boolean }[] };
+    const childSfNames = (d.children ?? [])
+      .filter((c) => c.cascadeDelete === true || c.restrictedDelete === true)
+      .map((c) => c.name);
     if (childSfNames.length === 0) return;
 
     // Map SF API names -> uuids via displayObjects

@@ -44,5 +44,10 @@ export function useNotificationService() {
         '/v1/notification/mark-all-read',
         {},
       ),
+
+    getUnreadCount: () =>
+      api.get<{ success: boolean; message: string; data: { count: number } }>(
+        '/v1/notification/unread-count',
+      ),
   };
 }

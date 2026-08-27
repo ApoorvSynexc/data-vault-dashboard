@@ -103,11 +103,10 @@ export default function Storage() {
   const lastArchivalData: any[] = Array.isArray((lastArchivalQuery.data as any)?.data) ? (lastArchivalQuery.data as any).data : [];
 
   const overviewData = (overviewQuery.data as any)?.data;
-  const backupSize: number = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes ?? 0;
-  const backupUploadedRecords: number   = overviewData?.backupConfigSizeRecord?.backup?.uploadedRecords   ?? 0;
-  const archivalUploadedRecords: number = overviewData?.backupConfigSizeRecord?.archival?.uploadedRecords ?? 0;
-  const backupRecords: number = backupUploadedRecords + archivalUploadedRecords;
-  const archivalSize: number = archivalUploadedRecords * 2 * 1024;
+  const backupSize: number     = (overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes   ?? 0)
+                               + (overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0);
+  const backupRecords: number  = overviewData?.backupConfigSizeRecord?.backup?.completedRecordCount   ?? 0;
+  const archivalRecords: number = overviewData?.backupConfigSizeRecord?.archival?.completedRecordCount ?? 0;
   const monthlyStats: MonthlyStat[] = Array.isArray(overviewData?.monthlyStats) ? overviewData.monthlyStats : [];
 
 
@@ -123,49 +122,63 @@ export default function Storage() {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div className='grid grid-cols-2 lg:grid-cols-3 gap-3'>
+      <div className='grid grid-cols-2 lg:grid-cols-4 gap-3'>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
           <p className='text-xs text-gray-500'>DataCraft Storage Used</p>
           <p className='text-xl font-bold mt-1' style={{ color: '#155DFC' }}>{formatBytes(backupSize)}</p>
-          <p className='text-xs mt-1 text-gray-400'>Backup storage consumed</p>
+          <p className='text-xs mt-1 text-gray-400'>Backup + Archive storage consumed</p>
         </div>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
           <p className='text-xs text-gray-500'>Records Protected</p>
           <p className='text-xl font-bold mt-1 text-gray-900'>{formatCount(backupRecords)}</p>
           <p className='text-xs mt-1 text-gray-400'>Across all backup policies</p>
         </div>
+        <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
+          <p className='text-xs text-gray-500'>Records Archived</p>
+          <p className='text-xl font-bold mt-1 text-gray-900'>{formatCount(archivalRecords)}</p>
+          <p className='text-xs mt-1 text-gray-400'>Across all archive policies</p>
+        </div>
         <div className='rounded-xl shadow-sm px-4 py-3.5' style={{ background: 'linear-gradient(180deg,#eef9f1,#fff)', border: '1px solid #16a34a' }}>
           <p className='text-xs font-semibold text-green-700'>Salesforce Storage Saved</p>
-          <p className='text-xl font-bold mt-1 text-green-700'>{formatBytes(archivalSize)}</p>
+          <p className='text-xl font-bold mt-1 text-green-700'>--</p>
           <p className='text-xs mt-1 text-gray-400'>Freed by Archive Vault</p>
         </div>
       </div>
 
       {/* ── Storage Breakdown Bar ── */}
-      <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
-        <div className='flex items-center justify-between mb-3'>
-          <span className='text-sm font-semibold text-gray-800'>Where the 156 GB lives</span>
-          <span className='text-xs text-gray-400'>DataCraft storage breakdown</span>
-        </div>
-        <div className='flex w-full h-3.5 rounded-full overflow-hidden mb-3'>
-          <div style={{ width: '50%', background: '#3b82f6' }} />
-          <div style={{ width: '50%', background: '#7c3aed' }} />
-        </div>
-        <div className='grid grid-cols-2 gap-3 text-xs'>
-          {[
-            { color: '#3b82f6', label: 'Backup Snapshots',  val: '50 GB · 50%' },
-            { color: '#7c3aed', label: 'Archive Snapshots', val: '50 GB · 50%' },
-          ].map(({ color, label, val }) => (
-            <div key={label} className='flex flex-col gap-1'>
-              <div className='flex items-center gap-1.5'>
-                <span className='w-2.5 h-2.5 rounded-sm flex-shrink-0' style={{ background: color }} />
-                <span className='font-semibold text-gray-700'>{label}</span>
-              </div>
-              <span className='text-gray-400 pl-4'>{val}</span>
+      {(() => {
+        const rawBackup   = overviewData?.backupConfigSizeRecord?.backup?.sizeInBytes   ?? 0;
+        const rawArchival = overviewData?.backupConfigSizeRecord?.archival?.sizeInBytes ?? 0;
+        const total = rawBackup + rawArchival;
+        const backupPct   = total > 0 ? (rawBackup   / total) * 100 : 50;
+        const archivalPct = total > 0 ? (rawArchival / total) * 100 : 50;
+        return (
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <span className='text-sm font-semibold text-gray-800'>Where the {formatBytes(total)} lives</span>
+              <span className='text-xs text-gray-400'>DataCraft storage breakdown</span>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className='flex w-full h-3.5 rounded-full overflow-hidden mb-3'>
+              <div style={{ width: `${backupPct}%`, background: '#3b82f6' }} />
+              <div style={{ width: `${archivalPct}%`, background: '#7c3aed' }} />
+            </div>
+            <div className='grid grid-cols-2 gap-3 text-xs'>
+              {[
+                { color: '#3b82f6', label: 'Backup Snapshots',  val: `${formatBytes(rawBackup)} · ${backupPct.toFixed(0)}%` },
+                { color: '#7c3aed', label: 'Archive Snapshots', val: `${formatBytes(rawArchival)} · ${archivalPct.toFixed(0)}%` },
+              ].map(({ color, label, val }) => (
+                <div key={label} className='flex flex-col gap-1'>
+                  <div className='flex items-center gap-1.5'>
+                    <span className='w-2.5 h-2.5 rounded-sm flex-shrink-0' style={{ background: color }} />
+                    <span className='font-semibold text-gray-700'>{label}</span>
+                  </div>
+                  <span className='text-gray-400 pl-4'>{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Backup Coverage ── */}
       <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden' style={{ borderLeft: '4px solid #3b82f6' }}>
