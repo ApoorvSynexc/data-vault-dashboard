@@ -171,6 +171,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           configType={sourceSelection.configType}
           destinationCrmId={restorePayload.destination.crmId || sourceSelection.crmId}
           scopeObjectApiNames={scopeObjectApiNames(restorePayload.selection.restoreScope)}
+          sourceStartDate={restorePayload.source.startDate}
+          sourceEndDate={restorePayload.source.endDate}
         />
       </div>
       {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
