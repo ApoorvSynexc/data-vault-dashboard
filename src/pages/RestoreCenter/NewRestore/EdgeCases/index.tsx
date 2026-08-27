@@ -490,10 +490,10 @@ interface Props {
 export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames, sourceStartDate, sourceEndDate }: Props) {
   const [ecDuplicate] = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
-  const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
-  const [ecParent,       setEcParent]       = useState('Restore parent first');
-  const [ecRecordType,   setEcRecordType]   = useState('Map to default');
-  const [ecMissRequired, setEcMissRequired] = useState('Use specified default per field');
+  const [ecOwner,        setEcOwner]        = useState('Skip record');
+  const [ecParent,       setEcParent]       = useState('Skip');
+  const [ecRecordType,   setEcRecordType]   = useState('Skip');
+  const [ecMissRequired, setEcMissRequired] = useState('Skip the record');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
 
   // Object blocks for "Map to existing field" — one per object, each showing
@@ -699,7 +699,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
                   Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." />
                 </span>
                 <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
-                  <option>Re-parent to placeholder</option>
                   <option>Restore parent first</option>
                   <option>Skip</option>
                 </select>
