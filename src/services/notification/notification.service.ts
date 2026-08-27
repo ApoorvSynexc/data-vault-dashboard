@@ -38,5 +38,11 @@ export function useNotificationService() {
         { status },
         { query: { notificationId } },
       ),
+
+    markAllRead: () =>
+      api.put<{ success: boolean; message: string; data: { updatedCount: number } }>(
+        '/v1/notification/mark-all-read',
+        {},
+      ),
   };
 }
