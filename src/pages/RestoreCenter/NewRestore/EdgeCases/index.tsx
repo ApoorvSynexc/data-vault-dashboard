@@ -183,20 +183,24 @@ function RecordTypeMappingForObject({
 // object scope itself when objectApiNames is omitted), then renders one
 // RecordTypeMappingForObject block per object the response says needs one.
 function RecordTypeMappingBlock({
-  backupConfigId, configType, crmId, objectApiNames, mappingByObject, onMappingChange,
+  backupConfigId, configType, crmId, objectApiNames, sourceStartDate, sourceEndDate, mappingByObject, onMappingChange,
 }: {
   backupConfigId: string;
   configType: 'BACKUP' | 'ARCHIVAL';
   crmId?: string;
   objectApiNames?: string[];
+  // Already UTC ISO (toUTCISOString) — set only for a CHANGED_BETWEEN
+  // restore's own source window; omitted otherwise (unbounded history).
+  sourceStartDate?: string;
+  sourceEndDate?: string;
   mappingByObject: Record<string, Record<string, string>>;
   onMappingChange: (objectApiName: string, sourceRecordTypeId: string, destinationRecordTypeId: string) => void;
 }) {
   const restoreService = useRestoreService();
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['missing-record-types', backupConfigId, configType, objectApiNames?.join(',') ?? 'ALL'],
-    queryFn: () => restoreService.fetchMissingRecordTypes(backupConfigId, configType, objectApiNames),
+    queryKey: ['missing-record-types', backupConfigId, configType, objectApiNames?.join(',') ?? 'ALL', sourceStartDate, sourceEndDate],
+    queryFn: () => restoreService.fetchMissingRecordTypes(backupConfigId, configType, objectApiNames, sourceStartDate, sourceEndDate),
     enabled: !!backupConfigId,
     staleTime: 60_000,
     retry: 1,
@@ -476,9 +480,14 @@ interface Props {
   configType: 'BACKUP' | 'ARCHIVAL';
   destinationCrmId?: string;
   scopeObjectApiNames?: string[];
+  // The restore source's own CHANGED_BETWEEN window, already UTC ISO
+  // (toUTCISOString, set in NewRestore's step-2 handler) — undefined for
+  // ENTIRE/other source types.
+  sourceStartDate?: string;
+  sourceEndDate?: string;
 }
 
-export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames }: Props) {
+export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames, sourceStartDate, sourceEndDate }: Props) {
   const [ecDuplicate] = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
@@ -713,6 +722,8 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
                       configType={configType}
                       crmId={destinationCrmId}
                       objectApiNames={scopeObjectApiNames}
+                      sourceStartDate={sourceStartDate}
+                      sourceEndDate={sourceEndDate}
                       mappingByObject={rtMappingByObject}
                       onMappingChange={updateRtMapping}
                     />

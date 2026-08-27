@@ -330,11 +330,20 @@ export function useRestoreService() {
 
     // objectApiNames omitted resolves to every restorable object on the config
     // (an ENTIRE restore) — the backend does that resolution, not the caller.
-    fetchMissingRecordTypes: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL', objectApiNames?: string[]) =>
+    // startDate/endDate must already be UTC ISO strings (toUTCISOString) —
+    // omit both for the whole delta history instead of a window.
+    fetchMissingRecordTypes: (
+      backupConfigId: string,
+      configType: 'BACKUP' | 'ARCHIVAL',
+      objectApiNames?: string[],
+      startDate?: string,
+      endDate?: string,
+    ) =>
       api.post<ObjectRecordTypeMapping[]>(RESTORE_ENDPOINTS.fetchMissingRecordTypes, {
         backupConfigId,
         configType,
         ...(objectApiNames?.length ? { objectApiNames } : {}),
+        ...(startDate && endDate ? { startDate, endDate } : {}),
       }),
 
     getCrmRecordTypes: (crmId: string, objectName: string, activeOnly?: boolean) =>
