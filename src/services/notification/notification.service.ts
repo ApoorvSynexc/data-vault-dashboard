@@ -31,5 +31,12 @@ export function useNotificationService() {
   return {
     listNotifications: () =>
       api.get<NotificationListResponse>('/v1/notification/list'),
+
+    updateStatus: (notificationId: string, status: 'READ' | 'UNREAD' | 'DELETED') =>
+      api.put<{ success: boolean; message: string; data: INotification }>(
+        '/v1/notification',
+        { status },
+        { query: { notificationId } },
+      ),
   };
 }
