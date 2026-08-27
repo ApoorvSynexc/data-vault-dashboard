@@ -136,9 +136,7 @@ export default function ArchiveDetailScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('Archive Details');
   const [recordSearch, setRecordSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [logFromDate, setLogFromDate] = useState('');
-  const [logToDate, setLogToDate] = useState('');
-  const [logCursor, setLogCursor] = useState<string | null>(null);
+const [logCursor, setLogCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [logPageIndex, setLogPageIndex] = useState(0);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -315,8 +313,7 @@ export default function ArchiveDetailScreen() {
   }
 
   return (
-    <div className='flex-1 min-h-0 overflow-y-auto p-4 sm:p-6'>
-    <div className='flex flex-col gap-4'>
+    <div className='flex-1 min-h-0 flex flex-col p-4 sm:p-6 gap-4'>
 
       {/* Breadcrumb */}
       <div className='flex items-center gap-2 text-sm'>
@@ -786,28 +783,7 @@ export default function ArchiveDetailScreen() {
 
           {/* ── Activity Logs ── */}
           {activeTab === 'Activity Logs' && (
-            <div className='flex flex-col flex-1 min-h-0'>
-              {/* Filter bar */}
-              <div className='flex items-center gap-2 mb-4 flex-shrink-0'>
-                <div className='relative'>
-                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                    <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                  </svg>
-                  <input type='date' value={logFromDate} onChange={(e) => { setLogFromDate(e.target.value); setLogCursor(null); setCursorHistory([null]); setLogPageIndex(0); }}
-                    className='h-9 w-40 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
-                </div>
-                <div className='relative'>
-                  <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400'>
-                    <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                  </svg>
-                  <input type='date' value={logToDate} onChange={(e) => { setLogToDate(e.target.value); setLogCursor(null); setCursorHistory([null]); setLogPageIndex(0); }}
-                    className='h-9 w-40 rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-700 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-50' />
-                </div>
-                <button type='button' onClick={() => { setLogFromDate(''); setLogToDate(''); setLogCursor(null); setCursorHistory([null]); setLogPageIndex(0); }}
-                  className='h-9 rounded-lg border border-gray-200 bg-white px-3.5 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600'>
-                  Clear
-                </button>
-              </div>
+            <div className='flex-1 min-h-0 flex flex-col'>
 
               {/* Single table — sticky thead keeps headers aligned with rows */}
               <div className='flex-1 min-h-0 overflow-y-auto'>
@@ -825,13 +801,7 @@ export default function ArchiveDetailScreen() {
                   </thead>
                   <tbody>
                     {(() => {
-                      const filteredJobRows = jobRows.filter((job) => {
-                        if (!job.startedAt) return true;
-                        const jobDate = job.startedAt.slice(0, 10); // 'YYYY-MM-DD'
-                        if (logFromDate && jobDate < logFromDate) return false;
-                        if (logToDate && jobDate > logToDate) return false;
-                        return true;
-                      });
+                      const filteredJobRows = jobRows;
                       return jobsLoading ? (
                       <tr><td colSpan={7} className='py-12 text-center'>
                         <div className='inline-block h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
@@ -928,7 +898,7 @@ export default function ArchiveDetailScreen() {
               </div>
 
               {/* Pagination footer */}
-              <div className='flex-shrink-0 mt-3 flex items-center justify-between border-t border-gray-100 pt-3'>
+              <div className='flex-shrink-0 flex items-center justify-between border-t border-gray-100 pt-3 mt-3'>
                 <span className='text-xs text-gray-500'>
                   Showing <span className='font-semibold text-gray-700'>{totalJobRecords === 0 ? 0 : logPageIndex * 20 + 1}</span> to <span className='font-semibold text-gray-700'>{Math.min((logPageIndex + 1) * 20, totalJobRecords)}</span> of <span className='font-semibold text-gray-700'>{totalJobRecords}</span> logs
                 </span>
@@ -1027,7 +997,6 @@ export default function ArchiveDetailScreen() {
         </div>
       </div>}
 
-    </div>
     </div>
   );
 }
