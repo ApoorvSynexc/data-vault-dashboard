@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, createContext, useContext } from 'react';
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useAppDispatch } from '../store/hooks';
 import { fetchPlatforms } from '../store/slices/platformsSlice';
 import { usePlatformService } from '../services/platform/platform.service';
 import type { ConnectedPlatform } from '../services/platform/platform.service';
+import { useNotificationService } from '../services/notification/notification.service';
 import DataCraftLogoIcon from '../assets/icons/Datavault Logo Container.svg';
 
 // ── Selected Org Context ───────────────────────────────────────────────────────
@@ -203,10 +204,21 @@ export default function MainLayout() {
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedOrg, setSelectedOrg] = useState<ConnectedPlatform | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const notificationService = useNotificationService();
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['notification-unread-count'],
+    queryFn: () => notificationService.getUnreadCount(),
+    refetchInterval: 60 * 60 * 1000, // 1 hour
+    staleTime: 60 * 60 * 1000,
+  });
+  const unreadCount = (unreadCountData as any)?.data?.count ?? (unreadCountData as any)?.count ?? 0;
+  const hasUnread = unreadCount > 0;
 
   const handleSelectOrg = async (org: ConnectedPlatform) => {
     if (org.crmId === selectedOrg?.crmId) return;
@@ -343,11 +355,16 @@ export default function MainLayout() {
 
           {/* Icon buttons */}
           <button
-            onClick={() => navigate('/notifications')}
+            onClick={() => {
+              navigate('/notifications');
+              queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+            }}
             className='relative cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'
           >
             <Icons.bell />
-            <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full' />
+            {hasUnread && (
+              <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full' />
+            )}
           </button>
           <button className='cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'>
             <Icons.settings />

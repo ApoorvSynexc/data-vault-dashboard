@@ -1,4 +1,5 @@
 import { useState, useEffect, type JSX } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNotificationService, type INotification } from '../../services/notification/notification.service';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ const prefRows: { key: PrefKey; label: string; description: string }[] = [
 
 export default function Notifications() {
   const notificationService = useNotificationService();
+  const queryClient = useQueryClient();
   const [notifications, setNotifications] = useState<INotification[]>([]);
   const [activeTab, setActiveTab]         = useState<FilterTab>('all');
   const [prefs, setPrefs]                 = useState(initialPrefs);
@@ -142,24 +144,33 @@ export default function Notifications() {
 
   const unreadCount = notifications.filter((n) => n.status === 'UNREAD').length;
 
+  function refetchUnreadCount() {
+    queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+  }
+
   function markAllRead() {
     notificationService.markAllRead()
       .then((res) => {
         const updated = (res as any)?.data?.updatedCount ?? (res as any)?.updatedCount ?? 0;
         if (updated > 0) {
           setNotifications((prev) => prev.map((n) => ({ ...n, status: 'READ' })));
+          refetchUnreadCount();
         }
       })
       .catch(() => {});
   }
 
   function markRead(id: string) {
-    notificationService.updateStatus(id, 'READ').catch(() => {});
+    notificationService.updateStatus(id, 'READ')
+      .then(() => refetchUnreadCount())
+      .catch(() => {});
     setNotifications((prev) => prev.map((n) => n.notificationId === id ? { ...n, status: 'READ' } : n));
   }
 
   function dismiss(id: string) {
-    notificationService.updateStatus(id, 'DELETED').catch(() => {});
+    notificationService.updateStatus(id, 'DELETED')
+      .then(() => refetchUnreadCount())
+      .catch(() => {});
     setNotifications((prev) => prev.filter((n) => n.notificationId !== id));
   }
 
