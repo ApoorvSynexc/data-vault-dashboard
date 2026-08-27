@@ -895,6 +895,14 @@ export default function AddDetailsWizard({
               <p className='text-sm text-gray-500'>
                 Select child relationships to include in the archive. Check a child to include it, then toggle to expand nested relationships.
               </p>
+              <div className='flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 bg-blue-50 border border-blue-200'>
+                <svg className='flex-shrink-0 mt-0.5' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#1d4ed8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                </svg>
+                <p className='text-xs text-blue-800 leading-relaxed'>
+                  Only the first level of Master-Detail relationships is automatically included. To archive deeper levels of a relationship hierarchy, enable the <span className='font-semibold'>Include Child</span> toggle on the relevant child object and configure its nested relationships.
+                </p>
+              </div>
               <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
                 <table className='w-full border-collapse table-fixed'>
                   <colgroup>

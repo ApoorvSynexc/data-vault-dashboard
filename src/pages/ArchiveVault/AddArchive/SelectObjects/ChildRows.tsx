@@ -159,7 +159,7 @@ export function ChildRows({
     fieldApiName: r.field ?? r.name,
     label: r.name,
     relationshipName: r.name,
-    relationshipType: r.cascadeDelete ? 'MasterDetail' : r.restrictedDelete ? 'Required Lookup' : 'Lookup',
+    relationshipType: (r.cascadeDelete || r.restrictedDelete) ? 'MasterDetail' : 'Lookup',
     objectType: 'Standard',
   }));
 
