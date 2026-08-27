@@ -5,7 +5,7 @@ import { useRestoreService } from '../../../../services/restore/restore.service'
 import type { RestoreSourceObject } from '../../../../services/restore/restore.service';
 import type { FieldOption } from './types';
 import type { SourceSelection } from '../SelectSourceType';
-import { resolveAutoSelectedParents, formatAutoSelectMessage } from './objectDependencies';
+import { resolveAutoSelectedChildren, formatAutoSelectMessage } from './objectDependencies';
 import { useAutoSelectToast } from './useAutoSelectToast';
 import AutoSelectToast from './AutoSelectToast';
 
@@ -28,7 +28,7 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 }
 
 // Fetches one object's fields in the background regardless of whether it's
-// the currently active (visible) panel — needed so an auto-selected parent
+// the currently active (visible) panel — needed so an auto-selected child
 // gets its fields default-selected even if the user never clicks "Select
 // Fields →" on it. Shares its react-query cache key with the visible panel's
 // own fetch (same queryKey shape), so activating this object later reads
@@ -63,7 +63,7 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
   const { toastMessage, showToast } = useAutoSelectToast();
 
   const [objSearch,          setObjSearch]          = useState('');
-  // The user's own ticks — auto-selected parents are never added here (same
+  // The user's own ticks — auto-selected children are never added here (same
   // convention as ByObjectScope), so they drop out once nothing manually
   // selected still needs them.
   const [manuallySelectedObjs, setManuallySelectedObjs] = useState<Set<string>>(new Set());
@@ -73,14 +73,14 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
   const [fieldSearch,        setFieldSearch]        = useState('');
 
   const sourceObjectNames = useMemo(() => sourceObjects.map((o) => o.name), [sourceObjects]);
-  const parentsByObject = useMemo(
-    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectParents ?? []])),
+  const childrenByObject = useMemo(
+    () => Object.fromEntries(sourceObjects.map((o) => [o.name, o.autoSelectChildren ?? []])),
     [sourceObjects]
   );
 
   const { autoSelected, reasons } = useMemo(
-    () => resolveAutoSelectedParents(manuallySelectedObjs, parentsByObject),
-    [manuallySelectedObjs, parentsByObject]
+    () => resolveAutoSelectedChildren(manuallySelectedObjs, childrenByObject),
+    [manuallySelectedObjs, childrenByObject]
   );
   const autoSelectedSet = useMemo(() => new Set(autoSelected), [autoSelected]);
   const effectiveSelectedObjs = useMemo(
@@ -136,7 +136,7 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
   const activeFieldSet = selectedFields[activeObj] ?? new Set<string>();
 
   const toggleObj = (name: string) => {
-    if (isAutoOnly(name)) return; // required by dependency — not user-toggleable
+    if (isAutoOnly(name)) return; // cascade-required child — not user-toggleable
     setManuallySelectedObjs((prev) => {
       const next = new Set(prev);
       if (next.has(name)) { next.delete(name); } else { next.add(name); setActiveObj(name); }
@@ -167,7 +167,7 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
       <AutoSelectToast message={toastMessage} />
       {/* Background field loaders — one per effectively selected object, so
-          an auto-selected parent's fields get default-selected even if the
+          an auto-selected child's fields get default-selected even if the
           user never opens its field panel. No UI of their own. */}
       {[...effectiveSelectedObjs].map((obj) => (
         <FieldsAutoLoader
@@ -188,7 +188,7 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
       </div>
       <div className='p-5 space-y-4'>
         <InfoCallout>
-          Tick objects to include them — all of an object's fields are selected by default, and required parent objects are added automatically. Click <strong>Select Fields →</strong> on any ticked object to fine-tune which fields to restore.
+          Tick objects to include them — all of an object's fields are selected by default, and cascade-tied child objects are added automatically. Click <strong>Select Fields →</strong> on any ticked object to fine-tune which fields to restore.
         </InfoCallout>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {/* Left — object list */}
@@ -230,7 +230,7 @@ export default function ByFieldScope({ sourceObjects, sourceObjectsLoading, sour
                     <span className={`text-xs font-mono flex-1 min-w-0 truncate flex items-center gap-1.5 ${isActive ? 'font-semibold text-blue-700' : isTicked ? 'text-gray-800' : 'text-gray-500'}`}>
                       <span className='truncate'>{name}</span>
                       {autoOnly && (
-                        <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — a ticked object depends on it'>
+                        <span className='flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600' title='Automatically selected — cascade-deletes with a ticked object'>
                           Auto
                         </span>
                       )}
