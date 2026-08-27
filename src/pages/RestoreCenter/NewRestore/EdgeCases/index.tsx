@@ -488,7 +488,6 @@ interface Props {
 }
 
 export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames, sourceStartDate, sourceEndDate }: Props) {
-  const [ecDuplicate] = useState('Use destination if newer');
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Reassign to specified user');
   const [ecParent,       setEcParent]       = useState('Restore parent first');
@@ -797,14 +796,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={() => {
-              // onDuplicateRecord
-              const DUPLICATE_ENUM: Record<string, string> = {
-                'Overwrite':                  'OVERWRITE',
-                'Skip':                       'SKIP',
-                'Create new copy with suffix':'CREATE_NEW_COPY_WITH_SUFFIX',
-                'Use destination if newer':   'USE_DESTINATION_IF_NEWER',
-              };
-
               // missingFieldInDestination type enum
               const MISSING_FIELD_ENUM: Record<string, string> = {
                 'Skip the field':       'SKIP_THE_FIELD',
@@ -836,11 +827,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
               };
 
               const edgeCases: RestoreEdgeCases = {};
-
-              // onDuplicateRecord
-              if (DUPLICATE_ENUM[ecDuplicate]) {
-                edgeCases.onDuplicateRecord = DUPLICATE_ENUM[ecDuplicate];
-              }
 
               // missingFieldInDestination — only include sourceDestinationMapping when type requires it
               edgeCases.missingFieldInDestination = {
