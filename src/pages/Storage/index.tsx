@@ -233,7 +233,7 @@ export default function Storage() {
                   <tr key={p.backupConfigId} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
                     <td className='py-2.5 px-3'>
                       <p className='font-semibold text-gray-800'>{p.name}</p>
-                      <p className='text-gray-400 mt-0.5 capitalize'>{p.schedule?.toLowerCase?.() ?? '—'} · {p.dataset?.toLowerCase?.() ?? '—'}</p>
+                      <p className='text-gray-400 mt-0.5 capitalize'>{p.schedule?.toLowerCase?.() ?? '—'}</p>
                     </td>
                     <td className='py-2.5 px-3 text-gray-700'>{p.objectNames?.length ?? 0}</td>
                     <td className='py-2.5 px-3 text-gray-700'>{p.sizeInBytes != null ? formatBytes(p.sizeInBytes) : '—'}</td>
