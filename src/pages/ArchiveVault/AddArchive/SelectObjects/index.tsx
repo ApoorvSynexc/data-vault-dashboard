@@ -299,9 +299,33 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             </span>
           </div>
 
+          {/* MasterDetail warning — above the table so it never squashes it */}
+          {showMdToast && mdWarnings.length > 0 && (
+            <div className='flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium flex-shrink-0'
+              style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+              </svg>
+              <div className='flex-1'>
+                <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
+                <ul className='list-disc list-inside space-y-0.5'>
+                  {mdWarnings.map(({ child, parentField, parentLabel }) => {
+                    const displayName = parentLabel || parentField;
+                    return (
+                      <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{displayName}</strong> — please select <strong>{displayName}</strong> from the objects list above.</li>
+                    );
+                  })}
+                </ul>
+              </div>
+              <button onClick={() => setShowMdToast(false)} className='flex-shrink-0 text-amber-600 hover:text-amber-800'>
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+              </button>
+            </div>
+          )}
+
           {/* Table card */}
-          <div className='bg-white rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden'
-            style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div className='bg-white rounded-xl flex flex-col flex-1 overflow-hidden'
+            style={{ border: '0.8px solid rgba(0,0,0,0.08)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', minHeight: 500 }}>
 
             {/* Toolbar */}
             <div className='flex items-center gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0'>
@@ -346,7 +370,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             </div>
 
             {/* Table */}
-            <div className='flex-1 min-h-0 overflow-y-auto'>
+            <div className='flex-1 overflow-y-auto'>
               {isLoading ? (
                 <div className='flex items-center justify-center py-16'>
                   <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500' />
@@ -515,28 +539,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
         {/* Sticky Footer */}
         <div className='flex-shrink-0 flex flex-col gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200'>
-          {showMdToast && mdWarnings.length > 0 && (
-            <div className='flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium'
-              style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
-                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-              </svg>
-              <div className='flex-1'>
-                <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
-                <ul className='list-disc list-inside space-y-0.5'>
-                  {mdWarnings.map(({ child, parentField, parentLabel }) => {
-                    const displayName = parentLabel || parentField;
-                    return (
-                      <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{displayName}</strong> — please select <strong>{displayName}</strong> from the objects list above.</li>
-                    );
-                  })}
-                </ul>
-              </div>
-              <button onClick={() => setShowMdToast(false)} className='flex-shrink-0 text-amber-600 hover:text-amber-800'>
-                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-              </button>
-            </div>
-          )}
           {filterError && (
             <div className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium'
               style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)' }}>
