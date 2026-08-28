@@ -25,20 +25,25 @@ function PrefetchDescribe({
   parentObjectName,
   allowedObjectNames,
   relationshipDepth,
+  parentLoaded,
   onMasterDetailField,
 }: {
   objectName: string;
   parentObjectName: string;
   allowedObjectNames?: Set<string>;
   relationshipDepth?: number | null;
+  parentLoaded: boolean;
   onMasterDetailField: (childObject: string, parentObject: string, parentLabel: string) => void;
 }) {
   const crmMetadataService = useCrmMetadataService();
-  const depth = relationshipDepth ?? 0;
+  // PrefetchDescribe always runs for tier-1 MasterDetail children (depth=1),
+  // and prefetches their children which would be at tier-2, so +1 offset.
+  const rdepth = (relationshipDepth ?? 0) + 1;
   const { data } = useQuery({
-    queryKey: ['crm-metadata-describe', objectName, 'archival', depth],
-    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, depth),
-    enabled: !!objectName,
+    queryKey: ['crm-metadata-describe', objectName, 'archival', rdepth],
+    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, rdepth),
+    // Only fire after the parent describe response has loaded
+    enabled: !!objectName && parentLoaded,
   });
 
   const reportedRef = useRef<Set<string>>(new Set());
@@ -132,9 +137,9 @@ export function ChildRows({
   };
 
   // GET /v1/crm-metadata/objects/describe — fetch children of this parent object.
-  // Keyed on objectName + relationshipDepth so re-validating SOQL with a different
-  // depth triggers a fresh fetch with the correct depth filter.
-  const rdepth = relationshipDepth ?? 0;
+  // rdepth = SOQL relationshipDepth + (depth - 1) so each recursive tier increments
+  // by 1: tier-1 → soqlDepth+0, tier-2 → soqlDepth+1, tier-3 → soqlDepth+2, etc.
+  const rdepth = (relationshipDepth ?? 0) + (depth - 1);
   const { data, isLoading } = useQuery({
     queryKey: ['crm-metadata-describe', objectName, 'archival', rdepth],
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, rdepth),
@@ -231,7 +236,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} relationshipDepth={relationshipDepth} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} relationshipDepth={relationshipDepth} parentLoaded={!isLoading && !!data} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
