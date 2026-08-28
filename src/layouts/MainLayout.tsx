@@ -366,9 +366,6 @@ export default function MainLayout() {
               <span className='absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-400 rounded-full' />
             )}
           </button>
-          <button className='cursor-pointer p-2 text-white/70 transition hover:bg-white/10 hover:text-white rounded-lg'>
-            <Icons.settings />
-          </button>
           <div className='relative' ref={userMenuRef}>
             <button
               type='button'
