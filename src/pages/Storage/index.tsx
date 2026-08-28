@@ -115,10 +115,10 @@ export default function Storage() {
     <div className='flex flex-col gap-5 p-4 sm:p-6 w-full'>
 
       {/* ── Page Header ── */}
-      <div className='flex items-center justify-between gap-4'>
+      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
         <div>
-          <h2 className='text-base font-bold text-gray-900'>Storage</h2>
-          <p className='text-sm text-gray-500 mt-1'>Recovery coverage, archive savings, and how long we keep your data.</p>
+          <h2 className='text-lg font-bold text-gray-900'>Storage</h2>
+          <p className='mt-0.5 text-sm text-gray-500'>Recovery coverage, archive savings, and how long we keep your data.</p>
         </div>
       </div>
 
