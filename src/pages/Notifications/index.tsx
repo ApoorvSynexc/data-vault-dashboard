@@ -179,7 +179,7 @@ export default function Notifications() {
             { label: 'Unread', value: unreadCount,                                              color: 'text-blue-600'    },
             { label: 'Read',   value: notifications.filter((n) => n.status === 'READ').length,  color: 'text-emerald-600' },
           ].map((s) => (
-            <div key={s.label} className='rounded-lg border border-gray-100 px-6 py-3 text-center'>
+            <div key={s.label} className='flex-1 rounded-lg border border-gray-100 py-3 text-center'>
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
               <p className='mt-0.5 text-[11px] text-gray-500'>{s.label}</p>
             </div>
