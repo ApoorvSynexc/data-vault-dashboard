@@ -236,9 +236,11 @@ export default function Settings() {
     <div className='flex flex-col gap-6 p-4 sm:p-6 w-full'>
 
       {/* Page header */}
-      <div>
-        <h1 className='text-base font-bold text-gray-900'>Settings</h1>
-        <p className='text-sm text-gray-500 mt-0.5'>Configure defaults, approvals, notifications, and compliance rules</p>
+      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
+        <div>
+          <h2 className='text-lg font-bold text-gray-900'>Settings</h2>
+          <p className='mt-0.5 text-sm text-gray-500'>Configure defaults, approvals, notifications, and compliance rules</p>
+        </div>
       </div>
 
       {/* Top row — 3 sections side by side */}
