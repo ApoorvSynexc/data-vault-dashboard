@@ -135,7 +135,7 @@ export default function Storage() {
           <p className='text-xs mt-1 text-gray-400'>Across all backup policies</p>
         </div>
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3.5'>
-          <p className='text-xs text-gray-500'>Records Archived</p>
+          <p className='text-xs text-gray-500'>Records Protected</p>
           <p className='text-xl font-bold mt-1 text-gray-900'>{formatCount(archivalRecords)}</p>
           <p className='text-xs mt-1 text-gray-400'>Across all archive policies</p>
         </div>
@@ -282,7 +282,7 @@ export default function Storage() {
           {/* Archive table */}
           <div className='flex items-center justify-between mb-3'>
             <span className='text-xs font-semibold text-gray-700'>Archive policies</span>
-            <span className='text-xs text-gray-400'>Ranked by GB removed from your CRM org</span>
+            <span className='text-xs text-gray-400'>Ranked by records size removed from your CRM org</span>
           </div>
           <div className='overflow-x-auto'>
             <table className='w-full text-xs min-w-[520px]'>
