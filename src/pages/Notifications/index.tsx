@@ -149,10 +149,10 @@ export default function Notifications() {
   });
 
   return (
-    <div className='flex flex-col gap-5'>
+    <div className='flex flex-1 flex-col gap-5 p-6 min-h-0'>
 
       {/* 1. Header */}
-      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm'>
+      <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm flex-shrink-0'>
         <div>
           <h2 className='text-lg font-bold text-gray-900'>Notifications</h2>
           <p className='mt-0.5 text-sm text-gray-500'>Stay updated on backups, security events and system activity</p>
@@ -171,13 +171,13 @@ export default function Notifications() {
       </div>
 
       {/* 2. Overview */}
-      <div className='rounded-xl border border-gray-200 bg-white p-5 shadow-sm'>
+      <div className='rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex-shrink-0'>
         <h3 className='mb-4 text-sm font-semibold text-gray-900'>Overview</h3>
         <div className='flex gap-3'>
           {[
-            { label: 'Total',  value: notifications.length,                                        color: 'text-gray-900'    },
-            { label: 'Unread', value: unreadCount,                                                 color: 'text-blue-600'    },
-            { label: 'Read',   value: notifications.filter((n) => n.status === 'READ').length,    color: 'text-emerald-600' },
+            { label: 'Total',  value: notifications.length,                                     color: 'text-gray-900'    },
+            { label: 'Unread', value: unreadCount,                                              color: 'text-blue-600'    },
+            { label: 'Read',   value: notifications.filter((n) => n.status === 'READ').length,  color: 'text-emerald-600' },
           ].map((s) => (
             <div key={s.label} className='rounded-lg border border-gray-100 px-6 py-3 text-center'>
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -187,11 +187,11 @@ export default function Notifications() {
         </div>
       </div>
 
-      {/* 3. Notification feed */}
-      <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
+      {/* 3. Notification feed — grows to fill remaining height */}
+      <div className='flex flex-1 flex-col min-h-0 rounded-xl border border-gray-200 bg-white shadow-sm'>
 
         {/* Tabs */}
-        <div className='flex items-center gap-1 border-b border-gray-100 px-5 pt-4'>
+        <div className='flex items-center gap-1 border-b border-gray-100 px-5 pt-4 flex-shrink-0'>
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -213,7 +213,7 @@ export default function Notifications() {
         </div>
 
         {/* List */}
-        <div className='flex flex-col gap-2 p-4'>
+        <div className='flex-1 overflow-y-auto flex flex-col gap-2 p-4'>
           {loading ? (
             <div className='flex items-center justify-center py-16'>
               <div className='h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-600' />
