@@ -30,12 +30,13 @@ export function useCrmMetadataService() {
         query: { mode, ...(type ? { type } : {}) },
       }),
 
-    getObjectDescribe: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule') =>
+    getObjectDescribe: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule', relationshipDepth?: number) =>
       api.get<unknown>(CRM_METADATA_ENDPOINTS.objectDescribe, {
         query: {
           objectName,
           ...(mode ? { mode } : {}),
           ...(type ? { type } : {}),
+          relationshipDepth: relationshipDepth ?? 0,
         },
       }),
 

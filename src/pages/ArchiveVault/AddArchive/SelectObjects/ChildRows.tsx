@@ -24,17 +24,20 @@ function PrefetchDescribe({
   objectName,
   parentObjectName,
   allowedObjectNames,
+  relationshipDepth,
   onMasterDetailField,
 }: {
   objectName: string;
   parentObjectName: string;
   allowedObjectNames?: Set<string>;
+  relationshipDepth?: number | null;
   onMasterDetailField: (childObject: string, parentObject: string, parentLabel: string) => void;
 }) {
   const crmMetadataService = useCrmMetadataService();
+  const depth = relationshipDepth ?? 0;
   const { data } = useQuery({
-    queryKey: ['crm-metadata-describe', objectName, 'archival'],
-    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
+    queryKey: ['crm-metadata-describe', objectName, 'archival', depth],
+    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, depth),
     enabled: !!objectName,
   });
 
@@ -129,10 +132,12 @@ export function ChildRows({
   };
 
   // GET /v1/crm-metadata/objects/describe — fetch children of this parent object.
-  // Keyed on objectName so different expanded parents don't share the same cache entry.
+  // Keyed on objectName + relationshipDepth so re-validating SOQL with a different
+  // depth triggers a fresh fetch with the correct depth filter.
+  const rdepth = relationshipDepth ?? 0;
   const { data, isLoading } = useQuery({
-    queryKey: ['crm-metadata-describe', objectName, 'archival'],
-    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival'),
+    queryKey: ['crm-metadata-describe', objectName, 'archival', rdepth],
+    queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, rdepth),
     enabled: !!objectName,
   });
 
@@ -226,7 +231,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} relationshipDepth={relationshipDepth} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
