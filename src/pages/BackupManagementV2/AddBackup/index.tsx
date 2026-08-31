@@ -28,7 +28,8 @@ type SelectedObject = {
   uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
-  parentObjects?: { id: string; name: string }[];
+  isUserSelected: boolean;
+  children?: { id: string; name: string }[];
 };
 
 const WIZARD_STORAGE_KEY = 'addBackupWizardState';
@@ -148,7 +149,9 @@ export default function AddBackup() {
       uuid: o.id,
       id: o.name ?? o.id,
       type: (o.type === 'CUSTOM' ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
-      parentObjects: o.parentObjects,
+      // Existing configs predate this flag — default to user-selected.
+      isUserSelected: o.isUserSelected ?? true,
+      children: o.children,
     }));
     setSelectedObjects(objs);
 
@@ -293,7 +296,7 @@ export default function AddBackup() {
               const displayObj = displayObjects.find((o) => o.uuid === uuid);
               const existing = selectedObjects.find((o) => o.uuid === uuid || (displayObj && o.id === displayObj.id));
               if (existing) return { ...existing, uuid };
-              return { uuid, id: displayObj?.id ?? uuid, type: (displayObj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM' };
+              return { uuid, id: displayObj?.id ?? uuid, type: (displayObj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM', isUserSelected: true };
             }));
           }}
           onNext={(objects) => {

@@ -25,7 +25,8 @@ type SelectedObject = {
   uuid?: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
-  parentObjects?: { id: string; name: string }[];
+  isUserSelected?: boolean;
+  children?: { id: string; name: string }[];
 };
 
 type FinalStepProps = {
@@ -133,7 +134,7 @@ export default function FinalStep({
   });
 
   const buildPayload = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, parentObjects: undefined }));
+    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, isUserSelected: true }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
       crmId, name: policyName, description, destinationId,
@@ -144,14 +145,16 @@ export default function FinalStep({
         const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
         const objName = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
-        const parentObjects = typeof obj !== 'string' && obj.parentObjects?.length ? obj.parentObjects : undefined;
+        const children = typeof obj !== 'string' && obj.children?.length ? obj.children : undefined;
+        const isUserSelected = typeof obj === 'string' ? true : (obj.isUserSelected ?? true);
         return {
           id: objUuid,
           name: objName,
           type: objType,
+          isUserSelected,
           condition: { type: 'AND' },
           field: [],
-          ...(parentObjects ? { parentObjects } : {}),
+          ...(children ? { children } : {}),
         };
       }),
       status: backupStatus,
