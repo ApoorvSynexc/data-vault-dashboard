@@ -23,6 +23,16 @@ type ScheduleConfig = {
 
 type PayloadChildNode = { id: string; name: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
+// cascadeDelete/restrictedDelete only exist to label relationships in the hierarchy
+// graph — the create/update backup API doesn't need them in the `children` array.
+function stripRelationshipFlags(nodes: PayloadChildNode[]): { id: string; name: string; children?: unknown[] }[] {
+  return nodes.map(({ id, name, children }) => ({
+    id,
+    name,
+    ...(children?.length ? { children: stripRelationshipFlags(children) } : {}),
+  }));
+}
+
 type SelectedObject = {
   uuid?: string;
   id: string;
@@ -147,7 +157,7 @@ export default function FinalStep({
         const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
         const objName = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
-        const children = typeof obj !== 'string' && obj.children?.length ? obj.children : undefined;
+        const children = typeof obj !== 'string' && obj.children?.length ? stripRelationshipFlags(obj.children) : undefined;
         const isUserSelected = typeof obj === 'string' ? true : (obj.isUserSelected ?? true);
         return {
           id: objUuid,
