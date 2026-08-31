@@ -6,12 +6,30 @@ import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
 import { parseSalesforceError } from '../../../../utils';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
+import type { DepthChildNode } from '../../../../services/crm-metadata/crm-metadata.service';
+
+// Walks the depth-children tree, keeping only master-detail (cascade/restricted-delete)
+// nodes and recursing into their children — a non-master-detail node stops the chain.
+function collectCascadeDescendants(nodes: DepthChildNode[] = []): DepthChildNode[] {
+  const result: DepthChildNode[] = [];
+  nodes.forEach((node) => {
+    if (node.cascadeDelete === true || node.restrictedDelete === true) {
+      result.push(node);
+      if (node.children?.length) result.push(...collectCascadeDescendants(node.children));
+    }
+  });
+  return result;
+}
 
 type SelectedObject = {
   uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
-  parentObjects?: { id: string; name: string }[];
+  // true if the user explicitly checked this object; false if it was auto-selected
+  // as a master-detail child of a selected parent
+  isUserSelected: boolean;
+  // populated on parent objects — the master-detail children auto-selected because of it
+  children?: { id: string; name: string }[];
 };
 
 type Step5Props = {
@@ -74,19 +92,18 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     return locked;
   }, [parentChildMap]);
 
-  const { data: describeData, isFetching: isDescribeFetching } = useQuery({
-    queryKey: ['crm-object-describe', lastSelectedSfName, 'normal', strategy, describeFetchCount],
-    queryFn: () => crmMetadataService.getObjectDescribe(lastSelectedSfName!, 'normal', strategy === 'realtime' ? 'realtime' : 'schedule'),
+  const { data: depthChildrenData, isFetching: isDescribeFetching } = useQuery({
+    queryKey: ['crm-object-depth-children', lastSelectedSfName, 'normal', strategy, describeFetchCount],
+    queryFn: () => crmMetadataService.getObjectDepthChildren(lastSelectedSfName!, 'normal', strategy === 'realtime' ? 'realtime' : 'schedule'),
     enabled: !!lastSelectedSfName,
   });
 
-  // When describe data arrives, auto-select master-detail children and show toast
+  // When depth-children data arrives, auto-select master-detail descendants (at any depth) and show toast
   useEffect(() => {
-    if (!describeData?.data || !lastSelectedSfName) return;
-    const d = describeData.data as { children?: { name: string; cascadeDelete: boolean; restrictedDelete: boolean }[] };
-    const childSfNames = (d.children ?? [])
-      .filter((c) => c.cascadeDelete === true || c.restrictedDelete === true)
-      .map((c) => c.name);
+    if (!depthChildrenData?.data || !lastSelectedSfName) return;
+    const d = depthChildrenData.data as { children?: DepthChildNode[] };
+    const cascadeNodes = collectCascadeDescendants(d.children ?? []);
+    const childSfNames = cascadeNodes.map((c) => c.name);
     if (childSfNames.length === 0) return;
 
     // Map SF API names -> uuids via displayObjects
@@ -105,7 +122,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
-  }, [describeData, lastSelectedSfName]);
+  }, [depthChildrenData, lastSelectedSfName]);
 
   // Filter + paginate
   const allFilteredObjects = useMemo(() => {
@@ -141,15 +158,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
     setSelectedObjects(new Set(resolvedUuids));
 
-    // Rebuild parentChildMap: for each child that has parentObjects, map parent uuid -> child uuids
+    // Rebuild parentChildMap: for each object that lists children, map parent uuid -> child uuids
     const newMap = new Map<string, string[]>();
     initialSelectedObjectsRef.current.forEach((sel) => {
-      if (!sel.parentObjects?.length) return;
-      const childUuid = allObjects.find((o) => o.id === sel.id)?.uuid;
-      if (!childUuid) return;
-      sel.parentObjects.forEach((parent) => {
-        const parentUuid = allObjects.find((o) => o.id === parent.name)?.uuid;
-        if (!parentUuid) return;
+      if (!sel.children?.length) return;
+      const parentUuid = allObjects.find((o) => o.id === sel.id)?.uuid;
+      if (!parentUuid) return;
+      sel.children.forEach((child) => {
+        const childUuid = allObjects.find((o) => o.id === child.name)?.uuid;
+        if (!childUuid) return;
         const existing = newMap.get(parentUuid) ?? [];
         newMap.set(parentUuid, [...existing, childUuid]);
       });
@@ -430,8 +447,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   <div className='h-4 w-24 bg-gray-100 rounded animate-pulse mt-2' />
                   {Array.from({ length: 3 }).map((_, i) => <div key={i} className='h-10 bg-gray-100 rounded-xl animate-pulse' />)}
                 </div>
-              ) : describeData?.data ? (() => {
-                const d = describeData.data as {
+              ) : depthChildrenData?.data ? (() => {
+                const d = depthChildrenData.data as {
                   children?: { name: string; restrictedDelete: boolean; cascadeDelete: boolean }[];
                   parent?: { name: string; nillable: boolean; cascadeDelete: boolean }[];
                 };
@@ -558,22 +575,33 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </button>
           <button
             onClick={() => {
-              // Build reverse map: child uuid -> list of parent objects
-              const childToParents = new Map<string, { id: string; name: string }[]>();
+              // Forward map: parent uuid -> list of its auto-selected child objects
+              const parentToChildren = new Map<string, { id: string; name: string }[]>();
               parentChildMap.forEach((childUuids, parentUuid) => {
                 const parentObj = allObjects.find((o) => o.uuid === parentUuid);
                 if (!parentObj) return;
+                const children: { id: string; name: string }[] = [];
                 childUuids.forEach((childUuid) => {
-                  const existing = childToParents.get(childUuid) ?? [];
-                  childToParents.set(childUuid, [...existing, { id: parentObj.uuid, name: parentObj.name }]);
+                  const childObj = allObjects.find((o) => o.uuid === childUuid);
+                  if (childObj) children.push({ id: childObj.uuid, name: childObj.name });
                 });
+                if (children.length > 0) parentToChildren.set(parentUuid, children);
               });
 
               const selectedObjectsData = Array.from(selectedObjects).map((uuid) => {
                 const obj = allObjects.find((o) => o.uuid === uuid);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                const parentObjects = childToParents.get(uuid);
-                return { uuid, id: obj?.id ?? uuid, type, ...(parentObjects ? { parentObjects } : {}) };
+                const children = parentToChildren.get(uuid);
+                // Auto-selected (locked) objects were added because a parent was picked,
+                // not because the user checked them directly.
+                const isUserSelected = !autoSelectedIds.has(uuid);
+                return {
+                  uuid,
+                  id: obj?.id ?? uuid,
+                  type,
+                  isUserSelected,
+                  ...(children ? { children } : {}),
+                };
               });
               onNext(selectedObjectsData);
             }}
