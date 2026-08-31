@@ -21,12 +21,14 @@ type ScheduleConfig = {
   };
 };
 
+type PayloadChildNode = { id: string; name: string; children?: PayloadChildNode[] };
+
 type SelectedObject = {
   uuid?: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
   isUserSelected?: boolean;
-  children?: { id: string; name: string }[];
+  children?: PayloadChildNode[];
 };
 
 type FinalStepProps = {

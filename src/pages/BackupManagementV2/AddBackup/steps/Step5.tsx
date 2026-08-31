@@ -8,17 +8,55 @@ import { parseSalesforceError } from '../../../../utils';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import type { DepthChildNode } from '../../../../services/crm-metadata/crm-metadata.service';
 
+// A child object in the payload — mirrors the depth-children API's own nesting,
+// so the hierarchy sent back to the server matches the hierarchy it described.
+type PayloadChildNode = { id: string; name: string; children?: PayloadChildNode[] };
+
 // Walks the depth-children tree, keeping only master-detail (cascade/restricted-delete)
-// nodes and recursing into their children — a non-master-detail node stops the chain.
-function collectCascadeDescendants(nodes: DepthChildNode[] = []): DepthChildNode[] {
-  const result: DepthChildNode[] = [];
+// nodes — a non-master-detail node stops the chain — and resolves each surviving
+// node to its current uuid, preserving the nested shape.
+function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[]): PayloadChildNode[] {
+  const result: PayloadChildNode[] = [];
   nodes.forEach((node) => {
-    if (node.cascadeDelete === true || node.restrictedDelete === true) {
-      result.push(node);
-      if (node.children?.length) result.push(...collectCascadeDescendants(node.children));
-    }
+    if (node.cascadeDelete !== true && node.restrictedDelete !== true) return;
+    const obj = objects.find((o) => o.id === node.name);
+    if (!obj) return;
+    const nested = node.children?.length ? buildPayloadTree(node.children, objects) : [];
+    result.push({ id: obj.uuid, name: obj.name, ...(nested.length ? { children: nested } : {}) });
   });
   return result;
+}
+
+// Flattens a payload tree into uuids/labels (for locking rows and the toast message)
+function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
+  const uuids: string[] = [];
+  const labels: string[] = [];
+  nodes.forEach((node) => {
+    uuids.push(node.id);
+    labels.push(node.name);
+    if (node.children?.length) {
+      const nested = flattenPayloadTree(node.children);
+      uuids.push(...nested.uuids);
+      labels.push(...nested.labels);
+    }
+  });
+  return { uuids, labels };
+}
+
+// Re-resolves a previously-saved children tree (stale uuids, SF names as `name`)
+// against the current displayObjects list — used when restoring a draft/edit.
+function resolveSavedChildren(nodes: PayloadChildNode[] = [], objects: BackupObject[]): { tree: PayloadChildNode[]; uuids: string[] } {
+  const tree: PayloadChildNode[] = [];
+  const uuids: string[] = [];
+  nodes.forEach((node) => {
+    const obj = objects.find((o) => o.id === node.name);
+    if (!obj) return;
+    uuids.push(obj.uuid);
+    const nested = node.children?.length ? resolveSavedChildren(node.children, objects) : null;
+    if (nested) uuids.push(...nested.uuids);
+    tree.push({ id: obj.uuid, name: obj.name, ...(nested?.tree.length ? { children: nested.tree } : {}) });
+  });
+  return { tree, uuids };
 }
 
 type SelectedObject = {
@@ -28,8 +66,9 @@ type SelectedObject = {
   // true if the user explicitly checked this object; false if it was auto-selected
   // as a master-detail child of a selected parent
   isUserSelected: boolean;
-  // populated on parent objects — the master-detail children auto-selected because of it
-  children?: { id: string; name: string }[];
+  // populated on parent objects — the master-detail children auto-selected because of
+  // it, nested to the same depth as the depth-children API described them
+  children?: PayloadChildNode[];
 };
 
 type Step5Props = {
@@ -80,8 +119,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // Tracks the last selected object (SF API name) to fire describe API once on selection
   const [lastSelectedSfName, setLastSelectedSfName] = useState<string | null>(null);
   const [describeFetchCount, setDescribeFetchCount] = useState(0);
-  // Map of parent uuid -> auto-selected child uuids (master-detail)
+  // Map of parent uuid -> auto-selected child uuids (master-detail), flattened across all depths
   const [parentChildMap, setParentChildMap] = useState<Map<string, string[]>>(new Map());
+  // Map of parent uuid -> its master-detail children as a nested tree, for the payload
+  const [parentTreeMap, setParentTreeMap] = useState<Map<string, PayloadChildNode[]>>(new Map());
   // Toast message (child labels for display)
   const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
 
@@ -102,21 +143,16 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   useEffect(() => {
     if (!depthChildrenData?.data || !lastSelectedSfName) return;
     const d = depthChildrenData.data as { children?: DepthChildNode[] };
-    const cascadeNodes = collectCascadeDescendants(d.children ?? []);
-    const childSfNames = cascadeNodes.map((c) => c.name);
-    if (childSfNames.length === 0) return;
+    const payloadTree = buildPayloadTree(d.children ?? [], displayObjects);
+    if (payloadTree.length === 0) return;
 
-    // Map SF API names -> uuids via displayObjects
-    const childUuids = childSfNames
-      .map((sfName) => displayObjects.find((o) => o.id === sfName)?.uuid)
-      .filter((u): u is string => !!u);
-    const childLabels = childSfNames
-      .map((sfName) => displayObjects.find((o) => o.id === sfName)?.name ?? sfName);
+    const { uuids: childUuids, labels: childLabels } = flattenPayloadTree(payloadTree);
 
     const parentObj = displayObjects.find((o) => o.id === lastSelectedSfName);
     const parentUuid = parentObj?.uuid ?? lastSelectedSfName;
 
     setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
+    setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
     setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
     setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: childLabels });
 
@@ -158,20 +194,21 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
     setSelectedObjects(new Set(resolvedUuids));
 
-    // Rebuild parentChildMap: for each object that lists children, map parent uuid -> child uuids
+    // Rebuild parentChildMap + parentTreeMap: for each object that lists children,
+    // re-resolve the saved (nested) children tree against the fresh uuids.
     const newMap = new Map<string, string[]>();
+    const newTreeMap = new Map<string, PayloadChildNode[]>();
     initialSelectedObjectsRef.current.forEach((sel) => {
       if (!sel.children?.length) return;
       const parentUuid = allObjects.find((o) => o.id === sel.id)?.uuid;
       if (!parentUuid) return;
-      sel.children.forEach((child) => {
-        const childUuid = allObjects.find((o) => o.id === child.name)?.uuid;
-        if (!childUuid) return;
-        const existing = newMap.get(parentUuid) ?? [];
-        newMap.set(parentUuid, [...existing, childUuid]);
-      });
+      const { tree, uuids } = resolveSavedChildren(sel.children, allObjects);
+      if (uuids.length === 0) return;
+      newMap.set(parentUuid, uuids);
+      newTreeMap.set(parentUuid, tree);
     });
     if (newMap.size > 0) setParentChildMap(newMap);
+    if (newTreeMap.size > 0) setParentTreeMap(newTreeMap);
 
     initialSyncDone.current = true;
   }, [allObjects]);
@@ -365,6 +402,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                       if (removedParents.length > 0) {
                         const toRemove = new Set<string>();
                         const updatedMap = new Map(parentChildMap);
+                        const updatedTreeMap = new Map(parentTreeMap);
                         removedParents.forEach((pid) => {
                           (parentChildMap.get(pid) ?? []).forEach((c) => {
                             // Only remove child if no other remaining parent also owns it
@@ -374,8 +412,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                             if (!stillOwnedByOther) toRemove.add(c);
                           });
                           updatedMap.delete(pid);
+                          updatedTreeMap.delete(pid);
                         });
                         setParentChildMap(updatedMap);
+                        setParentTreeMap(updatedTreeMap);
                         setSelectedObjects(new Set([...newSelected].filter((id) => !toRemove.has(id))));
                       } else {
                         setSelectedObjects(newSelected);
@@ -575,23 +615,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </button>
           <button
             onClick={() => {
-              // Forward map: parent uuid -> list of its auto-selected child objects
-              const parentToChildren = new Map<string, { id: string; name: string }[]>();
-              parentChildMap.forEach((childUuids, parentUuid) => {
-                const parentObj = allObjects.find((o) => o.uuid === parentUuid);
-                if (!parentObj) return;
-                const children: { id: string; name: string }[] = [];
-                childUuids.forEach((childUuid) => {
-                  const childObj = allObjects.find((o) => o.uuid === childUuid);
-                  if (childObj) children.push({ id: childObj.uuid, name: childObj.name });
-                });
-                if (children.length > 0) parentToChildren.set(parentUuid, children);
-              });
-
               const selectedObjectsData = Array.from(selectedObjects).map((uuid) => {
                 const obj = allObjects.find((o) => o.uuid === uuid);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                const children = parentToChildren.get(uuid);
+                // Same nested tree the depth-children API returned for this object
+                const children = parentTreeMap.get(uuid);
                 // Auto-selected (locked) objects were added because a parent was picked,
                 // not because the user checked them directly.
                 const isUserSelected = !autoSelectedIds.has(uuid);
@@ -600,7 +628,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   id: obj?.id ?? uuid,
                   type,
                   isUserSelected,
-                  ...(children ? { children } : {}),
+                  ...(children?.length ? { children } : {}),
                 };
               });
               onNext(selectedObjectsData);

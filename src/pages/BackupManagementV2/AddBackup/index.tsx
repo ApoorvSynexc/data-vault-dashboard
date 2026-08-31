@@ -24,12 +24,14 @@ type BackupObject = {
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
+type PayloadChildNode = { id: string; name: string; children?: PayloadChildNode[] };
+
 type SelectedObject = {
   uuid: string;
   id: string;
   type: 'STANDARD' | 'CUSTOM';
   isUserSelected: boolean;
-  children?: { id: string; name: string }[];
+  children?: PayloadChildNode[];
 };
 
 const WIZARD_STORAGE_KEY = 'addBackupWizardState';
