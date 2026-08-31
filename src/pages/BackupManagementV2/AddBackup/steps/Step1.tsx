@@ -50,7 +50,6 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
       return Array.isArray(result) ? result : [];
     },
     enabled: !!selectedPlatform,
-    staleTime: 0,
   });
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];

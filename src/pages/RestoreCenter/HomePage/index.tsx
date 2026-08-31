@@ -162,7 +162,6 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
   const { data: statsData } = useQuery({
     queryKey: ['restore-job-stats'],
     queryFn: () => restoreService.getJobStats(),
-    staleTime: 60_000,
   });
 
   const stats = (statsData as any)?.data ?? {};

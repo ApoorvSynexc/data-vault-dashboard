@@ -81,7 +81,6 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
   const statsQuery = useQuery({
     queryKey: ['backup-config-stats'],
     queryFn: () => service.getStats(),
-    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
@@ -673,7 +672,6 @@ export default function BackupManagementV2() {
   const backupQuery = useQuery({
     queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus ?? apiRunningStatus],
     queryFn,
-    staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 

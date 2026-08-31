@@ -79,7 +79,6 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
     queryKey: ['restore-fetch-records', sourceSelection.backupConfigId, sourceSelection.type, activeObj, debouncedSearch, cursor],
     queryFn: () => restoreService.fetchRecords(fetchPayload!),
     enabled: !!fetchPayload,
-    staleTime: 0,
   });
 
   useEffect(() => {

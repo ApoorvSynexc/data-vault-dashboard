@@ -113,13 +113,11 @@ export default function Dashboard() {
   const { data: jobsData, isLoading: isJobsLoading } = useQuery({
     queryKey: ['dashboard-last-jobs'],
     queryFn: () => backupConfigService.getLastJobs(),
-    staleTime: 60_000,
   });
 
   const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => backupConfigService.getDashboardOverview(),
-    staleTime: 60_000,
   });
 
   const isLoading = isJobsLoading || isOverviewLoading;

@@ -41,7 +41,6 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     queryKey: ['filter-object-fields', modalObj, sourceSelection.backupConfigId],
     queryFn: () => restoreService.fetchObjectFields(modalObj!, sourceSelection.backupConfigId),
     enabled: !!modalObj && !!sourceSelection.backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
   const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
@@ -55,7 +54,6 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
       return values as { value: string; label: string }[];
     },
     enabled: !!pendingPicklist && !!modalObj,
-    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {

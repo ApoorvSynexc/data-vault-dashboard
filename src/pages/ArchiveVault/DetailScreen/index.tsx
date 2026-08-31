@@ -154,7 +154,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
   const { data: jobsResponse, isLoading: jobsLoading } = useQuery({
     queryKey: ['archival-jobs', slug, logCursor],
     queryFn: () => backupConfigService.listBackupJobs(slug!, true, logCursor ?? undefined, 20),
-    staleTime: 30_000,
     enabled: !!slug,
   });
 
@@ -183,7 +182,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
   const { data: rawDetail, isLoading } = useQuery({
     queryKey: ['archival-config-detail', slug],
     queryFn: () => archivalService.getDetail(slug!),
-    staleTime: 30_000,
     enabled: !!slug,
   });
 

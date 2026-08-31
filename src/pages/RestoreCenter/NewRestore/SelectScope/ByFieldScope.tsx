@@ -42,7 +42,6 @@ function FieldsAutoLoader({
     queryKey: ['source-object-fields', objectName, backupConfigId],
     queryFn: () => restoreService.fetchObjectFields(objectName, backupConfigId),
     enabled: !!objectName && !!backupConfigId && !alreadyInitialized,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -86,7 +85,6 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
     queryKey: ['source-object-fields', activeObj, sourceSelection.backupConfigId],
     queryFn: () => restoreService.fetchObjectFields(activeObj, sourceSelection.backupConfigId),
     enabled: !!activeObj && !!sourceSelection.backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
   const sourceFields: FieldOption[] = (fieldOptionsData as any)?.data ?? [];

@@ -174,7 +174,6 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     queryFn: async () => {
       return archivalService.listBackupJobs(configSlug, true, undefined, 20);
     },
-    staleTime: 0,
   });
 
   const jobs: ArchiveJobDetail[] = (data as any)?.data ?? [];

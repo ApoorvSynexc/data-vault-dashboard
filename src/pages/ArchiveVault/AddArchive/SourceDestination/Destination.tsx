@@ -26,7 +26,6 @@ export default function DestinationView({ selectedDestConnection, setSelectedDes
   const { data: destConnectionsData, isLoading } = useQuery({
     queryKey: ['archive-destinations', selectedDestProvider.provider],
     queryFn: async () => destinationService.listDestinations(),
-    staleTime: 0,
   });
 
   const destConnections: Destination[] = (destConnectionsData as any)?.data ?? destConnectionsData ?? [];

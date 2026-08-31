@@ -86,7 +86,6 @@ function CloudSourcePicker({
   const { data: destData, isLoading } = useQuery({
     queryKey: ['restore-source-destinations'],
     queryFn: () => destinationService.listDestinations(),
-    staleTime: 0,
   });
 
   const allDest: Destination[] = (destData as any)?.data ?? destData ?? [];

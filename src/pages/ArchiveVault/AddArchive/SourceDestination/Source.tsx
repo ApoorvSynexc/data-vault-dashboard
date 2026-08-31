@@ -30,7 +30,6 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
       return Array.isArray(result) ? result : [];
     },
     enabled: !!selectedPlatform,
-    staleTime: 0,
   });
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];

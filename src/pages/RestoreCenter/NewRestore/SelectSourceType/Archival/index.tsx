@@ -128,7 +128,6 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, in
   const { data: rawData, isLoading, isFetching } = useQuery({
     queryKey: ['restore-archival-list', currentCursor, debouncedSearch, statusFilter],
     queryFn,
-    staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 
