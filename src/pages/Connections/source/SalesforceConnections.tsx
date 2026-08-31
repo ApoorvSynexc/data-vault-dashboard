@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import WarningDialog from '../../../components/WarningDialog';
+import PermissionGate from '../../../components/PermissionGate';
 import { usePlatformService } from '../../../services/platform/platform.service';
 import { formatDate } from '../../../utils';
 
@@ -269,28 +270,32 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
 
                       {/* Inline action button */}
                       {org.isCrmConnected ? (
-                        <button
-                          type='button'
-                          onClick={() => handleDisconnect(org.userId)}
-                          title='Deactivate'
-                          className='rounded-lg p-2 text-orange-500 border border-orange-200 transition hover:bg-orange-50 hover:text-orange-600'
-                        >
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                            <path d='M18.36 6.64A9 9 0 0 1 20 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 1.64-5.36' strokeLinecap='round' />
-                            <path d='M12 2v10' strokeLinecap='round' />
-                          </svg>
-                        </button>
+                        <PermissionGate permission='sourceConnection.delete'>
+                          <button
+                            type='button'
+                            onClick={() => handleDisconnect(org.userId)}
+                            title='Deactivate'
+                            className='rounded-lg p-2 text-orange-500 border border-orange-200 transition hover:bg-orange-50 hover:text-orange-600'
+                          >
+                            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
+                              <path d='M18.36 6.64A9 9 0 0 1 20 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 1.64-5.36' strokeLinecap='round' />
+                              <path d='M12 2v10' strokeLinecap='round' />
+                            </svg>
+                          </button>
+                        </PermissionGate>
                       ) : (
-                        <button
-                          type='button'
-                          onClick={() => reconnectMutation.mutate({ crmId: org.userId, environment: org.environment })}
-                          title='Activate'
-                          className='rounded-lg p-2 text-blue-500 border border-blue-200 transition hover:bg-blue-50 hover:text-blue-600'
-                        >
-                          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
-                            <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' strokeLinecap='round' strokeLinejoin='round' />
-                          </svg>
-                        </button>
+                        <PermissionGate permission='sourceConnection.write'>
+                          <button
+                            type='button'
+                            onClick={() => reconnectMutation.mutate({ crmId: org.userId, environment: org.environment })}
+                            title='Activate'
+                            className='rounded-lg p-2 text-blue-500 border border-blue-200 transition hover:bg-blue-50 hover:text-blue-600'
+                          >
+                            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4'>
+                              <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' strokeLinecap='round' strokeLinejoin='round' />
+                            </svg>
+                          </button>
+                        </PermissionGate>
                       )}
                     </div>
                   </div>
