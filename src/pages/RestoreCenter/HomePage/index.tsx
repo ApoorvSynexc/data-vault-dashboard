@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Typography from '../../../components/Typography';
+import PermissionGate from '../../../components/PermissionGate';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { useQuery } from '@tanstack/react-query';
@@ -294,12 +295,14 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
             <Typography as='h2' variant='pageTitle'>Restore Center</Typography>
             <Typography variant='bodySm' color='muted' className='mt-0.5'>Recover data from backups and archives</Typography>
           </div>
-          <button
-            onClick={onNewRestore}
-            className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap bg-blue-600'
-          >
-            + New Restore
-          </button>
+          <PermissionGate permission='restore.write'>
+            <button
+              onClick={onNewRestore}
+              className='inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap bg-blue-600'
+            >
+              + New Restore
+            </button>
+          </PermissionGate>
         </div>
 
         <div className='flex-shrink-0 flex items-start gap-3 rounded-xl px-4 py-3 text-sm' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsService, type StandardObject } from '../../services/settings/settings.service';
 import { useCrmMetadataService, type CrmMetadataObject } from '../../services/crm-metadata/crm-metadata.service';
+import PermissionGate from '../../components/PermissionGate';
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
@@ -185,24 +186,28 @@ function StandardObjectsSection({
               <span className='text-sm text-gray-700 font-medium truncate'>{obj.name}</span>
             </div>
             {!obj.isDefault && (
-              <button
-                onClick={() => onRemove(obj.name)}
-                disabled={saving}
-                className='text-gray-300 hover:text-red-400 transition-colors text-xs shrink-0 disabled:opacity-40 p-1'
-                title='Remove'
-              >
-                ✕
-              </button>
+              <PermissionGate permission='settings.write'>
+                <button
+                  onClick={() => onRemove(obj.name)}
+                  disabled={saving}
+                  className='text-gray-300 hover:text-red-400 transition-colors text-xs shrink-0 disabled:opacity-40 p-1'
+                  title='Remove'
+                >
+                  ✕
+                </button>
+              </PermissionGate>
             )}
           </div>
         ))}
       </div>
 
       {/* Add row — overflow visible so dropdown is not clipped */}
-      <div className='px-6 py-4 border-t border-gray-100 bg-gray-50/40 rounded-b-xl relative'>
-        <p className='text-xs font-semibold text-gray-500 mb-2'>Add object by API name</p>
-        <AddObjectInput existing={objects} onAdd={onAdd} />
-      </div>
+      <PermissionGate permission='settings.write'>
+        <div className='px-6 py-4 border-t border-gray-100 bg-gray-50/40 rounded-b-xl relative'>
+          <p className='text-xs font-semibold text-gray-500 mb-2'>Add object by API name</p>
+          <AddObjectInput existing={objects} onAdd={onAdd} />
+        </div>
+      </PermissionGate>
     </div>
   );
 }
