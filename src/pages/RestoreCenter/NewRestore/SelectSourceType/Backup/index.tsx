@@ -78,7 +78,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const { data: backupListData, isLoading: isLoadingConfigs, isFetching: isFetchingConfigs } = useQuery({
     queryKey: ['restore-backup-config-list', backupCurrentCursor, debouncedSearch, typeFilter],
     queryFn: backupQueryFn,
-    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 

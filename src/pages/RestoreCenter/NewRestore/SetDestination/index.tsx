@@ -251,7 +251,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   const { data: crmsData, isLoading: destLoading } = useQuery({
     queryKey: ['crm-list'],
     queryFn: () => platformService.getConnectedPlatforms(),
-    staleTime: 60_000,
   });
   const destinations: ConnectedPlatform[] = Array.isArray(crmsData) ? crmsData : [];
 
@@ -259,7 +258,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     queryKey: ['source-objects', backupConfigId, configType],
     queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType),
     enabled: !!backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -270,7 +268,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     queryKey: ['crm-objects', destOrg],
     queryFn: () => restoreService.getCrmObjects(destOrg),
     enabled: !!destOrg,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -294,7 +291,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     queryKey: ['source-fields', backupConfigId, activeFieldObject],
     queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId),
     enabled: objectMappingConfirmed && !!activeFieldObject && !!backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -302,7 +298,6 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     queryKey: ['dest-fields', destOrg, activeFieldObject],
     queryFn: () => restoreService.getCrmFields(destOrg, activeFieldObject),
     enabled: objectMappingConfirmed && !!activeFieldObject && !!destOrg,
-    staleTime: 60_000,
     retry: 1,
   });
 

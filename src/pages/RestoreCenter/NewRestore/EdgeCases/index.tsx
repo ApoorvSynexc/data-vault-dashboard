@@ -47,7 +47,6 @@ function MissingFieldsForObject({
     queryKey: ['missing-fields', backupConfigId, objectName],
     queryFn: () => restoreService.fetchMissingFields(backupConfigId, objectName),
     enabled: !!backupConfigId && !!objectName,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -62,7 +61,6 @@ function MissingFieldsForObject({
     queryKey: ['dest-fields-for-mapping', crmId, objectName],
     queryFn: () => restoreService.getCrmFields(crmId ?? '', objectName, true),
     enabled: !!objectName && missingFields.length > 0,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -140,7 +138,6 @@ function RecordTypeMappingForObject({
   const { data: destData } = useQuery({
     queryKey: ['dest-record-types', crmId, objectApiName],
     queryFn: () => restoreService.getCrmRecordTypes(crmId ?? '', objectApiName, true),
-    staleTime: 60_000,
     retry: 1,
   });
   const destRecordTypes: DestinationRecordType[] = Array.isArray(destData?.data) ? destData.data : [];
@@ -202,7 +199,6 @@ function RecordTypeMappingBlock({
     queryKey: ['missing-record-types', backupConfigId, configType, objectApiNames?.join(',') ?? 'ALL', sourceStartDate, sourceEndDate],
     queryFn: () => restoreService.fetchMissingRecordTypes(backupConfigId, configType, objectApiNames, sourceStartDate, sourceEndDate),
     enabled: !!backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -341,7 +337,6 @@ function RequiredFieldsForObject({
     queryKey: ['required-fields', backupConfigId, objectApiName],
     queryFn: () => restoreService.fetchRequiredFields(backupConfigId, objectApiName),
     enabled: !!backupConfigId && !!objectApiName,
-    staleTime: 60_000,
     retry: 1,
   });
 
@@ -545,7 +540,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
     queryKey: ['object-list', backupConfigId, configType],
     queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType),
     enabled: !scopeObjectApiNames?.length && !!backupConfigId && ecMissRequired === 'Use specified default per field',
-    staleTime: 60_000,
     retry: 1,
   });
   const reqFieldObjectOptions: string[] = scopeObjectApiNames?.length

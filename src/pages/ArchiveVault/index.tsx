@@ -16,7 +16,6 @@ export default function ArchiveVault() {
   const { data, isLoading } = useQuery({
     queryKey: ['archival-config-list'],
     queryFn: () => archivalService.getList(),
-    staleTime: 30 * 1000,
   });
 
   if (isLoading) {

@@ -262,7 +262,6 @@ export default function AddDetailsWizard({
       return Array.isArray(payload) ? payload : [];
     },
     enabled: !!objectName,
-    staleTime: 5 * 60 * 1000,
   });
   const fields: any[] = Array.isArray(fieldsData) ? fieldsData : [];
 

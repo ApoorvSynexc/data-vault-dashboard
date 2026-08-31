@@ -67,7 +67,6 @@ function AddObjectInput({ existing, onAdd }: { existing: StandardObject[]; onAdd
       const res = await crmMetadataService.getObjectList('backup');
       return Array.isArray(res) ? res : (res as any)?.data ?? [];
     },
-    staleTime: 5 * 60 * 1000,
   });
 
   const existingNames = new Set(existing.map((o) => o.name.toLowerCase()));

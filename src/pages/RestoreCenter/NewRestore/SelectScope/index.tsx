@@ -86,7 +86,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     queryKey: ['source-objects', sourceSelection.backupConfigId, sourceSelection.configType],
     queryFn: () => restoreService.getObjectListByConfigId(sourceSelection.backupConfigId, sourceSelection.configType),
     enabled: !!sourceSelection.backupConfigId,
-    staleTime: 60_000,
     retry: 1,
   });
 

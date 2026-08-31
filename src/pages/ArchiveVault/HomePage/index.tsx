@@ -455,13 +455,11 @@ export default function ArchiveVaultHomePage() {
       const apiBackupStatus = isJobStatus ? statusFilter : undefined;
       return archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, apiStatus, apiBackupStatus);
     },
-    staleTime: 0,
   });
 
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ['archival-config-stats'],
     queryFn: () => archivalService.getStats(),
-    staleTime: 0,
   });
 
   const stats = (statsData as any)?.data ?? statsData ?? null;
@@ -469,7 +467,6 @@ export default function ArchiveVaultHomePage() {
   const { data: platformsData, isLoading: isLoadingPlatforms } = useQuery({
     queryKey: ['connected-platforms'],
     queryFn: () => platformService.getConnectedPlatforms(),
-    staleTime: 5 * 60 * 1000,
   });
 
   const isLoading = isLoadingList || isLoadingPlatforms || isLoadingStats;

@@ -39,7 +39,6 @@ export default function Step2({ onNext, onBack, strategy = 'realtime', initialDe
     queryKey: ['step2-destinations', selectedDestination?.provider],
     queryFn: async () => destinationService.listDestinations(),
     enabled: !!selectedDestination,
-    staleTime: 0,
   });
 
   const connections = (connectionsData as any)?.data ?? connectionsData ?? [];
