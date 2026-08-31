@@ -7,10 +7,13 @@ import type { TableColumn } from '../../../../components/Table';
 import { parseSalesforceError } from '../../../../utils';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import type { DepthChildNode } from '../../../../services/crm-metadata/crm-metadata.service';
+import HierarchyGraphModal from '../../../../components/HierarchyGraph';
 
 // A child object in the payload — mirrors the depth-children API's own nesting,
 // so the hierarchy sent back to the server matches the hierarchy it described.
-type PayloadChildNode = { id: string; name: string; children?: PayloadChildNode[] };
+// cascadeDelete/restrictedDelete are carried along so the UI can label the
+// relationship (Master Detail vs Required Lookup) without re-fetching.
+type PayloadChildNode = { id: string; name: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 // Walks the depth-children tree, keeping only master-detail (cascade/restricted-delete)
 // nodes — a non-master-detail node stops the chain — and resolves each surviving
@@ -22,7 +25,13 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
     const obj = objects.find((o) => o.id === node.name);
     if (!obj) return;
     const nested = node.children?.length ? buildPayloadTree(node.children, objects) : [];
-    result.push({ id: obj.uuid, name: obj.name, ...(nested.length ? { children: nested } : {}) });
+    result.push({
+      id: obj.uuid,
+      name: obj.name,
+      cascadeDelete: node.cascadeDelete === true,
+      restrictedDelete: node.restrictedDelete === true,
+      ...(nested.length ? { children: nested } : {}),
+    });
   });
   return result;
 }
@@ -54,7 +63,13 @@ function resolveSavedChildren(nodes: PayloadChildNode[] = [], objects: BackupObj
     uuids.push(obj.uuid);
     const nested = node.children?.length ? resolveSavedChildren(node.children, objects) : null;
     if (nested) uuids.push(...nested.uuids);
-    tree.push({ id: obj.uuid, name: obj.name, ...(nested?.tree.length ? { children: nested.tree } : {}) });
+    tree.push({
+      id: obj.uuid,
+      name: obj.name,
+      cascadeDelete: node.cascadeDelete,
+      restrictedDelete: node.restrictedDelete,
+      ...(nested?.tree.length ? { children: nested.tree } : {}),
+    });
   });
   return { tree, uuids };
 }
@@ -110,6 +125,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // Panel state: which object's fields panel is open
   const [panelObjectId, setPanelObjectId] = useState<string | null>(null);
   const panelObject = displayObjects.find((o) => o.id === panelObjectId) ?? null;
+
+  // Which selected object's hierarchy graph is open (uuid), if any
+  const [hierarchyUuid, setHierarchyUuid] = useState<string | null>(null);
+  const hierarchyObject = displayObjects.find((o) => o.uuid === hierarchyUuid) ?? null;
 
   const maxSteps = strategy === 'realtime' ? 6 : 7;
   const allObjects = displayObjects;
@@ -331,7 +350,25 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               {
                 key: 'name',
                 header: 'Object',
-                render: (obj) => <span className='text-sm font-medium text-gray-800'>{obj.name}</span>,
+                render: (obj) => (
+                  <div className='flex items-center gap-2'>
+                    <span className='text-sm font-medium text-gray-800'>{obj.name}</span>
+                    {selectedObjects.has(obj.uuid) && parentTreeMap.has(obj.uuid) && (
+                      <button
+                        type='button'
+                        onClick={(e) => { e.stopPropagation(); setHierarchyUuid(obj.uuid); }}
+                        title='View object hierarchy'
+                        className='flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-50'
+                      >
+                        <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                          <circle cx='6' cy='6' r='2.5' /><circle cx='6' cy='18' r='2.5' /><circle cx='18' cy='12' r='2.5' />
+                          <path d='M8.2 6H12a2 2 0 0 1 2 2v2.2M8.2 18H12a2 2 0 0 0 2-2v-2.2' />
+                        </svg>
+                        Hierarchy
+                      </button>
+                    )}
+                  </div>
+                ),
               },
               {
                 key: 'type',
@@ -583,6 +620,15 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </div>
         </div>
       )}
+
+      {/* Object hierarchy graph */}
+      <HierarchyGraphModal
+        isOpen={!!hierarchyUuid}
+        onClose={() => setHierarchyUuid(null)}
+        rootId={hierarchyUuid ?? ''}
+        rootLabel={hierarchyObject?.name ?? ''}
+        children={(hierarchyUuid ? parentTreeMap.get(hierarchyUuid) : undefined) ?? []}
+      />
 
       {/* Action Buttons */}
       <div className='flex-shrink-0 flex justify-between items-center px-8 py-4 bg-gray-50 border-t border-gray-200'>

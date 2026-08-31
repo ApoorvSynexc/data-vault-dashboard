@@ -21,7 +21,7 @@ type ScheduleConfig = {
   };
 };
 
-type PayloadChildNode = { id: string; name: string; children?: PayloadChildNode[] };
+type PayloadChildNode = { id: string; name: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 type SelectedObject = {
   uuid?: string;
@@ -136,7 +136,7 @@ export default function FinalStep({
   });
 
   const buildPayload = (backupStatus: 'DRAFT' | 'ACTIVE') => {
-    const objectsToUse = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, isUserSelected: true }));
+    const objectsToUse: SelectedObject[] = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, isUserSelected: true }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
     const payload: any = {
       crmId, name: policyName, description, destinationId,
