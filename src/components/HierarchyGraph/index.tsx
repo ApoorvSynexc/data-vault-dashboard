@@ -178,7 +178,7 @@ export default function HierarchyGraphModal({ isOpen, onClose, rootId, rootLabel
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4' onClick={onClose}>
       <div
-        className='flex h-[80vh] w-[90vw] max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl'
+        className='flex h-[92vh] w-[96vw] max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl'
         onClick={(e) => e.stopPropagation()}
       >
         <div className='flex items-center justify-between border-b border-gray-100 px-5 py-4 flex-shrink-0'>
