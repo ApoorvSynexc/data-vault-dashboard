@@ -68,7 +68,7 @@ function Tip({ text }: { text: string }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type RestoreMode = 'overwrite' | 'append' | 'merge' | 'skip' | 'replace';
+type RestoreMode = 'overwrite' | 'append' | 'merge' | 'skip';
 
 const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; tip: string; recommended?: boolean; danger?: boolean }[] = [
   { id: 'overwrite', title: 'Overwrite Existing',    desc: 'Source record replaces destination — every field overwritten', recommended: true, tip: 'When a record exists in both source and destination (matched by Id / external Id), the destination record is fully replaced by the source record — every field overwritten. Standard disaster-recovery behaviour.' },
@@ -76,9 +76,8 @@ const RESTORE_MODES: { id: RestoreMode; title: string; desc: string; tip: string
 ];
 
 const RESTORE_MODES_FULL: { id: RestoreMode; title: string; desc: string; tip: string; recommended?: boolean; danger?: boolean }[] = [
-  { id: 'skip',    title: 'Skip if Exists',          desc: 'Do not touch records already in destination',                               tip: 'If a matching Id exists in the destination, leave it alone. Only restore records that are missing in the destination. Standard for filling gaps after a partial delete.' },
-  { id: 'merge',   title: 'Merge (per-field rule)',  desc: 'Configurable per-field winner — best for partial / safety-first recovery',  tip: 'When records exist in both, merge them field by field using the rule below (Source wins / Destination wins / Newest LastModifiedDate / Per-field override). Use this when you want some fields rolled back but newer destination work preserved.' },
-  { id: 'replace', title: 'Replace Entire Object',   desc: 'Delete all destination records, then insert from source',                   tip: '⚠ Nuclear option. Deletes ALL records of the target object in the destination, then inserts from source. Use only when you are sure the entire object\'s state must match the source.', danger: true },
+  { id: 'skip',  title: 'Skip if Exists',         desc: 'Do not touch records already in destination',                               tip: 'If a matching Id exists in the destination, leave it alone. Only restore records that are missing in the destination. Standard for filling gaps after a partial delete.' },
+  { id: 'merge', title: 'Merge (per-field rule)', desc: 'Configurable per-field winner — best for partial / safety-first recovery',  tip: 'When records exist in both, merge them field by field using the rule below (Source wins / Destination wins / Newest LastModifiedDate / Per-field override). Use this when you want some fields rolled back but newer destination work preserved.' },
 ];
 
 const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
@@ -86,7 +85,6 @@ const RESTORE_MODE_ENUM: Record<RestoreMode, string> = {
   append:    'APPEND_NEW',
   merge:     'MERGE',
   skip:      'SKIP',
-  replace:   'REPLACE_ENTIRE_OBJECT',
 };
 
 // Per-field rule values (for individual field overrides)
@@ -183,12 +181,8 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
               </div>
               <div className='p-4 flex flex-col gap-2'>
                 {[...RESTORE_MODES, ...RESTORE_MODES_FULL].filter((m) => {
-                  if (scopeMode === 'record' && m.id === 'replace') return false;
-                  if (scopeMode === 'field' && (m.id === 'replace' || m.id === 'append')) return false;
-                  if (scopeMode === 'filter' && m.id === 'replace') return false;
-                  if (scopeMode === 'deleted' && (m.id === 'skip' || m.id === 'merge' || m.id === 'replace')) return false;
-                  if (scopeMode === 'changed' && m.id === 'replace') return false;
-                  if (scopeMode === 'csv' && m.id === 'replace') return false;
+                  if (scopeMode === 'field' && m.id === 'append') return false;
+                  if (scopeMode === 'deleted' && (m.id === 'skip' || m.id === 'merge')) return false;
                   return true;
                 }).map((m) => {
                   const active = restoreMode === m.id;
