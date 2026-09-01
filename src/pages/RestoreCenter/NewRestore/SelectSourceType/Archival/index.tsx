@@ -31,7 +31,6 @@ interface Props {
   onSelectedJobIdsChange?: (ids: string[]) => void;
 }
 
-type StatusFilter = 'All' | 'ACTIVE' | 'PAUSED' | 'DRAFT' | 'INACTIVE';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -89,7 +88,6 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
 
 export default function ArchivalPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange }: Props) {
   const archivalService = useArchivalService();
@@ -102,8 +100,6 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
-
   const [currentPage, setCurrentPage] = useState(1);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [cursorStack, setCursorStack] = useState<{ page: number; cursor: string }[]>([]);
@@ -119,23 +115,13 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
-  const handleStatusFilter = (val: StatusFilter) => {
-    setStatusFilter(val);
-    setCursorStack([]);
-    setCurrentPage(1);
-    setCurrentCursor(null);
-  };
-
-  const apiStatus = !JOB_STATUS_SET.has(statusFilter) && statusFilter !== 'All' ? statusFilter : undefined;
-  const apiBackupStatus = JOB_STATUS_SET.has(statusFilter) ? statusFilter : undefined;
-
   const queryFn = useCallback(
-    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, apiStatus, apiBackupStatus),
-    [currentCursor, debouncedSearch, apiStatus, apiBackupStatus]
+    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined),
+    [currentCursor, debouncedSearch]
   );
 
   const { data: rawData, isLoading, isFetching } = useQuery({
-    queryKey: ['restore-archival-list', currentCursor, debouncedSearch, statusFilter],
+    queryKey: ['restore-archival-list', currentCursor, debouncedSearch],
     queryFn,
     refetchOnWindowFocus: false,
   });
@@ -143,7 +129,7 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
   const rawList: any[] = Array.isArray((rawData as any)?.data) ? (rawData as any).data : [];
   const apiMeta = (rawData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: rawList.length };
 
-  const rows = rawList.map((item: any) => ({
+  const rows = rawList.filter((item: any) => normalizeStatus(item.status) !== 'DRAFT').map((item: any) => ({
     ...item,
     displayName: item.name ?? item.slug ?? '--',
     displayStatus: normalizeStatus(item.status),
@@ -295,14 +281,6 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
     },
   ];
 
-  const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
-    { label: 'All',      value: 'All'      },
-    { label: 'Active',   value: 'ACTIVE'   },
-    { label: 'Paused',   value: 'PAUSED'   },
-    { label: 'Draft',    value: 'DRAFT'    },
-    { label: 'Inactive', value: 'INACTIVE' },
-  ];
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
@@ -328,26 +306,6 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
               />
             </div>
 
-            <div className='flex items-center gap-1 ml-auto'>
-              <span className='text-xs text-gray-500 font-medium mr-1'>Status:</span>
-              {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => handleStatusFilter(opt.value)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                    statusFilter === opt.value
-                      ? opt.value === 'ACTIVE'   ? 'bg-blue-100 text-blue-700 border-blue-200'
-                      : opt.value === 'PAUSED'   ? 'bg-gray-200 text-gray-700 border-gray-300'
-                      : opt.value === 'DRAFT'    ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                      : opt.value === 'INACTIVE' ? 'bg-gray-100 text-gray-500 border-gray-200'
-                      : 'bg-gray-800 text-white border-gray-800'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           <Table
