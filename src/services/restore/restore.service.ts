@@ -280,6 +280,10 @@ export interface DryRunPayload {
   };
 }
 
+export interface DryRunDiffPayload extends DryRunPayload {
+  limit?: number;
+}
+
 // ── Object list ───────────────────────────────────────────────────────────────
 
 export interface RestoreSourceObject {
@@ -303,6 +307,7 @@ const RESTORE_ENDPOINTS = {
   requiredFields:       '/v1/restore/retrieve/required-fields',
   picklistValues:       '/v1/restore/get-picklist-field-values',
   dryRun:               '/v1/restore/dry-run',
+  dryRunDiff:           '/v1/restore/dry-run-diff',
   createRestoreJob:     '/v1/restore',
   listRestoreJobs:      '/v1/restore/config/list',
   getRestoreJob:        '/v1/restore/job',
@@ -373,6 +378,9 @@ export function useRestoreService() {
 
     dryRun: (payload: DryRunPayload) =>
       api.post<unknown>(RESTORE_ENDPOINTS.dryRun, payload),
+
+    dryRunDiff: (payload: DryRunDiffPayload) =>
+      api.post<unknown>(RESTORE_ENDPOINTS.dryRunDiff, payload),
 
     createRestoreJob: (payload: RestoreRetrievePayload) =>
       api.post<{ success: boolean; message: string }>(RESTORE_ENDPOINTS.createRestoreJob, payload),
