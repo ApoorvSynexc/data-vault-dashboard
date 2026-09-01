@@ -8,6 +8,21 @@ type FilterTab = 'all' | 'unread' | 'read';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function highlightQuoted(text: string): JSX.Element {
+  const parts = text.split(/("([^"]*)")/g);
+  const nodes: (string | JSX.Element)[] = [];
+  let i = 0;
+  while (i < parts.length) {
+    if (parts[i].startsWith('"') && parts[i].endsWith('"')) {
+      nodes.push(<strong key={i} className='font-semibold text-gray-900'>{parts[i]}</strong>);
+    } else if (!parts[i].startsWith('"')) {
+      nodes.push(parts[i]);
+    }
+    i++;
+  }
+  return <>{nodes}</>;
+}
+
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -59,7 +74,7 @@ function NotifItem({
           </div>
           <span className='shrink-0 text-[11px] text-gray-400'>{formatTime(notif.createdAt)}</span>
         </div>
-        <p className='mt-0.5 text-xs leading-relaxed text-gray-500'>{notif.body}</p>
+        <p className='mt-0.5 text-xs leading-relaxed text-gray-500'>{highlightQuoted(notif.body)}</p>
         <div className='mt-2 flex items-center gap-3'>
           {isUnread && (
             <button
