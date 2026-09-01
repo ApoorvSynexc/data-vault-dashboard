@@ -270,7 +270,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
 
                       {/* Inline action button */}
                       {org.isCrmConnected ? (
-                        <PermissionGate permission='sourceConnection.delete'>
+                        <PermissionGate permission='sourceConnection.write'>
                           <button
                             type='button'
                             onClick={() => handleDisconnect(org.userId)}
