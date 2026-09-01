@@ -452,7 +452,7 @@ export default function ConflictConfig({
       } : {}),
     };
     edgeCases.ownerInactive = { type: OWNER_INACTIVE_ENUM[ecOwner] ?? 'SKIP_RECORD', ...(ecOwner === 'Reassign to specified user' ? { fallbackValue: fallbackOwner } : {}) };
-    edgeCases.parentMissing = ecParent;
+    if (configType !== 'ARCHIVAL') edgeCases.parentMissing = ecParent;
     edgeCases.recordTypeMissing = {
       type: RECORD_TYPE_ENUM[ecRecordType] ?? 'MAP_TO_DEFAULT',
       ...(ecRecordType === 'Map manually' ? {
@@ -630,12 +630,14 @@ export default function ConflictConfig({
                     </div>
                   )}
                 </div>
-                <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
-                  <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." /></span>
-                  <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
-                    <option>Restore parent first</option><option>Skip</option>
-                  </select>
-                </div>
+                {configType !== 'ARCHIVAL' && (
+                  <div className='py-3 flex flex-col sm:flex-row sm:items-center gap-2'>
+                    <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Parent missing (orphan) <Tip text="Triggered when the record's parent reference points to a missing/deleted parent." /></span>
+                    <select value={ecParent} onChange={(e) => setEcParent(e.target.value)} className={selectClass} style={selectStyle}>
+                      <option>Restore parent first</option><option>Skip</option>
+                    </select>
+                  </div>
+                )}
                 <div className='py-3 flex flex-col gap-2'>
                   <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                     <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Record type missing <Tip text="Triggered when the source record uses a RecordType that doesn't exist in the destination." /></span>
