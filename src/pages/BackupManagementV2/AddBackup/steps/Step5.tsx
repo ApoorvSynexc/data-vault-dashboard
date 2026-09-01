@@ -399,7 +399,19 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             ];
 
             return (
-              <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+              <div className='flex-1 min-h-0 flex flex-col overflow-hidden relative'>
+                {/* Relationship-analysis overlay — blocks all selection until auto-select is done */}
+                {isDescribeFetching && (
+                  <div className='absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-b-xl'
+                    style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(2px)' }}>
+                    <svg className='animate-spin h-6 w-6 text-blue-600' viewBox='0 0 24 24' fill='none'>
+                      <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                      <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
+                    </svg>
+                    <p className='text-sm font-semibold text-blue-700'>Analysing relationships…</p>
+                    <p className='text-xs text-gray-500'>Auto-selecting related objects. Please wait.</p>
+                  </div>
+                )}
                 {error ? (
                   <div className='mx-5 my-4 rounded-xl bg-red-50 border border-red-200 px-4 py-4 flex items-start gap-3'>
                     <svg className='h-5 w-5 shrink-0 text-red-500 mt-0.5' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -639,17 +651,6 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         >
           Cancel
         </button>
-
-        {/* Fetching indicator */}
-        {isDescribeFetching && (
-          <div className='flex items-center gap-2 text-sm text-blue-600'>
-            <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24' fill='none'>
-              <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
-              <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
-            </svg>
-            <span className='font-medium'>Analysing relationships…</span>
-          </div>
-        )}
 
         <div className='flex gap-4'>
           <button

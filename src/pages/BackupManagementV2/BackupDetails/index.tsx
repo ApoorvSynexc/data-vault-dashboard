@@ -168,26 +168,6 @@ export default function BackupDetails() {
               )}
               {isProcessingBackup ? 'Processing...' : 'Process Backup'}
             </button>
-            {!isRealtimeBackup && (
-              <button
-                type='button'
-                onClick={() => runNowMutation.mutate()}
-                disabled={runNowMutation.isPending || oneTimeAlreadyRan}
-                title={oneTimeAlreadyRan ? 'This one-time backup has already run' : undefined}
-                className='inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {runNowMutation.isPending ? (
-                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='animate-spin'>
-                    <path d='M21 12a9 9 0 11-6.219-8.56' />
-                  </svg>
-                ) : (
-                  <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <polygon points='5 3 19 12 5 21 5 3' />
-                  </svg>
-                )}
-                {runNowMutation.isPending ? 'Starting...' : 'Run Now'}
-              </button>
-            )}
           </div>
           {runNowMessage && (
             <p className={`absolute right-6 top-16 text-xs rounded-lg px-3 py-1.5 border ${
