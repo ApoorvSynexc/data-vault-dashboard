@@ -81,7 +81,9 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     refetchOnWindowFocus: false,
   });
 
-  const backupListRows: any[] = Array.isArray((backupListData as any)?.data) ? (backupListData as any).data : [];
+  const backupListRows: any[] = Array.isArray((backupListData as any)?.data)
+    ? (backupListData as any).data.filter((item: any) => (item.status ?? '').toUpperCase() !== 'DRAFT')
+    : [];
   const backupMeta = (backupListData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: backupListRows.length };
 
   const goToBackupPage = useCallback((page: number, cursor: string | null) => {
