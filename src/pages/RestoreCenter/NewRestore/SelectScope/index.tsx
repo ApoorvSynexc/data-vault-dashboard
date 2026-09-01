@@ -13,7 +13,6 @@ import ByRecordScope from './ByRecordScope';
 import ByFieldScope from './ByFieldScope';
 import CustomFilterScope from './CustomFilterScope';
 import DeletedOnlyScope from './DeletedOnlyScope';
-import ChangedSinceScope from './ChangedSinceScope';
 import BulkCsvScope from './BulkCsvScope';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
@@ -99,7 +98,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [recordScope,     setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
   const [fieldScope,      setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
-  const [changedDate,     setChangedDate]       = useState('2026-05-01');
   const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[] }[]>([]);
 
   const buildScope = (): RestoreScope => {
@@ -108,7 +106,6 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'record':  return { type: 'RECORD', records: recordScope };
       case 'field':   return { type: 'FIELD',  fields:  fieldScope };
       case 'filter':  return { type: 'FILTER', filters: filterScope };
-      case 'changed': return { type: 'CHANGE_SINCE', changeSince: { date: changedDate } };
       case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope };
       case 'deleted': return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':
@@ -145,7 +142,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             <InfoTooltip text='Choose how to scope the data being restored. Select a mode to reveal its configuration below.' />
           </div>
           <div className='p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'>
-            {SCOPE_MODES.map((m) => {
+            {SCOPE_MODES.filter((m) => {
+              const isArchival = sourceSelection.configType === 'ARCHIVAL';
+              const isBackupEntire = sourceSelection.configType === 'BACKUP' && sourceSelection.type === 'ENTIRE';
+              if (isArchival && (m.id === 'deleted' || m.id === 'field')) return false;
+              if (isBackupEntire && (m.id === 'deleted' || m.id === 'field')) return false;
+              return true;
+            }).map((m) => {
               const active = scopeMode === m.id;
               return (
                 <button
@@ -210,7 +213,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           />
         )}
         {scopeMode === 'deleted' && <DeletedOnlyScope />}
-        {scopeMode === 'changed' && <ChangedSinceScope onChange={setChangedDate} />}
+
         {scopeMode === 'csv'     && (
           <BulkCsvScope
             sourceObjectNames={sourceObjectNames}

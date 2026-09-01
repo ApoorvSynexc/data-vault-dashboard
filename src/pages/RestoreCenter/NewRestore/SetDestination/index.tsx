@@ -620,7 +620,7 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: () => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmName?: string; crmUsername?: string; }
+interface Props { onNext: (destLabel: string) => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmName?: string; crmUsername?: string; }
 
 export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
@@ -699,7 +699,10 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={onNext}
+            onClick={() => {
+              const label = [crmName, crmUsername ? `(${crmUsername})` : ''].filter(Boolean).join(' ') || '—';
+              onNext(label);
+            }}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >
