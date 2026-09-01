@@ -4,10 +4,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import InfoTooltip from '../../../../components/InfoTooltip';
-import { toUTCISOString } from '../../../../utils';
 import { useRestoreService } from '../../../../services/restore/restore.service';
-import type { SourceSelection } from '../SelectSourceType';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
+import type { SourceSelection } from '../SelectSourceType';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -161,19 +160,18 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
     setDryRunError(null);
     setDryRunDone(false);
     try {
-      const scope = restorePayload.selection?.restoreScope;
-
-      const res: any = await restoreService.showPreview({
+      const sourceType = (sourceSelection.type === 'CHANGED_BETWEEN' || sourceSelection.type === 'DELETED_BETWEEN')
+        ? 'CHANGED_BETWEEN'
+        : 'ENTIRE';
+      const res: any = await restoreService.dryRun({
+        backupConfigId: sourceSelection.backupConfigId,
+        configType: sourceSelection.configType ?? 'BACKUP',
         source: {
-          backupConfigId: sourceSelection.backupConfigId,
-          configType: sourceSelection.configType,
-          type: sourceSelection.type ?? 'ENTIRE',
-          ...(sourceSelection.backupJobIds?.length ? { backupJobIds: sourceSelection.backupJobIds } : {}),
-          ...(sourceSelection.startDate ? { startDate: toUTCISOString(sourceSelection.startDate) } : {}),
-          ...(sourceSelection.endDate   ? { endDate:   toUTCISOString(sourceSelection.endDate)   } : {}),
+          type: sourceType,
+          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
+          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
         },
-        objectApiName: 'Customer__c',
-        selection: scope ? { restoreScope: scope } : null,
+        selection: { restoreScope: restorePayload.selection.restoreScope },
       });
 
       const rawRows: any[] = res?.data?.data?.rows ?? res?.data?.rows ?? [];
