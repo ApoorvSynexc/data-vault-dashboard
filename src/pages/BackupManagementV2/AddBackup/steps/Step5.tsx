@@ -13,7 +13,8 @@ import HierarchyGraphModal from '../../../../components/HierarchyGraph';
 // so the hierarchy sent back to the server matches the hierarchy it described.
 // cascadeDelete/restrictedDelete are carried along so the UI can label the
 // relationship (Master Detail vs Required Lookup) without re-fetching.
-type PayloadChildNode = { id: string; name: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
+// `field` is the relationship field on this object pointing back to its parent (e.g. "AccountId").
+type PayloadChildNode = { id: string; name: string; field?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 // Walks the depth-children tree, keeping only master-detail (cascade/restricted-delete)
 // nodes — a non-master-detail node stops the chain — and resolves each surviving
@@ -28,6 +29,7 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
     result.push({
       id: obj.uuid,
       name: obj.name,
+      field: node.field,
       cascadeDelete: node.cascadeDelete === true,
       restrictedDelete: node.restrictedDelete === true,
       ...(nested.length ? { children: nested } : {}),
@@ -66,6 +68,7 @@ function resolveSavedChildren(nodes: PayloadChildNode[] = [], objects: BackupObj
     tree.push({
       id: obj.uuid,
       name: obj.name,
+      field: node.field,
       cascadeDelete: node.cascadeDelete,
       restrictedDelete: node.restrictedDelete,
       ...(nested?.tree.length ? { children: nested.tree } : {}),
