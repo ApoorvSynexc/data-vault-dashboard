@@ -55,6 +55,8 @@ function PrefetchDescribe({
   }, [isFetching]);
 
   const reportedRef = useRef<Set<string>>(new Set());
+  // Reset on every mount so re-mounting (after deselect→reselect) re-reports from cached data.
+  useEffect(() => { reportedRef.current = new Set(); }, []);
   useEffect(() => {
     if (!data) return;
     const fields: any[] = (data as any)?.data?.fields ?? [];

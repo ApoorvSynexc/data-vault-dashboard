@@ -71,7 +71,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
   // All warnings ever fired — stored as a ref so callbacks never go stale.
   // Active warnings are derived by filtering out those whose parent is currently selected.
-  const allMdWarningsRef = useRef<{ child: string; parentField: string; parentLabel: string }[]>([]);
+  // sourceObjectId = uuid of the selected object whose wizard triggered this warning.
+  const allMdWarningsRef = useRef<{ child: string; parentField: string; parentLabel: string; sourceObjectId: string }[]>([]);
   // Bumped whenever allMdWarningsRef changes so the derived mdWarnings useMemo re-runs.
   const [warningTick, setWarningTick] = useState(0);
   const [showMdToast, setShowMdToast] = useState(false);
@@ -152,23 +153,25 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     [allObjects, selectedObjects]
   );
 
-  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string) => {
+  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string, sourceObjectId: string) => {
     const parentObj = allObjects.find((o) => o.id === parentField);
     const resolvedLabel = parentObj?.name ?? parentField;
-    const already = allMdWarningsRef.current.some((w) => w.child === childObject && w.parentField === parentField);
+    const already = allMdWarningsRef.current.some((w) => w.child === childObject && w.parentField === parentField && w.sourceObjectId === sourceObjectId);
     if (!already) {
-      allMdWarningsRef.current = [...allMdWarningsRef.current, { child: childObject, parentField, parentLabel: resolvedLabel }];
+      allMdWarningsRef.current = [...allMdWarningsRef.current, { child: childObject, parentField, parentLabel: resolvedLabel, sourceObjectId }];
       setWarningTick((t) => t + 1);
     }
     setShowMdToast(true);
   }, [allObjects]);
 
-  // Derive active warnings: all fired warnings minus those whose parent is currently selected.
-  // Recomputed whenever selectedObjects, allObjects, or warningTick changes so both
-  // new warnings being added and selection changes are reflected immediately.
+  // Derive active warnings:
+  // - sourceObjectId must be currently selected (the object that has the MD child)
+  // - parentField must NOT be currently selected (the missing required object)
   const mdWarnings = useMemo(() => {
     const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
-    return allMdWarningsRef.current.filter((w) => !selectedApiNames.has(w.parentField));
+    return allMdWarningsRef.current.filter((w) =>
+      selectedObjects.has(w.sourceObjectId) && !selectedApiNames.has(w.parentField)
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedObjects, allObjects, warningTick]);
 
@@ -188,7 +191,11 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const displayObjects = allFiltered.slice(offset, offset + ITEMS_PER_PAGE);
 
   const totalSelected = selectedObjects.size;
-  const clearAll = () => setSelectedObjects(new Set());
+  const clearAll = () => {
+    setSelectedObjects(new Set());
+    allMdWarningsRef.current = [];
+    setWarningTick((t) => t + 1);
+  };
 
   const handleNext = () => {
     // Collect all object IDs already covered as built children of another selected object.
@@ -262,7 +269,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           initialConfig={objectConfigs[wizardTarget.objectId]}
           allowedObjectNames={allowedObjectNames}
           selectedObjectApiNames={selectedObjectApiNames}
-          onMasterDetailWarning={handleMasterDetailWarning}
+          onMasterDetailWarning={(child, parentField) => handleMasterDetailWarning(child, parentField, wizardTarget.objectId)}
           onSave={(config) => {
             setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
             setWizardTarget(null);
