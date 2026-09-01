@@ -115,7 +115,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         <SelectSourceType
           onNext={(sel) => {
             setSourceSelection(sel);
-            const source = sel.type === 'CHANGED_BETWEEN'
+            const source = (sel.type === 'CHANGED_BETWEEN' || sel.type === 'DELETED_BETWEEN')
               ? { backupConfigId: sel.backupConfigId, configType: sel.configType, backupJobIds: sel.backupJobIds, type: sel.type, ...(sel.startDate ? { startDate: toUTCISOString(sel.startDate) } : {}), ...(sel.endDate ? { endDate: toUTCISOString(sel.endDate) } : {}) }
               : { backupConfigId: sel.backupConfigId, configType: sel.configType, type: sel.type };
             updatePayload({ source });
