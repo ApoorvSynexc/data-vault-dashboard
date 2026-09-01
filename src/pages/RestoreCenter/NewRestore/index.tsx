@@ -1,15 +1,14 @@
-// NewRestore — 9-step wizard orchestrator for creating a new restore job.
+// NewRestore — 8-step wizard orchestrator for creating a new restore job.
 //
 // Step flow:
-//   1. SelectSource        — cloud source (storage platform + connection)
-//   2. SelectSourceType    — source type (backup snapshot / archive vault) + sub-picker
-//   3. SelectScope         — what to restore (full / object / record / field / SOQL)
-//   4. SetDestination      — target org + restore mode
-//   5. DefineRestorePolicy — name, description, tags
-//   6. ConflictConfig      — conflict rules + CRM automation controls (combined)
-//   7. EdgeCases           — edge case handling + field defaults
-//   8. PreviewValidate     — validate plan and preview record counts
-//   9. ReviewSubmit        — final review + submit
+//   1. SelectSource           — cloud source (storage platform + connection)
+//   2. SelectSourceType       — source type (backup snapshot / archive vault) + sub-picker
+//   3. SelectScope            — what to restore (full / object / record / field / SOQL)
+//   4. SetDestination         — target org + restore mode
+//   5. DefineRestorePolicy    — name, description, tags
+//   6. ConflictConfig         — conflict rules + edge cases (two-phase combined)
+//   7. PreviewValidate        — validate plan and preview record counts
+//   8. ReviewSubmit           — final review + submit
 
 import { useState } from 'react';
 import SelectSource from './SelectSource';
@@ -18,7 +17,6 @@ import SelectScope from './SelectScope';
 import SetDestination from './SetDestination';
 import DefineRestorePolicy from './DefineRestorePolicy';
 import ConflictConfig from './ConflictConfig';
-import EdgeCases from './EdgeCases';
 import PreviewValidate from './PreviewValidate';
 import ReviewSubmit from './ReviewSubmit';
 import type { Destination } from '../../../services/destination/destination.service';
@@ -27,7 +25,7 @@ import type { RestoreRetrievePayload, RestoreScope } from '../../../services/res
 import type { ConflictOutput } from './ConflictConfig';
 import { toUTCISOString } from '../../../utils';
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 // The objects a restore scope touches, when the scope shape says so directly.
 // ALL/CHANGE_SINCE/DELETED_ONLY/INSERTS_ONLY carry no explicit per-object
@@ -78,7 +76,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   // Shared state for conditional UI across steps
   const [scopeMode, setScopeMode] = useState<string>('full');
 
-  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 9) as Step);
+  const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
   const goBack = () => {
     if (currentStep === 1) { onBack(); return; }
     setCurrentStep((s) => Math.max(s - 1, 1) as Step);
@@ -146,12 +144,13 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
       </div>
       <div className={currentStep === 6 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <ConflictConfig
-          onNext={(conflict: ConflictOutput) => {
+          onNext={(output: ConflictOutput) => {
             updatePayload({
               conflict: {
                 ...restorePayload.conflict,
-                restoreMode: conflict.restoreMode as RestoreRetrievePayload['conflict']['restoreMode'],
-                ...(conflict.mergeRule ? { mergeRule: conflict.mergeRule } : {}),
+                restoreMode: output.restoreMode as RestoreRetrievePayload['conflict']['restoreMode'],
+                ...(output.mergeRule ? { mergeRule: output.mergeRule } : {}),
+                edgeCases: output.edgeCases,
               },
             });
             goNext();
@@ -160,25 +159,15 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           scopeMode={scopeMode}
           configType={sourceSelection.configType}
           sourceRestoreType={sourceSelection.type}
-        />
-      </div>
-      <div className={currentStep === 7 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <EdgeCases
-          onNext={(edgeCases) => {
-            updatePayload({ conflict: { ...restorePayload.conflict, edgeCases } });
-            goNext();
-          }}
-          onBack={goBack}
           backupConfigId={sourceSelection.backupConfigId}
-          configType={sourceSelection.configType}
           destinationCrmId={restorePayload.destination.crmId || sourceSelection.crmId}
           scopeObjectApiNames={scopeObjectApiNames(restorePayload.selection.restoreScope)}
           sourceStartDate={restorePayload.source.startDate}
           sourceEndDate={restorePayload.source.endDate}
         />
       </div>
-      {currentStep === 8 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
-      {currentStep === 9 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
+      {currentStep === 7 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
     </div>
   );
 }

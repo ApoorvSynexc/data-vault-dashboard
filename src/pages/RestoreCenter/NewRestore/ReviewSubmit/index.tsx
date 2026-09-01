@@ -10,7 +10,7 @@ import type { Destination } from '../../../../services/destination/destination.s
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Edge Cases', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict & Edge Cases', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -415,7 +415,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
               Step <span className='text-blue-600'>9</span> of 9
             </span>
           </div>
-          <ProgressBar active={9} />
+          <ProgressBar active={8} />
         </div>
 
         {/* Warning banner */}

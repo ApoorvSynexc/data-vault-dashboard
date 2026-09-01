@@ -18,7 +18,7 @@ import BulkCsvScope from './BulkCsvScope';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict & Edge Cases', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
