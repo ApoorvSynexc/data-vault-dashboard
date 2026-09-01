@@ -305,36 +305,6 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
           </PermissionGate>
         </div>
 
-        <div className='flex-shrink-0 flex items-start gap-3 rounded-xl px-4 py-3 text-sm' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-          <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-            <circle cx='12' cy='12' r='10' /><line x1='12' y1='16' x2='12' y2='12' /><line x1='12' y1='8' x2='12.01' y2='8' />
-          </svg>
-          <p className='text-blue-800 text-xs leading-relaxed'>
-            <span className='font-semibold'>Recovery Readiness: </span>
-            Last successful backup <strong>Today, 06:00 AM</strong> · Last verified snapshot <strong>Yesterday, 11:59 PM</strong> · Last successful restore <strong>3 days ago</strong>
-          </p>
-        </div>
-        <div className='flex-shrink-0 flex gap-3'>
-          <button
-            onClick={onNewRestore}
-            className='flex-1 flex items-center gap-4 rounded-xl px-5 py-4 text-left transition-opacity hover:opacity-90'
-            style={{ background: '#155DFC' }}
-          >
-            <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl' style={{ background: 'rgba(255,255,255,0.2)' }}>
-              <svg width='20' height='20' fill='none' stroke='white' strokeWidth='2.5' viewBox='0 0 24 24'>
-                <polyline points='23 4 23 10 17 10' /><path d='M20.49 15a9 9 0 1 1-.29-4.36' />
-              </svg>
-            </div>
-            <div className='min-w-0'>
-              <p className='text-sm font-semibold text-white'>⚡ Quick Recover Yesterday</p>
-              <p className='text-xs text-blue-100 mt-0.5 leading-relaxed'>Opens the wizard pre-filled with yesterday's snapshot → same org → overwrite mode · You'll review before running.</p>
-            </div>
-            <svg width='16' height='16' fill='none' stroke='rgba(255,255,255,0.7)' strokeWidth='2' viewBox='0 0 24 24' className='ml-auto flex-shrink-0'>
-              <polyline points='9 18 15 12 9 6' />
-            </svg>
-          </button>
-        </div>
-
         {/* ── KPI Cards ── */}
         <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm flex-shrink-0'>
           <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>Restore Status</Typography>
