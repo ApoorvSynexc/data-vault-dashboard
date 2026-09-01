@@ -21,16 +21,16 @@ type ScheduleConfig = {
   };
 };
 
-type PayloadChildNode = { id: string; name: string; field?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
+type PayloadChildNode = { id: string; name: string; fieldName?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 // cascadeDelete/restrictedDelete only exist to label relationships in the hierarchy
 // graph — the create/update backup API doesn't need them in the `children` array.
-// `field` (the relationship field back to the parent, e.g. "AccountId") is kept.
-function stripRelationshipFlags(nodes: PayloadChildNode[]): { id: string; name: string; field?: string; children?: unknown[] }[] {
-  return nodes.map(({ id, name, field, children }) => ({
+// `fieldName` (the relationship field back to the parent, e.g. "AccountId") is kept.
+function stripRelationshipFlags(nodes: PayloadChildNode[]): { id: string; name: string; fieldName?: string; children?: unknown[] }[] {
+  return nodes.map(({ id, name, fieldName, children }) => ({
     id,
     name,
-    ...(field ? { field } : {}),
+    ...(fieldName ? { fieldName } : {}),
     ...(children?.length ? { children: stripRelationshipFlags(children) } : {}),
   }));
 }
@@ -167,7 +167,6 @@ export default function FinalStep({
           type: objType,
           isUserSelected,
           condition: { type: 'AND' },
-          field: [],
           ...(children ? { children } : {}),
         };
       }),
