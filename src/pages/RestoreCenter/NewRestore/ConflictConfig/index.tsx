@@ -354,6 +354,7 @@ export default function ConflictConfig({
 
   // phase: 'conflict' is skipped automatically when hideRestoreMode
   const [phase, setPhase] = useState<'conflict' | 'edgecases'>(hideRestoreMode ? 'edgecases' : 'conflict');
+  useEffect(() => { setPhase(hideRestoreMode ? 'edgecases' : 'conflict'); }, [hideRestoreMode]);
 
   // ── Phase 1 state ─────────────────────────────────────────────────────────
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
