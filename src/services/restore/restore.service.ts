@@ -179,7 +179,7 @@ export interface RestoreRetrievePayload {
   source: {
     backupConfigId: string;
     configType?: 'BACKUP' | 'ARCHIVAL';
-    type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+    type?: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN' | 'DELETED_BETWEEN';
     startDate?: string;
     endDate?: string;
     backupJobIds?: string[];
@@ -253,7 +253,7 @@ export interface ShowPreviewPayload {
   source: {
     backupConfigId: string;
     configType?: 'BACKUP' | 'ARCHIVAL';
-    type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN';
+    type: 'ENTIRE' | 'PARTIAL' | 'CHANGED_BETWEEN' | 'DELETED_BETWEEN';
     backupJobIds?: string[];
     startDate?: string;
     endDate?: string;
