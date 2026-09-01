@@ -120,6 +120,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
   const [toast, setToast] = useState<string | null>(null);
+  const [startTimeError, setStartTimeError] = useState('');
 
   function showToast(msg: string) {
     setToast(msg);
@@ -286,9 +287,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                       type='time'
                       value={startTime}
                       min={startDate === today ? currentTime : undefined}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                   </div>
                 </div>
                 <div>
@@ -629,6 +631,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             disabled={frequency === null}
             onClick={() => {
               if (!frequency) return;
+              if (startTimeError) { showToast(startTimeError); return; }
               // Validate required fields
               if (frequency !== 'One Time' && !startDate) {
                 showToast('Please select a start date');
