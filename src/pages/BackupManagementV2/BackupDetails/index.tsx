@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import Overview from './Overview';
 import BackupHistory from './BackupHistory';
 import TriggerRecords from './TriggerRecords';
@@ -32,7 +32,6 @@ const mockBackupData = {
 export default function BackupDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const backupConfigService = useBackupConfigService();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -60,22 +59,6 @@ export default function BackupDetails() {
   });
 
   const backupData = (backupDetail as any) || mockBackupData;
-
-  const [runNowMessage, setRunNowMessage] = useState<{ text: string; variant: 'success' | 'error' } | null>(null);
-  const runNowMutation = useMutation({
-    mutationFn: () => backupConfigService.runNow(backupData.backupConfigId),
-    onSuccess: (response: any) => {
-      setRunNowMessage({ text: response?.message ?? 'Backup run started.', variant: 'success' });
-      queryClient.invalidateQueries({ queryKey: ['backup-detail', slug] });
-      setTimeout(() => setRunNowMessage(null), 4000);
-    },
-    onError: (err: any) => {
-      setRunNowMessage({ text: err?.message ?? 'Failed to trigger backup run.', variant: 'error' });
-    },
-  });
-
-  const isRealtimeBackup = backupData?.schedule === 'REALTIME';
-  const oneTimeAlreadyRan = backupData?.scheduleConfig?.type === 'ONE_TIME' && !!backupData?.lastBackupAt;
 
   useEffect(() => {
     document.documentElement.style.overflow = 'hidden';
@@ -169,47 +152,35 @@ export default function BackupDetails() {
               {isProcessingBackup ? 'Processing...' : 'Process Backup'}
             </button>
           </div>
-          {runNowMessage && (
-            <p className={`absolute right-6 top-16 text-xs rounded-lg px-3 py-1.5 border ${
-              runNowMessage.variant === 'success'
-                ? 'text-green-600 bg-green-50 border-green-200'
-                : 'text-red-500 bg-red-50 border-red-200'
-            }`}>
-              {runNowMessage.text}
-            </p>
-          )}
         </div>
 
         {/* Tabs */}
         <div className='flex'>
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-              activeTab === 'overview'
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${activeTab === 'overview'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-              activeTab === 'history'
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${activeTab === 'history'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             Backup History
           </button>
           {backupData?.triggerResults?.length > 0 && (
             <button
               onClick={() => setActiveTab('triggers')}
-              className={`px-4 py-3 font-medium border-b-2 transition-colors ${
-                activeTab === 'triggers'
+              className={`px-4 py-3 font-medium border-b-2 transition-colors ${activeTab === 'triggers'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               Trigger Records
               <span className='ml-1.5 text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full'>
