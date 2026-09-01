@@ -109,6 +109,11 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     return configs;
   });
 
+  // Stable UUID map keyed by SF API name — generated once on mount so UUIDs don't
+  // change across re-renders (allObjects useMemo would otherwise generate new UUIDs
+  // for objects not in initialSelectedObjects every time the query data reference changes).
+  const uuidMapRef = useRef<Map<string, string>>(new Map());
+
   // Wizard target — which object "Add Details" was clicked on
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
@@ -131,8 +136,11 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       .filter((obj: any) => obj?.name)
       .map((obj: any) => {
         const existing = initialSelectedObjects.find((o) => o.id === obj.name);
+        if (!uuidMapRef.current.has(obj.name)) {
+          uuidMapRef.current.set(obj.name, existing?.uuid ?? crypto.randomUUID());
+        }
         return {
-          uuid: existing?.uuid ?? crypto.randomUUID(),
+          uuid: uuidMapRef.current.get(obj.name)!,
           id: obj.name,
           name: obj.label ?? obj.name,
           type: 'Object',
