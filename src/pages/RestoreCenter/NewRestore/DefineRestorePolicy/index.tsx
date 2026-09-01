@@ -67,12 +67,11 @@ function ProgressBar({ active }: { active: number }) {
 interface Props {
   onNext: (jobDetail: { name: string; description: string; tags: string[] }) => void;
   onBack: () => void;
-  crmName?: string;
-  crmUsername?: string;
   connectionName?: string;
+  destLabel?: string;
 }
 
-export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUsername, connectionName }: Props) {
+export default function DefineRestorePolicy({ onNext, onBack, connectionName, destLabel }: Props) {
   const [policyName, setPolicyName]   = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags]               = useState('');
@@ -80,7 +79,6 @@ export default function DefineRestorePolicy({ onNext, onBack, crmName, crmUserna
   const canProceed = policyName.trim().length > 0;
 
   const sourceLabel = connectionName || '—';
-  const destLabel   = [crmName, crmUsername ? `(${crmUsername})` : ''].filter(Boolean).join(' ') || '—';
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>

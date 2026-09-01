@@ -75,6 +75,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
 
   // Shared state for conditional UI across steps
   const [scopeMode, setScopeMode] = useState<string>('full');
+  const [destLabel, setDestLabel] = useState<string>('');
 
   const goNext = () => setCurrentStep((s) => Math.min(s + 1, 8) as Step);
   const goBack = () => {
@@ -131,15 +132,14 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />
       </div>
       <div className={currentStep === 4 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <SetDestination onNext={goNext} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />
+        <SetDestination onNext={(label) => { setDestLabel(label); goNext(); }} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />
       </div>
       <div className={currentStep === 5 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <DefineRestorePolicy
           onNext={(jobDetail) => { updatePayload({ jobDetail: { name: jobDetail.name, description: jobDetail.description, tags: jobDetail.tags } }); goNext(); }}
           onBack={goBack}
-          crmName={sourceSelection.crmName}
-          crmUsername={sourceSelection.crmUsername}
           connectionName={selectedConnection?.name}
+          destLabel={destLabel}
         />
       </div>
       <div className={currentStep === 6 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
