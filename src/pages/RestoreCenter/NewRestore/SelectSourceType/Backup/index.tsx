@@ -6,8 +6,6 @@ import Typography from '../../../../../components/Typography';
 import { useBackupConfigService } from '../../../../../services/backup-config/backup-config.service';
 import { formatBytes, formatDateTime } from '../../../../../utils';
 
-type BackupMode = 'list' | 'pit';
-
 export type ScopeType = 'ENTIRE' | 'CHANGED_BETWEEN';
 
 export interface BackupSelection {
@@ -34,7 +32,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const backupConfigService = useBackupConfigService();
 
   // ── Phase 1: config list ──────────────────────────────────────────────────
-  const [backupMode, setBackupMode] = useState<BackupMode>('list');
   const [selectedBackup, setSelectedBackup] = useState<Set<string>>(initialSelectedConfigId ? new Set([initialSelectedConfigId]) : new Set());
   const [selectedBackupConfigId, setSelectedBackupConfigId] = useState<string>(initialSelectedConfigId);
   const [selectedBackupCreatedAt, setSelectedBackupCreatedAt] = useState<string>('');
@@ -47,9 +44,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [backupCurrentPage, setBackupCurrentPage] = useState(1);
   const [backupCurrentCursor, setBackupCurrentCursor] = useState<string | null>(null);
   const [backupCursorStack, setBackupCursorStack] = useState<{ page: number; cursor: string }[]>([]);
-
-  const [pitDate, setPitDate] = useState('2026-05-23');
-  const [pitTime, setPitTime] = useState('14:23');
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -253,49 +247,33 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
         <div className='flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm' style={{ minHeight: '600px' }}>
           <div className='flex-shrink-0 flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
             <Typography as='h3' variant='sectionTitle' color='secondary'>Choose a Backup</Typography>
-            <div className='ml-auto flex items-center bg-gray-100 rounded-lg p-1 gap-1 flex-shrink-0'>
-              {(['list', 'pit'] as BackupMode[]).map((m) => (
+          </div>
+
+          <div className='flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
+            <input
+              value={backupSearch}
+              onChange={(e) => setBackupSearch(e.target.value)}
+              placeholder='Search backup name…'
+              className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-56'
+            />
+            <div className='flex items-center gap-1 ml-auto'>
+              {(['All', 'Schedule', 'Realtime'] as const).map((t) => (
                 <button
-                  key={m}
-                  onClick={() => setBackupMode(m)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
-                    backupMode === m ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className='px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors'
+                  style={typeFilter === t
+                    ? { background: '#155DFC', color: '#fff' }
+                    : { background: '#F3F4F6', color: '#374151' }
+                  }
                 >
-                  {m === 'list' ? 'List of backups' : 'Point-in-time'}
+                  {t}
                 </button>
               ))}
             </div>
           </div>
 
-          {backupMode === 'list' && (
-            <div className='flex-shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
-              <input
-                value={backupSearch}
-                onChange={(e) => setBackupSearch(e.target.value)}
-                placeholder='Search backup name…'
-                className='h-8 text-xs border border-gray-200 rounded-lg px-3 bg-white text-gray-700 outline-none focus:border-blue-400 min-w-0 w-56'
-              />
-              <div className='flex items-center gap-1 ml-auto'>
-                {(['All', 'Schedule', 'Realtime'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTypeFilter(t)}
-                    className='px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors'
-                    style={typeFilter === t
-                      ? { background: '#155DFC', color: '#fff' }
-                      : { background: '#F3F4F6', color: '#374151' }
-                    }
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {backupMode === 'list' ? (
-            <Table
+          <Table
               columns={configColumns}
               rows={backupListRows}
               getRowKey={(row: any) => row.backupConfigId ?? row.name}
@@ -320,34 +298,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                 label: `Showing ${backupListRows.length > 0 ? (backupCurrentPage - 1) * (backupMeta.limit ?? 25) + 1 : 0} to ${(backupCurrentPage - 1) * (backupMeta.limit ?? 25) + backupListRows.length} of ${backupMeta.totalRecords ?? backupListRows.length}`,
               }}
             />
-          ) : (
-            <div className='p-5'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                <div>
-                  <label className='block text-xs font-semibold text-gray-700 mb-1.5'>Date</label>
-                  <input
-                    type='date' value={pitDate} onChange={(e) => setPitDate(e.target.value)}
-                    className='w-full h-9 text-sm border border-gray-300 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                  />
-                </div>
-                <div>
-                  <label className='block text-xs font-semibold text-gray-700 mb-1.5'>Time</label>
-                  <input
-                    type='time' value={pitTime} onChange={(e) => setPitTime(e.target.value)}
-                    className='w-full h-9 text-sm border border-gray-300 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                  />
-                </div>
-              </div>
-              <div className='mt-4 flex items-start gap-3 rounded-lg px-4 py-3 text-sm' style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-                <svg width='16' height='16' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
-                  <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' />
-                </svg>
-                <p className='text-blue-800 text-xs leading-relaxed'>
-                  Closest snapshot: <strong>May 23, 06:00 AM</strong> (8h 23m before requested time). System will apply 8h 23m of change-log deltas to reconstruct state at the requested timestamp.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
