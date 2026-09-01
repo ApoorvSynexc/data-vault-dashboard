@@ -17,6 +17,7 @@
 // are applied client-side on the full list. Search is also client-side with debounce.
 // Pagination: 10 items per page, client-side slice.
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import dayjs from 'dayjs';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -169,9 +170,9 @@ function StatusBadge({ status }: { status: string }) {
 
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
 
-function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, onConfirm, onCancel }: {
+function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, confirmDisabled, onConfirm, onCancel }: {
   title: string; message: string; confirmLabel: string; danger?: boolean;
-  loading?: boolean; error?: string | null; onConfirm: () => void; onCancel: () => void;
+  loading?: boolean; error?: string | null; confirmDisabled?: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)' }}>
@@ -188,8 +189,8 @@ function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, o
             className='rounded-lg border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50'>
             Cancel
           </button>
-          <button type='button' onClick={onConfirm} disabled={loading}
-            className={`rounded-lg px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-50 ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+          <button type='button' onClick={onConfirm} disabled={loading || confirmDisabled}
+            className={`rounded-lg px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
             {loading ? 'Please wait…' : confirmLabel}
           </button>
         </div>
@@ -200,7 +201,7 @@ function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, o
 
 // ── Action Dropdown ───────────────────────────────────────────────────────────
 
-type PolicyRow = { backupConfigId: string; name: string; slug: string; displayStatus: string };
+type PolicyRow = { backupConfigId: string; name: string; slug: string; displayStatus: string; scheduleConfig?: ArchivalConfigItem['scheduleConfig'] };
 
 type DropdownMenuItem = { label: string; danger?: boolean; disabled?: boolean; title?: string; onClick?: () => void };
 
@@ -782,16 +783,27 @@ export default function ArchiveVaultHomePage() {
       )}
 
       {/* Activate confirm */}
-      {confirmActivate && (
-        <ConfirmDialog
-          title={`Activate "${confirmActivate.name}"?`}
-          message='The archive will become active and run on its scheduled frequency.'
-          confirmLabel='Activate'
-          loading={activateMutation.isPending}
-          onConfirm={() => activateMutation.mutate(confirmActivate.backupConfigId)}
-          onCancel={() => setConfirmActivate(null)}
-        />
-      )}
+      {confirmActivate && (() => {
+        const sched = confirmActivate.scheduleConfig?.scheduling;
+        const isPast = (() => {
+          if (!sched?.startDate && !sched?.startTime) return false;
+          const dateStr = sched.startDate ?? dayjs().format('YYYY-MM-DD');
+          const timeStr = sched.startTime ?? '00:00';
+          return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
+        })();
+        return (
+          <ConfirmDialog
+            title={`Activate "${confirmActivate.name}"?`}
+            message='The archive will become active and run on its scheduled frequency.'
+            confirmLabel='Activate'
+            loading={activateMutation.isPending}
+            confirmDisabled={isPast}
+            error={isPast ? `The schedule configured for this archive has already passed. Please use Edit Policy to set a future schedule before activating.` : null}
+            onConfirm={() => activateMutation.mutate(confirmActivate.backupConfigId)}
+            onCancel={() => setConfirmActivate(null)}
+          />
+        );
+      })()}
 
       {/* Run Now confirm */}
       {confirmRunNow && (
