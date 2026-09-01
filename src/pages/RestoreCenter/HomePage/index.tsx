@@ -287,7 +287,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
-      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-4 min-h-0'>
+      <div className='flex-1 overflow-y-auto flex flex-col p-4 sm:p-6 gap-5 min-h-0'>
 
         {/* ── Header card ── */}
         <div className='flex items-center justify-between rounded-xl border border-gray-200 bg-white px-6 py-4 shadow-sm flex-shrink-0'>
@@ -325,27 +325,25 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
         </div>
 
         {/* ── All Restores ── */}
-        <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col' style={{ height: 'calc(100vh - 420px)', minHeight: 300 }}>
-          <div className='flex items-center justify-between px-5 py-3 border-b border-gray-100'>
-            <Typography as='h3' variant='sectionTitle' color='secondary'>All Restores</Typography>
-          </div>
+        <section className='flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-2.5 flex-shrink-0 overflow-x-auto'>
+            <Typography as='h3' variant='sectionTitle' color='secondary' className='flex-shrink-0'>All Restores</Typography>
 
-          {/* Filter Bar */}
-          <div className='flex-shrink-0 flex items-center gap-3 px-5 py-3 border-b border-gray-100'>
-            <div className='relative flex-1'>
-              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400'>
-                <circle cx='11' cy='11' r='8' /><path d='M21 21l-4.35-4.35' strokeLinecap='round' />
-              </svg>
-              <input
-                type='text'
-                placeholder='Search jobs...'
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); }}
-                className='pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 w-full max-w-xs'
-              />
-            </div>
-
-            <div className='flex items-center gap-2 ml-auto'>
+            {/* Filter Bar */}
+            <div className='flex items-center gap-2 flex-shrink-0 ml-auto'>
+              <div className='relative'>
+                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400'>
+                  <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                </svg>
+                <input
+                  type='text'
+                  placeholder='Search jobs...'
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); }}
+                  className='h-7 w-44 rounded-full border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
+                />
+              </div>
+              <div className='h-5 w-px bg-gray-200' />
               <Dropdown
                 label='Status'
                 value={activeChip}
@@ -375,7 +373,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
               label: `Showing ${(currentPage - 1) * pageSize + 1}–${(currentPage - 1) * pageSize + allRestores.length} of ${totalRecords}`,
             }}
           />
-        </div>
+        </section>
 
       </div>
     </div>
