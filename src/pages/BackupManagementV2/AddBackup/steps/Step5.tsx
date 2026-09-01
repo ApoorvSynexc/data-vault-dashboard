@@ -13,8 +13,10 @@ import HierarchyGraphModal from '../../../../components/HierarchyGraph';
 // so the hierarchy sent back to the server matches the hierarchy it described.
 // cascadeDelete/restrictedDelete are carried along so the UI can label the
 // relationship (Master Detail vs Required Lookup) without re-fetching.
-// `field` is the relationship field on this object pointing back to its parent (e.g. "AccountId").
-type PayloadChildNode = { id: string; name: string; field?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
+// `fieldName` is the relationship field on this object pointing back to its parent
+// (e.g. "AccountId") — named distinctly from the pre-existing `field` array key
+// used elsewhere in the payload, so the two don't collide.
+type PayloadChildNode = { id: string; name: string; fieldName?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 // Walks the depth-children tree, keeping only master-detail (cascade/restricted-delete)
 // nodes — a non-master-detail node stops the chain — and resolves each surviving
@@ -29,13 +31,35 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
     result.push({
       id: obj.uuid,
       name: obj.name,
-      field: node.field,
+      ...(node.field ? { fieldName: node.field } : {}),
       cascadeDelete: node.cascadeDelete === true,
       restrictedDelete: node.restrictedDelete === true,
       ...(nested.length ? { children: nested } : {}),
     });
   });
   return result;
+}
+
+// Every object that appears anywhere in the selected tree — whether it's a
+// fetch root (clicked directly) or nested several levels deep — needs its own
+// entry in the final payload's `objects[]` array carrying its own children.
+// This flattens parentTreeMap (keyed by fetch-root uuid) plus every nested
+// node's own children into a single uuid -> children lookup.
+function buildGlobalChildrenMap(parentTreeMap: Map<string, PayloadChildNode[]>): Map<string, PayloadChildNode[]> {
+  const map = new Map<string, PayloadChildNode[]>();
+  function walk(nodes: PayloadChildNode[]) {
+    nodes.forEach((node) => {
+      if (node.children?.length) {
+        map.set(node.id, node.children);
+        walk(node.children);
+      }
+    });
+  }
+  parentTreeMap.forEach((children, parentUuid) => {
+    if (children.length > 0) map.set(parentUuid, children);
+    walk(children);
+  });
+  return map;
 }
 
 // Flattens a payload tree into uuids/labels (for locking rows and the toast message)
@@ -68,7 +92,7 @@ function resolveSavedChildren(nodes: PayloadChildNode[] = [], objects: BackupObj
     tree.push({
       id: obj.uuid,
       name: obj.name,
-      field: node.field,
+      ...(node.fieldName ? { fieldName: node.fieldName } : {}),
       cascadeDelete: node.cascadeDelete,
       restrictedDelete: node.restrictedDelete,
       ...(nested?.tree.length ? { children: nested.tree } : {}),
@@ -665,11 +689,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </button>
           <button
             onClick={() => {
+              // Every selected object (fetch root or nested) gets its own children here
+              const globalChildrenMap = buildGlobalChildrenMap(parentTreeMap);
               const selectedObjectsData = Array.from(selectedObjects).map((uuid) => {
                 const obj = allObjects.find((o) => o.uuid === uuid);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                // Same nested tree the depth-children API returned for this object
-                const children = parentTreeMap.get(uuid);
+                const children = globalChildrenMap.get(uuid);
                 // Auto-selected (locked) objects were added because a parent was picked,
                 // not because the user checked them directly.
                 const isUserSelected = !autoSelectedIds.has(uuid);
