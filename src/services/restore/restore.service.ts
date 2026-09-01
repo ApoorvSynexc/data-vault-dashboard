@@ -265,6 +265,21 @@ export interface ShowPreviewPayload {
   cursor?: string;
 }
 
+// ── Dry-run payload ───────────────────────────────────────────────────────────
+
+export interface DryRunPayload {
+  backupConfigId: string;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  source: {
+    type: 'ENTIRE' | 'CHANGED_BETWEEN';
+    startDate?: string;
+    endDate?: string;
+  };
+  selection: {
+    restoreScope: RestoreScope;
+  };
+}
+
 // ── Object list ───────────────────────────────────────────────────────────────
 
 export interface RestoreSourceObject {
@@ -287,6 +302,7 @@ const RESTORE_ENDPOINTS = {
   crmRecordTypes:       '/v1/crm-metadata/record-types/list',
   requiredFields:       '/v1/restore/retrieve/required-fields',
   picklistValues:       '/v1/restore/get-picklist-field-values',
+  dryRun:               '/v1/restore/dry-run',
   createRestoreJob:     '/v1/restore',
   listRestoreJobs:      '/v1/restore/config/list',
   getRestoreJob:        '/v1/restore/job',
@@ -354,6 +370,9 @@ export function useRestoreService() {
 
     getPicklistValues: (objectApiName: string, fieldApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName, backupConfigId } }),
+
+    dryRun: (payload: DryRunPayload) =>
+      api.post<unknown>(RESTORE_ENDPOINTS.dryRun, payload),
 
     createRestoreJob: (payload: RestoreRetrievePayload) =>
       api.post<{ success: boolean; message: string }>(RESTORE_ENDPOINTS.createRestoreJob, payload),
