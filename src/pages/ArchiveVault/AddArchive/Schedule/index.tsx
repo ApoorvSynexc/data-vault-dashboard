@@ -386,6 +386,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
                         <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -420,6 +421,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
                         <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>

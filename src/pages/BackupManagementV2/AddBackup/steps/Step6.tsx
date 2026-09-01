@@ -88,7 +88,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
         selectedDays: mapBackendDaysToFrontend(scheduling.weekDays),
         selectedMonths: mapBackendMonthsToFrontend(scheduling.selectedMonths),
         dayOfMonth: String(scheduling.monthDate || '01').padStart(2, '0'),
-        startTime: scheduling.startTime || '12:00',
+        startTime: scheduling.startTime || '',
         timeZone: initialScheduleConfig.timeZone,
         startDate: scheduling.startDate || dayjs().format('YYYY-MM-DD'),
         endDate: scheduling.endDate || dayjs().add(7, 'days').format('YYYY-MM-DD'),
@@ -287,8 +287,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                       type='time'
                       value={startTime}
                       min={startDate === today ? currentTime : undefined}
-                      onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
+                      onChange={(e) => { const t = e.target.value; const isPastTime = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPastTime ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                     />
                     {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                   </div>
@@ -360,9 +360,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='time'
                   value={startTime}
                   min={startDate === today ? currentTime : undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { const t = e.target.value; const isPast = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
               </div>
             </div>
           </div>
@@ -377,9 +378,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='time'
                   value={startTime}
                   min={startDate === today ? currentTime : undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { const t = e.target.value; const isPast = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -436,9 +438,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='time'
                   value={startTime}
                   min={startDate === today ? currentTime : undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { const t = e.target.value; const isPast = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -510,9 +513,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='time'
                   value={startTime}
                   min={startDate === today ? currentTime : undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { const t = e.target.value; const isPast = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
               </div>
             </div>
             <div className='grid grid-cols-2 gap-6'>
@@ -587,9 +591,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='time'
                   value={startTime}
                   min={startDate === today ? currentTime : undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { const t = e.target.value; const isPast = (!startDate || startDate === today) && t && t < dayjs().format('HH:mm'); setStartTime(t); setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : ''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${(!startDate || startDate === today) && startTime && startTime < dayjs().format('HH:mm') ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
               </div>
             </div>
             <div>
