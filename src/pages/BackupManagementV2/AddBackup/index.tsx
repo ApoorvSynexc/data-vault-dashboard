@@ -24,7 +24,7 @@ type BackupObject = {
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type BackupStrategy = 'realtime' | 'scheduled';
 
-type PayloadChildNode = { id: string; name: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
+type PayloadChildNode = { id: string; name: string; field?: string; cascadeDelete?: boolean; restrictedDelete?: boolean; children?: PayloadChildNode[] };
 
 type SelectedObject = {
   uuid: string;

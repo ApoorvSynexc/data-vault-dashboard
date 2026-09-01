@@ -28,6 +28,8 @@ export type DepthChildNode = {
   name: string;
   cascadeDelete: boolean;
   restrictedDelete: boolean;
+  // The relationship field on this object that points back to its parent (e.g. "AccountId")
+  field?: string;
   children?: DepthChildNode[];
   [key: string]: unknown;
 };
