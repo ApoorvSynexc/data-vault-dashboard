@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
+import { TooltipPortal } from '../../../../components/InfoTooltip';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 import { formatBytes } from '../../../../utils';
 import dayjs from 'dayjs';
@@ -28,65 +29,22 @@ interface BackupJobObject {
 
 const ErrorMessageCell = ({ errorMessage }: { errorMessage?: string }) => {
   const [visible, setVisible] = useState(false);
-  const [pos, setPos]         = useState({ above: true, alignRight: false });
   const triggerRef = useRef<HTMLSpanElement>(null);
 
   if (!errorMessage) {
     return <span className='text-xs text-gray-500'>--</span>;
   }
 
-  const handleMouseEnter = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const spaceAbove  = rect.top;
-      const spaceBelow  = window.innerHeight - rect.bottom;
-      const spaceRight  = window.innerWidth  - rect.left;
-      setPos({
-        above:      spaceAbove >= 80 || spaceAbove >= spaceBelow,
-        alignRight: spaceRight < 280,
-      });
-    }
-    setVisible(true);
-  };
-
-  // Tooltip width is max-w-xs = 320px; caret offset 8px from chosen edge
-  const tooltipStyle: React.CSSProperties = {
-    position:  'absolute',
-    zIndex:    9999,
-    width:     'max-content',
-    maxWidth:  300,
-    ...(pos.above  ? { bottom: '100%', marginBottom: 8 } : { top: '100%', marginTop: 8 }),
-    ...(pos.alignRight ? { right: 0 } : { left: 0 }),
-  };
-
-  const caretStyle: React.CSSProperties = {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    background: '#111827',
-    transform: 'rotate(45deg)',
-    ...(pos.above  ? { top: '100%', marginTop: -4 } : { bottom: '100%', marginBottom: -4 }),
-    ...(pos.alignRight ? { right: 12 } : { left: 12 }),
-  };
-
   return (
-    <div className='relative inline-block'>
-      <span
-        ref={triggerRef}
-        className='cursor-help text-red-600 text-xs'
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setVisible(false)}
-      >
-        {errorMessage.length > 50 ? errorMessage.substring(0, 50) + '…' : errorMessage}
-      </span>
-
-      {visible && (
-        <div style={tooltipStyle} className='bg-gray-900 text-white text-xs rounded px-3 py-2 break-words shadow-lg'>
-          {errorMessage}
-          <div style={caretStyle} />
-        </div>
-      )}
-    </div>
+    <span
+      ref={triggerRef}
+      className='cursor-help text-red-600 text-xs'
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      {errorMessage.length > 50 ? errorMessage.substring(0, 50) + '…' : errorMessage}
+      <TooltipPortal text={errorMessage} anchorRef={triggerRef} visible={visible} width={480} />
+    </span>
   );
 };
 

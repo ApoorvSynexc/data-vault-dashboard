@@ -5,9 +5,10 @@ interface TooltipPortalProps {
   text: string;
   anchorRef: React.RefObject<HTMLSpanElement | null>;
   visible: boolean;
+  width?: number;
 }
 
-function TooltipPortal({ text, anchorRef, visible }: TooltipPortalProps) {
+export function TooltipPortal({ text, anchorRef, visible, width = 208 }: TooltipPortalProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{
     top: number; left: number; arrowLeft: number; arrowUp: boolean; ready: boolean;
@@ -23,7 +24,7 @@ function TooltipPortal({ text, anchorRef, visible }: TooltipPortalProps) {
     const frame = requestAnimationFrame(() => {
       if (!anchorRef.current) return;
       const rect = anchorRef.current.getBoundingClientRect();
-      const W = 208;
+      const W = width;
       const GAP = 6;
       const ARROW_SIZE = 8;
       const vw = window.innerWidth;
@@ -54,7 +55,7 @@ function TooltipPortal({ text, anchorRef, visible }: TooltipPortalProps) {
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [visible, anchorRef]);
+  }, [visible, anchorRef, width]);
 
   if (!visible) return null;
 
@@ -65,12 +66,12 @@ function TooltipPortal({ text, anchorRef, visible }: TooltipPortalProps) {
         position: 'fixed',
         top: pos.top,
         left: pos.left,
-        width: 208,
+        width: width,
         zIndex: 99999,
         opacity: pos.ready ? 1 : 0,
         pointerEvents: 'none',
       }}
-      className='rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl'
+      className='rounded-lg bg-gray-900 px-3 py-2 text-[11px] text-gray-200 leading-relaxed shadow-xl break-words'
     >
       {/* Arrow above tooltip (tooltip is below badge) */}
       {pos.arrowUp && (
