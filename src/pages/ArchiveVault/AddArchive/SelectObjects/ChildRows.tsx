@@ -27,6 +27,7 @@ function PrefetchDescribe({
   relationshipDepth,
   parentLoaded,
   onMasterDetailField,
+  onLoadingChange,
 }: {
   objectName: string;
   parentObjectName: string;
@@ -34,17 +35,24 @@ function PrefetchDescribe({
   relationshipDepth?: number | null;
   parentLoaded: boolean;
   onMasterDetailField: (childObject: string, parentObject: string, parentLabel: string) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }) {
   const crmMetadataService = useCrmMetadataService();
   // PrefetchDescribe always runs for tier-1 MasterDetail children (depth=1),
   // and prefetches their children which would be at tier-2, so +1 offset.
   const rdepth = (relationshipDepth ?? 0) + 1;
-  const { data } = useQuery({
+  const { data, isFetching } = useQuery({
     queryKey: ['crm-metadata-describe', objectName, 'archival', rdepth],
     queryFn: () => crmMetadataService.getObjectDescribe(objectName, 'archival', undefined, rdepth),
     // Only fire after the parent describe response has loaded
     enabled: !!objectName && parentLoaded,
   });
+
+  useEffect(() => {
+    onLoadingChange?.(isFetching);
+    return () => onLoadingChange?.(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFetching]);
 
   const reportedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -236,7 +244,7 @@ export function ChildRows({
         .filter((r: any) => r.relationshipType === 'MasterDetail')
         .map((r: any) => (
           <tr key={`prefetch-${r.uuid}`} style={{ display: 'none' }}>
-            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} relationshipDepth={relationshipDepth} parentLoaded={!isLoading && !!data} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} /></td>
+            <td><PrefetchDescribe objectName={r.apiName} parentObjectName={objectName} allowedObjectNames={allowedObjectNames} relationshipDepth={relationshipDepth} parentLoaded={!isLoading && !!data} onMasterDetailField={(child, parent, label) => onMasterDetailWarning?.(child, parent, label)} onLoadingChange={onLoadingChange} /></td>
           </tr>
         ))}
       {pagedRows.map((row: any) => {
