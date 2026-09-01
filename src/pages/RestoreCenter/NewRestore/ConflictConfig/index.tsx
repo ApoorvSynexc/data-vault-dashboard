@@ -111,9 +111,11 @@ export interface ConflictOutput {
   };
 }
 
-interface Props { onNext: (conflict: ConflictOutput) => void; onBack: () => void; scopeMode: string; }
+interface Props { onNext: (conflict: ConflictOutput) => void; onBack: () => void; scopeMode: string; configType?: 'BACKUP' | 'ARCHIVAL'; sourceRestoreType?: string; }
 
-export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
+export default function ConflictConfig({ onNext, onBack, scopeMode, configType, sourceRestoreType }: Props) {
+  const isArchival = configType === 'ARCHIVAL';
+  const hideRestoreMode = isArchival || sourceRestoreType === 'ENTIRE';
   const [restoreMode, setRestoreMode] = useState<RestoreMode>('overwrite');
   const [mergeDefault, setMergeDefault] = useState('Newest LastModifiedDate wins');
 
@@ -173,8 +175,8 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
         {/* Single-column layout */}
         <div className='flex flex-col gap-4'>
 
-          {/* Restore Mode */}
-            <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
+          {/* Restore Mode — hidden for Archival restores and Backup Entire */}
+          {!hideRestoreMode && <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
               <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
                 <span className='text-sm font-semibold text-gray-800'>Restore Mode (per job)</span>
                 <Tip text='How to handle a source record when a record with the same Id (or external Id) already exists in the destination. Pick one mode for the whole job — you can override per object later.' />
@@ -286,7 +288,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
         </div>
       </div>
@@ -303,6 +305,7 @@ export default function ConflictConfig({ onNext, onBack, scopeMode }: Props) {
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
             onClick={() => {
+              if (hideRestoreMode) { onNext({ restoreMode: 'OVERWRITE' }); return; }
               const output: ConflictOutput = { restoreMode: RESTORE_MODE_ENUM[restoreMode] };
               if (restoreMode === 'merge') {
                 // Group per-field rows by objectName → mergeRule.objects[]
