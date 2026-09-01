@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import dayjs from 'dayjs';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,8 @@ type BackupConfigItem = {
   scheduleConfig?: {
     scheduling?: {
       frequency?: string;
+      startDate?: string;
+      startTime?: string;
     };
   };
   crm?: { name: string; crmName: string };
@@ -53,6 +56,8 @@ type BackupRow = {
   backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
   isRealtime: boolean;
   isOneTime: boolean;
+  scheduleStartDate?: string;
+  scheduleStartTime?: string;
 };
 
 function Panel({
@@ -539,7 +544,7 @@ export default function BackupManagementV2() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
   const [runNowTarget, setRunNowTarget] = useState<{ id: string; name: string } | null>(null);
-  const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean } | null>(null);
+  const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean; scheduleStartDate?: string; scheduleStartTime?: string } | null>(null);
   const [activateAcceptText, setActivateAcceptText] = useState('');
   const [activateAcceptError, setActivateAcceptError] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
@@ -722,6 +727,8 @@ export default function BackupManagementV2() {
       backupStatus: (item.backupStatus as BackupStatus) || '' as any,
       isRealtime: item.schedule === 'REALTIME',
       isOneTime: item.scheduleConfig?.scheduling?.frequency === 'ONCE',
+      scheduleStartDate: item.scheduleConfig?.scheduling?.startDate,
+      scheduleStartTime: item.scheduleConfig?.scheduling?.startTime,
     };
   });
 
@@ -806,7 +813,7 @@ export default function BackupManagementV2() {
                 onClick: () => {
                   setActivateAcceptText('');
                   setActivateAcceptError(false);
-                  setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime' });
+                  setActivateTarget({ id: row.id, name: row.name, isRealtime: row.backupType === 'Realtime', scheduleStartDate: row.scheduleStartDate, scheduleStartTime: row.scheduleStartTime });
                 },
               }] : []),
               ...(row.configStatus !== 'DRAFT' && !row.isRealtime && permissions.includes('backup.execute') ? [{
@@ -1081,11 +1088,37 @@ export default function BackupManagementV2() {
                 </>
               )}
 
-              {!activateTarget.isRealtime && (
-                <p className='text-sm text-gray-600'>
-                  Are you sure you want to activate <span className='font-semibold text-gray-900'>"{activateTarget.name}"</span>? The scheduled backup will start running according to its configured schedule.
-                </p>
-              )}
+              {!activateTarget.isRealtime && (() => {
+                const { scheduleStartDate, scheduleStartTime } = activateTarget;
+                const isPast = (() => {
+                  if (!scheduleStartDate && !scheduleStartTime) return false;
+                  const dateStr = scheduleStartDate ?? dayjs().format('YYYY-MM-DD');
+                  const timeStr = scheduleStartTime ?? '00:00';
+                  return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
+                })();
+                return (
+                  <>
+                    {isPast && (
+                      <div className='rounded-lg border border-red-200 bg-red-50 p-4'>
+                        <div className='flex gap-3'>
+                          <svg className='mt-0.5 h-5 w-5 shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                            <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' />
+                          </svg>
+                          <div>
+                            <p className='text-sm font-semibold text-red-800'>Schedule is in the past</p>
+                            <p className='mt-1 text-sm text-red-700'>
+                              The schedule configured for <span className='font-semibold'>"{activateTarget.name}"</span> has already passed. Please use <span className='font-semibold'>Edit Policy</span> to set a future schedule before activating.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <p className='text-sm text-gray-600'>
+                      Are you sure you want to activate <span className='font-semibold text-gray-900'>"{activateTarget.name}"</span>? The scheduled backup will start running according to its configured schedule.
+                    </p>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Footer */}
@@ -1096,22 +1129,33 @@ export default function BackupManagementV2() {
               >
                 Cancel
               </button>
-              <button
-                onClick={() => {
-                  if (activateTarget.isRealtime && activateAcceptText.trim().toLowerCase() !== 'accept') {
-                    setActivateAcceptError(true);
-                    return;
-                  }
-                  updateStatusMutation.mutate({ backupConfigId: activateTarget.id, backupStatus: 'ACTIVE' });
-                  setActivateTarget(null);
-                  setActivateAcceptText('');
-                  setActivateAcceptError(false);
-                }}
-                disabled={updateStatusMutation.isPending}
-                className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              >
-                {updateStatusMutation.isPending ? 'Activating...' : 'Activate Backup'}
-              </button>
+              {(() => {
+                const { scheduleStartDate, scheduleStartTime, isRealtime } = activateTarget;
+                const isSchedulePast = !isRealtime && (() => {
+                  if (!scheduleStartDate && !scheduleStartTime) return false;
+                  const dateStr = scheduleStartDate ?? dayjs().format('YYYY-MM-DD');
+                  const timeStr = scheduleStartTime ?? '00:00';
+                  return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
+                })();
+                return (
+                  <button
+                    onClick={() => {
+                      if (isRealtime && activateAcceptText.trim().toLowerCase() !== 'accept') {
+                        setActivateAcceptError(true);
+                        return;
+                      }
+                      updateStatusMutation.mutate({ backupConfigId: activateTarget.id, backupStatus: 'ACTIVE' });
+                      setActivateTarget(null);
+                      setActivateAcceptText('');
+                      setActivateAcceptError(false);
+                    }}
+                    disabled={updateStatusMutation.isPending || isSchedulePast}
+                    className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                  >
+                    {updateStatusMutation.isPending ? 'Activating...' : 'Activate Backup'}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
