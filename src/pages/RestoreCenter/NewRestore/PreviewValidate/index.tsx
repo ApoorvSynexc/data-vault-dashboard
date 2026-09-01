@@ -11,7 +11,7 @@ import type { RestoreRetrievePayload } from '../../../../services/restore/restor
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict', 'Edge Cases', 'Preview', 'Review'];
+const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict & Edge Cases', 'Preview', 'Review'];
 
 function ProgressBar({ active }: { active: number }) {
   return (
@@ -221,7 +221,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={8} />
+            <ProgressBar active={7} />
           </div>
         </div>
 
