@@ -319,7 +319,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                       className='p-0.5 rounded hover:bg-gray-100 transition'
                     >
                       <svg
-                        width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
+                        width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#475569' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
                         className={`transition-transform ${expandedRows.has(item.id) ? 'rotate-180' : ''}`}
                       >
                         <polyline points='6 9 12 15 18 9' />
