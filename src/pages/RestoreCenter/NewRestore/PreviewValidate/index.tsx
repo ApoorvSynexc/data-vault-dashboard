@@ -83,8 +83,6 @@ interface DiffRow {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const DISPLAY_LIMIT = 50;
-
 function normalizeValue(val: string): string {
   if (val === '' || val === null || val === undefined) return '';
   // Normalize timestamps: convert +0000 offset to Z, strip sub-ms precision differences
@@ -188,8 +186,44 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
     }
   };
 
-  const visibleRows = diffRows.slice(0, DISPLAY_LIMIT);
   const [activeTab, setActiveTab] = useState<'dryrun' | 'diff'>('dryrun');
+
+  // ── Snapshot vs Current Diff (separate API) ───────────────────────────────
+  const [diffViewLoading, setDiffViewLoading] = useState(false);
+  const [diffViewDone,    setDiffViewDone]    = useState(false);
+  const [diffViewError,   setDiffViewError]   = useState<string | null>(null);
+  const [diffViewData,    setDiffViewData]    = useState<Record<string, { records: { changeRecord: any; salesforceRecord: any }[] }>>({});
+
+  const buildSourcePayload = () => {
+    const sourceType = (sourceSelection.type === 'CHANGED_BETWEEN' || sourceSelection.type === 'DELETED_BETWEEN')
+      ? 'CHANGED_BETWEEN' as const
+      : 'ENTIRE' as const;
+    return {
+      backupConfigId: sourceSelection.backupConfigId,
+      configType: (sourceSelection.configType ?? 'BACKUP') as 'BACKUP' | 'ARCHIVAL',
+      source: {
+        type: sourceType,
+        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
+        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+      },
+      selection: { restoreScope: restorePayload.selection.restoreScope },
+    };
+  };
+
+  const runDiffView = async () => {
+    setDiffViewLoading(true);
+    setDiffViewError(null);
+    setDiffViewDone(false);
+    try {
+      const res: any = await restoreService.dryRunDiff({ ...buildSourcePayload(), limit: 50 });
+      setDiffViewData(res?.data?.data ?? res?.data ?? {});
+      setDiffViewDone(true);
+    } catch (err: any) {
+      setDiffViewError(err?.message ?? 'Diff failed. Please try again.');
+    } finally {
+      setDiffViewLoading(false);
+    }
+  };
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -365,74 +399,104 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
 
             {/* Tab: Diff */}
             {activeTab === 'diff' && (
-              <>
-                {!dryRunDone ? (
-                  <div className='flex flex-col items-center justify-center py-14 gap-3'>
-                    <svg width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='#CBD5E1' strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'>
-                      <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+              <div className='p-5 flex flex-col gap-4'>
+                <p className='text-xs text-gray-500 leading-relaxed'>
+                  Compares backup snapshot values against live destination data. Highlights fields that have changed since the snapshot was taken.
+                </p>
+
+                <button
+                  onClick={runDiffView}
+                  disabled={diffViewLoading}
+                  className='w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {diffViewLoading ? (
+                    <div className='w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin' />
+                  ) : (
+                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <polyline points='16 3 21 3 21 8'/><polyline points='4 20 4 15 9 15'/>
+                      <path d='M21 3 L14.5 9.5 M4 20 L9.5 14.5'/>
                     </svg>
-                    <p className='text-xs text-gray-400'>Run dry-run first to see the diff</p>
-                    <button
-                      onClick={() => setActiveTab('dryrun')}
-                      className='text-xs font-semibold text-blue-600 hover:underline'
-                    >
-                      Go to Dry-Run →
-                    </button>
-                  </div>
-                ) : diffRows.length === 0 ? (
-                  <div className='flex flex-col items-center justify-center py-12 gap-2'>
-                    <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='20 6 9 17 4 12'/>
+                  )}
+                  {diffViewLoading ? 'Loading…' : diffViewDone ? 'Re-run View Difference' : 'View Difference'}
+                </button>
+
+                {diffViewError && (
+                  <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}>
+                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
                     </svg>
-                    <p className='text-xs text-gray-500'>No differences found — records are in sync.</p>
+                    {diffViewError}
                   </div>
-                ) : (
-                  <>
-                    <div className='flex items-center justify-between px-5 py-2.5 bg-gray-50 border-b border-gray-100'>
-                      <span className='text-xs text-gray-500'>Showing {visibleRows.length} of {diffRows.length} change{diffRows.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className='overflow-x-auto'>
-                      <table className='w-full text-xs'>
-                        <thead>
-                          <tr className='border-b border-gray-100 bg-gray-50'>
-                            <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Record</th>
-                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
-                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Before</th>
-                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>After</th>
-                            <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {visibleRows.map((row, i) => (
-                            <tr key={i} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                              <td className='py-2.5 px-4 font-medium text-gray-800 max-w-[160px] truncate' title={row.recordName}>{row.recordName}</td>
-                              <td className='py-2.5 px-3 text-gray-600 font-mono text-[11px] max-w-[130px] truncate' title={row.field}>{row.field}</td>
-                              <td className='py-2.5 px-3 text-gray-400 max-w-[130px] truncate' title={row.before}>
-                                {row.action === 'NEW' ? <span className='italic'>new record</span> : <span>{row.before || '—'}</span>}
-                              </td>
-                              <td className='py-2.5 px-3 text-gray-800 font-medium max-w-[130px] truncate' title={row.after}>
-                                {row.action === 'NEW' ? '—' : <span>{row.after || '—'}</span>}
-                              </td>
-                              <td className='py-2.5 px-3'>
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  row.action === 'NEW' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                                }`}>
-                                  {row.action}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {diffRows.length > DISPLAY_LIMIT && (
-                        <div className='px-5 py-3 border-t border-gray-100 text-center'>
-                          <p className='text-xs text-gray-400'>{diffRows.length - DISPLAY_LIMIT} more changes not shown</p>
-                        </div>
-                      )}
-                    </div>
-                  </>
                 )}
-              </>
+
+                {diffViewDone && (() => {
+                  const objectNames = Object.keys(diffViewData);
+                  if (objectNames.length === 0) {
+                    return (
+                      <div className='flex flex-col items-center justify-center py-10 gap-2'>
+                        <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
+                          <polyline points='20 6 9 17 4 12'/>
+                        </svg>
+                        <p className='text-xs text-gray-500'>No differences found — records are in sync.</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className='flex flex-col gap-4'>
+                      {objectNames.map((objName) => {
+                        const records = diffViewData[objName]?.records ?? [];
+                        return (
+                          <div key={objName} className='rounded-lg border border-gray-200 overflow-hidden'>
+                            <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between'>
+                              <span className='text-xs font-bold text-gray-700 font-mono'>{objName}</span>
+                              <span className='text-[10px] font-semibold text-gray-400'>{records.length} record{records.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className='overflow-x-auto'>
+                              <table className='w-full text-xs'>
+                                <thead>
+                                  <tr className='border-b border-gray-100 bg-gray-50'>
+                                    <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
+                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Snapshot (Backup)</th>
+                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Current (Salesforce)</th>
+                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Operation</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {records.map((rec, i) => {
+                                    const change = rec.changeRecord ?? {};
+                                    const live   = rec.salesforceRecord ?? {};
+                                    const operation = change.OPERATION ?? '—';
+                                    const allKeys = Array.from(new Set([...Object.keys(change), ...Object.keys(live)])).filter((k) => k !== 'OPERATION');
+                                    return allKeys.map((key, j) => (
+                                      <tr key={`${i}-${j}`} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
+                                        <td className='py-2 px-4 font-mono text-[11px] text-gray-600 max-w-[130px] truncate' title={key}>{key}</td>
+                                        <td className='py-2 px-3 text-gray-400 max-w-[160px] truncate' title={String(change[key] ?? '')}>{change[key] ?? '—'}</td>
+                                        <td className='py-2 px-3 text-gray-800 font-medium max-w-[160px] truncate' title={String(live[key] ?? '')}>{live[key] ?? '—'}</td>
+                                        {j === 0 ? (
+                                          <td className='py-2 px-3' rowSpan={allKeys.length}>
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                              operation === 'INSERT' ? 'bg-green-100 text-green-700' :
+                                              operation === 'UPDATE' ? 'bg-amber-100 text-amber-700' :
+                                              operation === 'DELETE' ? 'bg-red-100 text-red-700' :
+                                              'bg-gray-100 text-gray-600'
+                                            }`}>
+                                              {operation}
+                                            </span>
+                                          </td>
+                                        ) : null}
+                                      </tr>
+                                    ));
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             )}
 
           </div>
