@@ -258,13 +258,6 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
       render: (row) => <StatusBadge status={row.displayStatus} />,
     },
     {
-      key: 'lastJobStatus',
-      header: 'Last Job',
-      render: (row) => row.lastJobStatus
-        ? <StatusBadge status={row.lastJobStatus} />
-        : <span className='text-xs text-gray-400'>--</span>,
-    },
-    {
       key: 'displayDate',
       header: 'Last Run',
       render: (row) => <span className='text-xs text-gray-500 whitespace-nowrap'>{row.displayDate}</span>,
@@ -313,7 +306,7 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
             rows={rows}
             getRowKey={(row: any) => row.backupConfigId}
             loading={isLoading || isFetching}
-            skeletonConfig={{ rows: 6, colWidths: ['w-8', 'w-12', 'w-40', 'w-24', 'w-20', 'w-20', 'w-28', 'w-16', 'w-20'] }}
+            skeletonConfig={{ rows: 6, colWidths: ['w-8', 'w-12', 'w-40', 'w-24', 'w-20', 'w-28', 'w-16', 'w-20'] }}
             headerVariant='uppercase'
             borderless
             getRowClassName={(row: any) => `border-b border-gray-50 transition-colors cursor-pointer ${selectedKey === row.backupConfigId ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
