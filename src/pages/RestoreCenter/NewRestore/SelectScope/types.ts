@@ -1,7 +1,7 @@
 import type { SourceSelection } from '../SelectSourceType';
 import type { RestoreScope } from '../../../../services/restore/restore.service';
 
-export type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'changed' | 'csv';
+export type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'csv';
 export type FilterTab = 'visual' | 'soql';
 export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
 export type FilterOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE';
@@ -60,7 +60,6 @@ export const SCOPE_MODES: { id: ScopeMode; icon: string; title: string; desc: st
   { id: 'field',   icon: '▤',  title: 'By Field',       desc: 'Specific fields within records',                         tooltip: 'Restores only selected fields on records, leaving other fields untouched in the destination.' },
   { id: 'filter',  icon: '⚙',  title: 'Custom Filter',  desc: 'Visual filter or raw SOQL — with live match count',      tooltip: 'Build conditions visually or write a SOQL WHERE clause to target exactly the records that match your criteria.' },
   { id: 'deleted', icon: '⌫',  title: 'Deleted-Only',   desc: 'Records deleted in destination since snapshot',          tooltip: 'Finds and restores only the records that were deleted in the destination org after the backup snapshot was taken.' },
-  { id: 'changed', icon: 'Δ',  title: 'Changed-Since',  desc: 'Fields that differ between source and dest',             tooltip: 'Compares source and destination and restores only fields whose values have changed — a targeted drift correction.' },
   { id: 'csv',     icon: '📋', title: 'Bulk via CSV',   desc: 'Paste or upload IDs / external IDs',                    tooltip: 'Upload a CSV file or paste a list of Salesforce record IDs to restore a large batch of specific records.' },
 ];
 
