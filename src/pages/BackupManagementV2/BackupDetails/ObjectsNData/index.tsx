@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import type { TableColumn } from '../../../../components/Table';
 import Table from '../../../../components/Table';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
 type ObjectsNDataProps = {
   backup: any;
@@ -38,20 +36,6 @@ const mockObjectsData = {
 export default function ObjectsNData({ backup }: ObjectsNDataProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
-  const backupConfigService = useBackupConfigService();
-  const crmId = backup?.crmDetail?.crmId || '';
-
-  // Fetch object count data
-  useQuery({
-    queryKey: ['object-count', crmId],
-    queryFn: async () => {
-      if (!crmId) return null;
-      const objectApiNames = mockObjectsData.objects.map((obj) => obj.name.toLowerCase());
-      const response = await backupConfigService.getObjectCountList(crmId, objectApiNames);
-      return response;
-    },
-    enabled: !!crmId,
-  });
 
   const filteredObjects = mockObjectsData.objects.filter((obj) => {
     const matchesSearch = obj.name.toLowerCase().includes(searchQuery.toLowerCase());
