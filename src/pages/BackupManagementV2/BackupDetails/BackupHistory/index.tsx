@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import Table from '../../../../components/Table';
@@ -27,28 +27,63 @@ interface BackupJobObject {
 }
 
 const ErrorMessageCell = ({ errorMessage }: { errorMessage?: string }) => {
-  const [hoveredJobId, setHoveredJobId] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [pos, setPos]         = useState({ above: true, alignRight: false });
+  const triggerRef = useRef<HTMLSpanElement>(null);
 
   if (!errorMessage) {
     return <span className='text-xs text-gray-500'>--</span>;
   }
 
+  const handleMouseEnter = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const spaceAbove  = rect.top;
+      const spaceBelow  = window.innerHeight - rect.bottom;
+      const spaceRight  = window.innerWidth  - rect.left;
+      setPos({
+        above:      spaceAbove >= 80 || spaceAbove >= spaceBelow,
+        alignRight: spaceRight < 280,
+      });
+    }
+    setVisible(true);
+  };
+
+  // Tooltip width is max-w-xs = 320px; caret offset 8px from chosen edge
+  const tooltipStyle: React.CSSProperties = {
+    position:  'absolute',
+    zIndex:    9999,
+    width:     'max-content',
+    maxWidth:  300,
+    ...(pos.above  ? { bottom: '100%', marginBottom: 8 } : { top: '100%', marginTop: 8 }),
+    ...(pos.alignRight ? { right: 0 } : { left: 0 }),
+  };
+
+  const caretStyle: React.CSSProperties = {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    background: '#111827',
+    transform: 'rotate(45deg)',
+    ...(pos.above  ? { top: '100%', marginTop: -4 } : { bottom: '100%', marginBottom: -4 }),
+    ...(pos.alignRight ? { right: 12 } : { left: 12 }),
+  };
+
   return (
     <div className='relative inline-block'>
       <span
+        ref={triggerRef}
         className='cursor-help text-red-600 text-xs'
-        onMouseEnter={() => setHoveredJobId('error')}
-        onMouseLeave={() => setHoveredJobId(null)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setVisible(false)}
       >
-        {errorMessage.length > 50
-          ? errorMessage.substring(0, 50) + '...'
-          : errorMessage}
+        {errorMessage.length > 50 ? errorMessage.substring(0, 50) + '…' : errorMessage}
       </span>
 
-      {hoveredJobId === 'error' && (
-        <div className='absolute bottom-full left-0 mb-2 z-50 bg-gray-900 text-white text-xs rounded px-3 py-2 whitespace-normal max-w-xs break-words'>
+      {visible && (
+        <div style={tooltipStyle} className='bg-gray-900 text-white text-xs rounded px-3 py-2 break-words shadow-lg'>
           {errorMessage}
-          <div className='absolute top-full left-2 w-2 h-2 bg-gray-900 transform rotate-45'></div>
+          <div style={caretStyle} />
         </div>
       )}
     </div>
