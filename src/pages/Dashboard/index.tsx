@@ -461,9 +461,9 @@ export default function Dashboard() {
             </div>
             <div className='flex flex-col gap-2 mt-2'>
               {[
-                { label: 'Active Backups',  value: activeBackups,    color: 'text-blue-600',  dot: '#3B82F6' },
-                { label: 'Completed Backup', value: completedBackups, color: 'text-green-600', dot: '#16A34A' },
-                { label: 'Failed backup',    value: failedBackups,    color: failedBackups > 0 ? 'text-red-600' : 'text-gray-400', dot: failedBackups > 0 ? '#DC2626' : '#9CA3AF' },
+                { label: 'Active Backups & Archives',  value: activeBackups,    color: 'text-blue-600',  dot: '#3B82F6' },
+                { label: 'Completed Backup & Archives', value: completedBackups, color: 'text-green-600', dot: '#16A34A' },
+                { label: 'Failed backup & Archives',    value: failedBackups,    color: failedBackups > 0 ? 'text-red-600' : 'text-gray-400', dot: failedBackups > 0 ? '#DC2626' : '#9CA3AF' },
               ].map(({ label, value, color, dot }) => (
                 <div key={label} className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>

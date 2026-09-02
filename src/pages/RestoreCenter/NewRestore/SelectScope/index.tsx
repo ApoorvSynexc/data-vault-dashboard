@@ -88,27 +88,34 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
 
-  // API returns the full config object; flatten top-level objects + their children
-  const sourceObjects: RestoreSourceObject[] = (() => {
-    const raw = (sourceObjectsData as any)?.data;
+  // Build a typed tree from the API response preserving parent→child nesting
+  const buildTree = (raw: any): RestoreSourceObject[] => {
     if (!raw) return [];
-    // New shape: { objects: [{ name, type, children: [{ name, type }] }] }
-    if (Array.isArray(raw?.objects)) {
-      const result: RestoreSourceObject[] = [];
-      for (const obj of raw.objects) {
-        if (obj?.name) result.push({ name: obj.name, type: obj.type ?? 'STANDARD' });
-        for (const child of (obj?.children ?? [])) {
-          if (child?.name) result.push({ name: child.name, type: child.type ?? 'STANDARD' });
-        }
-      }
-      return result;
-    }
-    // Old shape fallback: { data: [{ name, type }] }
-    if (Array.isArray(raw?.data)) return raw.data;
-    if (Array.isArray(raw))       return raw;
+    const mapNode = (obj: any): RestoreSourceObject => ({
+      id:                  obj.id,
+      name:                obj.name,
+      type:                obj.type ?? 'STANDARD',
+      completedRecordCount: obj.completedRecordCount ?? 0,
+      children:            Array.isArray(obj.children) ? obj.children.map(mapNode) : [],
+    });
+    if (Array.isArray(raw?.objects)) return raw.objects.filter((o: any) => o?.name).map(mapNode);
+    if (Array.isArray(raw?.data))    return raw.data;
+    if (Array.isArray(raw))          return raw;
     return [];
-  })();
-  const sourceObjectNames: string[] = [...new Set(sourceObjects.map((o) => o.name))];
+  };
+
+  const sourceObjects: RestoreSourceObject[] = buildTree((sourceObjectsData as any)?.data);
+
+  // Flat deduplicated names for scope pickers that don't need the tree
+  const flattenNames = (nodes: RestoreSourceObject[]): string[] => {
+    const result: string[] = [];
+    for (const n of nodes) {
+      result.push(n.name);
+      if (n.children?.length) result.push(...flattenNames(n.children));
+    }
+    return result;
+  };
+  const sourceObjectNames: string[] = [...new Set(flattenNames(sourceObjects))];
 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
 
