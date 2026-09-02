@@ -388,13 +388,14 @@ export function useRestoreService() {
     createRestoreJob: (payload: RestoreRetrievePayload) =>
       api.post<{ success: boolean; message: string }>(RESTORE_ENDPOINTS.createRestoreJob, payload),
 
-    listRestoreJobs: (search?: string, status?: string) =>
+    listRestoreJobs: (search?: string, status?: string, cursor?: string | null) =>
       api.get<unknown>(RESTORE_ENDPOINTS.listRestoreJobs, {
         query: {
           pagination: true,
           limit: 25,
           ...(search && { search }),
           ...(status && status !== 'All' && { status }),
+          ...(cursor && { cursor }),
         },
       }),
 
