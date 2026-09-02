@@ -19,14 +19,13 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// Recursively collect all eligible descendant names from a node
+// Recursively collect all descendant names.
+// Children never carry completedRecordCount — they are always shown.
 function collectDescendantNames(node: RestoreSourceObject): string[] {
   const result: string[] = [];
   for (const child of node.children ?? []) {
-    if ((child.completedRecordCount ?? 0) > 0) {
-      result.push(child.name);
-      result.push(...collectDescendantNames(child));
-    }
+    result.push(child.name);
+    result.push(...collectDescendantNames(child));
   }
   return result;
 }
@@ -45,17 +44,17 @@ interface ChildTreeProps {
 }
 
 function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: ChildTreeProps) {
-  const eligible = nodes.filter((n) => (n.completedRecordCount ?? 0) > 0);
-  if (eligible.length === 0) return null;
+  // Children never carry completedRecordCount — always show all of them
+  if (nodes.length === 0) return null;
 
   const accentColor = LEVEL_COLORS[(depth - 1) % LEVEL_COLORS.length];
 
   return (
     <>
-      {eligible.map((node) => {
+      {nodes.map((node) => {
         const isSelected  = selected.has(node.name);
         const isExpanded  = expanded.has(node.name);
-        const hasChildren = (node.children ?? []).some((c) => (c.completedRecordCount ?? 0) > 0);
+        const hasChildren = (node.children ?? []).length > 0;
         const descendants = collectDescendantNames(node);
 
         const rowBg = isSelected ? `${accentColor}08` : depth % 2 === 1 ? '#FAFBFC' : '#F4F6F8';
@@ -136,8 +135,11 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Only top-level objects with records
-  const eligibleObjects = sourceObjects.filter((o) => (o.completedRecordCount ?? 0) > 0);
+  // Top-level: hide objects where completedRecordCount is explicitly 0.
+  // If undefined (old API shape), show them — only hide when explicitly zero.
+  const eligibleObjects = sourceObjects.filter((o) =>
+    o.completedRecordCount === undefined || o.completedRecordCount > 0,
+  );
   const eligibleNames   = eligibleObjects.map((o) => o.name);
 
   const notify = (next: Set<string>) => onChange([...next]);
@@ -172,8 +174,8 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
         setExpanded((e) => { const ne = new Set(e); ne.delete(obj.name); return ne; });
       } else {
         next.add(obj.name);
-        // Auto-expand if has eligible children
-        if ((obj.children ?? []).some((c) => (c.completedRecordCount ?? 0) > 0)) {
+        // Auto-expand if has children
+        if ((obj.children ?? []).length > 0) {
           setExpanded((e) => new Set([...e, obj.name]));
         }
       }
@@ -260,7 +262,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
             {filtered.map((obj) => {
               const isSelected  = selected.has(obj.name);
               const isExpanded  = expanded.has(obj.name);
-              const hasChildren = (obj.children ?? []).some((c) => (c.completedRecordCount ?? 0) > 0);
+              const hasChildren = (obj.children ?? []).length > 0;
 
               return (
                 <div key={obj.name} className='border-b border-gray-100 last:border-b-0'>

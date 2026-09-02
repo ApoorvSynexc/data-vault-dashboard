@@ -88,17 +88,26 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
 
-  // Build a typed tree from the API response preserving parent→child nesting
+  // Build a typed tree from the API response preserving parent→child nesting.
+  // completedRecordCount only exists on top-level objects, not on children.
   const buildTree = (raw: any): RestoreSourceObject[] => {
     if (!raw) return [];
-    const mapNode = (obj: any): RestoreSourceObject => ({
-      id:                  obj.id,
-      name:                obj.name,
-      type:                obj.type ?? 'STANDARD',
-      completedRecordCount: obj.completedRecordCount ?? 0,
-      children:            Array.isArray(obj.children) ? obj.children.map(mapNode) : [],
+    const mapChild = (obj: any): RestoreSourceObject => ({
+      id:       obj.id,
+      name:     obj.name,
+      type:     obj.type ?? 'STANDARD',
+      // children have no completedRecordCount — leave it undefined so the
+      // top-level filter doesn't accidentally hide them
+      children: Array.isArray(obj.children) ? obj.children.map(mapChild) : [],
     });
-    if (Array.isArray(raw?.objects)) return raw.objects.filter((o: any) => o?.name).map(mapNode);
+    const mapRoot = (obj: any): RestoreSourceObject => ({
+      id:                   obj.id,
+      name:                 obj.name,
+      type:                 obj.type ?? 'STANDARD',
+      completedRecordCount: obj.completedRecordCount,   // may be undefined for zero-record roots
+      children:             Array.isArray(obj.children) ? obj.children.map(mapChild) : [],
+    });
+    if (Array.isArray(raw?.objects)) return raw.objects.filter((o: any) => o?.name).map(mapRoot);
     if (Array.isArray(raw?.data))    return raw.data;
     if (Array.isArray(raw))          return raw;
     return [];

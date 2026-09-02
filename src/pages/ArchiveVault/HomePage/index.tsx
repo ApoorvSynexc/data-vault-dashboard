@@ -494,7 +494,7 @@ export default function ArchiveVaultHomePage() {
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
     displayStatus: normalizeStatus(item.status),
     lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
-    displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
+    displayDate: formatDate(item.lastBackupAt ?? ''),
   }));
 
   const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
