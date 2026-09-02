@@ -157,7 +157,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
 
   const { data: jobsData, isLoading } = useQuery({
     queryKey: ['restore-jobs-list-home', search, activeChip, currentCursor],
-    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip),
+    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip, currentCursor),
   });
 
   const { data: statsData } = useQuery({
@@ -339,7 +339,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
                   type='text'
                   placeholder='Search jobs...'
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); }}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentCursor(null); setCursorHistory([null]); setCurrentPage(1); }}
                   className='h-7 w-44 rounded-full border border-gray-200 bg-white pl-7 pr-3 text-xs text-gray-600 outline-none transition hover:border-gray-300 focus:border-blue-400 focus:ring-1 focus:ring-blue-100'
                 />
               </div>
@@ -348,7 +348,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
                 label='Status'
                 value={activeChip}
                 options={CHIPS.map((chip) => ({ value: chip, label: chip }))}
-                onChange={(value) => { setActiveChip(value as FilterChip); }}
+                onChange={(value) => { setActiveChip(value as FilterChip); setCurrentCursor(null); setCursorHistory([null]); setCurrentPage(1); }}
               />
             </div>
           </div>
