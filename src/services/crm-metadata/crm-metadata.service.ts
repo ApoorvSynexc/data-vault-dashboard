@@ -1,7 +1,8 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 const CRM_METADATA_ENDPOINTS = {
-  objectList: '/v1/crm-metadata/objects/list',
+  objectList:    '/v1/crm-metadata/objects/list',
+  allObjectList: '/v1/crm-metadata/all-objects/list',
   objectDescribe: '/v1/crm-metadata/objects/describe',
   objectDepthChildren: '/v1/crm-metadata/object/depth-children',
   fieldList: '/v1/crm-metadata/fields/list',
@@ -45,6 +46,11 @@ export function useCrmMetadataService() {
     getObjectList: (mode: 'backup' | 'archive' | 'restore', type?: 'schedule' | 'realtime') =>
       api.get<ObjectListResponse>(CRM_METADATA_ENDPOINTS.objectList, {
         query: { mode, ...(type ? { type } : {}) },
+      }),
+
+    getAllObjectList: (name = 'Account') =>
+      api.get<CrmMetadataObject[]>(CRM_METADATA_ENDPOINTS.allObjectList, {
+        query: { name },
       }),
 
     getObjectDescribe: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule', relationshipDepth?: number) =>
