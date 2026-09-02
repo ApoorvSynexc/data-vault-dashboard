@@ -63,10 +63,14 @@ function AddObjectInput({ existing, onAdd }: { existing: StandardObject[]; onAdd
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: crmObjects = [], isFetching } = useQuery<CrmMetadataObject[]>({
-    queryKey: ['crm-metadata-objects-settings'],
+    queryKey: ['crm-all-objects-settings'],
     queryFn: async () => {
-      const res = await crmMetadataService.getObjectList('backup');
-      return Array.isArray(res) ? res : (res as any)?.data ?? [];
+      const res = await crmMetadataService.getAllObjectList();
+      // Response is a direct array pass-through from Salesforce
+      if (Array.isArray(res)) return res;
+      // Unwrap ApiResponse envelope if present
+      const inner = (res as any)?.data;
+      return Array.isArray(inner) ? inner : [];
     },
   });
 
