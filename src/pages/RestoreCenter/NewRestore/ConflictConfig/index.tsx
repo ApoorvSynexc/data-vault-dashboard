@@ -467,7 +467,7 @@ export default function ConflictConfig({
       } : {}),
     };
     edgeCases.ownerInactive = { type: OWNER_INACTIVE_ENUM[ecOwner] ?? 'SKIP_RECORD', ...(ecOwner === 'Reassign to specified user' ? { fallbackValue: fallbackOwner } : {}) };
-    if (configType !== 'ARCHIVAL') edgeCases.parentMissing = ecParent;
+    if (configType !== 'ARCHIVAL') edgeCases.parentMissing = { 'Restore parent first': 'RESTORE_PARENT_FIRST', 'Skip': 'SKIP' }[ecParent] ?? 'SKIP';
     edgeCases.recordTypeMissing = {
       type: RECORD_TYPE_ENUM[ecRecordType] ?? 'MAP_TO_DEFAULT',
       ...(ecRecordType === 'Map manually' ? {
