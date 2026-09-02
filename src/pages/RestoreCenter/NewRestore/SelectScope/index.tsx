@@ -22,7 +22,7 @@ const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Confl
 function ProgressBar({ active }: { active: number }) {
   return (
     <div className='w-full'>
-      <div className='flex items-center'>
+      <div className='flex items-center'> 
         {STEPS.map((label, i) => {
           const num = i + 1;
           const isDone   = num < active;
