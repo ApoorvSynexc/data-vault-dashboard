@@ -88,7 +88,26 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
 
-  const sourceObjects: RestoreSourceObject[] = (sourceObjectsData as any)?.data?.data ?? (sourceObjectsData as any)?.data ?? [];
+  // API returns the full config object; flatten top-level objects + their children
+  const sourceObjects: RestoreSourceObject[] = (() => {
+    const raw = (sourceObjectsData as any)?.data;
+    if (!raw) return [];
+    // New shape: { objects: [{ name, type, children: [{ name, type }] }] }
+    if (Array.isArray(raw?.objects)) {
+      const result: RestoreSourceObject[] = [];
+      for (const obj of raw.objects) {
+        if (obj?.name) result.push({ name: obj.name, type: obj.type ?? 'STANDARD' });
+        for (const child of (obj?.children ?? [])) {
+          if (child?.name) result.push({ name: child.name, type: child.type ?? 'STANDARD' });
+        }
+      }
+      return result;
+    }
+    // Old shape fallback: { data: [{ name, type }] }
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw))       return raw;
+    return [];
+  })();
   const sourceObjectNames: string[] = [...new Set(sourceObjects.map((o) => o.name))];
 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
