@@ -261,8 +261,27 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
     retry: 1,
   });
 
-  const sourceObjectRows: { name: string }[] = (sourceObjectsData as any)?.data?.data ?? (sourceObjectsData as any)?.data ?? [];
-  const sourceObjects: string[] = Array.from(new Set(sourceObjectRows.map((o) => o.name)));
+  // API returns the full config object; flatten top-level objects + their children
+  const sourceObjects: string[] = (() => {
+    const raw = (sourceObjectsData as any)?.data;
+    if (!raw) return [];
+    const rows: { name: string }[] = (() => {
+      if (Array.isArray(raw?.objects)) {
+        const result: { name: string }[] = [];
+        for (const obj of raw.objects) {
+          if (obj?.name) result.push({ name: obj.name });
+          for (const child of (obj?.children ?? [])) {
+            if (child?.name) result.push({ name: child.name });
+          }
+        }
+        return result;
+      }
+      if (Array.isArray(raw?.data)) return raw.data;
+      if (Array.isArray(raw))       return raw;
+      return [];
+    })();
+    return Array.from(new Set(rows.map((o) => o.name)));
+  })();
 
   const { data: crmObjectsData, isLoading: crmObjectsLoading } = useQuery({
     queryKey: ['crm-objects', destOrg],

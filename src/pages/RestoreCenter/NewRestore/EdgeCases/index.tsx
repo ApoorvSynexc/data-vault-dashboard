@@ -542,9 +542,23 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
     enabled: !scopeObjectApiNames?.length && !!backupConfigId && ecMissRequired === 'Use specified default per field',
     retry: 1,
   });
-  const reqFieldObjectOptions: string[] = scopeObjectApiNames?.length
-    ? scopeObjectApiNames
-    : Array.from(new Set(((objectListData as any)?.data?.data ?? (objectListData as any)?.data ?? []).map((o: { name: string }) => o.name)));
+  const reqFieldObjectOptions: string[] = (() => {
+    if (scopeObjectApiNames?.length) return scopeObjectApiNames;
+    const raw = (objectListData as any)?.data;
+    if (!raw) return [];
+    if (Array.isArray(raw?.objects)) {
+      const names: string[] = [];
+      for (const obj of raw.objects) {
+        if (obj?.name) names.push(obj.name);
+        for (const child of (obj?.children ?? [])) {
+          if (child?.name) names.push(child.name);
+        }
+      }
+      return Array.from(new Set(names));
+    }
+    const list: { name: string }[] = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+    return Array.from(new Set(list.map((o) => o.name)));
+  })();
 
   type ReqFieldBlock = { id: number; objectApiName: string };
   const [reqFieldBlocks, setReqFieldBlocks] = useState<ReqFieldBlock[]>([{ id: 1, objectApiName: '' }]);
