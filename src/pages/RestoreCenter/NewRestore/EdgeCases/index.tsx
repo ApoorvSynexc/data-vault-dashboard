@@ -859,8 +859,12 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
                 ...(ecOwner === 'Reassign to specified user' ? { fallbackValue: fallbackOwner } : {}),
               };
 
-              // parentMissing — plain string
-              edgeCases.parentMissing = ecParent;
+              // parentMissing
+              const PARENT_MISSING_ENUM: Record<string, string> = {
+                'Restore parent first': 'RESTORE_PARENT_FIRST',
+                'Skip':                 'SKIP',
+              };
+              edgeCases.parentMissing = PARENT_MISSING_ENUM[ecParent] ?? 'SKIP';
 
               // recordTypeMissing — only include objects when type requires manual mapping
               edgeCases.recordTypeMissing = {
