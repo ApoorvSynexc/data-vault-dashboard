@@ -287,8 +287,11 @@ export interface DryRunDiffPayload extends DryRunPayload {
 // ── Object list ───────────────────────────────────────────────────────────────
 
 export interface RestoreSourceObject {
+  id?: string;
   name: string;
   type: 'STANDARD' | 'CUSTOM' | string;
+  completedRecordCount?: number;
+  children?: RestoreSourceObject[];
 }
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
