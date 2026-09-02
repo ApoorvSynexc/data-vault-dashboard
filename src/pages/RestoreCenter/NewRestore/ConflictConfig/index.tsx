@@ -402,7 +402,7 @@ export default function ConflictConfig({
   });
   const reqFieldObjectOptions: string[] = scopeObjectApiNames?.length
     ? scopeObjectApiNames
-    : Array.from(new Set(((objectListData as any)?.data ?? []).map((o: { name: string }) => o.name)));
+    : Array.from(new Set(((objectListData as any)?.data?.data ?? (objectListData as any)?.data ?? []).map((o: { name: string }) => o.name)));
 
   type ReqFieldBlock = { id: number; objectApiName: string };
   const [reqFieldBlocks, setReqFieldBlocks] = useState<ReqFieldBlock[]>([{ id: 1, objectApiName: '' }]);

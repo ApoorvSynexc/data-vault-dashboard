@@ -88,7 +88,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
     retry: 1,
   });
 
-  const sourceObjects: RestoreSourceObject[] = (sourceObjectsData as any)?.data ?? [];
+  const sourceObjects: RestoreSourceObject[] = (sourceObjectsData as any)?.data?.data ?? (sourceObjectsData as any)?.data ?? [];
   const sourceObjectNames: string[] = [...new Set(sourceObjects.map((o) => o.name))];
 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
