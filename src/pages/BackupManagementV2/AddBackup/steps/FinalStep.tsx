@@ -150,6 +150,25 @@ export default function FinalStep({
   const buildPayload = (backupStatus: 'DRAFT' | 'ACTIVE') => {
     const objectsToUse: SelectedObject[] = selectedObjects.length > 0 ? selectedObjects : selectedObjectIds.map((id) => ({ uuid: id, id, type: 'STANDARD' as const, isUserSelected: true }));
     const objectIds = objectsToUse.map((obj) => typeof obj === 'string' ? obj : obj.id);
+
+    // Build a map of id → children by walking the entire tree recursively.
+    // This lets flat (isUserSelected:false) entries in objectsToUse also carry
+    // their children when the same object appears nested inside another tree.
+    const childrenById = new Map<string, PayloadChildNode[]>();
+    const indexChildren = (nodes: PayloadChildNode[]) => {
+      for (const node of nodes) {
+        if (node.id && node.children?.length) {
+          childrenById.set(node.id, node.children);
+          indexChildren(node.children);
+        }
+      }
+    };
+    for (const obj of objectsToUse) {
+      if (typeof obj !== 'string' && obj.children?.length) {
+        indexChildren(obj.children);
+      }
+    }
+
     const payload: any = {
       crmId, name: policyName, description, destinationId,
       dataset: entireDatasetSelected ? 'ENTIRE' : 'PARTIAL',
@@ -159,8 +178,12 @@ export default function FinalStep({
         const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
         const objName = typeof obj === 'string' ? obj : obj.id;
         const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
-        const children = typeof obj !== 'string' && obj.children?.length ? stripRelationshipFlags(obj.children) : undefined;
         const isUserSelected = typeof obj === 'string' ? true : (obj.isUserSelected ?? true);
+        // Use own children first; fall back to indexed children from the global tree
+        const rawChildren = typeof obj !== 'string' && obj.children?.length
+          ? obj.children
+          : childrenById.get(objUuid) ?? [];
+        const children = rawChildren.length ? stripRelationshipFlags(rawChildren) : undefined;
         return {
           id: objUuid,
           name: objName,
