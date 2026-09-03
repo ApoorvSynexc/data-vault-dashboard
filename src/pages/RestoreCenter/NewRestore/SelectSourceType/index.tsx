@@ -112,7 +112,6 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
-  const [showArchivalJobsPhase, setShowArchivalJobsPhase] = useState(initialArchivalJobsPhase);
 
   // Backup phase states
   // configSelected starts true if we're restoring to jobs phase (a config was already chosen)
@@ -152,23 +151,17 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     sourceType === 'backup'
       ? (showJobsPhase ? !!backupSelection : configSelected)
       : sourceType === 'archive'
-      ? (showArchivalJobsPhase ? !!archivalSelection : !!archivalSelectedConfigId)
+      ? !!archivalSelectedConfigId
       : false;
 
   const handleNext = () => {
     if (sourceType === 'archive') {
-      if (!showArchivalJobsPhase) {
-        setShowArchivalJobsPhase(true);
-        return;
-      }
       if (archivalSelection) {
         onNext({
           configType: 'ARCHIVAL',
           backupConfigId: archivalSelection.backupConfigId,
           backupJobIds: archivalSelection.backupJobIds,
           type: archivalSelection.type,
-          startDate: archivalSelection.startDate,
-          endDate: archivalSelection.endDate,
         });
       }
       return;
@@ -267,7 +260,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
 
         {sourceType === 'archive' && (
           <ArchivalPicker
-            showJobsPhase={showArchivalJobsPhase}
+            showJobsPhase={false}
             onConfigSelected={(v) => { if (v) setArchivalSelectedConfigId(archivalSelectedConfigId || v as any); }}
             onSelectionChange={setArchivalSelection}
             initialSelectedRow={archivalSelectedRow}
@@ -284,7 +277,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
         <button
           onClick={() => {
             if (sourceType === 'backup' && showJobsPhase) { setBackupJobsPhase(false); }
-            else if (sourceType === 'archive' && showArchivalJobsPhase) { setShowArchivalJobsPhase(false); }
             else { onBack(); }
           }}
           className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
@@ -299,7 +291,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}
           >
-            {(sourceType === 'backup' && !showJobsPhase) || (sourceType === 'archive' && !showArchivalJobsPhase)
+            {sourceType === 'backup' && !showJobsPhase
               ? 'Select Restore Type →'
               : 'Next: Choose Selection Scope →'}
           </button>
