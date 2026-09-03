@@ -169,30 +169,34 @@ export default function FinalStep({
       }
     }
 
+    let objects = objectsToUse.map((obj) => {
+      const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
+      const objName = typeof obj === 'string' ? obj : obj.id;
+      const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
+      const isUserSelected = typeof obj === 'string' ? true : (obj.isUserSelected ?? true);
+      // Use own children first; fall back to indexed children from the global tree
+      const rawChildren = typeof obj !== 'string' && obj.children?.length
+        ? obj.children
+        : childrenById.get(objUuid) ?? [];
+      const children = rawChildren.length ? stripRelationshipFlags(rawChildren) : undefined;
+      return {
+        id: objUuid,
+        name: objName,
+        type: objType,
+        isUserSelected,
+        condition: { type: 'AND' },
+        ...(children ? { children } : {}),
+      };
+    });
+
+    objects = objects.map(obj => ({ ...obj, children: undefined }));
+
     const payload: any = {
       crmId, name: policyName, description, destinationId,
       dataset: entireDatasetSelected ? 'ENTIRE' : 'PARTIAL',
       objectNames: objectIds,
       schedule: strategy === 'realtime' ? 'REALTIME' : 'SCHEDULE',
-      objects: objectsToUse.map((obj) => {
-        const objUuid = typeof obj === 'string' ? obj : (obj.uuid ?? obj.id);
-        const objName = typeof obj === 'string' ? obj : obj.id;
-        const objType = typeof obj === 'string' ? 'STANDARD' : obj.type;
-        const isUserSelected = typeof obj === 'string' ? true : (obj.isUserSelected ?? true);
-        // Use own children first; fall back to indexed children from the global tree
-        const rawChildren = typeof obj !== 'string' && obj.children?.length
-          ? obj.children
-          : childrenById.get(objUuid) ?? [];
-        const children = rawChildren.length ? stripRelationshipFlags(rawChildren) : undefined;
-        return {
-          id: objUuid,
-          name: objName,
-          type: objType,
-          isUserSelected,
-          condition: { type: 'AND' },
-          ...(children ? { children } : {}),
-        };
-      }),
+      objects,
       status: backupStatus,
     };
     if (!isRealTime && scheduleConfig) payload.scheduleConfig = scheduleConfig;
@@ -251,7 +255,7 @@ export default function FinalStep({
     }
   }, [isSuccess, navigate]);
 
-const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; sectionKey: string; onEdit?: () => void; children: React.ReactNode }) => (
+  const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; sectionKey: string; onEdit?: () => void; children: React.ReactNode }) => (
     <div className='bg-white rounded-lg border border-gray-200'>
       <button onClick={() => toggleSection(sectionKey)} className='w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors'>
         <div className='flex items-center gap-3'>
@@ -297,7 +301,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
     <div className='h-full bg-gray-50 p-6 flex flex-col overflow-hidden'>
       {toast && (
         <div className='fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg bg-white border border-red-100 text-sm text-red-700 font-medium min-w-[260px] max-w-[420px]'>
-          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+          <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0 text-red-500'><circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' /></svg>
           {toast}
         </div>
       )}
@@ -309,8 +313,8 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
             {isRealtimeNonDraft
               ? 'You can only edit the backup policy name.'
               : isScheduledNonDraft
-              ? 'You can edit the backup policy name and schedule configuration.'
-              : 'Review your backup policy configuration before initiating backup.'}
+                ? 'You can edit the backup policy name and schedule configuration.'
+                : 'Review your backup policy configuration before initiating backup.'}
           </p>
         </div>
         <span className='text-sm font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full whitespace-nowrap'>
@@ -363,7 +367,7 @@ const SectionBox = ({ title, sectionKey, onEdit, children }: { title: string; se
 
       {apiError && (
         <div className='flex-shrink-0 mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
-          <svg className='w-4 h-4 text-red-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><circle cx='12' cy='12' r='10'/><path d='M12 8v4M12 16h.01' strokeLinecap='round'/></svg>
+          <svg className='w-4 h-4 text-red-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' /></svg>
           <p className='text-sm text-red-600'>{apiError}</p>
         </div>
       )}
