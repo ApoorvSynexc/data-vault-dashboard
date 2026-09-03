@@ -26,7 +26,8 @@ function depthNodesToSourceObjects(nodes: DepthChildNode[], allObjects: RestoreS
 interface Props {
   sourceObjects: RestoreSourceObject[];
   sourceObjectsLoading: boolean;
-  onChange: (objects: { id?: string; name: string; type: string }[]) => void;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  onChange: (objects: { id?: string; name: string; type: string; children?: RestoreSourceObject[] }[]) => void;
 }
 
 function TypeBadge({ type }: { type: string }) {
@@ -147,7 +148,7 @@ function ChildTree({ nodes, depth, pathPrefix, selected, expanded, onToggle, onE
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onChange }: Props) {
+export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, configType, onChange }: Props) {
   const crmMetadataService = useCrmMetadataService();
 
   const [search,      setSearch]      = useState('');
@@ -179,7 +180,16 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
 
   const notify = (next: Set<string>) => {
     const meta = buildObjectMeta();
-    onChange([...next].map((name) => ({ name, id: meta.get(name)?.id, type: meta.get(name)?.type ?? 'STANDARD' })));
+    onChange([...next].map((name) => {
+      const entry = meta.get(name);
+      const base = { name, id: entry?.id, type: entry?.type ?? 'STANDARD' };
+      if (configType === 'ARCHIVAL') {
+        // Include full children tree from sourceObjects (objectlist-by-configid response)
+        const srcObj = sourceObjects.find((o) => o.name === name);
+        return { ...base, children: srcObj?.children ?? [] };
+      }
+      return base;
+    }));
   };
 
   const toggle = (name: string, allDescendants: string[], parentName?: string) => {
@@ -215,7 +225,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
     } else {
       setSelected((prev) => { const next = new Set(prev); next.add(obj.name); notify(next); return next; });
 
-      if (!fetchedSet.has(obj.name)) {
+      if (configType === 'BACKUP' && !fetchedSet.has(obj.name)) {
         setFetchedSet((prev) => new Set([...prev, obj.name]));
         setFetchingObj(obj.name);
         crmMetadataService.getObjectDepthChildren(obj.name, 'normal', undefined, 1)

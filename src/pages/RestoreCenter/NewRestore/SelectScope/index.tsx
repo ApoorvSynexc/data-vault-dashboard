@@ -129,7 +129,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
 
   // Each scope component reports its latest value here via onChange
-  const [selectedObjects, setSelectedObjects]   = useState<{ id?: string; name: string; type: string }[]>([]);
+  const [selectedObjects, setSelectedObjects]   = useState<{ id?: string; name: string; type: string; children?: RestoreSourceObject[] }[]>([]);
   const [recordScope,     setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
   const [fieldScope,      setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
@@ -137,7 +137,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   const buildScope = (): RestoreScope => {
     switch (scopeMode) {
-      case 'object':  return { type: 'OBJECT', objects: selectedObjects.map((o) => ({ id: o.id, name: o.name, type: o.type })) };
+      case 'object':  return { type: 'OBJECT', objects: selectedObjects.map((o) => ({ id: o.id, name: o.name, type: o.type, ...(sourceSelection.configType === 'ARCHIVAL' && o.children ? { children: o.children } : {}) })) };
       case 'record':  return { type: 'RECORD', records: recordScope };
       case 'field':   return { type: 'FIELD',  fields:  fieldScope };
       case 'filter':  return { type: 'FILTER', filters: filterScope };
@@ -220,6 +220,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           <ByObjectScope
             sourceObjects={sourceObjects}
             sourceObjectsLoading={sourceObjectsLoading}
+            configType={sourceSelection.configType}
             onChange={setSelectedObjects}
           />
         )}
