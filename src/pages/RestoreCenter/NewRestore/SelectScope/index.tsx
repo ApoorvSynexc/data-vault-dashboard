@@ -126,6 +126,11 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   };
   const sourceObjectNames: string[] = [...new Set(flattenNames(sourceObjects))];
 
+  // For archival, only top-level (parent) objects are shown in record/filter/csv pickers
+  const parentObjectNames: string[] = sourceSelection.configType === 'ARCHIVAL'
+    ? sourceObjects.map((o) => o.name)
+    : sourceObjectNames;
+
   const [scopeMode, setScopeMode] = useState<ScopeMode>('full');
 
   // Each scope component reports its latest value here via onChange
@@ -226,7 +231,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         )}
         {scopeMode === 'record'  && (
           <ByRecordScope
-            sourceObjectNames={sourceObjectNames}
+            sourceObjectNames={parentObjectNames}
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setRecordScope}
@@ -242,7 +247,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
         )}
         {scopeMode === 'filter'  && (
           <CustomFilterScope
-            sourceObjectNames={sourceObjectNames}
+            sourceObjectNames={parentObjectNames}
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setFilterScope}
@@ -252,7 +257,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
         {scopeMode === 'csv'     && (
           <BulkCsvScope
-            sourceObjectNames={sourceObjectNames}
+            sourceObjectNames={parentObjectNames}
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setCsvScope}
