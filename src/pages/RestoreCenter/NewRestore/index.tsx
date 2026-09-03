@@ -34,7 +34,7 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 // for object-level record counts.
 const scopeObjectApiNames = (scope: RestoreScope): string[] | undefined => {
   switch (scope.type) {
-    case 'OBJECT': return scope.objects;
+    case 'OBJECT': return scope.objects.map((o) => o.name);
     case 'RECORD': return Array.from(new Set(scope.records.map((r) => r.objectName)));
     case 'FIELD': return Array.from(new Set(scope.fields.map((f) => f.objectName)));
     case 'FILTER': return Array.from(new Set(scope.filters.map((f) => f.objectName)));
