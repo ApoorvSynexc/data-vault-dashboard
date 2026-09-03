@@ -69,7 +69,7 @@ export function useCrmMetadataService() {
           objectName,
           ...(mode ? { mode } : {}),
           ...(type ? { type } : {}),
-          maxDepth: maxDepth ?? 0,
+          ...(maxDepth !== undefined ? { maxDepth } : {}),
         },
       }),
 
