@@ -684,7 +684,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
                   <select value={ecOwner} onChange={(e) => setEcOwner(e.target.value)} className={selectClass} style={selectStyle}>
                     <option>Reassign to specified user</option>
                     <option>Reassign to manager</option>
-                    <option>Reassign to queue</option>
                     <option>Skip record</option>
                   </select>
                 </div>
@@ -743,7 +742,6 @@ export default function EdgeCases({ onNext, onBack, backupConfigId, configType, 
                   </span>
                   <select value={ecMissRequired} onChange={(e) => setEcMissRequired(e.target.value)} className={selectClass} style={selectStyle}>
                     <option>Use specified default per field</option>
-                    <option>Use last known value from history</option>
                     <option>Skip the record</option>
                     <option>Skip the object</option>
                   </select>
