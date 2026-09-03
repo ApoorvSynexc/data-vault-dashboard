@@ -100,6 +100,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const [dayOfMonth, setDayOfMonth] = useState(initial.dayOfMonth);
   const [startTime, setStartTime] = useState(initial.startTime);
   const [startTimeError, setStartTimeError] = useState('');
+  const [startDateError, setStartDateError] = useState('');
+  const [endDateError, setEndDateError] = useState('');
   const [timeZone, setTimeZone] = useState(initial.timeZone);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -111,6 +113,29 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
   }
+
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    if (val && val < today) {
+      setStartDateError('Start date cannot be in the past.');
+    } else {
+      setStartDateError('');
+      if (endDate && val && endDate < val) setEndDateError('End date must be on or after start date.');
+      else setEndDateError('');
+    }
+    if (val > today) setStartTimeError('');
+  };
+
+  const handleEndDateChange = (val: string) => {
+    setEndDate(val);
+    if (val && val < today) {
+      setEndDateError('End date cannot be in the past.');
+    } else if (startDate && val && val < startDate) {
+      setEndDateError('End date must be on or after start date.');
+    } else {
+      setEndDateError('');
+    }
+  };
 
   const inputCls = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white';
 
@@ -167,6 +192,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   });
 
   const handleNext = () => {
+    if (startDateError) { showToast(startDateError); return; }
+    if (endDateError) { showToast(endDateError); return; }
     if (startTimeError) { showToast(startTimeError); return; }
     if (!allScheduled) {
       if (!frequency) { showToast('Please select a frequency'); return; }
@@ -329,7 +356,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                         <div className='grid grid-cols-2 gap-5'>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
-                            <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                            <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                            {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                           </div>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
@@ -368,7 +396,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
@@ -397,7 +426,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                      <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                      {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                     </div>
                   </div>
                 )}
@@ -432,7 +462,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                      <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                      {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                     </div>
                   </div>
                 )}
@@ -476,7 +507,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                       </div>
                     </div>
                   </div>
@@ -488,11 +520,13 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On Date</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} min={today} className={inputCls} />
+                        <input type='date' value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} min={today} className={`${inputCls}${startDateError ? ' border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
-                        <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate > today ? startDate : today} className={inputCls} />
+                        <input type='date' value={endDate} onChange={(e) => handleEndDateChange(e.target.value)} min={startDate > today ? startDate : today} className={`${inputCls}${endDateError ? ' border-red-400' : ''}`} />
+                        {endDateError && <p className='mt-1.5 text-xs text-red-500'>{endDateError}</p>}
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-5'>
