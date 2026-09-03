@@ -20,7 +20,6 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 // Recursively collect all descendant names.
-// Children never carry completedRecordCount — they are always shown.
 function collectDescendantNames(node: RestoreSourceObject): string[] {
   const result: string[] = [];
   for (const child of node.children ?? []) {
@@ -37,14 +36,14 @@ const LEVEL_COLORS = ['#7C3AED', '#A16207', '#008020', '#0891B2', '#E11D48'];
 interface ChildTreeProps {
   nodes: RestoreSourceObject[];
   depth: number;
+  pathPrefix: string;       // unique path prefix to namespace expand keys
   selected: Set<string>;
   expanded: Set<string>;
   onToggle: (name: string, allDescendants: string[]) => void;
-  onExpand: (name: string) => void;
+  onExpand: (expandKey: string) => void;
 }
 
-function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: ChildTreeProps) {
-  // Children never carry completedRecordCount — always show all of them
+function ChildTree({ nodes, depth, pathPrefix, selected, expanded, onToggle, onExpand }: ChildTreeProps) {
   if (nodes.length === 0) return null;
 
   const accentColor = LEVEL_COLORS[(depth - 1) % LEVEL_COLORS.length];
@@ -52,16 +51,16 @@ function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: Chi
   return (
     <>
       {nodes.map((node) => {
+        const expandKey  = `${pathPrefix}/${node.name}`;
         const isSelected  = selected.has(node.name);
-        const isExpanded  = expanded.has(node.name);
+        const isExpanded  = expanded.has(expandKey);
         const hasChildren = (node.children ?? []).length > 0;
         const descendants = collectDescendantNames(node);
 
         const rowBg = isSelected ? `${accentColor}08` : depth % 2 === 1 ? '#FAFBFC' : '#F4F6F8';
 
         return (
-          <div key={node.name}>
-            {/* Child row */}
+          <div key={expandKey}>
             <div
               onClick={() => onToggle(node.name, descendants)}
               className='flex items-center gap-3 py-2.5 pr-5 cursor-pointer transition-colors group'
@@ -72,7 +71,6 @@ function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: Chi
                 borderLeft: `${isSelected ? 4 : 3}px solid ${isSelected ? accentColor : accentColor + '50'}`,
               }}
             >
-              {/* Tree connector */}
               <span className='flex-shrink-0 font-mono text-sm select-none' style={{ color: accentColor + '80' }}>└──</span>
 
               <input
@@ -89,16 +87,14 @@ function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: Chi
 
               <TypeBadge type={node.type} />
 
-              {/* Level badge */}
               <span className='flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full'
                 style={{ background: `${accentColor}15`, color: accentColor }}>
                 L{depth + 1}
               </span>
 
-              {/* Expand/collapse toggle — only if has eligible children */}
               {hasChildren && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); onExpand(node.name); }}
+                  onClick={(e) => { e.stopPropagation(); onExpand(expandKey); }}
                   className='flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-all hover:scale-110'
                   style={{ background: `${accentColor}18`, color: accentColor }}
                 >
@@ -110,11 +106,11 @@ function ChildTree({ nodes, depth, selected, expanded, onToggle, onExpand }: Chi
               )}
             </div>
 
-            {/* Recurse into children when expanded */}
             {isExpanded && hasChildren && (
               <ChildTree
                 nodes={node.children ?? []}
                 depth={depth + 1}
+                pathPrefix={expandKey}
                 selected={selected}
                 expanded={expanded}
                 onToggle={onToggle}
@@ -135,8 +131,6 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Top-level: hide objects where completedRecordCount is explicitly 0.
-  // If undefined (old API shape), show them — only hide when explicitly zero.
   const eligibleObjects = sourceObjects.filter((o) =>
     o.completedRecordCount === undefined || o.completedRecordCount > 0,
   );
@@ -144,16 +138,13 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
 
   const notify = (next: Set<string>) => onChange([...next]);
 
-  // Toggle a node (parent or child): selecting a child auto-selects its parent
   const toggle = (name: string, allDescendants: string[], parentName?: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(name)) {
-        // Uncheck: also remove all descendants
         next.delete(name);
         allDescendants.forEach((d) => next.delete(d));
       } else {
-        // Check: add this node + auto-select parent if given
         next.add(name);
         if (parentName) next.add(parentName);
       }
@@ -162,21 +153,20 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
     });
   };
 
-  // Top-level toggle — also collapses when deselecting
+  // Top-level toggle — collapse on deselect, expand on select
   const toggleTop = (obj: RestoreSourceObject) => {
+    const expandKey   = `root/${obj.name}`;
     const descendants = collectDescendantNames(obj);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(obj.name)) {
         next.delete(obj.name);
         descendants.forEach((d) => next.delete(d));
-        // Collapse when deselecting
-        setExpanded((e) => { const ne = new Set(e); ne.delete(obj.name); return ne; });
+        setExpanded((e) => { const ne = new Set(e); ne.delete(expandKey); return ne; });
       } else {
         next.add(obj.name);
-        // Auto-expand if has children
         if ((obj.children ?? []).length > 0) {
-          setExpanded((e) => new Set([...e, obj.name]));
+          setExpanded((e) => new Set([...e, expandKey]));
         }
       }
       notify(next);
@@ -184,14 +174,13 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
     });
   };
 
-  // Child toggle — auto-selects parent
   const toggleChild = (name: string, descendants: string[], parentName: string) =>
     toggle(name, descendants, parentName);
 
-  const expandToggle = (name: string) =>
+  const expandToggle = (expandKey: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(expandKey) ? next.delete(expandKey) : next.add(expandKey);
       return next;
     });
 
@@ -260,8 +249,9 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
 
           <div style={{ maxHeight: 600, overflowY: 'auto' }}>
             {filtered.map((obj) => {
+              const expandKey  = `root/${obj.name}`;
               const isSelected  = selected.has(obj.name);
-              const isExpanded  = expanded.has(obj.name);
+              const isExpanded  = expanded.has(expandKey);
               const hasChildren = (obj.children ?? []).length > 0;
 
               return (
@@ -285,10 +275,9 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
                     </span>
                     <TypeBadge type={obj.type} />
 
-                    {/* Expand button — only shown when has eligible children */}
                     {hasChildren ? (
                       <button
-                        onClick={(e) => { e.stopPropagation(); expandToggle(obj.name); }}
+                        onClick={(e) => { e.stopPropagation(); expandToggle(expandKey); }}
                         className='flex items-center justify-center w-6 h-6 rounded-md transition-all hover:scale-110'
                         style={{
                           background: isExpanded ? '#155DFC18' : '#F1F5F9',
@@ -305,11 +294,12 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
                     )}
                   </div>
 
-                  {/* Child tree — shown when expanded */}
+                  {/* Child tree */}
                   {isExpanded && hasChildren && (
                     <ChildTree
                       nodes={obj.children ?? []}
                       depth={1}
+                      pathPrefix={expandKey}
                       selected={selected}
                       expanded={expanded}
                       onToggle={(name, descendants) => toggleChild(name, descendants, obj.name)}
