@@ -144,7 +144,6 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
     setArchivalSelection(null);
     setArchivalSelectedRow(null);
     setArchivalSelectedConfigId('');
-    setShowArchivalJobsPhase(false);
   };
 
   const canProceed =
