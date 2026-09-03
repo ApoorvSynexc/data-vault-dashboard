@@ -63,13 +63,13 @@ export function useCrmMetadataService() {
         },
       }),
 
-    getObjectDepthChildren: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule', relationshipDepth?: number) =>
+    getObjectDepthChildren: (objectName: string, mode?: 'normal' | 'archival', type?: 'realtime' | 'schedule', maxDepth?: number) =>
       api.get<ObjectDepthChildrenResponse>(CRM_METADATA_ENDPOINTS.objectDepthChildren, {
         query: {
           objectName,
           ...(mode ? { mode } : {}),
           ...(type ? { type } : {}),
-          relationshipDepth: relationshipDepth ?? 0,
+          maxDepth: maxDepth ?? 0,
         },
       }),
 
