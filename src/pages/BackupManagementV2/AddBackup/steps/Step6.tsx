@@ -121,6 +121,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [backupIn, setBackupIn] = useState('1 Hour');
   const [toast, setToast] = useState<string | null>(null);
   const [startTimeError, setStartTimeError] = useState('');
+  const [startDateError, setStartDateError] = useState('');
+  const [endDateError, setEndDateError] = useState('');
 
   function showToast(msg: string) {
     setToast(msg);
@@ -129,6 +131,31 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
 
   const today = dayjs().format('YYYY-MM-DD');
   const currentTime = dayjs().format('HH:mm');
+
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    if (val && val < today) {
+      setStartDateError('Start date cannot be in the past.');
+    } else {
+      setStartDateError('');
+      // Re-validate end date if it now precedes the new start
+      if (endDate && val && endDate < val) setEndDateError('End date must be on or after start date.');
+      else setEndDateError('');
+    }
+    // Clear time error if date moved to future
+    if (val > today) setStartTimeError('');
+  };
+
+  const handleEndDateChange = (val: string) => {
+    setEndDate(val);
+    if (val && val < today) {
+      setEndDateError('End date cannot be in the past.');
+    } else if (startDate && val && val < startDate) {
+      setEndDateError('End date must be on or after start date.');
+    } else {
+      setEndDateError('');
+    }
+  };
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dayMap: Record<string, string> = {
@@ -276,10 +303,11 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                       type='date'
                       value={startDate}
                       min={today}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => handleStartDateChange(e.target.value)}
                       placeholder='Select Date'
-                      className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
                     />
+                    {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
                   </div>
                   <div>
                     <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
@@ -350,9 +378,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='date'
                   value={startDate}
                   min={today}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
@@ -404,9 +433,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 type='date'
                 value={startDate}
                 min={today}
-                onChange={(e) => setStartDate(e.target.value)}
-                className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                onChange={(e) => handleStartDateChange(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
             </div>
           </div>
         )}
@@ -464,9 +494,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 type='date'
                 value={startDate}
                 min={today}
-                onChange={(e) => setStartDate(e.target.value)}
-                className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                onChange={(e) => handleStartDateChange(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
               />
+              {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
             </div>
           </div>
         )}
@@ -540,9 +571,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='date'
                   value={startDate}
                   min={today}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
               </div>
             </div>
           </div>
@@ -557,9 +589,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='date'
                   value={startDate}
                   min={today}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${startDateError ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {startDateError && <p className='mt-1.5 text-xs text-red-500'>{startDateError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On Date</label>
@@ -567,9 +600,10 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   type='date'
                   value={endDate}
                   min={startDate > today ? startDate : today}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${endDateError ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {endDateError && <p className='mt-1.5 text-xs text-red-500'>{endDateError}</p>}
               </div>
             </div>
             <div className='grid grid-cols-2 gap-6'>
@@ -636,6 +670,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             disabled={frequency === null}
             onClick={() => {
               if (!frequency) return;
+              if (startDateError) { showToast(startDateError); return; }
+              if (endDateError) { showToast(endDateError); return; }
               if (startTimeError) { showToast(startTimeError); return; }
               // Validate required fields
               if (frequency !== 'One Time' && !startDate) {
