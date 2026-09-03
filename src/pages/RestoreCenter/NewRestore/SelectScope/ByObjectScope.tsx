@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import Typography from '../../../../components/Typography';
 import type { RestoreSourceObject } from '../../../../services/restore/restore.service';
+import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
+import type { DepthChildNode } from '../../../../services/crm-metadata/crm-metadata.service';
+
+function depthNodesToSourceObjects(nodes: DepthChildNode[]): RestoreSourceObject[] {
+  return nodes.map((n) => ({
+    name:     n.name,
+    type:     'STANDARD' as const,
+    children: n.children?.length ? depthNodesToSourceObjects(n.children) : [],
+  }));
+}
 
 interface Props {
   sourceObjects: RestoreSourceObject[];
@@ -127,14 +137,19 @@ function ChildTree({ nodes, depth, pathPrefix, selected, expanded, onToggle, onE
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onChange }: Props) {
-  const [search,   setSearch]   = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const crmMetadataService = useCrmMetadataService();
+
+  const [search,      setSearch]      = useState('');
+  const [selected,    setSelected]    = useState<Set<string>>(new Set());
+  const [expanded,    setExpanded]    = useState<Set<string>>(new Set());
+  // childrenMap: objectName → children fetched from API (overrides static children)
+  const [childrenMap, setChildrenMap] = useState<Map<string, RestoreSourceObject[]>>(new Map());
+  const [fetchedSet,  setFetchedSet]  = useState<Set<string>>(new Set());
 
   const eligibleObjects = sourceObjects.filter((o) =>
     o.completedRecordCount === undefined || o.completedRecordCount > 0,
   );
-  const eligibleNames   = eligibleObjects.map((o) => o.name);
+  const eligibleNames = eligibleObjects.map((o) => o.name);
 
   const notify = (next: Set<string>) => onChange([...next]);
 
@@ -153,25 +168,42 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
     });
   };
 
-  // Top-level toggle — collapse on deselect, expand on select
+  // Top-level toggle — hit API on first select to populate children, then expand
   const toggleTop = (obj: RestoreSourceObject) => {
-    const expandKey   = `root/${obj.name}`;
-    const descendants = collectDescendantNames(obj);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(obj.name)) {
+    const expandKey = `root/${obj.name}`;
+    const getChildren = () => childrenMap.get(obj.name) ?? obj.children ?? [];
+
+    if (selected.has(obj.name)) {
+      const descendants = collectDescendantNames({ ...obj, children: getChildren() });
+      setSelected((prev) => {
+        const next = new Set(prev);
         next.delete(obj.name);
         descendants.forEach((d) => next.delete(d));
-        setExpanded((e) => { const ne = new Set(e); ne.delete(expandKey); return ne; });
+        notify(next);
+        return next;
+      });
+      setExpanded((e) => { const ne = new Set(e); ne.delete(expandKey); return ne; });
+    } else {
+      setSelected((prev) => { const next = new Set(prev); next.add(obj.name); notify(next); return next; });
+
+      if (!fetchedSet.has(obj.name)) {
+        setFetchedSet((prev) => new Set([...prev, obj.name]));
+        crmMetadataService.getObjectDepthChildren(obj.name, 'normal', undefined, 1)
+          .then((res: any) => {
+            const raw: DepthChildNode[] = res?.data?.children ?? res?.children ?? [];
+            const children = depthNodesToSourceObjects(raw);
+            if (children.length > 0) {
+              setChildrenMap((prev) => new Map(prev).set(obj.name, children));
+              setExpanded((e) => new Set([...e, expandKey]));
+            }
+          })
+          .catch(() => {});
       } else {
-        next.add(obj.name);
-        if ((obj.children ?? []).length > 0) {
+        if (getChildren().length > 0) {
           setExpanded((e) => new Set([...e, expandKey]));
         }
       }
-      notify(next);
-      return next;
-    });
+    }
   };
 
   const toggleChild = (name: string, descendants: string[], parentName: string) =>
@@ -249,10 +281,11 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
 
           <div style={{ maxHeight: 600, overflowY: 'auto' }}>
             {filtered.map((obj) => {
-              const expandKey  = `root/${obj.name}`;
-              const isSelected  = selected.has(obj.name);
-              const isExpanded  = expanded.has(expandKey);
-              const hasChildren = (obj.children ?? []).length > 0;
+              const expandKey      = `root/${obj.name}`;
+              const isSelected     = selected.has(obj.name);
+              const isExpanded     = expanded.has(expandKey);
+              const mergedChildren = childrenMap.get(obj.name) ?? obj.children ?? [];
+              const hasChildren    = mergedChildren.length > 0;
 
               return (
                 <div key={obj.name} className='border-b border-gray-100 last:border-b-0'>
@@ -297,7 +330,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
                   {/* Child tree */}
                   {isExpanded && hasChildren && (
                     <ChildTree
-                      nodes={obj.children ?? []}
+                      nodes={mergedChildren}
                       depth={1}
                       pathPrefix={expandKey}
                       selected={selected}
