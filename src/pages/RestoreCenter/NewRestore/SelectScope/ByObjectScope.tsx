@@ -4,18 +4,29 @@ import type { RestoreSourceObject } from '../../../../services/restore/restore.s
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
 import type { DepthChildNode } from '../../../../services/crm-metadata/crm-metadata.service';
 
-function depthNodesToSourceObjects(nodes: DepthChildNode[]): RestoreSourceObject[] {
-  return nodes.map((n) => ({
-    name:     n.name,
-    type:     'STANDARD' as const,
-    children: n.children?.length ? depthNodesToSourceObjects(n.children) : [],
-  }));
+function depthNodesToSourceObjects(nodes: DepthChildNode[], allObjects: RestoreSourceObject[]): RestoreSourceObject[] {
+  const flatLookup = new Map<string, RestoreSourceObject>();
+  const walk = (list: RestoreSourceObject[]) => {
+    for (const o of list) { flatLookup.set(o.name, o); if (o.children?.length) walk(o.children); }
+  };
+  walk(allObjects);
+  const convert = (list: DepthChildNode[]): RestoreSourceObject[] =>
+    list.map((n) => {
+      const known = flatLookup.get(n.name);
+      return {
+        id:       known?.id,
+        name:     n.name,
+        type:     known?.type ?? 'STANDARD',
+        children: n.children?.length ? convert(n.children) : [],
+      };
+    });
+  return convert(nodes);
 }
 
 interface Props {
   sourceObjects: RestoreSourceObject[];
   sourceObjectsLoading: boolean;
-  onChange: (objects: string[]) => void;
+  onChange: (objects: { id?: string; name: string; type: string }[]) => void;
 }
 
 function TypeBadge({ type }: { type: string }) {
@@ -145,13 +156,31 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
   // childrenMap: objectName → children fetched from API (overrides static children)
   const [childrenMap, setChildrenMap] = useState<Map<string, RestoreSourceObject[]>>(new Map());
   const [fetchedSet,  setFetchedSet]  = useState<Set<string>>(new Set());
+  const [fetchingObj, setFetchingObj] = useState<string | null>(null);
 
   const eligibleObjects = sourceObjects.filter((o) =>
     o.completedRecordCount === undefined || o.completedRecordCount > 0,
   );
   const eligibleNames = eligibleObjects.map((o) => o.name);
 
-  const notify = (next: Set<string>) => onChange([...next]);
+  // Build a flat name → {id, type} lookup from all source objects + fetched children
+  const buildObjectMeta = (): Map<string, { id?: string; type: string }> => {
+    const map = new Map<string, { id?: string; type: string }>();
+    const walk = (nodes: RestoreSourceObject[]) => {
+      for (const n of nodes) {
+        map.set(n.name, { id: n.id, type: n.type ?? 'STANDARD' });
+        if (n.children?.length) walk(n.children);
+      }
+    };
+    walk(sourceObjects);
+    childrenMap.forEach((children) => walk(children));
+    return map;
+  };
+
+  const notify = (next: Set<string>) => {
+    const meta = buildObjectMeta();
+    onChange([...next].map((name) => ({ name, id: meta.get(name)?.id, type: meta.get(name)?.type ?? 'STANDARD' })));
+  };
 
   const toggle = (name: string, allDescendants: string[], parentName?: string) => {
     setSelected((prev) => {
@@ -188,20 +217,17 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
 
       if (!fetchedSet.has(obj.name)) {
         setFetchedSet((prev) => new Set([...prev, obj.name]));
+        setFetchingObj(obj.name);
         crmMetadataService.getObjectDepthChildren(obj.name, 'normal', undefined, 1)
           .then((res: any) => {
             const raw: DepthChildNode[] = res?.data?.children ?? res?.children ?? [];
-            const children = depthNodesToSourceObjects(raw);
+            const children = depthNodesToSourceObjects(raw, sourceObjects);
             if (children.length > 0) {
               setChildrenMap((prev) => new Map(prev).set(obj.name, children));
-              setExpanded((e) => new Set([...e, expandKey]));
             }
           })
-          .catch(() => {});
-      } else {
-        if (getChildren().length > 0) {
-          setExpanded((e) => new Set([...e, expandKey]));
-        }
+          .catch(() => {})
+          .finally(() => setFetchingObj(null));
       }
     }
   };
@@ -286,23 +312,31 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, onC
               const isExpanded     = expanded.has(expandKey);
               const mergedChildren = childrenMap.get(obj.name) ?? obj.children ?? [];
               const hasChildren    = mergedChildren.length > 0;
+              const isThisFetching = fetchingObj === obj.name;
+              const isBlocked      = fetchingObj !== null && !isThisFetching;
 
               return (
                 <div key={obj.name} className='border-b border-gray-100 last:border-b-0'>
                   {/* Top-level row */}
                   <div
-                    onClick={() => toggleTop(obj)}
-                    className={`grid grid-cols-[1.5rem_1fr_auto_auto] items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-blue-50/40' : 'hover:bg-gray-50'
+                    onClick={() => !isBlocked && toggleTop(obj)}
+                    className={`grid grid-cols-[1.5rem_1fr_auto_auto] items-center gap-3 px-5 py-3 transition-colors ${
+                      isBlocked ? 'opacity-40 cursor-not-allowed' :
+                      isSelected ? 'bg-blue-50/40 cursor-pointer' : 'hover:bg-gray-50 cursor-pointer'
                     }`}
                   >
-                    <input
-                      type='checkbox'
-                      checked={isSelected}
-                      onChange={() => toggleTop(obj)}
-                      onClick={(e) => e.stopPropagation()}
-                      className='w-4 h-4 accent-blue-600 cursor-pointer rounded'
-                    />
+                    {isThisFetching ? (
+                      <div className='w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin flex-shrink-0' />
+                    ) : (
+                      <input
+                        type='checkbox'
+                        checked={isSelected}
+                        disabled={isBlocked}
+                        onChange={() => !isBlocked && toggleTop(obj)}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`w-4 h-4 accent-blue-600 rounded ${isBlocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                      />
+                    )}
                     <span className={`text-sm font-mono truncate ${isSelected ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>
                       {obj.name}
                     </span>

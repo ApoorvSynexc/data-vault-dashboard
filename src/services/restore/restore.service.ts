@@ -35,9 +35,15 @@ export interface RestoreBulkCsvIds {
   ids: string[];
 }
 
+export interface RestoreScopeObject {
+  id?: string;
+  name: string;
+  type: string;
+}
+
 export type RestoreScope =
   | { type: 'ALL' }
-  | { type: 'OBJECT'; objects: string[] }
+  | { type: 'OBJECT'; objects: RestoreScopeObject[] }
   | { type: 'RECORD'; records: RestoreScopeRecord[] }
   | { type: 'FIELD'; fields: RestoreScopeField[] }
   | { type: 'FILTER'; filters: RestoreScopeFilter[] }
