@@ -39,6 +39,7 @@ export interface RestoreScopeObject {
   id?: string;
   name: string;
   type: string;
+  children?: RestoreScopeObject[];
 }
 
 export type RestoreScope =
