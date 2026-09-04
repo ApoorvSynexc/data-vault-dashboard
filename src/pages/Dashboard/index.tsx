@@ -188,11 +188,15 @@ export default function Dashboard() {
     {
       key: 'type',
       header: 'Type',
-      render: (job) => (
-        <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
-          {job.backupConfig?.schedule === 'SCHEDULE' ? 'Schedule' : 'Realtime'}
-        </span>
-      ),
+      render: (job) => {
+        const isArchival = (job as any).type === 'ARCHIVAL';
+        return (
+          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap'
+            style={{ background: isArchival ? '#F5F3FF' : '#EFF6FF', color: isArchival ? '#7C3AED' : '#2563EB' }}>
+            {isArchival ? 'Archival' : 'Backup'}
+          </span>
+        );
+      },
     },
     {
       key: 'status',
