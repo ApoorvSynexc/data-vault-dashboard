@@ -485,7 +485,7 @@ interface Props {
 export default function EdgeCases({ onNext, onBack, backupConfigId, configType, destinationCrmId, scopeObjectApiNames, sourceStartDate, sourceEndDate }: Props) {
   const [ecMissingField, setEcMissingField] = useState('Skip the field');
   const [ecOwner,        setEcOwner]        = useState('Skip record');
-  const [ecParent,       setEcParent]       = useState('Skip');
+  const [ecParent,       setEcParent]       = useState('Restore parent first');
   const [ecRecordType,   setEcRecordType]   = useState('Skip');
   const [ecMissRequired, setEcMissRequired] = useState('Skip the record');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
