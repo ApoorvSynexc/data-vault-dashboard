@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Typography from '../../../components/Typography';
 import { useDestinationService, type CreateDestinationPayload } from '../../../services/destination/destination.service';
-import { getRegionsByGroup } from '../../../constants/aws-regions';
+
 
 function AWSLogo() {
   return (
@@ -58,7 +58,7 @@ export default function ConnectAWSBucket() {
   const [nameError, setNameError] = useState('');
   const [accessKeyId, setAccessKeyId] = useState('');
   const [secretAccessKey, setSecretAccessKey] = useState('');
-  const [region, setRegion] = useState('us-east-1');
+  const [region] = useState('us-east-2');
   const [s3Bucket, setS3Bucket] = useState('');
   const [folderPath, _setFolderPath] = useState('');
   const [showAck, setShowAck] = useState(false);
@@ -219,22 +219,12 @@ export default function ConnectAWSBucket() {
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900'>* Region</label>
-                <select
+                <input
+                  type='text'
                   value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                >
-                  <option value=''>Select region</option>
-                  {Array.from(getRegionsByGroup().entries()).map(([group, regions]) => (
-                    <optgroup key={group} label={group}>
-                      {regions.map((reg) => (
-                        <option key={reg.value} value={reg.value}>
-                          {reg.value} — {reg.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                  disabled
+                  className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm bg-gray-50 text-gray-500 cursor-not-allowed'
+                />
               </div>
               <div>
                 {/* <label className='block text-sm font-semibold text-gray-900'>Folder Path (Optional)</label> */}
