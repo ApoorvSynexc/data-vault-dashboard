@@ -621,7 +621,21 @@ export default function ConflictConfig({
                         <div key={row.id} className='rounded-lg p-3 flex flex-col gap-2' style={{ border: '1px solid #E2E8F0' }}>
                           <div className='flex items-center gap-2'>
                             <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide flex-shrink-0'>Object</span>
-                            <input value={row.objectName} onChange={(e) => updateFieldMapRow(row.id, { objectName: e.target.value })} onBlur={(e) => commitFieldMapObjectName(row.id, e.target.value)} placeholder='e.g. Account' className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono' style={{ border: '1px solid #E2E8F0', color: '#33363F' }} />
+                            <select
+                              value={row.objectName}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateFieldMapRow(row.id, { objectName: val });
+                                commitFieldMapObjectName(row.id, val);
+                              }}
+                              className='h-9 flex-1 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white font-mono'
+                              style={{ border: '1px solid #E2E8F0', color: row.objectName ? '#33363F' : '#9CA3AF' }}
+                            >
+                              <option value=''>Select object…</option>
+                              {(scopeObjectApiNames ?? []).map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                              ))}
+                            </select>
                             {fieldMapRows.length > 1 && <button onClick={() => removeFieldMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'><svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></button>}
                           </div>
                           {row.committedObjectName && <MissingFieldsForObject backupConfigId={backupConfigId} crmId={destinationCrmId} objectName={row.committedObjectName} destFieldBySource={row.destFieldBySource} onDestFieldChange={(src, dest) => setFieldMapDestField(row.id, src, dest)} onMissingFieldsLoaded={onMissingFieldsLoaded} />}
