@@ -322,6 +322,7 @@ const RESTORE_ENDPOINTS = {
   listRestoreJobs:      '/v1/restore/config/list',
   getRestoreJob:        '/v1/restore/job',
   jobStats:             '/v1/restore/job/stats',
+  rollbackRestoreJob:   '/v1/restore/job/rollback',
 };
 
 export function useRestoreService() {
@@ -411,5 +412,8 @@ export function useRestoreService() {
 
     getJobStats: () =>
       api.get<unknown>(RESTORE_ENDPOINTS.jobStats),
+
+    rollbackRestoreJob: (restoreJobId: string) =>
+      api.put<{ success: boolean }>(RESTORE_ENDPOINTS.rollbackRestoreJob, undefined, { query: { restoreJobId } }),
   };
 }
