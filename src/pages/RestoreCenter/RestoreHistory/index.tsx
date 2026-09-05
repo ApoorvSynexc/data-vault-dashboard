@@ -6,6 +6,7 @@ import type { TableColumn } from '../../../components/Table';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
+  COMPLETED:    { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
   SUCCESS:     { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
   DONE:        { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
   PARTIAL:     { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
