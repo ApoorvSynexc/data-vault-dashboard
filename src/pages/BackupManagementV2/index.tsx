@@ -1098,7 +1098,7 @@ export default function BackupManagementV2() {
                 })();
                 return (
                   <>
-                    {isPast && (
+                    {isPast ? (
                       <div className='rounded-lg border border-red-200 bg-red-50 p-4'>
                         <div className='flex gap-3'>
                           <svg className='mt-0.5 h-5 w-5 shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
@@ -1112,10 +1112,11 @@ export default function BackupManagementV2() {
                           </div>
                         </div>
                       </div>
+                    ) : (
+                      <p className='text-sm text-gray-600'>
+                        Are you sure you want to activate <span className='font-semibold text-gray-900'>"{activateTarget.name}"</span>? The scheduled backup will start running according to its configured schedule.
+                      </p>
                     )}
-                    <p className='text-sm text-gray-600'>
-                      Are you sure you want to activate <span className='font-semibold text-gray-900'>"{activateTarget.name}"</span>? The scheduled backup will start running according to its configured schedule.
-                    </p>
                   </>
                 );
               })()}
