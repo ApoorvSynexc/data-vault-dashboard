@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
@@ -23,7 +23,21 @@ interface Props {
 
 export default function RestoreHistory({ onBack, jobId }: Props) {
   const restoreService = useRestoreService();
+  const queryClient = useQueryClient();
   const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [rollbackError, setRollbackError] = useState<string | null>(null);
+
+  const rollbackMutation = useMutation({
+    mutationFn: (restoreId: string) => restoreService.rollbackRestoreJob(restoreId),
+    onSuccess: () => {
+      setShowRollbackConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['restore-job-detail', jobId] });
+    },
+    onError: (err: any) => {
+      setRollbackError(err?.message ?? 'Rollback failed. Please try again.');
+    },
+  });
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['restore-job-detail', jobId],
@@ -268,7 +282,59 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
+          {status !== 'ROLLED_BACK' && (
+            <button
+              onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
+              className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
+            >
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M3 7v6h6' /><path d='M3 13C5.5 6 13 3 20 7' />
+              </svg>
+              Rollback
+            </button>
+          )}
         </div>
+
+        {/* Rollback confirm modal */}
+        {showRollbackConfirm && (
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4' onClick={(e) => e.stopPropagation()}>
+              <div className='flex items-start gap-3'>
+                <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100'>
+                  <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#C2410C' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M3 7v6h6' /><path d='M3 13C5.5 6 13 3 20 7' />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className='text-sm font-bold text-gray-900'>Rollback Restore Job</h3>
+                  <p className='mt-1 text-sm text-gray-600'>
+                    This will undo all changes made by <span className='font-semibold'>"{jobName}"</span>. This action cannot be undone. Are you sure you want to proceed?
+                  </p>
+                </div>
+              </div>
+              {rollbackError && (
+                <div className='rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600'>{rollbackError}</div>
+              )}
+              <div className='flex justify-end gap-3 pt-1'>
+                <button
+                  onClick={() => setShowRollbackConfirm(false)}
+                  disabled={rollbackMutation.isPending}
+                  className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50'
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => rollbackMutation.mutate(jobId_display)}
+                  disabled={rollbackMutation.isPending}
+                  className='px-4 py-2 text-sm font-semibold rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center gap-2'
+                >
+                  {rollbackMutation.isPending && <span className='w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin' />}
+                  {rollbackMutation.isPending ? 'Rolling back…' : 'Yes, Rollback'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success/Status Card */}
         <div className='rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm flex-shrink-0 flex flex-col items-center'>
