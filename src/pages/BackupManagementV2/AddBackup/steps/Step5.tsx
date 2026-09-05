@@ -365,7 +365,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             </div>
 
             <button
-              onClick={() => setSelectedObjects(new Set())}
+              onClick={() => { setSelectedObjects(new Set()); setParentChildMap(new Map()); setParentTreeMap(new Map()); }}
               className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
               Clear All
             </button>
