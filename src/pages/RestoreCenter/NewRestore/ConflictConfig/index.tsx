@@ -397,7 +397,7 @@ export default function ConflictConfig({
   const { data: objectListData } = useQuery({
     queryKey: ['object-list', backupConfigId, configType],
     queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType!),
-    enabled: !scopeObjectApiNames?.length && !!backupConfigId && ecMissRequired === 'Use specified default per field',
+    enabled: !scopeObjectApiNames?.length && !!backupConfigId && (ecMissRequired === 'Use specified default per field' || ecMissingField === 'Map to existing field'),
     retry: 1,
   });
   const reqFieldObjectOptions: string[] = (() => {
@@ -632,7 +632,7 @@ export default function ConflictConfig({
                               style={{ border: '1px solid #E2E8F0', color: row.objectName ? '#33363F' : '#9CA3AF' }}
                             >
                               <option value=''>Select object…</option>
-                              {(scopeObjectApiNames ?? []).map((name) => (
+                              {reqFieldObjectOptions.map((name) => (
                                 <option key={name} value={name}>{name}</option>
                               ))}
                             </select>
