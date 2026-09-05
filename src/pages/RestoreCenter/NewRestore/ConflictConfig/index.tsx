@@ -649,6 +649,9 @@ export default function ConflictConfig({
                   <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                     <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Owner inactive/deleted <Tip text='Triggered when the original record owner no longer exists or is deactivated.' /></span>
                     <select value={ecOwner} onChange={(e) => setEcOwner(e.target.value)} className={selectClass} style={selectStyle}>
+                      <option>Skip record</option>
+                      <option>Reassign to specified user</option>
+                      <option>Reassign to manager</option>
                     </select>
                   </div>
                   {ecOwner === 'Reassign to specified user' && (
