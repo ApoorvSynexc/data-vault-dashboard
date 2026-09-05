@@ -452,7 +452,7 @@ export default function ConflictConfig({
 
   function buildEdgeCases(): RestoreEdgeCases {
     const MISSING_FIELD_ENUM: Record<string, string> = { 'Skip the field': 'SKIP_THE_FIELD', 'Map to existing field': 'MAP_TO_EXISTING_FIELD', 'Fail the record': 'FAIL_THE_RECORD' };
-    const OWNER_INACTIVE_ENUM: Record<string, string> = { 'Reassign to specified user': 'REASSIGN_TO_SPECIFIED_USER', 'Reassign to manager': 'REASSIGN_TO_MANAGER', 'Reassign to queue': 'REASSIGN_TO_QUEUE', 'Skip record': 'SKIP_RECORD' };
+    const OWNER_INACTIVE_ENUM: Record<string, string> = { 'Reassign to specified user': 'REASSIGN_TO_SPECIFIED_USER', 'Reassign to manager': 'REASSIGN_TO_MANAGER', 'Skip record': 'SKIP_RECORD' };
     const RECORD_TYPE_ENUM: Record<string, string> = { 'Map to default': 'MAP_TO_DEFAULT', 'Map manually': 'MAP_MANUALLY', 'Skip': 'SKIP' };
     const MISS_REQUIRED_ENUM: Record<string, string> = { 'Use specified default per field': 'USE_SPECIFIED_DEFAULT_PER_FIELD', 'Use last known value from history': 'USE_LAST_KNOWN_VALUE_FROM_HISTORY', 'Skip the record': 'SKIP_THE_RECORD', 'Skip the object': 'SKIP_THE_OBJECT' };
 
@@ -635,7 +635,6 @@ export default function ConflictConfig({
                   <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
                     <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Owner inactive/deleted <Tip text='Triggered when the original record owner no longer exists or is deactivated.' /></span>
                     <select value={ecOwner} onChange={(e) => setEcOwner(e.target.value)} className={selectClass} style={selectStyle}>
-                      <option>Reassign to specified user</option><option>Reassign to manager</option><option>Reassign to queue</option><option>Skip record</option>
                     </select>
                   </div>
                   {ecOwner === 'Reassign to specified user' && (
