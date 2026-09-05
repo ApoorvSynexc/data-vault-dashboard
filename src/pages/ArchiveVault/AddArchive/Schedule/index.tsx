@@ -123,7 +123,13 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       if (endDate && val && endDate < val) setEndDateError('End date must be on or after start date.');
       else setEndDateError('');
     }
-    if (val > today) setStartTimeError('');
+    if (val > today) {
+      setStartTimeError('');
+    } else if (val === today && startTime && startTime < dayjs().format('HH:mm')) {
+      setStartTimeError('Selected time has already passed. Please choose a future time.');
+    } else {
+      setStartTimeError('');
+    }
   };
 
   const handleEndDateChange = (val: string) => {

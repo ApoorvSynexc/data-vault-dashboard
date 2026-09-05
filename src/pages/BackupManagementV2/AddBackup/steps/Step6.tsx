@@ -142,8 +142,14 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
       if (endDate && val && endDate < val) setEndDateError('End date must be on or after start date.');
       else setEndDateError('');
     }
-    // Clear time error if date moved to future
-    if (val > today) setStartTimeError('');
+    // Re-validate time whenever date changes
+    if (val > today) {
+      setStartTimeError('');
+    } else if (val === today && startTime && startTime < dayjs().format('HH:mm')) {
+      setStartTimeError('Selected time has already passed. Please choose a future time.');
+    } else {
+      setStartTimeError('');
+    }
   };
 
   const handleEndDateChange = (val: string) => {
