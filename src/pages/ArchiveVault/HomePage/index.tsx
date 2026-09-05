@@ -171,14 +171,14 @@ function StatusBadge({ status }: { status: string }) {
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
 
 function ConfirmDialog({ title, message, confirmLabel, danger, loading, error, confirmDisabled, onConfirm, onCancel }: {
-  title: string; message: string; confirmLabel: string; danger?: boolean;
+  title: string; message?: string; confirmLabel: string; danger?: boolean;
   loading?: boolean; error?: string | null; confirmDisabled?: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center p-4' style={{ background: 'rgba(0,0,0,0.4)' }}>
       <div className='w-full max-w-sm rounded-2xl bg-white shadow-2xl p-6'>
         <h3 className='text-sm font-bold text-gray-900 mb-2'>{title}</h3>
-        <p className='text-xs text-gray-500 mb-4'>{message}</p>
+        {message && <p className='text-xs text-gray-500 mb-4'>{message}</p>}
         {error && (
           <div className='mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600'>
             {error}
@@ -794,7 +794,7 @@ export default function ArchiveVaultHomePage() {
         return (
           <ConfirmDialog
             title={`Activate "${confirmActivate.name}"?`}
-            message='The archive will become active and run on its scheduled frequency.'
+            message={isPast ? undefined : 'The archive will become active and run on its scheduled frequency.'}
             confirmLabel='Activate'
             loading={activateMutation.isPending}
             confirmDisabled={isPast}
