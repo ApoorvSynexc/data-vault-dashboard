@@ -95,7 +95,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const status = job.status || 'PENDING';
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
   const jobName = job.jobDetail?.name || 'Untitled Restore';
-  const jobId_display = job.restoreId;
+  const jobId_display = job.restoreJobId;
   const createdAt = job.createdAt;
   const updatedAt = job.updatedAt || job.completedAt;
   const objects: any[] = job.destination?.objects || [];
