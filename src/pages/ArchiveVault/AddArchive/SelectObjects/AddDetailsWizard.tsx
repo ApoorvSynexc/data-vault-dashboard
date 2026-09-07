@@ -526,6 +526,47 @@ export default function AddDetailsWizard({
   const [endDate, setEndDate] = useState(schedInit.endDate);
   const [backupIn, setBackupIn] = useState(schedInit.backupIn);
   const [backupFrequency, setBackupFrequency] = useState('Daily');
+  const [startDateError, setStartDateError] = useState('');
+  const [endDateError, setEndDateError] = useState('');
+  const [startTimeError, setStartTimeError] = useState('');
+
+  const today = dayjs().format('YYYY-MM-DD');
+  const currentTime = dayjs().format('HH:mm');
+
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    if (val && val < today) {
+      setStartDateError('Start date cannot be in the past.');
+    } else {
+      setStartDateError('');
+      if (endDate && val && endDate < val) setEndDateError('End date must be on or after start date.');
+      else setEndDateError('');
+    }
+    if (val > today) {
+      setStartTimeError('');
+    } else if (val === today && startTime && startTime < dayjs().format('HH:mm')) {
+      setStartTimeError('Selected time has already passed. Please choose a future time.');
+    } else {
+      setStartTimeError('');
+    }
+  };
+
+  const handleEndDateChange = (val: string) => {
+    setEndDate(val);
+    if (val && val < today) {
+      setEndDateError('End date cannot be in the past.');
+    } else if (startDate && val && val < startDate) {
+      setEndDateError('End date must be on or after start date.');
+    } else {
+      setEndDateError('');
+    }
+  };
+
+  const handleStartTimeChange = (val: string) => {
+    const isPast = (!startDate || startDate === today) && val && val < dayjs().format('HH:mm');
+    setStartTime(val);
+    setStartTimeError(isPast ? 'Selected time has already passed. Please choose a future time.' : '');
+  };
 
   const computeScheduleConfig = (): ScheduleConfig => {
     const scheduling: any = {
@@ -1023,10 +1064,16 @@ export default function AddDetailsWizard({
                     {runMode === 'scheduleRun' && (
                       <div className='space-y-4 pt-4 border-t border-gray-200'>
                         <div className='grid grid-cols-2 gap-4'>
-                          <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
-                            <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
-                          <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                            <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                          <div>
+                            <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
+                            <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                            {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                          </div>
+                          <div>
+                            <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                            <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                            {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                          </div>
                         </div>
                         <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                           <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
@@ -1051,10 +1098,16 @@ export default function AddDetailsWizard({
                         </select></div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1063,15 +1116,21 @@ export default function AddDetailsWizard({
                 {frequency === 'Daily' && (
                   <div className='space-y-4'>
                     <div className='grid grid-cols-2 gap-4'>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                      </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                         <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
                           {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
                         </select></div>
                     </div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                    </div>
                   </div>
                 )}
 
@@ -1090,15 +1149,21 @@ export default function AddDetailsWizard({
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                      </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                         <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
                           {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
                         </select></div>
                     </div>
-                    <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
+                    <div>
+                      <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                    </div>
                   </div>
                 )}
 
@@ -1123,16 +1188,22 @@ export default function AddDetailsWizard({
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
                         </select></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                      </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                         <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
                           {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
                         </select></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1141,18 +1212,27 @@ export default function AddDetailsWizard({
                 {frequency === 'Custom' && (
                   <div className='space-y-4'>
                     <div className='grid grid-cols-2 gap-4'>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On</label>
-                        <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On</label>
-                        <input type='date' value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On</label>
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
+                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      </div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On</label>
+                        <input type='date' value={endDate} min={startDate || today} onChange={(e) => handleEndDateChange(e.target.value)} className={`${inputCls} ${endDateError ? 'border-red-400' : ''}`} />
+                        {endDateError && <p className='mt-1 text-xs text-red-500'>{endDateError}</p>}
+                      </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Backup Frequency</label>
                         <select value={backupFrequency} onChange={(e) => setBackupFrequency(e.target.value)} className={inputCls}>
                           <option>Daily</option><option>Weekly</option><option>Monthly</option>
                         </select></div>
-                      <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></div>
+                      <div>
+                        <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                      </div>
                     </div>
                     <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                       <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
@@ -1202,7 +1282,8 @@ export default function AddDetailsWizard({
               {step === 3 && (
                 <button
                   onClick={handleSave}
-                  className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700'>
+                  disabled={!!(startDateError || endDateError || startTimeError)}
+                  className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
                   Save & Close
                 </button>
               )}
