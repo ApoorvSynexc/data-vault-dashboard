@@ -142,8 +142,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [processError, setProcessError] = useState<string | null>(null);
   const [processSuccess, setProcessSuccess] = useState(false);
-  const [runNowError, setRunNowError] = useState<string | null>(null);
-  const [runNowSuccess, setRunNowSuccess] = useState(false);
   const queryClient = useQueryClient();
   const [filterCollapsedIds, setFilterCollapsedIds] = useState<Set<string>>(new Set());
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
@@ -197,28 +195,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
     },
     onError: (err: any) => {
       setProcessError(err?.response?.data?.message ?? err?.message ?? 'Failed to process backup.');
-    },
-  });
-
-  const flattenObjects = (items: any[]): any[] =>
-    items.flatMap((o) => [o, ...flattenObjects(o.children ?? [])]);
-
-  const hasEligibleObject = flattenObjects(item?.objects ?? []).some((o) =>
-    o.scheduleConfig?.type === 'INCREMENTAL' ||
-    (o.scheduleConfig?.type === 'ONE_TIME' && !item?.lastBackupAt)
-  );
-
-  const runNowMutation = useMutation({
-    mutationFn: () => archivalService.runNow(item?.backupConfigId),
-    onSuccess: () => {
-      setRunNowSuccess(true);
-      setRunNowError(null);
-      queryClient.invalidateQueries({ queryKey: ['archival-config-detail', slug] });
-      queryClient.invalidateQueries({ queryKey: ['archival-jobs', slug] });
-      setTimeout(() => setRunNowSuccess(false), 3000);
-    },
-    onError: (err: any) => {
-      setRunNowError(err?.response?.data?.message ?? err?.message ?? 'Failed to trigger archive run.');
     },
   });
 
@@ -381,29 +357,10 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                 </>
               ) : 'Process Backup'}
             </button>
-            <button
-              type='button'
-              disabled={runNowMutation.isPending || !hasEligibleObject}
-              title={!hasEligibleObject ? 'No eligible objects to run' : undefined}
-              onClick={() => { setRunNowError(null); runNowMutation.mutate(); }}
-              className='flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              {runNowMutation.isPending ? (
-                <>
-                  <span className='h-3 w-3 rounded-full border-2 border-blue-300 border-t-blue-600 animate-spin' />
-                  Starting…
-                </>
-              ) : runNowSuccess ? (
-                <>
-                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>
-                  Done!
-                </>
-              ) : 'Run Now'}
-            </button>
           </div>
-          {(processError || runNowError) && (
+          {processError && (
             <p className='absolute right-6 top-16 text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5'>
-              {processError ?? runNowError}
+              {processError}
             </p>
           )}
         </div>
