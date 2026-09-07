@@ -83,8 +83,8 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
       {/* Header with Step Indicator */}
       <div className='flex items-start justify-between mb-6 flex-shrink-0'>
         <div>
-          <h1 className='text-3xl font-bold text-gray-900'>Choose Source and Destination</h1>
-          <p className='text-gray-600 mt-2'>Select source and destination for your backup process</p>
+          <h1 className='text-3xl font-bold text-gray-900'>Choose Source</h1>
+          <p className='text-gray-600 mt-2'>Select source for your backup process</p>
         </div>
         <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 1 of {maxSteps}

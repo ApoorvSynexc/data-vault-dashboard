@@ -313,7 +313,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
           <h1 className='text-2xl font-bold text-gray-900'>Data Scope</h1>
-          <p className='text-sm text-gray-600 mt-1'>Select the objects that you want to back up in the scheduled backup.</p>
+          <p className='text-sm text-gray-600 mt-1'>Select the objects that you want to back up in the {strategy === 'realtime' ? 'realtime' : 'scheduled'} backup.</p>
         </div>
         <span className='text-xs font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
           Step 5 of {maxSteps}
