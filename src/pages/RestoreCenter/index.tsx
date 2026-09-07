@@ -9,8 +9,8 @@
 //   templates   → Templates     — saved and pinned restore templates
 //
 
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import HomePage from './HomePage';
 import NewRestore from './NewRestore';
 import JobProgress from './JobProgress';
@@ -22,8 +22,15 @@ type Screen = 'home' | 'new-restore' | 'progress' | 'completion' | 'history' | '
 export default function RestoreCenter() {
   const { jobId: jobIdParam } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [screen, setScreen] = useState<Screen>(jobIdParam ? 'history' : 'home');
+
+  useEffect(() => {
+    if (location.pathname === '/restore-center') {
+      setScreen('home');
+    }
+  }, [location.key]);
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(jobIdParam);
 
