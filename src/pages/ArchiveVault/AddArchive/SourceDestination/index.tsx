@@ -58,7 +58,7 @@ export default function AddArchiveStep1({ initialSelectedConnection, initialSele
         {/* Header */}
         <div className='flex items-start justify-between flex-shrink-0'>
           <div>
-            <h1 className='text-3xl font-bold text-gray-900'>Choose Source and Destination</h1>
+            <h1 className='text-3xl font-bold text-gray-900'>{view === 'source' ? 'Choose Source' : 'Choose Destination'}</h1>
             <p className='text-gray-600 mt-1'>{view === 'source' ? 'Select the source connection to archive your data from' : 'Select the destination to store your archived data'}</p>
           </div>
           <span className='text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full whitespace-nowrap'>
