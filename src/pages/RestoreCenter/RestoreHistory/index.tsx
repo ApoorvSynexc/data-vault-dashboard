@@ -283,7 +283,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
-          {status !== 'ROLLED_BACK' && (
+          {/* {status !== 'ROLLED_BACK' && (
             <button
               onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
               className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
@@ -293,7 +293,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               </svg>
               Rollback
             </button>
-          )}
+          )} */}
         </div>
 
         {/* Rollback confirm modal */}
