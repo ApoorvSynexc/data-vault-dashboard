@@ -200,7 +200,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
     setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
     setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
-    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: childLabels });
+    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: Array.from(new Set(childLabels)) });
 
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
