@@ -28,6 +28,7 @@ export default function EditAWSBucket() {
   const [s3Bucket, setS3Bucket] = useState('');
   const [folderPath, setFolderPath] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: destination, isLoading: isLoadingDestination } = useQuery({
     queryKey: ['destination', destinationId],
@@ -63,12 +64,14 @@ export default function EditAWSBucket() {
 
       }),
     onSuccess: () => {
+      setSubmitError(null);
       queryClient.invalidateQueries({ queryKey: ['destinations'] });
       queryClient.invalidateQueries({ queryKey: ['destination', destinationId] });
       navigate('/connections', { state: { tab: 'destination' } });
     },
-    onError: (error) => {
-      console.error('Failed to update destination:', error);
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message ?? error?.message ?? 'Failed to update destination. Please check your credentials and try again.';
+      setSubmitError(msg);
     },
   });
 
@@ -184,7 +187,7 @@ export default function EditAWSBucket() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={secretAccessKey}
-                    onChange={(e) => setSecretAccessKey(e.target.value)}
+                    onChange={(e) => { setSecretAccessKey(e.target.value); setSubmitError(null); }}
                     placeholder='Enter your AWS secret key'
                     autoComplete='new-password'
                     className='w-full rounded-lg border border-gray-200 px-4 py-2.5 pr-10 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
@@ -234,7 +237,7 @@ export default function EditAWSBucket() {
                 <input
                   type='text'
                   value={accessKeyId}
-                  onChange={(e) => setAccessKeyId(e.target.value)}
+                  onChange={(e) => { setAccessKeyId(e.target.value); setSubmitError(null); }}
                   placeholder='Enter your AWS access key ID'
                   autoComplete='off'
                   className='mt-2 w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
@@ -280,6 +283,16 @@ export default function EditAWSBucket() {
             </div>
           </div>
         </div>
+
+        {/* Error Banner */}
+        {submitError && (
+          <div className='mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
+            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-4 w-4 flex-shrink-0 mt-0.5 text-red-500' strokeLinecap='round' strokeLinejoin='round'>
+              <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+            </svg>
+            <p className='text-sm text-red-700'>{submitError}</p>
+          </div>
+        )}
 
         {/* Update Button */}
         <div className='flex justify-center gap-4 border-t border-gray-200 pt-8'>
