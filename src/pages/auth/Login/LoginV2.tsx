@@ -25,7 +25,13 @@ export default function LoginV2() {
         window.location.replace('/');
       }
       if (event.data?.type === 'SALESFORCE_LOGIN_ERROR') {
-        setLoginError(event.data.message ?? 'Login failed. Please try again.');
+        const raw: string = event.data.message ?? '';
+        const is401 = raw.includes('401') || /unauthorized/i.test(raw);
+        setLoginError(
+          is401
+            ? 'You do not have permission to access Data Craft. Please contact your administrator to request access.'
+            : raw || 'Login failed. Please try again.'
+        );
       }
     };
     window.addEventListener('message', handler);
@@ -100,7 +106,9 @@ export default function LoginV2() {
                   <circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' />
                 </svg>
                 <div className='flex-1'>
-                  <p className='text-sm font-semibold text-red-700'>Login Failed</p>
+                  <p className='text-sm font-semibold text-red-700'>
+                    {loginError?.toLowerCase().includes('permission') ? 'Access Denied' : 'Login Failed'}
+                  </p>
                   <p className='text-xs text-red-600 mt-0.5'>{loginError}</p>
                 </div>
                 <button onClick={() => setLoginError(null)} className='text-red-400 hover:text-red-600 transition-colors'>
