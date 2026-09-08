@@ -113,6 +113,15 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [selectedDays, setSelectedDays] = useState<string[]>(initialState.selectedDays);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(initialState.selectedMonths);
   const [dayOfMonth, setDayOfMonth] = useState(initialState.dayOfMonth);
+
+  const MONTH_ABBRS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const maxDayForSelectedMonths = selectedMonths.length > 0
+    ? Math.min(...selectedMonths.map((m) => {
+        const idx = MONTH_ABBRS.indexOf(m);
+        if (idx === -1) return 31;
+        return dayjs(new Date(dayjs().year(), idx + 1, 0)).date();
+      }))
+    : 31;
   const [startTime, setStartTime] = useState(initialState.startTime);
   const [timeZone, setTimeZone] = useState(initialState.timeZone);
   const [startDate, setStartDate] = useState(initialState.startDate);
@@ -196,9 +205,17 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   };
 
   const toggleMonth = (month: string) => {
-    setSelectedMonths(prev =>
-      prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
-    );
+    setSelectedMonths((prev) => {
+      const next = prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month];
+      const newMax = next.length > 0
+        ? Math.min(...next.map((m) => {
+            const idx = MONTH_ABBRS.indexOf(m);
+            return idx === -1 ? 31 : dayjs(new Date(dayjs().year(), idx + 1, 0)).date();
+          }))
+        : 31;
+      if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
+      return next;
+    });
   };
 
   return (
@@ -537,7 +554,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                   className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
                   <option value=''>Select day</option>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((day) => (
                     <option key={day} value={String(day).padStart(2, '0')}>
                       {String(day).padStart(2, '0')}
                     </option>

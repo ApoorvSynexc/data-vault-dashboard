@@ -520,6 +520,14 @@ export default function AddDetailsWizard({
   const [selectedDays, setSelectedDays] = useState<string[]>(schedInit.selectedDays);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(schedInit.selectedMonths);
   const [dayOfMonth, setDayOfMonth] = useState(schedInit.dayOfMonth);
+
+  const MONTH_ABBRS_SCHED = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const maxDayForSelectedMonths = selectedMonths.length > 0
+    ? Math.min(...selectedMonths.map((m) => {
+        const idx = MONTH_ABBRS_SCHED.indexOf(m);
+        return idx === -1 ? 31 : dayjs(new Date(dayjs().year(), idx + 1, 0)).date();
+      }))
+    : 31;
   const [startTime, setStartTime] = useState(schedInit.startTime);
   const [timeZone, setTimeZone] = useState(schedInit.timeZone);
   const [startDate, setStartDate] = useState(schedInit.startDate);
@@ -1174,7 +1182,14 @@ export default function AddDetailsWizard({
                       <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Months</label>
                       <div className='flex gap-2 flex-wrap'>
                         {ALL_MONTHS.map((month) => (
-                          <button key={month} onClick={() => setSelectedMonths((p) => p.includes(month) ? p.filter((m) => m !== month) : [...p, month])}
+                          <button key={month} onClick={() => setSelectedMonths((p) => {
+                            const next = p.includes(month) ? p.filter((m) => m !== month) : [...p, month];
+                            const newMax = next.length > 0
+                              ? Math.min(...next.map((m) => { const idx = MONTH_ABBRS_SCHED.indexOf(m); return idx === -1 ? 31 : dayjs(new Date(dayjs().year(), idx + 1, 0)).date(); }))
+                              : 31;
+                            if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
+                            return next;
+                          })}
                             className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
                             {month}
                           </button>
@@ -1184,7 +1199,7 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Day of Month</label>
                         <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                          {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
                         </select></div>

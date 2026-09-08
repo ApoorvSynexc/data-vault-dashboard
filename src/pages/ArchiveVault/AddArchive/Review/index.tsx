@@ -54,6 +54,14 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const [selectedDays, setSelectedDays] = useState<string[]>(init.selectedDays);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(init.selectedMonths);
   const [dayOfMonth, setDayOfMonth] = useState(init.dayOfMonth);
+
+  const MONTH_ABBRS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const maxDayForSelectedMonths = selectedMonths.length > 0
+    ? Math.min(...selectedMonths.map((m) => {
+        const idx = MONTH_ABBRS.indexOf(m);
+        return idx === -1 ? 31 : dayjs(new Date(dayjs().year(), idx + 1, 0)).date();
+      }))
+    : 31;
   const [startTime, setStartTime] = useState(init.startTime);
   const [timeZone, setTimeZone] = useState(init.timeZone);
   const [startDate, setStartDate] = useState(init.startDate);
@@ -222,7 +230,14 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                   <label className='block text-xs font-semibold text-gray-700 mb-2'>Select Months</label>
                   <div className='flex gap-2 flex-wrap'>
                     {ALL_MONTHS.map((month) => (
-                      <button key={month} onClick={() => setSelectedMonths((p) => p.includes(month) ? p.filter((m) => m !== month) : [...p, month])}
+                      <button key={month} onClick={() => setSelectedMonths((p) => {
+                        const next = p.includes(month) ? p.filter((m) => m !== month) : [...p, month];
+                        const newMax = next.length > 0
+                          ? Math.min(...next.map((m) => { const idx = MONTH_ABBRS.indexOf(m); return idx === -1 ? 31 : dayjs(new Date(dayjs().year(), idx + 1, 0)).date(); }))
+                          : 31;
+                        if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
+                        return next;
+                      })}
                         className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
                         {month}
                       </button>
@@ -232,7 +247,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Day of Month</label>
                     <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls} style={inputStyle}>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                       ))}
                     </select></div>
