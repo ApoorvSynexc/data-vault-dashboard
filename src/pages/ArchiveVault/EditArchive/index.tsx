@@ -235,6 +235,7 @@ export default function EditArchive() {
           selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
           onBack={() => goBack(5)}
+          onUpdatePolicyName={(name) => setPolicyName(name)}
           onEditStep={(step) => setCurrentStep(step as Step)}
           editMode
           backupConfigId={backupConfigId}

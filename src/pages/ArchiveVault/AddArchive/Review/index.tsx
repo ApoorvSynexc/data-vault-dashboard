@@ -300,6 +300,7 @@ interface Step5Props {
   selectedObjects?: SelectedArchiveObject[];
   scheduleConfig?: ArchiveScheduleConfig | null;
   onUpdateObjectSchedule?: (objectId: string, schedule: ScheduleConfig | undefined) => void;
+  onUpdatePolicyName?: (name: string) => void;
   onBack: () => void;
   onEditStep: (step: number) => void;
   // Edit mode — when set, calls updateConfig (PUT) instead of applyConfig (POST)
@@ -323,6 +324,7 @@ export default function Step5({
   selectedObjects = [],
   scheduleConfig = null,
   onUpdateObjectSchedule,
+  onUpdatePolicyName,
   onBack,
   onEditStep,
   editMode = false,
@@ -338,6 +340,22 @@ export default function Step5({
   const [confirmText, setConfirmText] = useState('');
   const [confirmError, setConfirmError] = useState(false);
   const [editScheduleTarget, setEditScheduleTarget] = useState<{ id: string; name: string; schedule?: ScheduleConfig } | null>(null);
+  const [localName, setLocalName] = useState(policyName);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(policyName);
+
+  const confirmNameEdit = () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setLocalName(trimmed);
+    onUpdatePolicyName?.(trimmed);
+    setEditingName(false);
+  };
+
+  const cancelNameEdit = () => {
+    setNameInput(localName);
+    setEditingName(false);
+  };
 
   // Dummy data fallbacks
   const dummyObjects = selectedObjects.length > 0 ? selectedObjects : [
@@ -371,9 +389,9 @@ export default function Step5({
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
-      await archivalService.updateConfig(backupConfigId, { ...archivalPayload, backupStatus } as any);
+      await archivalService.updateConfig(backupConfigId, { ...archivalPayload, name: localName, backupStatus } as any);
     } else {
-      await archivalService.applyConfig({ ...archivalPayload, status: backupStatus } as any);
+      await archivalService.applyConfig({ ...archivalPayload, name: localName, status: backupStatus } as any);
     }
   };
 
@@ -525,8 +543,30 @@ export default function Step5({
           </div>
 
           {/* Review rows */}
-          <ReviewRow label='Archive name' onEdit={() => onEditStep(2)}>
-            <span className='font-medium'>{policyName}</span>
+          <ReviewRow label='Archive name' onEdit={editingName ? undefined : () => { setNameInput(localName); setEditingName(true); }}>
+            {editingName ? (
+              <div className='flex items-center gap-2'>
+                <input
+                  autoFocus
+                  type='text'
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') confirmNameEdit(); if (e.key === 'Escape') cancelNameEdit(); }}
+                  className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
+                  style={{ border: '1px solid #3b82f6', maxWidth: 360 }}
+                />
+                <button onClick={confirmNameEdit} disabled={!nameInput.trim()}
+                  className='px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors'>
+                  Save
+                </button>
+                <button onClick={cancelNameEdit}
+                  className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors'>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <span className='font-medium'>{localName}</span>
+            )}
           </ReviewRow>
 
           <ReviewRow label='Objects Included' onEdit={() => onEditStep(3)}>
