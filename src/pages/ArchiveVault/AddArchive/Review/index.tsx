@@ -95,7 +95,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
       scheduling.weekDays = selectedDays.map((d) => DAY_MAP[d] || d);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Monthly') {
-      scheduling.monthDate = parseInt(dayOfMonth);
+      scheduling.monthDate = parseInt(dayOfMonth) || 1;
       scheduling.selectedMonths = selectedMonths.map((m) => MONTH_MAP[m] || m);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
@@ -260,11 +260,14 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Day of Month</label>
-                    <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls} style={inputStyle}>
+                    <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={`${inputCls}${overrideEnabled && !dayOfMonth ? ' border-red-400' : ''}`} style={inputStyle}>
+                      <option value=''>Select day</option>
                       {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                       ))}
-                    </select></div>
+                    </select>
+                    {overrideEnabled && !dayOfMonth && <p className='mt-1 text-xs text-red-500'>Please select the day of month</p>}
+                  </div>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
                     <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
                 </div>
@@ -307,8 +310,9 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
             Cancel
           </button>
           <button
+            disabled={overrideEnabled && frequency === 'Monthly' && !dayOfMonth}
             onClick={() => { onSave(overrideEnabled ? computeSchedule() : undefined); onClose(); }}
-            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
+            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'>
             Save Schedule
           </button>
         </div>

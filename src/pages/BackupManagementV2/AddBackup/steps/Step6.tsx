@@ -132,6 +132,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [startTimeError, setStartTimeError] = useState('');
   const [startDateError, setStartDateError] = useState('');
   const [endDateError, setEndDateError] = useState('');
+  const [dayOfMonthError, setDayOfMonthError] = useState('');
 
   function showToast(msg: string) {
     setToast(msg);
@@ -245,7 +246,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).filter((freq) => !(hideOnce && freq === 'One Time')).map((freq) => (
               <button
                 key={freq}
-                onClick={() => setFrequency(freq)}
+                onClick={() => { setFrequency(freq); setDayOfMonthError(''); }}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   frequency === freq
                     ? 'bg-blue-600 text-white'
@@ -550,8 +551,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
                 <select
                   value={dayOfMonth}
-                  onChange={(e) => setDayOfMonth(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  onChange={(e) => { setDayOfMonth(e.target.value); if (e.target.value) setDayOfMonthError(''); }}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${dayOfMonthError ? 'border-red-400' : 'border-gray-300'}`}
                 >
                   <option value=''>Select day</option>
                   {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((day) => (
@@ -560,6 +561,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                     </option>
                   ))}
                 </select>
+                {dayOfMonthError && <p className='mt-1.5 text-xs text-red-500'>{dayOfMonthError}</p>}
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
@@ -721,6 +723,11 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 showToast('Please select at least one month');
                 return;
               }
+              if (frequency === 'Monthly' && !dayOfMonth) {
+                setDayOfMonthError('Please select the day of month');
+                showToast('Please select the day of month');
+                return;
+              }
 
               const scheduling: any = {
                 frequency: frequency === 'One Time' ? 'ONCE' : frequency.toUpperCase(),
@@ -745,8 +752,9 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 scheduling.startTime = startTime;
               } else if (frequency === 'Monthly') {
                 const dayNum = parseInt(dayOfMonth);
-                if (dayNum < 1 || dayNum > 31) {
-                  showToast('Please enter a valid day of month (1-31)');
+                if (!dayOfMonth || isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+                  setDayOfMonthError('Please select the day of month');
+                  showToast('Please select the day of month');
                   return;
                 }
                 scheduling.monthDate = dayNum;
