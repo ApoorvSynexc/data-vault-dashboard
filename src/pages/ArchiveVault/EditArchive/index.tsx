@@ -94,9 +94,10 @@ export default function EditArchive() {
         const config = configRes?.data ?? configRes;
         if (!config) throw new Error('Config not found');
 
-        // Block editing one-time archives — they have already run or are scheduled
-        // to run once; changing filters/schedule after the fact is not meaningful.
-        if (isConfigOneTime(config)) {
+        // Block editing one-time archives unless the config is still a draft.
+        // Drafts are always editable regardless of frequency.
+        const isDraft = config.status === 'DRAFT';
+        if (!isDraft && isConfigOneTime(config)) {
           setOneTimeBlocked(true);
           return;
         }
