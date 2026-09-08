@@ -64,17 +64,31 @@ const FREQ_REVERSE: Record<string, FrequencyType> = { ONCE: 'One Time', HOURLY: 
 // ─── schedule initialiser ─────────────────────────────────────────────────────
 
 function initSchedule(s?: ScheduleConfig) {
-  const sc = s?.scheduling;
+  if (!s) {
+    return {
+      overrideEnabled: false,
+      frequency: 'Daily' as FrequencyType,
+      timeZone: getDefaultTimezone().value,
+      startDate: '',
+      endDate: '',
+      startTime: '',
+      selectedDays: [] as string[],
+      selectedMonths: [] as string[],
+      dayOfMonth: '',
+      backupIn: '1 Hour',
+    };
+  }
+  const sc = s.scheduling;
   return {
-    overrideEnabled: !!s,
+    overrideEnabled: true,
     frequency: (sc ? FREQ_REVERSE[sc.frequency] : undefined) ?? ('Daily' as FrequencyType),
-    timeZone: s?.timeZone ?? getDefaultTimezone().value,
-    startDate: sc?.startDate ?? dayjs().format('YYYY-MM-DD'),
-    endDate: sc?.endDate ?? dayjs().add(7, 'days').format('YYYY-MM-DD'),
-    startTime: sc?.startTime ?? '12:00',
-    selectedDays: sc?.weekDays?.map((d) => DAY_REVERSE[d] ?? d) ?? ['Mon'],
-    selectedMonths: sc?.selectedMonths?.map((m) => MONTH_REVERSE[m] ?? m) ?? ['Jan'],
-    dayOfMonth: sc?.monthDate !== undefined ? String(sc.monthDate).padStart(2, '0') : '01',
+    timeZone: s.timeZone ?? getDefaultTimezone().value,
+    startDate: sc?.startDate ?? '',
+    endDate: sc?.endDate ?? '',
+    startTime: sc?.startTime ?? '',
+    selectedDays: sc?.weekDays?.map((d) => DAY_REVERSE[d] ?? d) ?? [],
+    selectedMonths: sc?.selectedMonths?.map((m) => MONTH_REVERSE[m] ?? m) ?? [],
+    dayOfMonth: sc?.monthDate !== undefined ? String(sc.monthDate).padStart(2, '0') : '',
     backupIn: sc?.interval !== undefined ? `${sc.interval} Hour${sc.interval !== 1 ? 's' : ''}` : '1 Hour',
   };
 }
@@ -1028,7 +1042,7 @@ export default function AddDetailsWizard({
                     </p>
                   </div>
                 </div>
-                <button type='button' onClick={() => setOverrideEnabled((v) => !v)}
+                <button type='button' onClick={() => { setOverrideEnabled((v) => !v); setStartDateError(''); setEndDateError(''); setStartTimeError(''); }}
                   className='flex-shrink-0 relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none'
                   style={{ width: 44, height: 24, background: overrideEnabled ? '#155DFC' : '#CBD5E1' }}
                   aria-checked={overrideEnabled} role='switch'>
@@ -1041,7 +1055,7 @@ export default function AddDetailsWizard({
                 {/* Frequency buttons */}
                 <div className='flex gap-2 flex-wrap mb-6'>
                   {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).map((freq) => (
-                    <button key={freq} onClick={() => setFrequency(freq)} disabled={!overrideEnabled}
+                    <button key={freq} onClick={() => { setFrequency(freq); setStartDateError(''); setEndDateError(''); setStartTimeError(''); }} disabled={!overrideEnabled}
                       className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
                       {freq}
                     </button>
@@ -1297,7 +1311,13 @@ export default function AddDetailsWizard({
               {step === 3 && (
                 <button
                   onClick={handleSave}
-                  disabled={!!(startDateError || endDateError || startTimeError)}
+                  disabled={overrideEnabled && (() => {
+                    const now = dayjs().format('HH:mm');
+                    if (startDate && startDate < today) return true;
+                    if ((!startDate || startDate === today) && startTime && startTime < now) return true;
+                    if (frequency === 'Custom' && endDate && endDate < (startDate || today)) return true;
+                    return false;
+                  })()}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
                   Save & Close
                 </button>
