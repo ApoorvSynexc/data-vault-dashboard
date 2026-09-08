@@ -26,17 +26,31 @@ const inputStyle = { border: '1px solid #E2E8F0' };
 // ─── EditObjectScheduleModal ──────────────────────────────────────────────────
 
 function initSched(s?: ScheduleConfig) {
-  const sc = s?.scheduling;
+  if (!s) {
+    return {
+      overrideEnabled: false,
+      frequency: 'Daily' as FrequencyType,
+      timeZone: getDefaultTimezone().value,
+      startDate: '',
+      endDate: '',
+      startTime: '',
+      selectedDays: [] as string[],
+      selectedMonths: [] as string[],
+      dayOfMonth: '',
+      backupIn: '1 Hour',
+    };
+  }
+  const sc = s.scheduling;
   return {
-    overrideEnabled: !!s,
+    overrideEnabled: true,
     frequency: (sc ? FREQ_REVERSE[sc.frequency] : undefined) ?? ('Daily' as FrequencyType),
-    timeZone: s?.timeZone ?? getDefaultTimezone().value,
-    startDate: sc?.startDate ?? dayjs().format('YYYY-MM-DD'),
-    endDate: sc?.endDate ?? dayjs().add(7, 'days').format('YYYY-MM-DD'),
-    startTime: sc?.startTime ?? '12:00',
-    selectedDays: sc?.weekDays?.map((d) => DAY_REVERSE[d] ?? d) ?? ['Mon'],
-    selectedMonths: sc?.selectedMonths?.map((m) => MONTH_REVERSE[m] ?? m) ?? ['Jan'],
-    dayOfMonth: sc?.monthDate !== undefined ? String(sc.monthDate).padStart(2, '0') : '01',
+    timeZone: s.timeZone ?? getDefaultTimezone().value,
+    startDate: sc?.startDate ?? '',
+    endDate: sc?.endDate ?? '',
+    startTime: sc?.startTime ?? '',
+    selectedDays: sc?.weekDays?.map((d) => DAY_REVERSE[d] ?? d) ?? [],
+    selectedMonths: sc?.selectedMonths?.map((m) => MONTH_REVERSE[m] ?? m) ?? [],
+    dayOfMonth: sc?.monthDate !== undefined ? String(sc.monthDate).padStart(2, '0') : '',
     backupIn: sc?.interval !== undefined ? `${sc.interval} Hour${sc.interval !== 1 ? 's' : ''}` : '1 Hour',
   };
 }
