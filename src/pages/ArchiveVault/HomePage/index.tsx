@@ -674,7 +674,7 @@ export default function ArchiveVaultHomePage() {
                         title: policy.scheduleConfig?.scheduling?.frequency === 'ONCE' ? 'One-time archives cannot be edited' : undefined,
                         onClick: policy.scheduleConfig?.scheduling?.frequency === 'ONCE'
                           ? undefined
-                          : () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`),
+                          : () => navigate(`/archive-vault/edit/${policy.slug ?? policy.backupConfigId}`, { state: { startStep: 6 } }),
                       }] : []),
                       ...(permissions.includes('archival.delete') ? [{ label: 'Delete', danger: true, onClick: () => setConfirmDelete(policy) }] : []),
                     ]}
