@@ -366,6 +366,7 @@ export default function ArchiveVaultHomePage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [lastJobFilter, setLastJobFilter] = useState('All');
   const [confirmPause, setConfirmPause] = useState<PolicyRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -434,10 +435,10 @@ export default function ArchiveVaultHomePage() {
   }, [search]);
 
   // Reset to page 1 when filter changes — only when filter is non-default (avoids StrictMode double-invoke resetting the page)
-  const prevStatusFilter = useRef(statusFilter);
+  const prevFilters = useRef({ statusFilter, lastJobFilter });
   useEffect(() => {
-    if (prevStatusFilter.current === statusFilter) return;
-    prevStatusFilter.current = statusFilter;
+    if (prevFilters.current.statusFilter === statusFilter && prevFilters.current.lastJobFilter === lastJobFilter) return;
+    prevFilters.current = { statusFilter, lastJobFilter };
     setCursorStack([]);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -445,15 +446,13 @@ export default function ArchiveVaultHomePage() {
       next.delete('cursor');
       return next;
     }, { replace: true });
-  }, [statusFilter]);
+  }, [statusFilter, lastJobFilter]);
 
   const { data: rawListData, isLoading: isLoadingList } = useQuery({
-    queryKey: ['archival-config-list', currentCursor, debouncedSearch, statusFilter],
+    queryKey: ['archival-config-list', currentCursor, debouncedSearch, statusFilter, lastJobFilter],
     queryFn: () => {
-      const JOB_STATUS_SET = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
-      const isJobStatus = JOB_STATUS_SET.has(statusFilter);
-      const apiStatus = !isJobStatus && statusFilter !== 'All' ? statusFilter : undefined;
-      const apiBackupStatus = isJobStatus ? statusFilter : undefined;
+      const apiStatus = statusFilter !== 'All' ? statusFilter : undefined;
+      const apiBackupStatus = lastJobFilter !== 'All' ? lastJobFilter : undefined;
       return archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, apiStatus, apiBackupStatus);
     },
   });
@@ -496,8 +495,6 @@ export default function ArchiveVaultHomePage() {
     lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
     displayDate: formatDate(item.lastBackupAt ?? ''),
   }));
-
-  const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'PARTIAL_FAILURE', 'PENDING']);
 
   // All filters are server-side — no client-side filtering needed
   const filtered = enriched;
@@ -566,7 +563,7 @@ export default function ArchiveVaultHomePage() {
             <div className='h-5 w-px bg-gray-200' />
             <FilterDropdown
               label='Status'
-              value={JOB_STATUS_VALUES.has(statusFilter) ? 'All' : statusFilter}
+              value={statusFilter}
               options={[
                 { label: 'All',      value: 'All'      },
                 { label: 'Active',   value: 'ACTIVE'   },
@@ -579,7 +576,7 @@ export default function ArchiveVaultHomePage() {
             />
             <FilterDropdown
               label='Last Job'
-              value={JOB_STATUS_VALUES.has(statusFilter) ? statusFilter : 'All'}
+              value={lastJobFilter}
               options={[
                 { label: 'All',             value: 'All'             },
                 { label: 'Success',         value: 'SUCCESS'         },
@@ -587,7 +584,7 @@ export default function ArchiveVaultHomePage() {
                 { label: 'Partial Failure', value: 'PARTIAL_FAILURE' },
                 { label: 'Pending',         value: 'PENDING'         },
               ]}
-              onChange={(v) => setStatusFilter(v)}
+              onChange={(v) => setLastJobFilter(v)}
             />
           </div>
         }

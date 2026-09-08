@@ -527,11 +527,10 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
 }
 
 
-const JOB_STATUS_VALUES = new Set(['SUCCESS', 'FAILED', 'RUNNING', 'PENDING']);
-
 type FilterState = {
   backupType: BackupType | 'All';
-  status: BackupStatus | 'All' | 'REALTIME' | 'SCHEDULED';
+  status: string;
+  lastJobStatus: string;
   search: string;
 };
 
@@ -539,7 +538,7 @@ export default function BackupManagementV2() {
   const navigate = useNavigate();
   const { permissions } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', search: '' });
+  const [filters, setFilters] = useState<FilterState>({ backupType: 'All', status: 'All', lastJobStatus: 'All', search: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
@@ -609,7 +608,7 @@ export default function BackupManagementV2() {
       next.delete('cursor');
       return next;
     }, { replace: true });
-  }, [filters.backupType, filters.status]);
+  }, [filters.backupType, filters.status, filters.lastJobStatus]);
 
   const backupConfigService = useBackupConfigService();
   const queryClient = useQueryClient();
@@ -657,9 +656,9 @@ export default function BackupManagementV2() {
   });
 
   // Derive API filter params from filter state
-  const apiStatus = !JOB_STATUS_VALUES.has(filters.status) && filters.status !== 'All' ? filters.status : undefined;
-  const apiBackupStatus = JOB_STATUS_VALUES.has(filters.status) ? (filters.status === 'RUNNING' ? undefined : filters.status) : undefined;
-  const apiRunningStatus = filters.status === 'RUNNING' ? 'RUNNING' : undefined;
+  const apiStatus = filters.status !== 'All' ? filters.status : undefined;
+  const apiBackupStatus = filters.lastJobStatus !== 'All' && filters.lastJobStatus !== 'RUNNING' ? filters.lastJobStatus : undefined;
+  const apiRunningStatus = filters.lastJobStatus === 'RUNNING' ? 'RUNNING' : undefined;
   const apiSchedule = filters.backupType === 'Realtime' ? 'REALTIME' : filters.backupType === 'Schedule' ? 'SCHEDULE' : undefined;
 
   const queryFn = useCallback(() =>
@@ -675,7 +674,7 @@ export default function BackupManagementV2() {
   );
 
   const backupQuery = useQuery({
-    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus ?? apiRunningStatus],
+    queryKey: ['backup-config-list-v2', currentCursor, debouncedSearch, apiStatus, apiSchedule, apiBackupStatus ?? apiRunningStatus, filters.lastJobStatus],
     queryFn,
     refetchOnWindowFocus: false,
   });
@@ -842,7 +841,7 @@ export default function BackupManagementV2() {
   ];
 
   const isSearchPending = filters.search !== debouncedSearch;
-  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch) {
+  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.lastJobStatus === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch) {
     return <BackupManagementWelcome />;
   }
 
@@ -904,7 +903,7 @@ export default function BackupManagementV2() {
             {/* Status dropdown */}
             <FilterDropdown
               label='Status'
-              value={JOB_STATUS_VALUES.has(filters.status) ? 'All' : filters.status}
+              value={filters.status}
               options={[
                 { label: 'All',      value: 'All'      },
                 { label: 'Active',   value: 'ACTIVE'   },
@@ -913,12 +912,12 @@ export default function BackupManagementV2() {
                 { label: 'Draft',    value: 'DRAFT'    },
                 { label: 'Inactive', value: 'INACTIVE' },
               ]}
-              onChange={(v) => setFilters((f) => ({ ...f, status: v as FilterState['status'] }))}
+              onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
             />
             {/* Last Job dropdown */}
             <FilterDropdown
               label='Last Job'
-              value={JOB_STATUS_VALUES.has(filters.status) ? filters.status : 'All'}
+              value={filters.lastJobStatus}
               options={[
                 { label: 'All',     value: 'All'     },
                 { label: 'Success', value: 'SUCCESS' },
@@ -926,7 +925,7 @@ export default function BackupManagementV2() {
                 { label: 'Running', value: 'RUNNING' },
                 { label: 'Pending', value: 'PENDING' },
               ]}
-              onChange={(v) => setFilters((f) => ({ ...f, status: v as FilterState['status'] }))}
+              onChange={(v) => setFilters((f) => ({ ...f, lastJobStatus: v }))}
             />
             {/* Type dropdown */}
             <FilterDropdown
@@ -956,14 +955,14 @@ export default function BackupManagementV2() {
             </div>
             <p className='text-sm font-semibold text-gray-700 mb-1'>No backups found</p>
             <p className='text-xs text-gray-400 mb-5 max-w-xs leading-relaxed'>
-              {filters.status !== 'All' || filters.backupType !== 'All' || filters.search
+              {filters.status !== 'All' || filters.lastJobStatus !== 'All' || filters.backupType !== 'All' || filters.search
                 ? 'No backups match the current filters. Try clearing them.'
                 : 'No backup configurations exist yet. Create one to get started.'}
             </p>
-            {(filters.status !== 'All' || filters.backupType !== 'All' || filters.search) && (
+            {(filters.status !== 'All' || filters.lastJobStatus !== 'All' || filters.backupType !== 'All' || filters.search) && (
               <button
                 type='button'
-                onClick={() => setFilters({ backupType: 'All', status: 'All', search: '' })}
+                onClick={() => setFilters({ backupType: 'All', status: 'All', lastJobStatus: 'All', search: '' })}
                 className='text-xs font-medium text-blue-600 hover:underline'
               >
                 Clear filters
