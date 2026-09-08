@@ -364,18 +364,20 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               <span className='font-medium'>{selectedObjects.size} objects selected</span>
             </div>
 
-            <button
-              onClick={() => {
-                setSelectedObjects(new Set());
-                setParentChildMap(new Map());
-                setParentTreeMap(new Map());
-                setLastSelectedSfName(null);
-                setDescribeFetchCount(0);
-                setToast(null);
-              }}
-              className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
-              Clear All
-            </button>
+            {!_entireDatasetSelected && (
+              <button
+                onClick={() => {
+                  setSelectedObjects(new Set());
+                  setParentChildMap(new Map());
+                  setParentTreeMap(new Map());
+                  setLastSelectedSfName(null);
+                  setDescribeFetchCount(0);
+                  setToast(null);
+                }}
+                className='flex-shrink-0 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors'>
+                Clear All
+              </button>
+            )}
           </div>
 
           {/* Table */}
@@ -504,9 +506,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                         setSelectedObjects(newSelected);
                       }
                     }}
-                    isRowSelectable={(obj) => !autoSelectedIds.has(obj.uuid)}
+                    isRowSelectable={(obj) => !_entireDatasetSelected && !autoSelectedIds.has(obj.uuid)}
                     getRowClassName={(obj, isSelected) =>
-                      `border-b border-gray-100 transition-colors ${autoSelectedIds.has(obj.uuid) ? 'bg-blue-50/40 opacity-70 cursor-not-allowed' : `cursor-pointer ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}`
+                      `border-b border-gray-100 transition-colors ${_entireDatasetSelected || autoSelectedIds.has(obj.uuid) ? 'bg-blue-50/40 opacity-70 cursor-not-allowed' : `cursor-pointer ${isSelected ? 'bg-blue-50/60' : 'hover:bg-gray-50/60'}`}`
                     }
                     emptyState='No objects found matching your search.'
                     paginationConfig={{
