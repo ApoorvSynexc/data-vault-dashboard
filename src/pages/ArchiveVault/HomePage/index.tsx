@@ -158,7 +158,7 @@ function StatusBadge({ status }: { status: string }) {
   const labels: Record<string, string> = {
     ACTIVE: 'Active', RUNNING: 'Running', SCHEDULED: 'Scheduled',
     SUCCESS: 'Success', PENDING: 'Pending', DRAFT: 'Draft',
-    PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
+    PAUSED: 'Paused', RESUMED: 'Resumed', INACTIVE: 'Inactive', FAILED: 'Failed',
     PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time',
   };
   return (
@@ -571,6 +571,7 @@ export default function ArchiveVaultHomePage() {
                 { label: 'All',      value: 'All'      },
                 { label: 'Active',   value: 'ACTIVE'   },
                 { label: 'Paused',   value: 'PAUSED'   },
+                { label: 'Resumed',  value: 'RESUMED'  },
                 { label: 'Draft',    value: 'DRAFT'    },
                 { label: 'Inactive', value: 'INACTIVE' },
               ]}

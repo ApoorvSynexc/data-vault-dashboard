@@ -909,6 +909,7 @@ export default function BackupManagementV2() {
                 { label: 'All',      value: 'All'      },
                 { label: 'Active',   value: 'ACTIVE'   },
                 { label: 'Paused',   value: 'PAUSED'   },
+                { label: 'Resumed',  value: 'RESUMED'  },
                 { label: 'Draft',    value: 'DRAFT'    },
                 { label: 'Inactive', value: 'INACTIVE' },
               ]}
