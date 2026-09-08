@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useArchivalService } from '../../../services/archival/archival.service';
 import { usePlatformService } from '../../../services/platform/platform.service';
 import { useDestinationService } from '../../../services/destination/destination.service';
@@ -57,6 +57,7 @@ function isConfigOneTime(config: any): boolean {
 export default function EditArchive() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { state: routeState } = useLocation();
   const archivalService = useArchivalService();
   const platformService = usePlatformService();
   const destinationService = useDestinationService();
@@ -65,7 +66,7 @@ export default function EditArchive() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [oneTimeBlocked, setOneTimeBlocked] = useState(false);
   const [backupConfigId, setBackupConfigId] = useState('');
-  const [currentStep, setCurrentStep] = useState<Step>(2);
+  const [currentStep, setCurrentStep] = useState<Step>((routeState?.startStep as Step) ?? 2);
 
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(null);
   const [selectedDestConnection, setSelectedDestConnection] = useState<Destination | null>(null);
