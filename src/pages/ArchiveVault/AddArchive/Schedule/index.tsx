@@ -110,6 +110,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const [startTimeError, setStartTimeError] = useState('');
   const [startDateError, setStartDateError] = useState('');
   const [endDateError, setEndDateError] = useState('');
+  const [dayOfMonthError, setDayOfMonthError] = useState('');
   const [timeZone, setTimeZone] = useState(initial.timeZone);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -169,7 +170,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       scheduling.weekDays = selectedDays.map((d) => dayMap[d] || d);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Monthly') {
-      scheduling.monthDate = parseInt(dayOfMonth);
+      scheduling.monthDate = parseInt(dayOfMonth) || 1;
       scheduling.selectedMonths = selectedMonths.map((m) => monthMap[m] || m);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
@@ -217,6 +218,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       if (frequency === 'One Time' && runMode === 'scheduleRun' && !startTime) { showToast('Please select a starting time'); return; }
       if (frequency === 'Weekly' && selectedDays.length === 0) { showToast('Please select at least one day'); return; }
       if (frequency === 'Monthly' && selectedMonths.length === 0) { showToast('Please select at least one month'); return; }
+      if (frequency === 'Monthly' && !dayOfMonth) { setDayOfMonthError('Please select the day of month'); showToast('Please select the day of month'); return; }
       if (frequency === 'Custom' && !endDate) { showToast('Please select an end date for custom schedule'); return; }
     }
     const globalConfig = allScheduled ? null : buildScheduleConfig();
@@ -319,7 +321,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
               {/* Frequency tabs */}
               <div className='flex gap-2 flex-wrap'>
                 {(['One Time', 'Hourly', 'Daily', 'Weekly', 'Monthly', 'Custom'] as FrequencyType[]).filter((f) => !(editMode && f === 'One Time')).map((freq) => (
-                  <button key={freq} onClick={() => setFrequency(freq)}
+                  <button key={freq} onClick={() => { setFrequency(freq); setDayOfMonthError(''); }}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${frequency === freq ? 'bg-blue-600 text-white' : 'border border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
                     {freq}
                   </button>
@@ -507,12 +509,13 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
-                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
+                        <select value={dayOfMonth} onChange={(e) => { setDayOfMonth(e.target.value); if (e.target.value) setDayOfMonthError(''); }} className={`${inputCls}${dayOfMonthError ? ' border-red-400' : ''}`}>
                           <option value=''>Select day</option>
                           {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
                         </select>
+                        {dayOfMonthError && <p className='mt-1.5 text-xs text-red-500'>{dayOfMonthError}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>

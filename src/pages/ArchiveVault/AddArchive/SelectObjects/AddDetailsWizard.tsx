@@ -606,7 +606,7 @@ export default function AddDetailsWizard({
       scheduling.weekDays = selectedDays.map((d) => DAY_MAP[d] || d);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Monthly') {
-      scheduling.monthDate = parseInt(dayOfMonth);
+      scheduling.monthDate = parseInt(dayOfMonth) || 1;
       scheduling.selectedMonths = selectedMonths.map((m) => MONTH_MAP[m] || m);
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
@@ -1212,11 +1212,14 @@ export default function AddDetailsWizard({
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Day of Month</label>
-                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={inputCls}>
+                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={`${inputCls}${overrideEnabled && !dayOfMonth ? ' border-red-300' : ''}`}>
+                          <option value=''>Select day</option>
                           {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
-                        </select></div>
+                        </select>
+                        {overrideEnabled && !dayOfMonth && <p className='mt-1 text-xs text-red-500'>Please select the day of month</p>}
+                      </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
                         <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
@@ -1316,6 +1319,7 @@ export default function AddDetailsWizard({
                     if (startDate && startDate < today) return true;
                     if ((!startDate || startDate === today) && startTime && startTime < now) return true;
                     if (frequency === 'Custom' && endDate && endDate < (startDate || today)) return true;
+                    if (frequency === 'Monthly' && !dayOfMonth) return true;
                     return false;
                   })()}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
