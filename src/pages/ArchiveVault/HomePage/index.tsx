@@ -692,16 +692,16 @@ export default function ArchiveVaultHomePage() {
                 </div>
                 <p className='text-sm font-semibold text-gray-700 mb-1'>No archives found</p>
                 <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>
-                  {search || statusFilter !== 'All'
+                  {search || statusFilter !== 'All' || lastJobFilter !== 'All'
                     ? 'No archives match the current filters. Try clearing them.'
                     : permissions.includes('archival.write')
                       ? 'No archive configurations exist yet. Create one to get started.'
-                      : 'No archive configurations exist yet.'}
+                      : 'No archive configurations exist yet. Contact an administrator to create one.'}
                 </p>
-                {(search || statusFilter !== 'All') && (
+                {(search || statusFilter !== 'All' || lastJobFilter !== 'All') && (
                   <button
                     type='button'
-                    onClick={() => { setSearch(''); setStatusFilter('All'); }}
+                    onClick={() => { setSearch(''); setStatusFilter('All'); setLastJobFilter('All'); }}
                     className='mt-4 text-xs font-medium text-blue-600 hover:underline'
                   >
                     Clear filters
