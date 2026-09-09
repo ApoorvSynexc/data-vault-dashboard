@@ -841,7 +841,7 @@ export default function BackupManagementV2() {
   ];
 
   const isSearchPending = filters.search !== debouncedSearch;
-  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.lastJobStatus === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch) {
+  if (!backupQuery.isLoading && !backupQuery.isFetching && !isSearchPending && backupQuery.data != null && apiDataArray.length === 0 && filters.status === 'All' && filters.lastJobStatus === 'All' && filters.backupType === 'All' && !filters.search && !debouncedSearch && permissions.includes('backup.write')) {
     return <BackupManagementWelcome />;
   }
 
@@ -957,7 +957,9 @@ export default function BackupManagementV2() {
             <p className='text-xs text-gray-400 mb-5 max-w-xs leading-relaxed'>
               {filters.status !== 'All' || filters.lastJobStatus !== 'All' || filters.backupType !== 'All' || filters.search
                 ? 'No backups match the current filters. Try clearing them.'
-                : 'No backup configurations exist yet. Create one to get started.'}
+                : permissions.includes('backup.write')
+                ? 'No backup configurations exist yet. Create one to get started.'
+                : 'No backup configurations exist yet. Contact an administrator to create one.'}
             </p>
             {(filters.status !== 'All' || filters.lastJobStatus !== 'All' || filters.backupType !== 'All' || filters.search) && (
               <button
