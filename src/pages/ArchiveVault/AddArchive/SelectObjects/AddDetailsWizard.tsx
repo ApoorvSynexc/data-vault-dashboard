@@ -136,19 +136,22 @@ function FieldDropdown({ value, options, onChange }: {
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const selected = options.find((o) => o.apiName === value);
-  const DROPDOWN_HEIGHT = 220;
+  const DROPDOWN_HEIGHT = 260;
   const DROPDOWN_WIDTH = 220;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setSearch(''); return; }
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
+    setTimeout(() => searchRef.current?.focus(), 0);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
@@ -171,6 +174,10 @@ function FieldDropdown({ value, options, onChange }: {
     setOpen((v) => !v);
   };
 
+  const filtered = search.trim()
+    ? options.filter((o) => (o.label || o.apiName).toLowerCase().includes(search.toLowerCase()))
+    : options;
+
   return (
     <div ref={ref} className='relative w-full'>
       <button
@@ -187,29 +194,59 @@ function FieldDropdown({ value, options, onChange }: {
       </button>
       {open && (
         <div
-          className='bg-white rounded-lg shadow-lg overflow-y-auto'
-          style={{
-            border: '1px solid #E2E8F0',
-            ...dropdownStyle,
-          }}
+          className='bg-white rounded-lg shadow-lg flex flex-col'
+          style={{ border: '1px solid #E2E8F0', ...dropdownStyle }}
         >
-          <div
-            className='px-3 py-2 text-sm cursor-pointer hover:bg-gray-50'
-            style={{ color: '#94a3b8' }}
-            onClick={() => { onChange(''); setOpen(false); }}
-          >
-            Field Name
-          </div>
-          {options.map((o) => (
-            <div
-              key={o.apiName}
-              onClick={() => { onChange(o.apiName); setOpen(false); }}
-              className='px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 truncate'
-              style={{ color: o.apiName === value ? '#155DFC' : '#33363F', background: o.apiName === value ? 'rgba(21,93,252,0.06)' : undefined }}
-            >
-              {o.label || o.apiName}
+          {/* Search input */}
+          <div className='px-2 py-2 border-b border-gray-100 flex-shrink-0'>
+            <div className='flex items-center gap-1.5 px-2 py-1 rounded-md' style={{ border: '1px solid #E2E8F0', background: '#FAFBFC' }}>
+              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#94a3b8' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+              </svg>
+              <input
+                ref={searchRef}
+                type='text'
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder='Search fields...'
+                className='flex-1 text-xs outline-none bg-transparent'
+                style={{ color: '#33363F' }}
+              />
+              {search && (
+                <button type='button' onClick={() => setSearch('')} className='flex-shrink-0 text-gray-400 hover:text-gray-600'>
+                  <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
+                  </svg>
+                </button>
+              )}
             </div>
-          ))}
+          </div>
+          {/* Options list */}
+          <div className='overflow-y-auto flex-1'>
+            {!search && (
+              <div
+                className='px-3 py-2 text-sm cursor-pointer hover:bg-gray-50'
+                style={{ color: '#94a3b8' }}
+                onClick={() => { onChange(''); setOpen(false); }}
+              >
+                Field Name
+              </div>
+            )}
+            {filtered.length === 0 ? (
+              <div className='px-3 py-3 text-xs text-gray-400 text-center'>No fields match "{search}"</div>
+            ) : (
+              filtered.map((o) => (
+                <div
+                  key={o.apiName}
+                  onClick={() => { onChange(o.apiName); setOpen(false); }}
+                  className='px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 truncate'
+                  style={{ color: o.apiName === value ? '#155DFC' : '#33363F', background: o.apiName === value ? 'rgba(21,93,252,0.06)' : undefined }}
+                >
+                  {o.label || o.apiName}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
