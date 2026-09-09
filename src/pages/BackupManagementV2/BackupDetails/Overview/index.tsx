@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
-import { formatBytes, formatDate, formatTime, formatDateTime, capitalize, calculateNextRun } from '../../../../utils';
+import { formatBytes, formatTime, formatDateTime, capitalize, calculateNextRun } from '../../../../utils';
 type OverviewProps = {
   backup: any;
   onViewTriggers?: () => void;
@@ -68,7 +68,6 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
               <span className='text-xs font-medium text-gray-600'>Status</span>
             </div>
             <p className='text-sm font-semibold text-green-600'>{displayData?.backupStatus || 'N/A'}</p>
-            <p className='text-xs text-gray-500'>{displayData?.backupStatus === 'SUCCESS' ? 'Successfully Completed' : displayData?.backupStatus === 'FAILED' ? 'Failed' : 'Pending'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -79,7 +78,6 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
               <span className='text-xs font-medium text-gray-600'>Last Run</span>
             </div>
             <p className='text-sm font-semibold text-gray-900'>{formatDateTime(displayData?.lastBackupAt, displayData?.scheduleConfig?.timeZone)}</p>
-            <p className='text-xs text-gray-500'>{displayData?.lastBackupAt ? formatDate(displayData.lastBackupAt, displayData?.scheduleConfig?.timeZone) : 'Never'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -90,7 +88,6 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
               <span className='text-xs font-medium text-gray-600'>Data Size</span>
             </div>
             <p className='text-sm font-semibold text-gray-900'>{totalSizeBytes > 0 ? formatBytes(totalSizeBytes) : '--'}</p>
-            <p className='text-xs text-gray-500'>Current Backup Size</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -101,7 +98,6 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
               <span className='text-xs font-medium text-gray-600'>Objects</span>
             </div>
             <p className='text-sm font-semibold text-gray-900'>{displayData?.objects?.length || 0}</p>
-            <p className='text-xs text-gray-500'>{displayData?.objectNames?.length || 0} Objects Selected</p>
           </div>
         </div>
       </div>
