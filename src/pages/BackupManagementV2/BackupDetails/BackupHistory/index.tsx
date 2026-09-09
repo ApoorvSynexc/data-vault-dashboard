@@ -297,7 +297,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
               <span className='text-xs font-medium text-gray-600'>Total Runs</span>
             </div>
             <p className='text-lg font-bold text-gray-900'>{stats.totalRuns}</p>
-            <p className='text-xs text-gray-500'>+15 last 30 days</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -308,7 +307,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
               <span className='text-xs font-medium text-gray-600'>Successful</span>
             </div>
             <p className='text-lg font-bold text-green-600'>{stats.successful}</p>
-            <p className='text-xs text-gray-500'>{totalItems > 0 ? `${Math.round((stats.successful / totalItems) * 100)}% success rate` : 'N/A'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -319,7 +317,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
               <span className='text-xs font-medium text-gray-600'>Failed</span>
             </div>
             <p className='text-lg font-bold text-red-600'>{String(stats.failed).padStart(2, '0')}</p>
-            <p className='text-xs text-gray-500'>{totalItems > 0 ? `${Math.round((stats.failed / totalItems) * 100)}% failure rate` : 'N/A'}</p>
           </div>
 
           <div className='bg-gray-50 rounded p-3'>
@@ -330,7 +327,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
               <span className='text-xs font-medium text-gray-600'>Total Data Backed up</span>
             </div>
             <p className='text-lg font-bold text-gray-900'>{formatBytes(stats.totalDataBackedUp)}</p>
-            <p className='text-xs text-gray-500'>Across all backups</p>
           </div>
         </div>
       </div>

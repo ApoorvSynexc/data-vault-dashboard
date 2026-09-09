@@ -104,25 +104,10 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
     return 0;
   }
 
-  function extractChange(field: unknown): number | null {
-    if (field == null || typeof field !== 'object') return null;
-    const obj = field as Record<string, unknown>;
-    const val = obj.vsYesterday ?? obj.change ?? obj.delta ?? obj.diff ?? obj.yesterdayChange ?? obj.changeCount;
-    return typeof val === 'number' ? val : null;
-  }
 
 
   const dataProcessed = stats?.dataProcessed;
   const dataValue = dataProcessed ? formatBytes(dataProcessed.bytes) : '--';
-  const dataNote = dataProcessed?.weeklyChangePercent != null
-    ? `${dataProcessed.weeklyChangePercent >= 0 ? '+' : ''}${dataProcessed.weeklyChangePercent}% this week`
-    : 'This week';
-
-  const completedChange = extractChange(stats?.completedJobs);
-  const completedNote = completedChange != null && completedChange >= 0
-    ? `+${completedChange} Jobs vs yesterday`
-    : 'No change vs yesterday';
-  const completedNoteTone: MetricTone = completedChange != null && completedChange >= 0 ? 'default' : 'warning';
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm'>
@@ -142,10 +127,10 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
         <p className='text-xs text-red-500'>Failed to load job stats.</p>
       ) : (
         <div className='grid grid-cols-4 gap-3'>
-          <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} note={completedNote} noteTone={completedNoteTone} />
-          <MetricCard label='Running Jobs' value={pad(extractCount(stats?.runningJobs))} note='All within SLA' tone='success' withBar />
-          <MetricCard label='Failed Jobs' value={pad(extractCount(stats?.failedJobs))} note='Requires Intervention' tone={extractCount(stats?.failedJobs) > 0 ? 'danger' : 'default'} />
-          <MetricCard label='Data Processed' value={dataValue} note={dataNote} />
+          <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} />
+          <MetricCard label='Running Jobs' value={pad(extractCount(stats?.runningJobs))} tone='success' />
+          <MetricCard label='Failed Jobs' value={pad(extractCount(stats?.failedJobs))} tone={extractCount(stats?.failedJobs) > 0 ? 'danger' : 'default'} />
+          <MetricCard label='Data Processed' value={dataValue} />
         </div>
       )}
     </div>
@@ -155,17 +140,11 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
 function MetricCard({
   label,
   value,
-  note,
   tone = 'default',
-  noteTone,
-  withBar = false,
 }: {
   label: string;
   value: string;
-  note: string;
   tone?: MetricTone;
-  noteTone?: MetricTone;
-  withBar?: boolean;
 }) {
   type TC = 'muted' | 'danger' | 'success' | 'primary';
 
@@ -181,12 +160,6 @@ function MetricCard({
     warning: 'primary',
     danger: 'danger',
   };
-  const noteColor: Record<MetricTone, TC> = {
-    default: 'success',
-    success: 'success',
-    warning: 'muted',
-    danger: 'danger',
-  };
 
   return (
     <div className='rounded-lg border border-gray-100 bg-white px-3 py-2 shadow-sm min-w-0'>
@@ -196,20 +169,6 @@ function MetricCard({
       <Typography className='mt-0.5 truncate !text-xl !leading-7' variant='metricValue' color={valueColor[tone]}>
         {value}
       </Typography>
-      {withBar ? (
-        <div className='mt-1 flex items-center gap-2'>
-          <Typography variant='metricLabel' color={noteColor[noteTone ?? tone]}>
-            {note}
-          </Typography>
-          <div className='h-1.5 flex-1 rounded-full bg-gray-100'>
-            <div className='h-1.5 rounded-full bg-green-500' style={{ width: '80%' }} />
-          </div>
-        </div>
-      ) : (
-        <Typography className='mt-1' variant='metricLabel' color={noteColor[noteTone ?? tone]}>
-          {note}
-        </Typography>
-      )}
     </div>
   );
 }
