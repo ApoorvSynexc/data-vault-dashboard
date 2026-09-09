@@ -12,6 +12,8 @@ type AuthContextValue = {
   refreshProfile: () => Promise<void>;
   crmUserId: string;
   setCrmUserId: (id: string) => void;
+  crmOrgId: string;
+  setCrmOrgId: (id: string) => void;
   // crmId of the org the logged-in user belongs to — drives initial dropdown selection
   userCrmId: string;
 };
@@ -25,6 +27,8 @@ const AuthContext = createContext<AuthContextValue>({
   refreshProfile: async () => {},
   crmUserId: '',
   setCrmUserId: () => {},
+  crmOrgId: '',
+  setCrmOrgId: () => {},
   userCrmId: '',
 });
 
@@ -47,11 +51,14 @@ function extractPermissions(profile: Record<string, unknown>): string[] {
   }
 }
 
-// Module-level ref — always holds the latest crmUserId.
+// Module-level refs — always hold the latest values.
 // Initialised from localStorage so the very first my-profile call on reload
-// already carries the correct x-crm-userid header.
+// already carries the correct x-crm-userid / x-crm-orgid headers.
 let _crmUserId = localStorage.getItem('selectedOrgCrmId') ?? '';
 export function getCrmUserIdForRequest(): string { return _crmUserId; }
+
+let _crmOrgId = localStorage.getItem('selectedOrgId') ?? '';
+export function getCrmOrgIdForRequest(): string { return _crmOrgId; }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { logout: profileLogout } = useAuthService();
@@ -60,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [crmUserId, _setCrmUserId] = useState<string>(() => localStorage.getItem('selectedOrgCrmId') ?? '');
+  const [crmOrgId, _setCrmOrgId] = useState<string>(() => localStorage.getItem('selectedOrgId') ?? '');
   const [userCrmId, setUserCrmId] = useState<string>('');
 
   const hasPermission = useCallback(
@@ -67,10 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [permissions],
   );
 
-  // Keep module-level ref in sync with state
+  // Keep module-level refs in sync with state
   const setCrmUserId = useCallback((id: string) => {
     _crmUserId = id;
     _setCrmUserId(id);
+  }, []);
+
+  const setCrmOrgId = useCallback((id: string) => {
+    _crmOrgId = id;
+    _setCrmOrgId(id);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -88,8 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore — clear state regardless
     }
     localStorage.removeItem('selectedOrgCrmId');
+    localStorage.removeItem('selectedOrgId');
     _crmUserId = '';
     _setCrmUserId('');
+    _crmOrgId = '';
+    _setCrmOrgId('');
     setUser(null);
     setPermissions([]);
     setStatus('unauthenticated');
@@ -100,8 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, userCrmId }),
-    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, userCrmId],
+    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId }),
+    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
