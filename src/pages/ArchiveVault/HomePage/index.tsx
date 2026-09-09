@@ -725,7 +725,7 @@ export default function ArchiveVaultHomePage() {
               showSerialNumber
               serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
               cursorMode={true}
-              hidePaginationSummary={!!debouncedSearch}
+              hidePaginationSummary={!!debouncedSearch || statusFilter !== 'All' || lastJobFilter !== 'All'}
               pagination={{
                 currentPage: 1,
                 displayPage: currentPage,

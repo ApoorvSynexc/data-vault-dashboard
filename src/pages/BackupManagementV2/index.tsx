@@ -1034,7 +1034,7 @@ export default function BackupManagementV2() {
             }}
             showSerialNumber={true}
             serialNumberStart={(currentPage - 1) * (apiMeta.limit ?? 25) + 1}
-            hidePaginationSummary={!!debouncedSearch}
+            hidePaginationSummary={!!debouncedSearch || filters.status !== 'All' || filters.lastJobStatus !== 'All' || filters.backupType !== 'All'}
             cursorMode={true}
             cursorFirstPageFn={() => { setCursorStack([]); goToPage(1, null); }}
             cursorOnPrev={() => {
