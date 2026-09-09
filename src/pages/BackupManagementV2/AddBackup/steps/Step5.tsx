@@ -165,6 +165,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   // Tracks the last selected object (SF API name) to fire describe API once on selection
   const [lastSelectedSfName, setLastSelectedSfName] = useState<string | null>(null);
   const [describeFetchCount, setDescribeFetchCount] = useState(0);
+  // UUIDs the user has explicitly checked — auto-selected children are NOT added here.
+  // Used to prevent removing a user-picked object when a parent that also "owns" it is deselected.
+  const [userSelectedObjects, setUserSelectedObjects] = useState<Set<string>>(new Set());
   // Map of parent uuid -> auto-selected child uuids (master-detail), flattened across all depths
   const [parentChildMap, setParentChildMap] = useState<Map<string, string[]>>(new Map());
   // Map of parent uuid -> its master-detail children as a nested tree, for the payload
@@ -239,6 +242,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     if (resolvedUuids.length === 0) return;
 
     setSelectedObjects(new Set(resolvedUuids));
+
+    // Restore which objects the user had explicitly selected (vs auto-selected children)
+    const userUuids = initialSelectedObjectsRef.current
+      .filter((s) => s.isUserSelected)
+      .map((s) => allObjects.find((o) => o.id === s.id)?.uuid)
+      .filter((u): u is string => !!u);
+    if (userUuids.length > 0) setUserSelectedObjects(new Set(userUuids));
 
     // Rebuild parentChildMap + parentTreeMap: for each object that lists children,
     // re-resolve the saved (nested) children tree against the fresh uuids.
@@ -477,9 +487,17 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     onSelectionChange={(newSelected) => {
                       const addedUuid = [...newSelected].find((uuid) => !selectedObjects.has(uuid));
                       if (addedUuid) {
+                        // User explicitly checked a row
+                        setUserSelectedObjects((prev) => { const n = new Set(prev); n.add(addedUuid); return n; });
                         const sfName = displayObjects.find((o) => o.uuid === addedUuid)?.id ?? null;
                         setLastSelectedSfName(sfName);
                         setDescribeFetchCount((c) => c + 1);
+                      } else {
+                        // User explicitly unchecked a non-locked row
+                        const removedByUser = [...selectedObjects].find((uuid) => !newSelected.has(uuid) && !autoSelectedIds.has(uuid));
+                        if (removedByUser) {
+                          setUserSelectedObjects((prev) => { const n = new Set(prev); n.delete(removedByUser); return n; });
+                        }
                       }
 
                       // Detect removed parents and unselect their locked children
@@ -490,11 +508,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                         const updatedTreeMap = new Map(parentTreeMap);
                         removedParents.forEach((pid) => {
                           (parentChildMap.get(pid) ?? []).forEach((c) => {
-                            // Only remove child if no other remaining parent also owns it
+                            // Only remove child if no other remaining parent owns it,
+                            // AND the user didn't explicitly select it themselves.
                             const stillOwnedByOther = [...updatedMap.entries()]
                               .filter(([k]) => k !== pid)
                               .some(([, v]) => v.includes(c));
-                            if (!stillOwnedByOther) toRemove.add(c);
+                            if (!stillOwnedByOther && !userSelectedObjects.has(c)) toRemove.add(c);
                           });
                           updatedMap.delete(pid);
                           updatedTreeMap.delete(pid);
@@ -706,7 +725,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                 const children = globalChildrenMap.get(uuid);
                 // Auto-selected (locked) objects were added because a parent was picked,
                 // not because the user checked them directly.
-                const isUserSelected = !autoSelectedIds.has(uuid);
+                const isUserSelected = userSelectedObjects.has(uuid);
                 return {
                   uuid,
                   id: obj?.id ?? uuid,
