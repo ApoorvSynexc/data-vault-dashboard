@@ -45,8 +45,8 @@ function getJobStatus(status?: string, objects?: any[]): { label: string; bg: st
 }
 
 /* ── KPI card ── */
-function KpiCard({ icon, label, value, sub, subColor = '#16A34A' }: {
-  icon: ReactNode; label: string; value: string; sub?: string; subColor?: string;
+function KpiCard({ icon, label, value }: {
+  icon: ReactNode; label: string; value: string;
 }) {
   return (
     <div className='rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm flex items-center gap-3 min-w-0'>
@@ -56,7 +56,6 @@ function KpiCard({ icon, label, value, sub, subColor = '#16A34A' }: {
       <div className='min-w-0'>
         <p className='text-xl font-bold leading-tight text-gray-900'>{value}</p>
         <p className='mt-0.5 text-xs text-gray-500 leading-tight'>{label}</p>
-        {sub && <p className='text-xs font-semibold mt-0.5' style={{ color: subColor }}>{sub}</p>}
       </div>
     </div>
   );
@@ -133,15 +132,9 @@ export default function Dashboard() {
 
   const overview = (overviewData as any)?.data ?? {};
   const kpiProtectedRecords = overview?.protectedRecords?.value ?? '--';
-  const kpiProtectedChange  = overview?.protectedRecords?.change;
-  const kpiProtectedPeriod  = overview?.protectedRecords?.period;
   const kpiStorageValue     = overview?.storageUsed?.value ?? '--';
-  const kpiStorageChange    = overview?.storageUsed?.change;
-  const kpiStoragePeriod    = overview?.storageUsed?.period;
   const kpiSuccessRate      = overview?.backupSuccessRate?.value ?? '--';
-  const kpiSuccessPeriod    = overview?.backupSuccessRate?.period;
   const kpiActiveJobs       = overview?.activeJobs?.value ?? 0;
-  const kpiRunning          = overview?.activeJobs?.running ?? 0;
 
   // Backup CONFIG counts by status — for the System Health card.
   const activeBackups    = overview?.activeBackups ?? 0;
@@ -401,26 +394,21 @@ export default function Dashboard() {
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>}
             label='Protected Records'
             value={String(kpiProtectedRecords)}
-            sub={kpiProtectedChange ? `${kpiProtectedChange} ${kpiProtectedPeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='17 8 12 3 7 8'/><line x1='12' y1='3' x2='12' y2='15'/></svg>}
             label='Storage Used'
             value={kpiStorageValue || '--'}
-            sub={kpiStorageChange ? `${kpiStorageChange} ${kpiStoragePeriod ?? ''}`.trim() : undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
             label='Backup Success Rate'
             value={kpiSuccessRate || '--'}
-            sub={kpiSuccessPeriod ?? undefined}
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><rect x='2' y='7' width='20' height='14' rx='2'/><path d='M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2'/></svg>}
             label='Active Jobs'
             value={String(kpiActiveJobs)}
-            sub={`${kpiRunning} ${overview?.activeJobs?.period ?? 'Running'}`}
-            subColor='#64748B'
           />
         </div>
       </div>
