@@ -200,7 +200,7 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
 // ── Main Layout ────────────────────────────────────────────────────────────────
 
 export default function MainLayout() {
-  const { logout, hasPermission, setCrmUserId, userCrmId, refreshProfile } = useAuth();
+  const { logout, hasPermission, setCrmUserId, setCrmOrgId, userCrmId, refreshProfile } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -224,9 +224,11 @@ export default function MainLayout() {
     if (org.crmId === selectedOrg?.crmId) return;
     setSelectedOrg(org);
     localStorage.setItem('selectedOrgCrmId', org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
-    // Set crmUserId first — updates module-level ref immediately so the
-    // refreshProfile call below sends x-crm-userid with the new org's userId
+    localStorage.setItem('selectedOrgId', org.crmProfile?.organizationId ?? '');
+    // Set refs first — updates module-level vars immediately so the
+    // refreshProfile call below sends x-crm-userid / x-crm-orgid with the new org
     setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+    setCrmOrgId(org.crmProfile?.organizationId ?? '');
     await refreshProfile();
     navigate('/', { replace: true });
   };
@@ -348,7 +350,10 @@ export default function MainLayout() {
             userCrmId={userCrmId}
             onAutoSelect={(org) => {
               setSelectedOrg(org);
+              localStorage.setItem('selectedOrgCrmId', org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+              localStorage.setItem('selectedOrgId', org.crmProfile?.organizationId ?? '');
               setCrmUserId(org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
+              setCrmOrgId(org.crmProfile?.organizationId ?? '');
             }}
             onSelect={handleSelectOrg}
           />

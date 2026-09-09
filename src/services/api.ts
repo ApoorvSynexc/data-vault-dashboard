@@ -34,6 +34,7 @@ type MutationRequestOptions = Omit<HttpRequestOptions, 'method' | 'body'>;
 export type HttpRequestConfig = {
   onLogout?: () => void;
   getCrmUserId?: () => string | null | undefined;
+  getCrmOrgId?: () => string | null | undefined;
 }
 
 export type HttpRequestInstance = {
@@ -112,8 +113,10 @@ export function createHttpRequest(config: HttpRequestConfig = {}): HttpRequestIn
   ): Promise<ApiResponse<T>> {
     const resolvedPath = buildPath(path, query);
     const crmUserId = config.getCrmUserId?.();
+    const crmOrgId = config.getCrmOrgId?.();
     const mergedHeaders: HeadersInit = {
       ...(crmUserId ? { 'x-crm-userid': crmUserId } : {}),
+      ...(crmOrgId ? { 'x-crm-orgid': crmOrgId } : {}),
       ...(headers as Record<string, string> | undefined),
     };
     let response = await rawFetch(resolvedPath, body, mergedHeaders, options);

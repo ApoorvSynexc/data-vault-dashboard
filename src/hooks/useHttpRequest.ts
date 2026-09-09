@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getCrmUserIdForRequest } from '../context/AuthContext';
+import { getCrmUserIdForRequest, getCrmOrgIdForRequest } from '../context/AuthContext';
 import { createHttpRequest } from '../services/api';
 
 export function useHttpRequest() {
@@ -10,9 +10,10 @@ export function useHttpRequest() {
     () =>
       createHttpRequest({
         onLogout: logout,
-        // Reads from the module-level ref — always current, even on the very first
+        // Reads from module-level refs — always current, even on the very first
         // request from AuthContext before React state has propagated.
         getCrmUserId: getCrmUserIdForRequest,
+        getCrmOrgId: getCrmOrgIdForRequest,
       }),
     [logout],
   );
