@@ -1212,41 +1212,44 @@ export default function BackupManagementV2() {
             </div>
 
             {/* Footer */}
-            <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50'>
-              <button
-                onClick={() => { setActivateTarget(null); setActivateAcceptText(''); setActivateAcceptError(false); }}
-                className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors'
-              >
-                Cancel
-              </button>
-              {(() => {
-                const { scheduleStartDate, scheduleStartTime, isRealtime } = activateTarget;
-                const isSchedulePast = !isRealtime && (() => {
-                  if (!scheduleStartDate && !scheduleStartTime) return false;
-                  const dateStr = scheduleStartDate ?? dayjs().format('YYYY-MM-DD');
-                  const timeStr = scheduleStartTime ?? '00:00';
-                  return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
-                })();
-                return (
+            {(() => {
+              const { scheduleStartDate, scheduleStartTime, isRealtime } = activateTarget;
+              const isSchedulePast = !isRealtime && (() => {
+                if (!scheduleStartDate && !scheduleStartTime) return false;
+                const dateStr = scheduleStartDate ?? dayjs().format('YYYY-MM-DD');
+                const timeStr = scheduleStartTime ?? '00:00';
+                return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
+              })();
+              return (
+                <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50'>
                   <button
-                    onClick={() => {
-                      if (isRealtime && activateAcceptText.trim().toLowerCase() !== 'accept') {
-                        setActivateAcceptError(true);
-                        return;
-                      }
-                      updateStatusMutation.mutate({ backupConfigId: activateTarget.id, backupStatus: 'ACTIVE' });
-                      setActivateTarget(null);
-                      setActivateAcceptText('');
-                      setActivateAcceptError(false);
-                    }}
-                    disabled={updateStatusMutation.isPending || isSchedulePast}
-                    className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                    onClick={() => { setActivateTarget(null); setActivateAcceptText(''); setActivateAcceptError(false); }}
+                    className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors'
                   >
-                    {updateStatusMutation.isPending ? 'Activating...' : 'Activate Backup'}
+                    {isSchedulePast ? 'Close' : 'Cancel'}
                   </button>
-                );
-              })()}
-            </div>
+                  {!isSchedulePast && (
+                    <button
+                      onClick={() => {
+                        if (isRealtime && activateAcceptText.trim().toLowerCase() !== 'accept') {
+                          setActivateAcceptError(true);
+                          return;
+                        }
+                        updateStatusMutation.mutate({ backupConfigId: activateTarget.id, backupStatus: 'ACTIVE' });
+                        setActivateTarget(null);
+                        setActivateAcceptText('');
+                        setActivateAcceptError(false);
+                      }}
+                      disabled={updateStatusMutation.isPending}
+                      className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                    >
+                      {updateStatusMutation.isPending ? 'Activating...' : 'Activate Backup'}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         </div>
       )}
