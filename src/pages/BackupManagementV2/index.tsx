@@ -527,6 +527,74 @@ function ActionDropdown({ items }: { items: DropdownMenuItem[] }) {
 }
 
 
+type SharedObjectConflict = {
+  sharedObjects: { name: string; usedBy: string }[];
+};
+
+function parseSharedObjectsConflict(msg: string): SharedObjectConflict | null {
+  const dashIdx = msg.indexOf(' — ');
+  if (dashIdx === -1) return null;
+  const afterDash = msg.slice(dashIdx + 3);
+  const dotIdx = afterDash.indexOf('. ');
+  const objectsPart = dotIdx !== -1 ? afterDash.slice(0, dotIdx) : afterDash;
+  const sharedObjects = objectsPart.split('; ').flatMap((item) => {
+    const m = item.trim().match(/^(.+?)\s*\(also used by:\s*(.+?)\)$/);
+    return m ? [{ name: m[1].trim(), usedBy: m[2].trim() }] : [];
+  });
+  return sharedObjects.length > 0 ? { sharedObjects } : null;
+}
+
+function PauseConflictDialog({ conflict, onClose }: { conflict: SharedObjectConflict; onClose: () => void }) {
+  return (
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4'>
+      <div className='w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.2)]'>
+        {/* Header */}
+        <div className='border-b border-gray-100 px-6 py-4'>
+          <div className='flex items-start gap-3'>
+            <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-500'>
+              <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.9' className='h-5 w-5'>
+                <path d='M12 9v4' strokeLinecap='round' />
+                <circle cx='12' cy='16.5' r='0.8' fill='currentColor' stroke='none' />
+                <path d='M10.29 3.86L1.82 18a2 2 0 001.72 3h16.92a2 2 0 001.72-3L13.71 3.86a2 2 0 00-3.42 0z' strokeLinecap='round' strokeLinejoin='round' />
+              </svg>
+            </div>
+            <div>
+              <p className='text-sm font-semibold text-gray-900'>Cannot Pause — Shared Object Conflict</p>
+              <p className='mt-0.5 text-xs text-gray-500 leading-relaxed'>
+                The following objects are shared with another real-time backup. Pausing this config would also stop syncing for the other config.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Object list */}
+        <div className='px-6 py-4 max-h-60 overflow-y-auto'>
+          <p className='text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-2'>Shared Objects</p>
+          <div className='space-y-1.5'>
+            {conflict.sharedObjects.map((obj) => (
+              <div key={obj.name} className='flex items-center justify-between rounded-lg bg-orange-50 border border-orange-100 px-3 py-2'>
+                <span className='text-xs font-semibold text-gray-800'>{obj.name}</span>
+                <span className='text-[10px] text-gray-500'>also used by <span className='font-semibold text-gray-700'>{obj.usedBy}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className='flex justify-end px-6 pb-5'>
+          <button
+            type='button'
+            onClick={onClose}
+            className='inline-flex min-w-[88px] items-center justify-center rounded-lg bg-gray-900 px-5 py-2 text-xs font-semibold text-white transition hover:bg-gray-700'
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type FilterState = {
   backupType: BackupType | 'All';
   status: string;
@@ -542,6 +610,8 @@ export default function BackupManagementV2() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseTarget, setPauseTarget] = useState<{ id: string; name: string } | null>(null);
+  const [pauseConflict, setPauseConflict] = useState<SharedObjectConflict | null>(null);
+  const [pauseError, setPauseError] = useState<string | null>(null);
   const [runNowTarget, setRunNowTarget] = useState<{ id: string; name: string } | null>(null);
   const [activateTarget, setActivateTarget] = useState<{ id: string; name: string; isRealtime: boolean; scheduleStartDate?: string; scheduleStartTime?: string } | null>(null);
   const [activateAcceptText, setActivateAcceptText] = useState('');
@@ -635,10 +705,19 @@ export default function BackupManagementV2() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backup-config-list-v2'] });
       queryClient.invalidateQueries({ queryKey: ['backup-config', 'object-list'] });
+      setPauseTarget(null);
+      setPauseError(null);
+      setPauseConflict(null);
     },
-    onError: (error) => {
-      console.error('Failed to update backup status:', error);
-      showToast('Failed to update backup status. Please try again.');
+    onError: (error: any) => {
+      const msg: string = error?.response?.data?.message ?? error?.message ?? '';
+      const conflict = parseSharedObjectsConflict(msg);
+      if (conflict) {
+        setPauseTarget(null);
+        setPauseConflict(conflict);
+      } else {
+        setPauseError(msg || 'Failed to update backup status. Please try again.');
+      }
     },
   });
 
@@ -1027,9 +1106,17 @@ export default function BackupManagementV2() {
         message={`Are you sure you want to pause "${pauseTarget?.name}"? The backup will stop running until you resume it.`}
         confirmLabel='Pause'
         isLoading={updateStatusMutation.isPending}
-        onConfirm={() => { updateStatusMutation.mutate({ backupConfigId: pauseTarget!.id, backupStatus: 'PAUSED' }); setPauseTarget(null); }}
-        onCancel={() => setPauseTarget(null)}
+        error={pauseError}
+        onConfirm={() => { setPauseError(null); updateStatusMutation.mutate({ backupConfigId: pauseTarget!.id, backupStatus: 'PAUSED' }); }}
+        onCancel={() => { setPauseTarget(null); setPauseError(null); updateStatusMutation.reset(); }}
       />
+
+      {pauseConflict && (
+        <PauseConflictDialog
+          conflict={pauseConflict}
+          onClose={() => { setPauseConflict(null); updateStatusMutation.reset(); }}
+        />
+      )}
 
       <WarningDialog
         isOpen={!!runNowTarget}
