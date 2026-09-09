@@ -104,7 +104,7 @@ const floatingFrames = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
   const backupConfigService = useBackupConfigService();
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
@@ -327,30 +327,32 @@ export default function Dashboard() {
               </svg>
               Start Backup →
             </button>
-            <button
-              onClick={() => navigate('/archive-vault/new')}
-              style={{
-                width: 280,
-                height: 58,
-                background: '#ffffff',
-                borderRadius: 6,
-                color: '#155DFC',
-                fontSize: 16,
-                fontWeight: 400,
-                border: '2px solid #155DFC',
-                cursor: 'pointer',
-                boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.06)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              <svg width='18' height='18' fill='none' stroke='#155DFC' strokeWidth='2' viewBox='0 0 24 24'>
-                <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
-              </svg>
-              Start Archive →
-            </button>
+            {permissions.includes('archival.write') && (
+              <button
+                onClick={() => navigate('/archive-vault/new')}
+                style={{
+                  width: 280,
+                  height: 58,
+                  background: '#ffffff',
+                  borderRadius: 6,
+                  color: '#155DFC',
+                  fontSize: 16,
+                  fontWeight: 400,
+                  border: '2px solid #155DFC',
+                  cursor: 'pointer',
+                  boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                <svg width='18' height='18' fill='none' stroke='#155DFC' strokeWidth='2' viewBox='0 0 24 24'>
+                  <polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/>
+                </svg>
+                Start Archive →
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -381,13 +383,15 @@ export default function Dashboard() {
             >
               + New Backup
             </button>
-            <button
-              type='button'
-              onClick={() => navigate('/archive-vault/new')}
-              className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
-            >
-              + New Archive
-            </button>
+            {permissions.includes('archival.write') && (
+              <button
+                type='button'
+                onClick={() => navigate('/archive-vault/new')}
+                className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
+              >
+                + New Archive
+              </button>
+            )}
           </div>
         </div>
 
