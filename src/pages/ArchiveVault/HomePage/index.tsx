@@ -69,7 +69,7 @@ function normalizeStatus(raw: string): string {
     ACTIVE: 'ACTIVE', RUNNING: 'RUNNING', SCHEDULED: 'SCHEDULED',
     DRAFT: 'DRAFT', PAUSED: 'PAUSED', FAILED: 'FAILED',
     ONE_TIME: 'ONE_TIME', PENDING: 'PENDING', SUCCESS: 'SUCCESS',
-    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'ACTIVE',
+    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'RESUMED',
   };
   return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
 }
@@ -144,6 +144,7 @@ function PlatformBadge({ platform }: { platform: string }) {
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     ACTIVE:           'bg-blue-100 text-blue-700',
+    RESUMED:          'bg-blue-100 text-blue-700',
     RUNNING:          'bg-green-100 text-green-700',
     SCHEDULED:        'bg-blue-100 text-blue-700',
     SUCCESS:          'bg-green-100 text-green-700',
@@ -156,9 +157,9 @@ function StatusBadge({ status }: { status: string }) {
     ONE_TIME:         'bg-gray-100 text-gray-700',
   };
   const labels: Record<string, string> = {
-    ACTIVE: 'Active', RUNNING: 'Running', SCHEDULED: 'Scheduled',
+    ACTIVE: 'Active', RESUMED: 'Resumed', RUNNING: 'Running', SCHEDULED: 'Scheduled',
     SUCCESS: 'Success', PENDING: 'Pending', DRAFT: 'Draft',
-    PAUSED: 'Paused', RESUMED: 'Resumed', INACTIVE: 'Inactive', FAILED: 'Failed',
+    PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
     PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time',
   };
   return (
