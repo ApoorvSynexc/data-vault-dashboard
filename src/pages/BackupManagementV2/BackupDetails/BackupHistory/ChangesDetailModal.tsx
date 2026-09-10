@@ -331,21 +331,49 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                 {expandedRows.has(item.id) && (
                   <tr style={{ borderBottom: idx < paginatedData.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
                     <td colSpan={8} className='px-5 pb-3.5 pt-0'>
-                      {item.errorMessage ? (
-                        <div className='flex items-start gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.2)' }}>
-                          <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='mt-0.5 shrink-0'>
-                            <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
-                          </svg>
-                          <span className='text-xs font-medium' style={{ color: '#F24400' }}>{parseErrorMessage(item.errorMessage!)}</span>
-                        </div>
-                      ) : (
-                        <div className='flex items-center gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(0,128,32,0.06)', border: '1px solid rgba(0,128,32,0.2)' }}>
-                          <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0'>
-                            <path d='M20 6L9 17l-5-5' />
-                          </svg>
-                          <span className='text-xs font-medium' style={{ color: '#008020' }}>{item.name} is backed up successfully</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const s = item.status?.toUpperCase();
+                        const isSuccess = s === 'SUCCESS' || s === 'COMPLETED';
+                        const isFailed = s === 'FAILED';
+                        const isInProgress = IN_PROGRESS_OBJ_STATUSES.has(s);
+                        if (isFailed || item.errorMessage) {
+                          return (
+                            <div className='flex items-start gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.2)' }}>
+                              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='mt-0.5 shrink-0'>
+                                <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                              </svg>
+                              <span className='text-xs font-medium' style={{ color: '#F24400' }}>
+                                {item.errorMessage ? parseErrorMessage(item.errorMessage) : `${item.name} backup failed.`}
+                              </span>
+                            </div>
+                          );
+                        }
+                        if (isSuccess) {
+                          return (
+                            <div className='flex items-center gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(0,128,32,0.06)', border: '1px solid rgba(0,128,32,0.2)' }}>
+                              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#008020' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round' className='shrink-0'>
+                                <path d='M20 6L9 17l-5-5' />
+                              </svg>
+                              <span className='text-xs font-medium' style={{ color: '#008020' }}>{item.name} is backed up successfully</span>
+                            </div>
+                          );
+                        }
+                        if (isInProgress) {
+                          return (
+                            <div className='flex items-center gap-2 rounded-lg px-4 py-3' style={{ background: 'rgba(21,93,252,0.06)', border: '1px solid rgba(21,93,252,0.2)' }}>
+                              <svg className='w-3.5 h-3.5 animate-spin shrink-0' fill='none' stroke='#155DFC' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                                <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+                              </svg>
+                              <span className='text-xs font-medium' style={{ color: '#155DFC' }}>{item.name} backup is in progress…</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className='flex items-center gap-2 rounded-lg px-4 py-3' style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                            <span className='text-xs font-medium' style={{ color: '#6B7280' }}>{item.name} — status: {item.status || 'Unknown'}</span>
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 )}
@@ -399,17 +427,22 @@ function parseErrorMessage(raw: string): string {
   return raw;
 }
 
+const IN_PROGRESS_OBJ_STATUSES = new Set([
+  'RUNNING', 'IN_PROGRESS', 'TRANSFER_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS',
+  'PROCESSING', 'COMPRESSION_JOB_IN_PROGRESS',
+]);
+
 /* ── Status Badge ── */
 function StatusBadge({ status }: { status: string }) {
   const s = status?.toUpperCase();
   let bg = '#F3F4F6', color = '#374151';
   if (s === 'SUCCESS' || s === 'COMPLETED') { bg = 'rgba(0,128,32,0.1)'; color = '#008020'; }
   else if (s === 'FAILED') { bg = 'rgba(242,68,0,0.1)'; color = '#F24400'; }
-  else if (s === 'RUNNING' || s === 'IN_PROGRESS') { bg = 'rgba(21,93,252,0.1)'; color = '#155DFC'; }
+  else if (IN_PROGRESS_OBJ_STATUSES.has(s)) { bg = 'rgba(21,93,252,0.1)'; color = '#155DFC'; }
   else if (s === 'PENDING') { bg = 'rgba(234,179,8,0.1)'; color = '#A16207'; }
   const label = s === 'SUCCESS' || s === 'COMPLETED' ? 'Completed'
     : s === 'FAILED' ? 'Failed'
-    : s === 'RUNNING' || s === 'IN_PROGRESS' ? 'Running'
+    : IN_PROGRESS_OBJ_STATUSES.has(s) ? 'In Progress'
     : s === 'PENDING' ? 'Pending'
     : status || 'Unknown';
   return (
