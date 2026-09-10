@@ -989,8 +989,7 @@ export default function AddDetailsWizard({
           )}
 
           {/* ════ STEP 2: ADD CHILDS ════ */}
-          {step === 2 && (
-            <div className='px-6 py-4 flex flex-col gap-3'>
+          <div className={step === 2 ? 'px-6 py-4 flex flex-col gap-3' : 'hidden'}>
               <p className='text-sm text-gray-500'>
                 Select child relationships to include in the archive. Check a child to include it, then toggle to expand nested relationships.
               </p>
@@ -1055,7 +1054,6 @@ export default function AddDetailsWizard({
                 </p>
               )}
             </div>
-          )}
 
           {/* ════ STEP 3: ADD SCHEDULE ════ */}
           {step === 3 && (
