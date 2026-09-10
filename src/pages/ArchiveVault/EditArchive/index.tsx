@@ -237,6 +237,23 @@ export default function EditArchive() {
           scheduleConfig={scheduleConfig}
           onBack={() => goBack(5)}
           onUpdatePolicyName={(name) => setPolicyName(name)}
+          onUpdateObjectSchedule={(uuid, apiName, schedule) => {
+            setSelectedObjects((prev) => prev.map((o) =>
+              (o.uuid === uuid || o.id === apiName) ? { ...o, scheduleConfig: schedule } : o
+            ));
+            setArchivalPayload((prev) => {
+              if (!prev) return prev;
+              const objects = (prev.objects as any[]) ?? [];
+              return {
+                ...prev,
+                objects: objects.map((o: any) =>
+                  (o.id === apiName || o.name === apiName)
+                    ? { ...o, ...(schedule ? { scheduleConfig: schedule } : { scheduleConfig: undefined }) }
+                    : o
+                ),
+              };
+            });
+          }}
           onEditStep={(step) => setCurrentStep(step as Step)}
           editMode
           backupConfigId={backupConfigId}
