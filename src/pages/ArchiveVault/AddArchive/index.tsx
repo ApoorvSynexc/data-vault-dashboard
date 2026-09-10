@@ -59,6 +59,7 @@ export default function AddArchive() {
         <Step1
           initialSelectedConnection={selectedConnection}
           initialSelectedDestConnection={selectedDestConnection}
+          initialView={selectedConnection && selectedDestConnection ? 'destination' : 'source'}
           onNext={(conn, dest) => {
             setSelectedConnection(conn);
             setSelectedDestConnection(dest);
