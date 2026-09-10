@@ -11,6 +11,7 @@
 //   8. ReviewSubmit           — final review + submit
 
 import { useState } from 'react';
+import { useRestoreService } from '../../../services/restore/restore.service';
 import SelectSource from './SelectSource';
 import SelectSourceType from './SelectSourceType';
 import SelectScope from './SelectScope';
@@ -58,6 +59,7 @@ const INITIAL_PAYLOAD: RestoreRetrievePayload = {
 };
 
 export default function NewRestore({ onBack, onComplete, isTemplateMode = false }: NewRestoreProps) {
+  const restoreService = useRestoreService();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [templateMode, setTemplateMode] = useState(isTemplateMode);
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
@@ -132,7 +134,23 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />
       </div>
       <div className={currentStep === 4 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <SetDestination onNext={(label) => { setDestLabel(label); goNext(); }} onBack={goBack} backupConfigId={sourceSelection.backupConfigId} configType={sourceSelection.configType} crmName={sourceSelection.crmName} crmUsername={sourceSelection.crmUsername} />
+        <SetDestination
+          onNext={(label) => { setDestLabel(label); goNext(); }}
+          onBack={goBack}
+          backupConfigId={sourceSelection.backupConfigId}
+          configType={sourceSelection.configType}
+          crmName={sourceSelection.crmName}
+          crmUsername={sourceSelection.crmUsername}
+          onGenerateCsv={async (name, description) => {
+            const payload = {
+              ...restorePayload,
+              destination: { type: 'EXPORT' as const },
+              jobDetail: { name, description },
+            };
+            await restoreService.createRestoreJob(payload);
+            onComplete();
+          }}
+        />
       </div>
       <div className={currentStep === 5 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <DefineRestorePolicy

@@ -197,7 +197,7 @@ export interface RestoreRetrievePayload {
   };
 
   destination: {
-    type: 'SAME' | 'DIFFERENT';
+    type: 'SAME' | 'DIFFERENT' | 'EXPORT';
     crmId?: string;
     tagRestoredRecord?: string;
   };
@@ -323,6 +323,7 @@ const RESTORE_ENDPOINTS = {
   getRestoreJob:        '/v1/restore/job',
   jobStats:             '/v1/restore/job/stats',
   rollbackRestoreJob:   '/v1/restore/job/rollback',
+  downloadCsv:          '/v1/restore/download-csv',
 };
 
 export function useRestoreService() {
@@ -415,5 +416,8 @@ export function useRestoreService() {
 
     rollbackRestoreJob: (restoreJobId: string) =>
       api.put<{ success: boolean }>(RESTORE_ENDPOINTS.rollbackRestoreJob, undefined, { query: { restoreJobId } }),
+
+    downloadCsv: () =>
+      api.get<unknown>(RESTORE_ENDPOINTS.downloadCsv),
   };
 }

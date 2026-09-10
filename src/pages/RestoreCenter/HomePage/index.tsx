@@ -142,6 +142,7 @@ type RestoreRow = {
   tags: string;
   source: 'Backup' | 'Archive';
   destination: string;
+  isExport: boolean;
   records: string;
   status: string;
   started: string;
@@ -276,7 +277,8 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
         name: item.jobDetail?.name || 'Untitled Restore',
         tags: item.jobDetail?.tags?.join(', ') || '',
         source: item.source?.backupConfigId ? 'Backup' : 'Archive',
-        destination: item.destination?.type === 'SAME' ? 'Same Org' : item.destination?.crmId || 'Unknown',
+        destination: item.destination?.type === 'EXPORT' ? 'Export Only' : item.destination?.type === 'SAME' ? 'Same Org' : item.destination?.crmId || 'Unknown',
+        isExport: item.destination?.type === 'EXPORT',
         records: '—',
         status: item.status,
         started: formatDate(item.createdAt),
