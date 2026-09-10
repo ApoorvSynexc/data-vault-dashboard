@@ -134,18 +134,17 @@ export default function AddArchive() {
           description={description}
           selectedObjects={selectedObjects}
           scheduleConfig={scheduleConfig}
-          onUpdateObjectSchedule={(objectId, schedule) => {
+          onUpdateObjectSchedule={(uuid, apiName, schedule) => {
             setSelectedObjects((prev) => prev.map((o) =>
-              (o.uuid ?? o.id) === objectId ? { ...o, scheduleConfig: schedule } : o
+              (o.uuid === uuid || o.id === apiName) ? { ...o, scheduleConfig: schedule } : o
             ));
-            // Patch archivalPayload.objects so the API call uses the updated schedule
             setArchivalPayload((prev) => {
               if (!prev) return prev;
               const objects = (prev.objects as any[]) ?? [];
               return {
                 ...prev,
                 objects: objects.map((o: any) =>
-                  o.id === objectId
+                  (o.id === apiName || o.name === apiName)
                     ? { ...o, ...(schedule ? { scheduleConfig: schedule } : { scheduleConfig: undefined }) }
                     : o
                 ),
