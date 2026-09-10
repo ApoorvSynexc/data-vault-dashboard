@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
@@ -87,6 +88,19 @@ export default function FinalStep({
   const destinationService = useDestinationService();
   const queryClient = useQueryClient();
   const isRealTime = strategy === 'realtime';
+
+  const [now, setNow] = useState(() => dayjs());
+  useEffect(() => {
+    const id = setInterval(() => setNow(dayjs()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isSchedulePast = !isRealTime && !!scheduleConfig && (() => {
+    const { startDate, startTime } = scheduleConfig.scheduling;
+    if (!startDate) return false;
+    const dt = startTime ? `${startDate}T${startTime}` : startDate;
+    return dayjs(dt).isBefore(now);
+  })();
 
   const { data: platforms } = useQuery({
     queryKey: ['connected-platforms'],
@@ -351,6 +365,12 @@ export default function FinalStep({
 
         {!isRealTime && scheduleConfig && (
           <SectionBox title='Backup Schedule' sectionKey='schedule' onEdit={() => onEditStep(6)}>
+            {isSchedulePast && (
+              <div className='flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 mb-3'>
+                <svg className='w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' /></svg>
+                <p className='text-sm text-yellow-700'>The scheduled start time has already passed or is about to pass. Please go back and update the schedule before running the backup.</p>
+              </div>
+            )}
             <div className='grid grid-cols-2 gap-3'>
               <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Frequency</p><p className='text-sm font-medium text-gray-900'>{scheduleConfig.scheduling.frequency}</p></div>
               <div className='bg-gray-100 rounded-lg p-3'><p className='text-xs text-gray-600 mb-1'>Time Zone</p><p className='text-sm font-medium text-gray-900'>{scheduleConfig.timeZone}</p></div>
@@ -403,7 +423,7 @@ export default function FinalStep({
               <PermissionGate permission='backup.execute'>
                 <button
                   onClick={isDraft && editConfigId ? handleActivateDraft : handleRunBackup}
-                  disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending}
+                  disabled={isLoading || createBackupMutation.isPending || updateBackupMutation.isPending || isSchedulePast}
                   className='px-6 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {isLoading || createBackupMutation.isPending || updateBackupMutation.isPending ? 'Saving...' : isDraft && editConfigId ? 'Activate Backup' : 'Run Backup'}
