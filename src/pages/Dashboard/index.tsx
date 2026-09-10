@@ -402,7 +402,7 @@ export default function Dashboard() {
           />
           <KpiCard
             icon={<svg viewBox='0 0 24 24' className='w-5 h-5' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><polyline points='20 6 9 17 4 12'/></svg>}
-            label='Backup Success Rate'
+            label='Backup & Archive Success Rate'
             value={kpiSuccessRate || '--'}
           />
           <KpiCard
@@ -434,7 +434,7 @@ export default function Dashboard() {
             columns={recentJobColumns}
           />
           <div className='flex-shrink-0 flex items-center justify-between border-t border-gray-100 px-5 py-2.5'>
-            <span className='text-xs text-gray-600 font-medium'>Showing last {Math.min(recentJobs.length, 10)} backup jobs</span>
+            <span className='text-xs text-gray-600 font-medium'>Showing last {Math.min(recentJobs.length, 10)} backup/archival jobs</span>
           </div>
         </section>
 
