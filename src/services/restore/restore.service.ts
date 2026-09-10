@@ -417,7 +417,10 @@ export function useRestoreService() {
     rollbackRestoreJob: (restoreJobId: string) =>
       api.put<{ success: boolean }>(RESTORE_ENDPOINTS.rollbackRestoreJob, undefined, { query: { restoreJobId } }),
 
-    downloadCsv: () =>
-      api.get<unknown>(RESTORE_ENDPOINTS.downloadCsv),
+    downloadCsv: (restoreJobId: string, objectName: string) =>
+      api.get<{ files: { fileName: string; url: string }[] }>(
+        RESTORE_ENDPOINTS.downloadCsv,
+        { query: { restoreJobId, objectName } },
+      ),
   };
 }

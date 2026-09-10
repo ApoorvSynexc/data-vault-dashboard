@@ -5,6 +5,52 @@ import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
+function DownloadCsvButton({ restoreJobId, objectName, disabled }: { restoreJobId: string; objectName: string; disabled: boolean }) {
+  const restoreService = useRestoreService();
+  const [loading, setLoading] = useState(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const res = await restoreService.downloadCsv(restoreJobId, objectName);
+      const files = res?.data?.files ?? [];
+
+      files.forEach((f) => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.download = f.fileName;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={disabled || loading}
+      className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed'
+      style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.2)' }}
+    >
+      {loading ? (
+        <svg className='w-3 h-3 animate-spin' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+          <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+        </svg>
+      ) : (
+        <svg className='w-3 h-3' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+          <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
+        </svg>
+      )}
+      {loading ? 'Downloading…' : 'Download CSV'}
+    </button>
+  );
+}
+
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
   COMPLETED:    { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
   SUCCESS:     { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
@@ -105,6 +151,9 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
   const totalSuccess   = totalProcessed - totalFailed;
 
+  const isExportJob = job.destination?.type === 'EXPORT';
+  const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
+
   const objectColumns: TableColumn<any>[] = [
     {
       key: 'name',
@@ -170,6 +219,17 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
         );
       },
     },
+    ...(isExportJob ? [{
+      key: 'download',
+      header: 'Download',
+      render: (row: any) => (
+        <DownloadCsvButton
+          restoreJobId={jobId_display}
+          objectName={row.name}
+          disabled={!isJobReady}
+        />
+      ),
+    }] : []),
   ];
 
   const runtime = updatedAt && createdAt
@@ -283,31 +343,26 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
-          {job.destination?.type === 'EXPORT' ? (() => {
-            const isReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
-            return (
-              <div className='flex flex-col items-end gap-1.5'>
-                {!isReady && (
-                  <div className='flex items-center gap-2 text-xs text-blue-600 font-medium'>
-                    <svg className='w-3.5 h-3.5 animate-spin shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
-                    </svg>
-                    Your CSV is being generated, please wait…
-                  </div>
-                )}
-                <button
-                  onClick={() => restoreService.downloadCsv()}
-                  disabled={!isReady}
-                  className='flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50'
-                >
-                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                    <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
-                  </svg>
-                  Download CSV
-                </button>
+          {isExportJob ? (
+            !isJobReady && (
+              <div className='flex items-center gap-2 text-xs text-blue-600 font-medium'>
+                <svg className='w-3.5 h-3.5 animate-spin shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+                </svg>
+                Your CSV is being generated, please wait…
               </div>
-            );
-          })() : null}
+            )
+          ) : (
+            <button
+              onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
+              className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
+            >
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M3 7v6h6' /><path d='M3 13C5.5 6 13 3 20 7' />
+              </svg>
+              Rollback
+            </button>
+          )}
         </div>
 
         {/* Rollback confirm modal */}
