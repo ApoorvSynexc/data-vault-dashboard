@@ -6,7 +6,6 @@ import Dashboard from '../pages/Dashboard';
 import Profile from '../pages/Profile';
 import ChangePassword from '../pages/ChangePassword';
 import LoginV2 from '../pages/auth/Login/LoginV2';
-import Signup from '../pages/auth/Signup';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import SocialLoginCallback from '../pages/auth/SocialLoginCallback';
 import NotFound from '../pages/NotFound';
