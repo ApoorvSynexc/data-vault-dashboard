@@ -125,6 +125,10 @@ export default function EditArchive() {
         const globalSchedule = config.scheduleConfig ?? null;
         const firstPerObject = (config.objects ?? []).find((o: any) => o.scheduleConfig)?.scheduleConfig ?? null;
         setScheduleConfig(globalSchedule ?? firstPerObject);
+
+        // Seed the archival payload from the loaded config so onUpdateObjectSchedule
+        // works on the Review step even if the user has not gone through Step 4 yet.
+        setArchivalPayload(config);
       } catch (err: any) {
         setLoadError(err?.message ?? 'Failed to load archival config');
       } finally {
