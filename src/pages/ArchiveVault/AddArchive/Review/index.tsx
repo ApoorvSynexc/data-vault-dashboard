@@ -166,7 +166,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                     <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Date</label>
                       <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} style={inputStyle} /></div>
                     <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
-                      <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                      <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
                     <div className='col-span-2'><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                       <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                         {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -190,7 +190,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Starts From</label>
                   <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} style={inputStyle} /></div>
                 <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Starting Time</label>
-                  <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                  <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
               </div>
             )}
 
@@ -199,7 +199,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
               <div className='space-y-4'>
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Run At</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                    <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                     <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                       {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -226,7 +226,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                    <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                     <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                       {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -269,7 +269,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                     {overrideEnabled && !dayOfMonth && <p className='mt-1 text-xs text-red-500'>Please select the day of month</p>}
                   </div>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                    <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
@@ -293,7 +293,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Starting Time</label>
-                    <input type='time' value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} style={inputStyle} /></div>
+                    <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
                   <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                     <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                       {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}

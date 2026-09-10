@@ -377,7 +377,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                           </div>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                            <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                            <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                             {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                           </div>
                         </div>
@@ -417,7 +417,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                     </div>
@@ -430,7 +430,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div>
@@ -466,7 +466,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div>
@@ -519,7 +519,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-5'>
@@ -562,7 +562,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
+                        <input type='time' value={startTime} onChange={(e) => { const t = e.target.value; if (/^\d{2}:\d{2}$/.test(t)) e.target.blur(); setStartTime(t); setStartTimeError(startDate === today && t && t < dayjs().format('HH:mm') ? 'Selected time has already passed. Please choose a future time.' : ''); }} min={startDate === today ? currentTime : undefined} className={`${inputCls}${startDate === today && startTime && startTime < dayjs().format('HH:mm') ? ' border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1.5 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                     </div>
