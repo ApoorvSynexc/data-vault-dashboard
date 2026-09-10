@@ -1130,7 +1130,7 @@ export default function AddDetailsWizard({
                           </div>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                            <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                            <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                             {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                           </div>
                         </div>
@@ -1164,7 +1164,7 @@ export default function AddDetailsWizard({
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                     </div>
@@ -1177,7 +1177,7 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -1210,7 +1210,7 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -1259,7 +1259,7 @@ export default function AddDetailsWizard({
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                     </div>
@@ -1299,7 +1299,7 @@ export default function AddDetailsWizard({
                         </select></div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => handleStartTimeChange(e.target.value)} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
                         {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
                       </div>
                     </div>
