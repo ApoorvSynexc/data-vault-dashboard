@@ -1352,9 +1352,7 @@ export default function AddDetailsWizard({
                 <button
                   onClick={handleSave}
                   disabled={overrideEnabled && (() => {
-                    const now = dayjs().format('HH:mm');
                     if (startDate && startDate < today) return true;
-                    if ((!startDate || startDate === today) && startTime && startTime < now) return true;
                     if (frequency === 'Custom' && endDate && endDate < (startDate || today)) return true;
                     if (frequency === 'Monthly' && !dayOfMonth) return true;
                     return false;
