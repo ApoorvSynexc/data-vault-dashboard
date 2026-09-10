@@ -12,18 +12,19 @@ import type { ConnectedPlatform } from '../../../../services/platform/platform.s
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-const STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict & Edge Cases', 'Preview', 'Review'];
+const ALL_STEPS = ['Source', 'Source Type', 'Scope', 'Destination', 'Policy', 'Conflict & Edge Cases', 'Preview', 'Review'];
+const EXPORT_STEPS = ['Source', 'Source Type', 'Scope', 'Destination'];
 
-function ProgressBar({ active }: { active: number }) {
+function ProgressBar({ active, steps }: { active: number; steps: string[] }) {
   return (
     <div className='w-full'>
       {/* Row 1: circles + connector lines */}
       <div className='flex items-center'>
-        {STEPS.map((label, i) => {
+        {steps.map((label, i) => {
           const num = i + 1;
           const isDone   = num < active;
           const isActive = num === active;
-          const isLast   = i === STEPS.length - 1;
+          const isLast   = i === steps.length - 1;
           return (
             <div key={label} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
               <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold border-2 ${
@@ -42,13 +43,13 @@ function ProgressBar({ active }: { active: number }) {
           );
         })}
       </div>
-      {/* Row 2: labels — same flex structure mirrors row 1 so each label is under its circle */}
+      {/* Row 2: labels */}
       <div className='flex items-start mt-2'>
-        {STEPS.map((label, i) => {
+        {steps.map((label, i) => {
           const num = i + 1;
           const isDone   = num < active;
           const isActive = num === active;
-          const isLast   = i === STEPS.length - 1;
+          const isLast   = i === steps.length - 1;
           return (
             <div key={label} className={`flex items-start ${isLast ? '' : 'flex-1'}`}>
               <span className={`text-[10px] font-semibold whitespace-nowrap ${
@@ -544,10 +545,12 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
 }
 
 
-function ExportOnlyConfig() {
-  const [splitByObject,      setSplitByObject]      = useState(true);
-  const [includeSchemaHeader, setIncludeSchemaHeader] = useState(true);
-
+function ExportOnlyConfig({ name, description, onNameChange, onDescriptionChange }: {
+  name: string;
+  description: string;
+  onNameChange: (v: string) => void;
+  onDescriptionChange: (v: string) => void;
+}) {
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
       <div className='flex items-center gap-2 border-b border-gray-100 px-5 py-3'>
@@ -561,75 +564,31 @@ function ExportOnlyConfig() {
           <svg width='14' height='14' fill='none' stroke='#2563EB' strokeWidth='2' viewBox='0 0 24 24' className='flex-shrink-0 mt-0.5'>
             <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/>
           </svg>
-          <p className='text-blue-800 leading-relaxed'>Export-only mode produces a file — nothing is written back to any live org. Conflict handling (Step 5) is skipped.</p>
+          <p className='text-blue-800 leading-relaxed'>Export-only mode produces a CSV file — nothing is written back to any live org.</p>
         </div>
 
-        {/* Output Format + Delivery */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-5'>
-          <div className='flex flex-col gap-1.5'>
-            <label className='text-sm font-medium text-gray-700'>
-              Output Format
-              <Tip text="CSV is universally compatible. Parquet is best for large datasets and data warehouses. JSON preserves nested structure." />
-            </label>
-            <select className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-              <option>CSV (.csv)</option>
-              <option>Parquet (.parquet)</option>
-              <option>JSON Lines (.jsonl)</option>
-              <option>Excel (.xlsx)</option>
-            </select>
-          </div>
-          <div className='flex flex-col gap-1.5'>
-            <label className='text-sm font-medium text-gray-700'>
-              Delivery
-              <Tip text="Where the export file should land. Download is the simplest. S3/SFTP/Cloud Storage is best for large or scheduled exports." />
-            </label>
-            <select className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-              <option>Download to browser</option>
-              <option>Email link</option>
-            </select>
-          </div>
+        <div className='flex flex-col gap-1.5'>
+          <label className='text-sm font-medium text-gray-700'>Job Name <span className='text-red-500'>*</span></label>
+          <input
+            type='text'
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder='e.g. Account Export Q2 2026'
+            className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+          />
         </div>
 
-        {/* File name + Encryption */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-5'>
-          <div className='flex flex-col gap-1.5'>
-            <label className='text-sm font-medium text-gray-700'>File name pattern</label>
-            <input
-              type='text'
-              defaultValue='restore_{job-id}_{timestamp}.csv'
-              className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-            />
-          </div>
-          <div className='flex flex-col gap-1.5'>
-            <label className='text-sm font-medium text-gray-700'>
-              Encryption
-              <Tip text="Encrypt the file at rest. AES-256 is standard. PGP recommended when delivering to external systems." />
-            </label>
-            <select className='h-10 px-3 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-              <option>None (use only inside this org)</option>
-              <option>AES-256 at rest</option>
-              <option>PGP-encrypted</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Toggles */}
-        <div className='flex flex-col gap-3 pt-1'>
-          {[
-            { label: 'Split by object', tip: 'Produce one file per object instead of a single combined file. Useful for downstream ETL pipelines.', value: splitByObject, set: setSplitByObject },
-            { label: 'Include schema header', tip: 'Adds a header row of field API names as the first line of each export file.', value: includeSchemaHeader, set: setIncludeSchemaHeader },
-          ].map(({ label, tip, value, set }) => (
-            <div key={label} className='flex items-center justify-between gap-4 py-2 border-b border-gray-100 last:border-0'>
-              <span className='text-sm text-gray-700'>{label}<Tip text={tip} /></span>
-              <button
-                onClick={() => set(!value)}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors ${value ? 'bg-blue-600 border-blue-600' : 'bg-gray-200 border-gray-200'}`}
-              >
-                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
-              </button>
-            </div>
-          ))}
+        <div className='flex flex-col gap-1.5'>
+          <label className='text-sm font-medium text-gray-700'>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder='Optional description for this export job'
+            rows={3}
+            className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 resize-none'
+            style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+          />
         </div>
 
       </div>
@@ -639,10 +598,20 @@ function ExportOnlyConfig() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-interface Props { onNext: (destLabel: string) => void; onBack: () => void; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmName?: string; crmUsername?: string; }
+interface Props {
+  onNext: (destLabel: string) => void;
+  onBack: () => void;
+  backupConfigId: string;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  crmName?: string;
+  crmUsername?: string;
+  onGenerateCsv?: (name: string, description: string) => void;
+}
 
-export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername }: Props) {
+export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername, onGenerateCsv }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
+  const [exportName, setExportName] = useState('');
+  const [exportDescription, setExportDescription] = useState('');
 
   return (
     <div className='flex flex-col h-full min-h-0 bg-gray-50'>
@@ -663,16 +632,16 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of 8</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 4 of {destType === 'export' ? 4 : 8}</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Set Destination &amp; Mapping</h1>
               <p className='text-gray-500 mt-1 text-sm'>Pick a destination type — the fields below adapt to your choice.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>4</span> of 8
+              Step <span className='text-blue-600'>4</span> of {destType === 'export' ? 4 : 8}
             </span>
           </div>
           <div className='mt-4'>
-            <ProgressBar active={4} />
+            <ProgressBar active={4} steps={destType === 'export' ? EXPORT_STEPS : ALL_STEPS} />
           </div>
         </div>
 
@@ -703,7 +672,14 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
         {/* Sub-config panel */}
         {destType === 'same'   && <SameOrgConfig crmName={crmName} crmUsername={crmUsername} />}
         {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
-        {destType === 'export' && <ExportOnlyConfig />}
+        {destType === 'export' && (
+          <ExportOnlyConfig
+            name={exportName}
+            description={exportDescription}
+            onNameChange={setExportName}
+            onDescriptionChange={setExportDescription}
+          />
+        )}
 
       </div>
 
@@ -716,17 +692,30 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
-          <button
-            onClick={() => {
-              const label = [crmName, crmUsername ? `(${crmUsername})` : ''].filter(Boolean).join(' ') || '—';
-              onNext(label);
-            }}
-            className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
-            style={{ background: '#155DFC' }}
-          >
-            Next: Define Policy →
-          </button>
+          {destType !== 'export' && (
+            <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
+          )}
+          {destType === 'export' ? (
+            <button
+              onClick={() => onGenerateCsv?.(exportName, exportDescription)}
+              disabled={!exportName.trim()}
+              className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              style={{ background: '#155DFC' }}
+            >
+              Generate CSV
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                const label = [crmName, crmUsername ? `(${crmUsername})` : ''].filter(Boolean).join(' ') || '—';
+                onNext(label);
+              }}
+              className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
+              style={{ background: '#155DFC' }}
+            >
+              Next: Define Policy →
+            </button>
+          )}
         </div>
       </div>
     </div>

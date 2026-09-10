@@ -283,17 +283,31 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
-          {/* {status !== 'ROLLED_BACK' && (
-            <button
-              onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
-              className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
-            >
-              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <path d='M3 7v6h6' /><path d='M3 13C5.5 6 13 3 20 7' />
-              </svg>
-              Rollback
-            </button>
-          )} */}
+          {job.destination?.type === 'EXPORT' ? (() => {
+            const isReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
+            return (
+              <div className='flex flex-col items-end gap-1.5'>
+                {!isReady && (
+                  <div className='flex items-center gap-2 text-xs text-blue-600 font-medium'>
+                    <svg className='w-3.5 h-3.5 animate-spin shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
+                    </svg>
+                    Your CSV is being generated, please wait…
+                  </div>
+                )}
+                <button
+                  onClick={() => restoreService.downloadCsv()}
+                  disabled={!isReady}
+                  className='flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 bg-blue-50 text-sm font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50'
+                >
+                  <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
+                  </svg>
+                  Download CSV
+                </button>
+              </div>
+            );
+          })() : null}
         </div>
 
         {/* Rollback confirm modal */}
