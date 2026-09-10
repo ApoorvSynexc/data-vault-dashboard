@@ -9,14 +9,15 @@ import ProgressBar from '../ProgressBar';
 interface Step1Props {
   initialSelectedConnection?: ConnectedPlatform | null;
   initialSelectedDestConnection?: Destination | null;
+  initialView?: 'source' | 'destination';
   onNext?: (conn: ConnectedPlatform, dest: Destination) => void;
 }
 
-export default function AddArchiveStep1({ initialSelectedConnection, initialSelectedDestConnection, onNext }: Step1Props) {
+export default function AddArchiveStep1({ initialSelectedConnection, initialSelectedDestConnection, initialView, onNext }: Step1Props) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [view, setView] = useState<'source' | 'destination'>('source');
+  const [view, setView] = useState<'source' | 'destination'>(initialView ?? 'source');
 
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(AVAILABLE_PLATFORMS[0]);
   const [selectedConnection, setSelectedConnection] = useState<ConnectedPlatform | null>(initialSelectedConnection ?? null);
