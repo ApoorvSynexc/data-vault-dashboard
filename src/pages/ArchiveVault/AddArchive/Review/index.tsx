@@ -98,6 +98,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const startTimeError = (() => {
     if (!overrideEnabled) return null;
     if (needsStartTime && !startTime) return 'Start time is required';
+    if (startDate === today && startTime && startTime < dayjs().format('HH:mm')) return 'Start time cannot be in the past for today';
     return null;
   })();
 
