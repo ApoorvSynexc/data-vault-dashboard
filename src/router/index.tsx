@@ -107,7 +107,7 @@ const router = createBrowserRouter([
     element: <PublicRoute />,
     children: [
       { path: '/login', element: <LoginV2 /> },
-      { path: '/signup', element: <Signup /> },
+      // { path: '/signup', element: <Signup /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
     ],
   },
