@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
@@ -40,8 +39,6 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
       )
     : [];
 
-  useEffect(() => { setSelectedConnection(null); }, [selectedPlatform?.crmId]);
-
   return (
     <div className='grid grid-cols-2 gap-8 flex-1 min-h-0'>
       {/* Left — Available Source Platforms */}
@@ -51,7 +48,12 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
           {AVAILABLE_PLATFORMS.map((platform) => {
             const isSelected = selectedPlatform?.crmId === platform.crmId;
             return (
-              <button key={platform.crmId} onClick={() => setSelectedPlatform(platform)}
+              <button key={platform.crmId} onClick={() => {
+                if (selectedPlatform?.crmId !== platform.crmId) {
+                  setSelectedPlatform(platform);
+                  setSelectedConnection(null);
+                }
+              }}
                 className={`w-full p-4 rounded-lg border-2 transition-all text-left ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
                 <div className='flex items-center gap-3'>
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'}`}>
