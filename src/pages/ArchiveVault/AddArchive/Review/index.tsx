@@ -310,7 +310,14 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
             Cancel
           </button>
           <button
-            disabled={overrideEnabled && frequency === 'Monthly' && !dayOfMonth}
+            disabled={overrideEnabled && (() => {
+              const today = dayjs().format('YYYY-MM-DD');
+              if (startDate && startDate < today) return true;
+              if (frequency === 'Custom' && endDate && endDate < (startDate || today)) return true;
+              if (frequency === 'Monthly' && !dayOfMonth) return true;
+              if (frequency === 'Weekly' && selectedDays.length === 0) return true;
+              return false;
+            })()}
             onClick={() => { onSave(overrideEnabled ? computeSchedule() : undefined); onClose(); }}
             className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed'>
             Save Schedule
@@ -332,7 +339,7 @@ interface Step5Props {
   description?: string;
   selectedObjects?: SelectedArchiveObject[];
   scheduleConfig?: ArchiveScheduleConfig | null;
-  onUpdateObjectSchedule?: (objectId: string, schedule: ScheduleConfig | undefined) => void;
+  onUpdateObjectSchedule?: (uuid: string, apiName: string, schedule: ScheduleConfig | undefined) => void;
   onUpdatePolicyName?: (name: string) => void;
   onBack: () => void;
   onEditStep: (step: number) => void;
@@ -372,7 +379,7 @@ export default function Step5({
   const [apiError, setApiError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
   const [confirmError, setConfirmError] = useState(false);
-  const [editScheduleTarget, setEditScheduleTarget] = useState<{ id: string; name: string; schedule?: ScheduleConfig } | null>(null);
+  const [editScheduleTarget, setEditScheduleTarget] = useState<{ uuid: string; apiName: string; name: string; schedule?: ScheduleConfig } | null>(null);
   const [localName, setLocalName] = useState(policyName);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(policyName);
@@ -686,7 +693,7 @@ export default function Step5({
                       : freq;
                 return (
                   <ReviewRow key={obj.id} label={`${obj.id} Schedule`}
-                    onEdit={() => setEditScheduleTarget({ id: (obj as any).uuid ?? obj.id, name: (obj as any).name ?? obj.id, schedule: sc })}
+                    onEdit={() => setEditScheduleTarget({ uuid: (obj as any).uuid ?? obj.id, apiName: obj.id, name: (obj as any).name ?? obj.id, schedule: sc })}
                     noBorder={idx === objectsWithSchedule.length - 1}>
                     <span>{display}</span>
                   </ReviewRow>
@@ -843,7 +850,7 @@ export default function Step5({
           objectName={editScheduleTarget.name}
           initialSchedule={editScheduleTarget.schedule}
           onSave={(schedule) => {
-            onUpdateObjectSchedule?.(editScheduleTarget.id, schedule);
+            onUpdateObjectSchedule?.(editScheduleTarget.uuid, editScheduleTarget.apiName, schedule);
           }}
           onClose={() => setEditScheduleTarget(null)}
         />
