@@ -468,9 +468,9 @@ export default function AddDetailsWizard({
       nodes.forEach((n) => {
         const pair = `${parentApiName}|${n.name}`;
         savedPairs.add(pair);
-        if (n.children?.length) {
+        if (n.includeChild || n.children?.length) {
           savedPairsWithChildren.add(pair);
-          collectPairs(n.children, n.name);
+          if (n.children?.length) collectPairs(n.children, n.name);
         }
       });
     };
@@ -551,6 +551,7 @@ export default function AddDetailsWizard({
       })
       .map((uuid) => {
         const nested = buildChildTree(uuid, visited);
+        const hasInclude = !!includeChild[uuid];
         return {
           id: uuid,
           name: childApiNames[uuid] ?? uuid,
@@ -558,6 +559,7 @@ export default function AddDetailsWizard({
           type: 'STANDARD' as const,
           condition: { type: 'AND' as const },
           field: [] as never[],
+          ...(hasInclude ? { includeChild: true } : {}),
           ...(nested.length > 0 ? { children: nested } : {}),
         };
       });
