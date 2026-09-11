@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
+import { useSelectedOrg } from '../../../../layouts/MainLayout';
 
 type Step1Props = {
   onNext: (platformId?: string, connectionName?: string, userId?: string) => void;
@@ -29,6 +30,7 @@ const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
 export default function Step1({ onNext, strategy = 'realtime', initialSelectedPlatformId, initialSelectedUserId }: Step1Props) {
   const navigate = useNavigate();
   const platformService = usePlatformService();
+  const { selectedOrg } = useSelectedOrg();
   // Salesforce is always pre-selected
   const [selectedPlatform, setSelectedPlatform] = useState<ConnectedPlatform | null>(
     initialSelectedPlatformId
@@ -54,11 +56,12 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
   });
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
-  // Filter connections by selected platform type (case-insensitive)
+  // Show only the connection matching the header-selected org (by userId)
   const connections = selectedPlatform
     ? allConnections.filter((conn: any) =>
         (conn.crm?.crmName ?? conn.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
-        conn.isCrmConnected === true
+        conn.isCrmConnected === true &&
+        (!selectedOrg || conn.userId === selectedOrg.userId)
       )
     : [];
   // Clear connection when platform changes
@@ -67,17 +70,19 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
     setConnectionAutoSelected(false);
   }, [selectedPlatform?.crmId]);
 
-  // Pre-select the previously chosen connection when returning via Edit.
-  // Match by userId first (unique per connection); fall back to crmId when userId is unavailable.
+  // Auto-select the connection when the list resolves (only one shown — the header-selected org)
   useEffect(() => {
-    if (connectionAutoSelected || !initialSelectedPlatformId || connections.length === 0) return;
-    const found = initialSelectedUserId
-      ? connections.find((c: ConnectedPlatform) => c.userId === initialSelectedUserId)
-      : connections.find((c: ConnectedPlatform) => c.crmId === initialSelectedPlatformId);
-    if (found) {
-      setSelectedConnection(found);
-      setConnectionAutoSelected(true);
+    if (connectionAutoSelected || connections.length === 0) return;
+    // On edit: prefer the previously saved connection
+    if (initialSelectedPlatformId) {
+      const found = initialSelectedUserId
+        ? connections.find((c: ConnectedPlatform) => c.userId === initialSelectedUserId)
+        : connections.find((c: ConnectedPlatform) => c.crmId === initialSelectedPlatformId);
+      if (found) { setSelectedConnection(found); setConnectionAutoSelected(true); return; }
     }
+    // Otherwise auto-select the only visible connection (header-filtered)
+    setSelectedConnection(connections[0]);
+    setConnectionAutoSelected(true);
   }, [connections, initialSelectedPlatformId, initialSelectedUserId, connectionAutoSelected]);
 
   return (

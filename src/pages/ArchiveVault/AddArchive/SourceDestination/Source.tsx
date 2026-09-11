@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePlatformService } from '../../../../services/platform/platform.service';
 import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
+import { useSelectedOrg } from '../../../../layouts/MainLayout';
 
 export const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
   {
@@ -21,6 +23,7 @@ interface SourceProps {
 
 export default function Source({ selectedPlatform, setSelectedPlatform, selectedConnection, setSelectedConnection }: SourceProps) {
   const platformService = usePlatformService();
+  const { selectedOrg } = useSelectedOrg();
 
   const { data: connectionData, isLoading } = useQuery({
     queryKey: ['archive-platform-connections', selectedPlatform?.crmId],
@@ -32,12 +35,20 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
   });
 
   const allConnections = Array.isArray(connectionData) ? connectionData : [];
+  // Show only the connection matching the header-selected org (by userId)
   const connections = selectedPlatform
     ? allConnections.filter((c: any) =>
         (c.crm?.crmName ?? c.crmName ?? '').toLowerCase() === selectedPlatform.crmName.toLowerCase() &&
-        c.isCrmConnected === true
+        c.isCrmConnected === true &&
+        (!selectedOrg || c.userId === selectedOrg.userId)
       )
     : [];
+
+  // Auto-select the only visible connection when it loads
+  useEffect(() => {
+    if (selectedConnection || connections.length === 0) return;
+    setSelectedConnection(connections[0]);
+  }, [connections]);
 
   return (
     <div className='grid grid-cols-2 gap-8 flex-1 min-h-0'>
