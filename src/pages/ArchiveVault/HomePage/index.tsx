@@ -571,7 +571,6 @@ export default function ArchiveVaultHomePage() {
                 { label: 'Paused',   value: 'PAUSED'   },
                 { label: 'Resumed',  value: 'RESUMED'  },
                 { label: 'Draft',    value: 'DRAFT'    },
-                { label: 'Inactive', value: 'INACTIVE' },
               ]}
               onChange={(v) => setStatusFilter(v)}
             />
