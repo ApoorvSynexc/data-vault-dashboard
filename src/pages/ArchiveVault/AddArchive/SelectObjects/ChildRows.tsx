@@ -121,6 +121,7 @@ export interface ChildRowsProps {
   allowedObjectNames?: Set<string>;
   onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
   onLoadingChange?: (loading: boolean) => void;
+  getChildUuid?: (parentUuid: string, childName: string) => string;
 }
 
 export function ChildRows({
@@ -129,16 +130,17 @@ export function ChildRows({
   registerChildApiName, registerChildFieldApiName, registerChildParent,
   includeChild, setIncludeChild, maxDepth, resetTick = 0, relationshipDepth,
   allowedObjectNames, onMasterDetailWarning, onLoadingChange,
+  getChildUuid: getChildUuidFromParent,
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const crmMetadataService = useCrmMetadataService();
   const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
-  // Stable UUID map keyed by (parentUuid, childName) so the same object name under
-  // different parents gets a different UUID, preventing cross-parent selection bleed.
+  // Local fallback UUID map — only used when no stable map is provided by the parent wizard.
   const uuidMapRef = useRef<Map<string, string>>(new Map());
   const getChildUuid = (childName: string): string => {
+    if (getChildUuidFromParent) return getChildUuidFromParent(parentUuid, childName);
     const key = `${parentUuid}::${childName}`;
     if (!uuidMapRef.current.has(key)) {
       uuidMapRef.current.set(key, crypto.randomUUID());
@@ -376,6 +378,7 @@ export function ChildRows({
                 allowedObjectNames={allowedObjectNames}
                 onMasterDetailWarning={onMasterDetailWarning}
                 onLoadingChange={onLoadingChange}
+                getChildUuid={getChildUuidFromParent}
               />
             )}
           </React.Fragment>

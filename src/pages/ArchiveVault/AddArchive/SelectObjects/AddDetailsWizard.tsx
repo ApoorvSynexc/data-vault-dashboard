@@ -439,6 +439,17 @@ export default function AddDetailsWizard({
     setChildLoadingCount((n) => Math.max(0, n + (loading ? 1 : -1)));
   }, []);
 
+  // Stable UUID map lifted to wizard level so ChildRows instances that unmount/remount
+  // due to pagination always get the same UUID for the same (parentUuid, childName) pair.
+  const childUuidMapRef = useRef<Map<string, string>>(new Map());
+  const getOrCreateChildUuid = useCallback((parentUuid: string, childName: string): string => {
+    const key = `${parentUuid}::${childName}`;
+    if (!childUuidMapRef.current.has(key)) {
+      childUuidMapRef.current.set(key, crypto.randomUUID());
+    }
+    return childUuidMapRef.current.get(key)!;
+  }, []);
+
   const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
   const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
   const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
@@ -1045,6 +1056,7 @@ export default function AddDetailsWizard({
                         allowedObjectNames={allowedObjectNames}
                         onMasterDetailWarning={wrappedMdWarning}
                         onLoadingChange={handleChildLoadingChange}
+                        getChildUuid={getOrCreateChildUuid}
                       />
                     )}
                   </tbody>
