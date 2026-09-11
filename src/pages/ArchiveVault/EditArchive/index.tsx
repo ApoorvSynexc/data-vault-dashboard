@@ -110,7 +110,11 @@ export default function EditArchive() {
         const platforms: ConnectedPlatform[] = Array.isArray(platformsRes)
           ? platformsRes
           : ((platformsRes as any)?.data ?? []);
-        setSelectedConnection(platforms.find((p) => p.crmId === config.crmId) ?? null);
+        setSelectedConnection(
+          (config.userId ? platforms.find((p) => p.crmId === config.crmId && p.userId === config.userId) : null)
+          ?? platforms.find((p) => p.crmId === config.crmId)
+          ?? null
+        );
 
         const destinations: Destination[] = Array.isArray(destinationsRes)
           ? destinationsRes
