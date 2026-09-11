@@ -948,7 +948,6 @@ export default function BackupManagementV2() {
                 { label: 'Paused',   value: 'PAUSED'   },
                 { label: 'Resumed',  value: 'RESUMED'  },
                 { label: 'Draft',    value: 'DRAFT'    },
-                { label: 'Inactive', value: 'INACTIVE' },
               ]}
               onChange={(v) => setFilters((f) => ({ ...f, status: v }))}
             />
