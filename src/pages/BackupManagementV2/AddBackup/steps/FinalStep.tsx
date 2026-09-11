@@ -303,7 +303,7 @@ export default function FinalStep({
             </div>
           </div>
           <h1 className='text-3xl font-bold text-green-600 mb-2'>
-            {successType === 'save' ? 'Draft Saved Successfully' : isRealTime ? 'Backup Completed Successfully' : 'Backup Scheduled Successfully'}
+            {successType === 'save' ? 'Draft Saved Successfully' : isNonDraftEdit ? 'Backup Policy Updated Successfully' : isRealTime ? 'Backup Completed Successfully' : 'Backup Scheduled Successfully'}
           </h1>
           <p className='text-gray-600'>Redirecting to backup page in 2s</p>
         </div>
