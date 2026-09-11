@@ -434,6 +434,12 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
   // Which object's preview modal is open (null = closed)
   const [previewObject, setPreviewObject] = useState<{ id: string; name: string; soql: string } | null>(null);
 
+  const objectsAffectedCount = useMemo(() => {
+    const countAll = (items: any[]): number =>
+      items.reduce((n, o) => n + 1 + countAll(o.children ?? []), 0);
+    return dryRunResults.length > 0 ? countAll(dryRunResults) : selectedObjects.length;
+  }, [dryRunResults, selectedObjects.length]);
+
   async function runDryRun() {
     setDryRunState('loading');
     setDryRunError(null);
@@ -618,7 +624,7 @@ export default function Step3DryRun({ crmId, selectedObjects, archivalPayload, i
             <div className='grid grid-cols-2 sm:grid-cols-4 gap-3 flex-shrink-0'>
               {[
                 { label: 'Estimated Records to Archive', value: fmtNumber(totalRecords), color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.12)' },
-                { label: 'Objects Affected', value: String(selectedObjects.length), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
+                { label: 'Objects Affected', value: String(objectsAffectedCount), color: '#155DFC', bg: 'rgba(21,93,252,0.06)', border: 'rgba(21,93,252,0.12)' },
                 { label: 'Estimated Size', value: totalDataSize, color: '#7C3AED', bg: 'rgba(124,58,237,0.06)', border: 'rgba(124,58,237,0.12)' },
                 { label: 'Errors', value: String(failedObjects.length), color: failedObjects.length > 0 ? '#F24400' : '#059669', bg: failedObjects.length > 0 ? 'rgba(242,68,0,0.06)' : 'rgba(5,150,105,0.06)', border: failedObjects.length > 0 ? 'rgba(242,68,0,0.12)' : 'rgba(5,150,105,0.12)' },
               ].map((card) => (
