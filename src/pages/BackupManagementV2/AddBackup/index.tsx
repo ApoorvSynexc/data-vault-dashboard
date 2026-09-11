@@ -61,6 +61,7 @@ export default function AddBackup() {
   const [selectedStrategy, setSelectedStrategy] = useState<BackupStrategy>(restored?.selectedStrategy ?? 'realtime');
   const [entireDatasetSelected, setEntireDatasetSelected] = useState<boolean>(restored?.entireDatasetSelected ?? false);
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(restored?.selectedPlatformId ?? null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(restored?.selectedUserId ?? null);
   const [selectedConnectionName, setSelectedConnectionName] = useState<string>(restored?.selectedConnectionName ?? '');
   const [selectedDestinationName, setSelectedDestinationName] = useState<string>(restored?.selectedDestinationName ?? '');
   const [policyName, setPolicyName] = useState<string>(restored?.policyName ?? '');
@@ -111,6 +112,7 @@ export default function AddBackup() {
       selectedStrategy,
       entireDatasetSelected,
       selectedPlatformId,
+      selectedUserId,
       selectedConnectionName,
       selectedDestinationName,
       policyName,
@@ -229,13 +231,15 @@ export default function AddBackup() {
         <Step1
           strategy={selectedStrategy}
           initialSelectedPlatformId={selectedPlatformId}
-          onNext={(platformId, connectionName) => {
+          initialSelectedUserId={selectedUserId}
+          onNext={(platformId, connectionName, userId) => {
             if (platformId && platformId !== selectedPlatformId) {
               setSelectedPlatformId(platformId);
               setSelectedObjects([]);
             } else if (platformId) {
               setSelectedPlatformId(platformId);
             }
+            if (userId !== undefined) setSelectedUserId(userId ?? null);
             if (connectionName !== undefined) setSelectedConnectionName(connectionName);
             handleNextStep();
           }}

@@ -6,9 +6,10 @@ import salesforceLogo from '../../../../assets/icons/salesforce_logo.svg';
 import type { ConnectedPlatform } from '../../../../services/platform/platform.service';
 
 type Step1Props = {
-  onNext: (platformId?: string, connectionName?: string) => void;
+  onNext: (platformId?: string, connectionName?: string, userId?: string) => void;
   strategy?: 'realtime' | 'scheduled';
   initialSelectedPlatformId?: string | null;
+  initialSelectedUserId?: string | null;
 };
 
 const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
@@ -25,7 +26,7 @@ const AVAILABLE_PLATFORMS: ConnectedPlatform[] = [
   },
 ];
 
-export default function Step1({ onNext, strategy = 'realtime', initialSelectedPlatformId }: Step1Props) {
+export default function Step1({ onNext, strategy = 'realtime', initialSelectedPlatformId, initialSelectedUserId }: Step1Props) {
   const navigate = useNavigate();
   const platformService = usePlatformService();
   // Salesforce is always pre-selected
@@ -66,15 +67,18 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
     setConnectionAutoSelected(false);
   }, [selectedPlatform?.crmId]);
 
-  // Pre-select the previously chosen connection when returning via Edit
+  // Pre-select the previously chosen connection when returning via Edit.
+  // Match by userId first (unique per connection); fall back to crmId when userId is unavailable.
   useEffect(() => {
     if (connectionAutoSelected || !initialSelectedPlatformId || connections.length === 0) return;
-    const found = connections.find((c: ConnectedPlatform) => c.crmId === initialSelectedPlatformId);
+    const found = initialSelectedUserId
+      ? connections.find((c: ConnectedPlatform) => c.userId === initialSelectedUserId)
+      : connections.find((c: ConnectedPlatform) => c.crmId === initialSelectedPlatformId);
     if (found) {
       setSelectedConnection(found);
       setConnectionAutoSelected(true);
     }
-  }, [connections, initialSelectedPlatformId, connectionAutoSelected]);
+  }, [connections, initialSelectedPlatformId, initialSelectedUserId, connectionAutoSelected]);
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -146,10 +150,10 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
               ) : (
                 <div className='space-y-4'>
                   {connections.map((connection: any) => {
-                    const isSelected = selectedConnection?.crmId === connection.crmId;
+                    const isSelected = selectedConnection?.userId === connection.userId;
                     return (
                       <div
-                        key={connection.crmId}
+                        key={connection.userId ?? connection.crmId}
                         onClick={() => setSelectedConnection(connection)}
                         className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${
                           isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
@@ -215,7 +219,7 @@ export default function Step1({ onNext, strategy = 'realtime', initialSelectedPl
           Cancel
         </button>
         <button
-          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? '')}
+          onClick={() => onNext(selectedConnection?.crmId, selectedConnection?.crmProfile?.username ?? selectedConnection?.contactEmail ?? selectedConnection?.crmId ?? '', selectedConnection?.userId)}
           disabled={!selectedConnection}
           className={`px-6 py-2 rounded-lg font-medium transition-colors ${
             selectedConnection

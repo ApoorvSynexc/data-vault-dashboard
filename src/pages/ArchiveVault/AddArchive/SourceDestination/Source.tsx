@@ -84,9 +84,9 @@ export default function Source({ selectedPlatform, setSelectedPlatform, selected
           ) : (
             <div className='flex-1 overflow-y-auto space-y-3 pr-1'>
               {connections.map((connection: any) => {
-                const isSelected = selectedConnection?.crmId === connection.crmId;
+                const isSelected = selectedConnection?.userId === connection.userId;
                 return (
-                  <div key={connection.crmId} onClick={() => setSelectedConnection(connection)}
+                  <div key={connection.userId ?? connection.crmId} onClick={() => setSelectedConnection(connection)}
                     className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
                     <div className='flex items-center gap-3'>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'}`}>
