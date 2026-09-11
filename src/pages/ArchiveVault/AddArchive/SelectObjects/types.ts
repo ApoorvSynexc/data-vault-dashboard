@@ -10,6 +10,7 @@ export interface BuiltChildNode {
   type: 'STANDARD';
   condition: { type: 'AND' };
   field: never[];
+  includeChild?: boolean;
   children?: BuiltChildNode[];
 }
 
