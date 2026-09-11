@@ -91,7 +91,7 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
         if (found) { onAutoSelect(found); return; }
         localStorage.removeItem('selectedOrgCrmId');
       }
-      const matched = userCrmId ? orgs.find((o) => o.crmId === userCrmId) : null;
+      const matched = userCrmId ? orgs.find((o) => (o.crmProfile?.userId ?? o.crmProfileUserId) === userCrmId) : null;
       onAutoSelect(matched ?? orgs[0]);
     }
   }, [orgs, selectedOrg, userCrmId]);
@@ -152,14 +152,14 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
           </div>
           <div className='max-h-64 overflow-y-auto'>
             {orgs.map((org) => {
-              const isActive = org.crmId === selectedOrg?.crmId;
+              const isActive = org.userId === selectedOrg?.userId;
               const label = org.name || org.crmProfile?.username || org.contactEmail || org.crmId;
               const env = org.environment
                 ? org.environment.charAt(0).toUpperCase() + org.environment.slice(1).toLowerCase()
                 : '';
               return (
                 <button
-                  key={org.crmId}
+                  key={org.userId ?? org.crmId}
                   type='button'
                   onClick={() => { onSelect(org); setOpen(false); }}
                   className='w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors'
@@ -221,7 +221,7 @@ export default function MainLayout() {
   const hasUnread = unreadCount > 0;
 
   const handleSelectOrg = async (org: ConnectedPlatform) => {
-    if (org.crmId === selectedOrg?.crmId) return;
+    if (org.userId === selectedOrg?.userId) return;
     setSelectedOrg(org);
     localStorage.setItem('selectedOrgCrmId', org.crmProfile?.userId ?? org.crmProfileUserId ?? '');
     localStorage.setItem('selectedOrgId', org.crmProfile?.organizationId ?? '');
