@@ -151,7 +151,8 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
   const totalSuccess   = totalProcessed - totalFailed;
 
-  const isExportJob = job.destination?.type === 'EXPORT';
+  const destType = (job.destination?.type ?? job.destinationType ?? job.type ?? '').toUpperCase();
+  const isExportJob = destType === 'EXPORT';
   const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
 
   const objectColumns: TableColumn<any>[] = [
