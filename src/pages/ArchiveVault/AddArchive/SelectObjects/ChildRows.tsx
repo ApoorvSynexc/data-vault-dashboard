@@ -187,12 +187,19 @@ export function ChildRows({
   // prevResetTickRef detects when resetTick changes (SOQL re-validate) so we know
   // selectedChildObjects was just cleared and MasterDetail rows need re-selection.
   const prevResetTickRef = useRef(resetTick);
+  // Tracks which MasterDetail UUIDs have already been auto-selected so the effect
+  // doesn't double-toggle them if it re-runs (e.g. after data refetch).
+  // Cleared when resetTick changes so SOQL re-validate properly re-selects them.
+  const masterDetailAutoSelectedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!data || rawRows.length === 0) return;
 
     const resetOccurred = prevResetTickRef.current !== resetTick;
-    if (resetOccurred) prevResetTickRef.current = resetTick;
+    if (resetOccurred) {
+      prevResetTickRef.current = resetTick;
+      masterDetailAutoSelectedRef.current.clear();
+    }
 
     // Register metadata for every row so buildChildTree() in AddDetailsWizard
     // can reconstruct the correct nested payload when the user hits Save
@@ -202,18 +209,22 @@ export function ChildRows({
       registerChildParent(r.uuid as string, parentUuid);
     });
 
-    // Auto-select MasterDetail children that are not currently selected.
-    // We check selectedChildObjects directly so Back→Next always re-selects them
-    // if the state was cleared, without relying on a separate ref guard that
-    // can get out of sync with the actual checkbox state.
+    // Auto-select MasterDetail children that haven't been auto-selected yet.
+    // Uses a ref guard (not selectedChildObjects) so this effect doesn't re-run
+    // on every child toggle — which would re-select deselected children.
     const masterDetailRows = rawRows.filter((r: any) => r.relationshipType === 'MasterDetail');
     const toSelect = masterDetailRows
       .map((r: any) => r.uuid as string)
-      .filter((k: string) => k && !selectedChildObjects.has(k));
-    toSelect.forEach((key) => toggleChildObject(key));
+      .filter((k: string) => k && !masterDetailAutoSelectedRef.current.has(k));
+    toSelect.forEach((key) => {
+      masterDetailAutoSelectedRef.current.add(key);
+      toggleChildObject(key);
+    });
 
+  // selectedChildObjects intentionally excluded: adding it would cause the effect
+  // to re-run on every child toggle and immediately re-select deselected rows.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick, selectedChildObjects]);
+  }, [data, parentUuid, registerChildApiName, registerChildParent, resetTick]);
 
   const visibleRawRows = rawRows;
 
