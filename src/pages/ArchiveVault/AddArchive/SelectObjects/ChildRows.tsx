@@ -134,7 +134,6 @@ export function ChildRows({
 }: ChildRowsProps) {
   const effectiveMax = maxDepth ?? MAX_CHILD_DEPTH;
   const crmMetadataService = useCrmMetadataService();
-  const [expandedChild, setExpandedChild] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   // Local fallback UUID map — only used when no stable map is provided by the parent wizard.
@@ -254,7 +253,6 @@ export function ChildRows({
       {pagedRows.map((row: any) => {
         const childKey = row.uuid as string;
         const isChildSelected = selectedChildObjects.has(childKey);
-        const isChildExpanded = expandedChild === childKey;
         const toggleOn = !!includeChild[childKey];
         const atDepthLimit = depth >= effectiveMax;
         const canExpand = !atDepthLimit && isChildSelected && toggleOn;
@@ -265,11 +263,6 @@ export function ChildRows({
           setIncludeChild((p) => {
             const turningOn = !p[childKey];
             const next: Record<string, boolean> = { ...p, [childKey]: turningOn };
-            if (turningOn) {
-              setExpandedChild(childKey);
-            } else {
-              setExpandedChild((c) => c === childKey ? null : c);
-            }
             return next;
           });
         };
@@ -281,10 +274,8 @@ export function ChildRows({
           toggleChildObject(childKey);
           if (isChildSelected) {
             setIncludeChild((p) => { const n = { ...p }; delete n[childKey]; return n; });
-            setExpandedChild((c) => c === childKey ? null : c);
           } else {
             setIncludeChild((p) => ({ ...p, [childKey]: true }));
-            setExpandedChild(childKey);
           }
         };
 
@@ -297,7 +288,7 @@ export function ChildRows({
         return (
           <React.Fragment key={childKey}>
             <tr className='transition-all duration-150 group'
-              style={{ background: rowBg, borderBottom: isChildExpanded && canExpand ? 'none' : '1px solid #E8EDF2' }}>
+              style={{ background: rowBg, borderBottom: canExpand ? 'none' : '1px solid #E8EDF2' }}>
               <td style={{
                 borderLeft: `${isChildSelected ? 4 : 3}px solid ${isChildSelected ? accentColor : accentColor + '60'}`,
                 paddingLeft: 8, paddingTop: 0, paddingBottom: 0,
@@ -325,14 +316,12 @@ export function ChildRows({
                     </span>
                   )}
                   {canExpand && (
-                    <button onClick={(e) => { e.stopPropagation(); setExpandedChild((c) => c === childKey ? null : childKey); }}
-                      className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md transition-all hover:scale-110'
+                    <span className='ml-auto flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md'
                       style={{ color: accentColor, background: `${accentColor}15` }}>
-                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'
-                        style={{ transition: 'transform 0.2s', transform: isChildExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                         <polyline points='6 9 12 15 18 9' />
                       </svg>
-                    </button>
+                    </span>
                   )}
                 </div>
               </td>
@@ -359,7 +348,7 @@ export function ChildRows({
               </td>
               <td className='px-3 py-2' />
             </tr>
-            {isChildExpanded && (
+            {canExpand && (
               <ChildRows
                 crmId={crmId}
                 objectName={row.apiName as string}
