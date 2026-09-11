@@ -224,7 +224,7 @@ export default function SalesforceConnections({ hideHeader }: { hideHeader?: boo
               <div className='space-y-3'>
                 {salesforcePlatforms.map((org) => (
                   <div
-                    key={org.crmId}
+                    key={org.userId ?? org.crmId}
                     className='flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4 hover:bg-gray-50'
                   >
                     <div className='flex items-center gap-4'>

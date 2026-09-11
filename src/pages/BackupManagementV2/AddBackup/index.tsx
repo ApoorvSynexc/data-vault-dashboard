@@ -335,6 +335,7 @@ export default function AddBackup() {
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}
+          selectedUserId={selectedUserId}
           policyName={policyName}
           description={description}
           environment={environment}
@@ -354,6 +355,7 @@ export default function AddBackup() {
             setCurrentStep(step as Step);
           }}
           crmId={selectedPlatformId}
+          selectedUserId={selectedUserId}
           policyName={policyName}
           description={description}
           environment={environment}

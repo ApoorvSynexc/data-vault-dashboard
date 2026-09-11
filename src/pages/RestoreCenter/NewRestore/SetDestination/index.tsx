@@ -157,10 +157,11 @@ function EnvBadge({ env }: { env: string }) {
   );
 }
 
-function CrmDropdown({ destinations, value, onChange, loading }: {
+function CrmDropdown({ destinations, value, selectedUserId, onChange, loading }: {
   destinations: import('../../../../services/platform/platform.service').ConnectedPlatform[];
   value: string;
-  onChange: (id: string) => void;
+  selectedUserId: string;
+  onChange: (crmId: string, userId: string) => void;
   loading: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -174,7 +175,9 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const selected = destinations.find((d) => d.crmId === value);
+  const selected = selectedUserId
+    ? destinations.find((d) => d.userId === selectedUserId)
+    : destinations.find((d) => d.crmId === value);
   const username = (d: typeof destinations[0]) => d.crmProfile?.username ?? d.contactEmail ?? d.crmId;
 
   return (
@@ -213,12 +216,12 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
             <p className='text-xs text-gray-400 px-4 py-3 text-center'>No CRM connections found.</p>
           ) : (
             destinations.map((d) => {
-              const isSelected = d.crmId === value;
+              const isSelected = d.userId === selectedUserId;
               return (
                 <button
-                  key={d.crmId}
+                  key={d.userId ?? d.crmId}
                   type='button'
-                  onClick={() => { onChange(d.crmId); setOpen(false); }}
+                  onClick={() => { onChange(d.crmId, d.userId); setOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm transition border-b border-gray-50 last:border-0 ${
                     isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
                   }`}
@@ -246,8 +249,9 @@ function CrmDropdown({ destinations, value, onChange, loading }: {
 function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
-  const [tag, setTag]           = useState('Restored via DataCraft {job-id}');
-  const [destOrg, setDestOrg]   = useState('');
+  const [tag, setTag]              = useState('Restored via DataCraft {job-id}');
+  const [destOrg, setDestOrg]      = useState('');
+  const [destOrgUserId, setDestOrgUserId] = useState('');
 
   const { data: crmsData, isLoading: destLoading } = useQuery({
     queryKey: ['crm-list'],
@@ -341,7 +345,8 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
           <CrmDropdown
             destinations={destinations}
             value={destOrg}
-            onChange={setDestOrg}
+            selectedUserId={destOrgUserId}
+            onChange={(crmId, userId) => { setDestOrg(crmId); setDestOrgUserId(userId); }}
             loading={destLoading}
           />
         </div>
