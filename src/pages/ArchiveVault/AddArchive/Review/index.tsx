@@ -455,6 +455,11 @@ export default function Step5({
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(policyName);
 
+  // Schedule editing is only allowed for draft configs. Active/resumed configs
+  // cannot have their schedule changed via the Review screen.
+  const configStatus = ((archivalPayload?.status as string) ?? '').toUpperCase();
+  const canEditSchedule = !editMode || configStatus === 'DRAFT' || configStatus === '';
+
   const confirmNameEdit = () => {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
@@ -764,7 +769,7 @@ export default function Step5({
                       : freq;
                 return (
                   <ReviewRow key={obj.id} label={`${obj.id} Schedule`}
-                    onEdit={() => setEditScheduleTarget({ uuid: (obj as any).uuid ?? obj.id, apiName: obj.id, name: (obj as any).name ?? obj.id, schedule: sc })}
+                    onEdit={canEditSchedule ? () => setEditScheduleTarget({ uuid: (obj as any).uuid ?? obj.id, apiName: obj.id, name: (obj as any).name ?? obj.id, schedule: sc }) : undefined}
                     noBorder={idx === objectsWithSchedule.length - 1}>
                     <span>{display}</span>
                   </ReviewRow>
@@ -773,7 +778,7 @@ export default function Step5({
             }
             // Fall back to global schedule
             return (
-              <ReviewRow label='Scheduled' onEdit={() => onEditStep(5)} noBorder>
+              <ReviewRow label='Scheduled' onEdit={canEditSchedule ? () => onEditStep(5) : undefined} noBorder>
                 <span>{scheduleDisplay}</span>
               </ReviewRow>
             );
