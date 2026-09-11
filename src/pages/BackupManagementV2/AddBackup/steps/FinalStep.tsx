@@ -49,6 +49,7 @@ type FinalStepProps = {
   onEditStep: (step: number) => void;
   strategy?: 'realtime' | 'scheduled';
   crmId?: string | null;
+  selectedUserId?: string | null;
   selectedObjects?: SelectedObject[];
   selectedObjectIds?: string[];
   policyName?: string;
@@ -67,6 +68,7 @@ export default function FinalStep({
   onEditStep,
   strategy = 'realtime',
   crmId,
+  selectedUserId,
   selectedObjects = [],
   selectedObjectIds = [],
   policyName = 'Salesforce Production Backup',
@@ -122,7 +124,9 @@ export default function FinalStep({
     setTimeout(() => setToast(null), 4000);
   }
 
-  const activeCrm = platforms?.find((p) => p.crmId === crmId);
+  const activeCrm = selectedUserId
+    ? platforms?.find((p) => p.userId === selectedUserId)
+    : platforms?.find((p) => p.crmId === crmId);
   const { data: activeDestinationDetail } = useQuery({
     queryKey: ['destination', destinationId],
     queryFn: () => destinationService.getDestination(destinationId!),
