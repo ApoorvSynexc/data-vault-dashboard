@@ -778,7 +778,7 @@ export default function Step5({
             }
             // Fall back to global schedule
             return (
-              <ReviewRow label='Scheduled' onEdit={canEditSchedule ? () => onEditStep(5) : undefined} noBorder>
+              <ReviewRow label='Scheduled' noBorder>
                 <span>{scheduleDisplay}</span>
               </ReviewRow>
             );
