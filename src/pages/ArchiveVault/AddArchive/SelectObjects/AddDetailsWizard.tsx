@@ -561,8 +561,11 @@ export default function AddDetailsWizard({
         return true;
       })
       .map((uuid) => {
-        const nested = buildChildTree(uuid, visited);
         const hasInclude = !!includeChild[uuid];
+        // Only recurse into sub-children when includeChild is ON for this node.
+        // If the user toggled includeChild off, sub-children must not be saved —
+        // otherwise on restore the saved children force includeChild back to true.
+        const nested = hasInclude ? buildChildTree(uuid, visited) : [];
         return {
           id: uuid,
           name: childApiNames[uuid] ?? uuid,
