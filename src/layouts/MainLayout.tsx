@@ -62,9 +62,10 @@ const mainNav: { to: string; label: string; Icon: () => React.ReactElement; perm
 
 // ── Org Dropdown ──────────────────────────────────────────────────────────────
 
-function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
+function OrgDropdown({ selectedOrg, userCrmId, userProfileId, onAutoSelect, onSelect }: {
   selectedOrg: ConnectedPlatform | null;
   userCrmId: string;
+  userProfileId: string;
   onAutoSelect: (org: ConnectedPlatform) => void;
   onSelect: (org: ConnectedPlatform) => void;
 }) {
@@ -91,7 +92,12 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
         if (found) { onAutoSelect(found); return; }
         localStorage.removeItem('selectedOrgCrmId');
       }
-      const matched = userCrmId ? orgs.find((o) => (o.crmProfile?.userId ?? o.crmProfileUserId) === userCrmId) : null;
+      // Match by DataVault userId first (unique per connection owner), fall back to crmId (org-level)
+      const matched = userProfileId
+        ? orgs.find((o) => o.userId === userProfileId)
+        : userCrmId
+          ? orgs.find((o) => o.crmId === userCrmId)
+          : null;
       onAutoSelect(matched ?? orgs[0]);
     }
   }, [orgs, selectedOrg, userCrmId]);
@@ -200,7 +206,7 @@ function OrgDropdown({ selectedOrg, userCrmId, onAutoSelect, onSelect }: {
 // ── Main Layout ────────────────────────────────────────────────────────────────
 
 export default function MainLayout() {
-  const { logout, hasPermission, setCrmUserId, setCrmOrgId, userCrmId, refreshProfile } = useAuth();
+  const { logout, hasPermission, setCrmUserId, setCrmOrgId, userCrmId, userProfileId, refreshProfile } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -348,6 +354,7 @@ export default function MainLayout() {
           <OrgDropdown
             selectedOrg={selectedOrg}
             userCrmId={userCrmId}
+            userProfileId={userProfileId}
             onAutoSelect={(org) => {
               setSelectedOrg(org);
               localStorage.setItem('selectedOrgCrmId', org.crmProfile?.userId ?? org.crmProfileUserId ?? '');

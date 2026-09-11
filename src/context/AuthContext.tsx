@@ -16,6 +16,8 @@ type AuthContextValue = {
   setCrmOrgId: (id: string) => void;
   // crmId of the org the logged-in user belongs to — drives initial dropdown selection
   userCrmId: string;
+  // DataVault userId of the logged-in user — used to match the exact connection in the org dropdown
+  userProfileId: string;
 };
 
 const AuthContext = createContext<AuthContextValue>({
@@ -30,6 +32,7 @@ const AuthContext = createContext<AuthContextValue>({
   crmOrgId: '',
   setCrmOrgId: () => {},
   userCrmId: '',
+  userProfileId: '',
 });
 
 function extractPermissions(profile: Record<string, unknown>): string[] {
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [crmUserId, _setCrmUserId] = useState<string>(() => localStorage.getItem('selectedOrgCrmId') ?? '');
   const [crmOrgId, _setCrmOrgId] = useState<string>(() => localStorage.getItem('selectedOrgId') ?? '');
   const [userCrmId, setUserCrmId] = useState<string>('');
+  const [userProfileId, setUserProfileId] = useState<string>('');
 
   const hasPermission = useCallback(
     (prefix: string) => permissions.some((p) => p === prefix || p.startsWith(`${prefix}.`)),
@@ -91,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
     setPermissions(profile ? extractPermissions(profile) : []);
     setUserCrmId((profile?.crmId as string) ?? '');
+    setUserProfileId((profile?.userId as string) ?? '');
     setStatus('authenticated');
   }, [getMyProfile]);
 
@@ -116,8 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId }),
-    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId],
+    () => ({ status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId, userProfileId }),
+    [status, user, permissions, hasPermission, logout, refreshProfile, crmUserId, setCrmUserId, crmOrgId, setCrmOrgId, userCrmId, userProfileId],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
