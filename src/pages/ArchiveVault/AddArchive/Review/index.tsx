@@ -446,6 +446,13 @@ export default function Step5({
   const queryClient = useQueryClient();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [now, setNow] = useState(() => dayjs());
+  useEffect(() => {
+    const id = setInterval(() => setNow(dayjs()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -495,6 +502,11 @@ export default function Step5({
   const schedStartDate = scheduleConfig?.scheduling.startDate;
   const schedStartTime = scheduleConfig?.scheduling.startTime;
   const isRunNow = scheduleConfig?.scheduling.frequency === 'ONCE' && !schedStartDate && !schedStartTime;
+  const isSchedulePast = !!scheduleConfig && !isRunNow && (() => {
+    if (!schedStartDate) return false;
+    const dt = schedStartTime ? `${schedStartDate}T${schedStartTime}` : schedStartDate;
+    return dayjs(dt).isBefore(now);
+  })();
   const scheduleDisplay = isRunNow
     ? 'One Time (Archive Now)'
     : schedStartTime && schedStartDate
@@ -786,6 +798,16 @@ export default function Step5({
 
         </div>
 
+        {/* Schedule past warning */}
+        {isSchedulePast && !editMode && (
+          <div className='flex-shrink-0 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3'>
+            <svg className='w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+            </svg>
+            <p className='text-sm text-yellow-700'>The scheduled start time has already passed. Please go back and update the schedule before starting the archive.</p>
+          </div>
+        )}
+
         {/* API error */}
         {apiError && (
           <div className='flex-shrink-0 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3'>
@@ -821,7 +843,7 @@ export default function Step5({
             </PermissionGate>
           )}
           <PermissionGate permission='archival.execute'>
-            <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading}
+            <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading || isSchedulePast}
               className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
               style={{ background: '#155DFC' }}
               onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
