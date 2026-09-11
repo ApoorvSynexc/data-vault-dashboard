@@ -365,7 +365,7 @@ export default function FinalStep({
 
         {!isRealTime && scheduleConfig && (
           <SectionBox title='Backup Schedule' sectionKey='schedule' onEdit={isDraft ? () => onEditStep(6) : undefined}>
-            {isSchedulePast && (
+            {isSchedulePast && isDraft && (
               <div className='flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 mb-3'>
                 <svg className='w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'><path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' /></svg>
                 <p className='text-sm text-yellow-700'>The scheduled start time has already passed or is about to pass. Please go back and update the schedule before running the backup.</p>
