@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
+import { toUTCISOString } from '../../../../utils';
 import type { SourceSelection } from '../SelectSourceType';
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
@@ -64,7 +65,20 @@ function ProgressBar({ active }: { active: number }) {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface DryRunStats { insertCount: number; updateCount: number; totalRowsRaw: number; }
+interface DryRunObject { objectApiName: string; count: number; updateCount: number; deleteCount: number; ok: boolean; }
+interface DryRunStats { totalCount: number; totalUpdateCount: number; totalDeleteCount: number; objects: DryRunObject[]; }
+
+interface DiffRecord {
+  changeRecord: Record<string, any>;
+  salesforceRecord: Record<string, any> | null;
+}
+interface DiffObject {
+  objectApiName: string;
+  ok: boolean;
+  columns: string[];
+  recordCount: number;
+  records: DiffRecord[];
+}
 
 interface Props {
   onNext: (stats: DryRunStats | undefined) => void;
@@ -73,71 +87,6 @@ interface Props {
   restorePayload: RestoreRetrievePayload;
 }
 
-interface DiffRow {
-  recordName: string;
-  field: string;
-  before: string;
-  after: string;
-  action: 'NEW' | 'MOD';
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function normalizeValue(val: string): string {
-  if (val === '' || val === null || val === undefined) return '';
-  // Normalize timestamps: convert +0000 offset to Z, strip sub-ms precision differences
-  const tsMatch = val.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?(Z|[+-]\d{4}|[+-]\d{2}:\d{2})$/);
-  if (tsMatch) {
-    try {
-      return new Date(val).toISOString();
-    } catch {
-      return val;
-    }
-  }
-  // Normalize numbers: strip trailing .0 (e.g. "714.0" → "714", "25000.0" → "25000")
-  if (/^-?\d+\.0+$/.test(val)) {
-    return String(parseFloat(val));
-  }
-  return val;
-}
-
-function parseDiffRows(rows: any[]): { diffRows: DiffRow[]; insertCount: number; updateCount: number } {
-  const diffRows: DiffRow[] = [];
-  let insertCount = 0;
-  let updateCount = 0;
-
-  for (const row of rows) {
-    const prev: Record<string, string> = row.previous ?? {};
-    const curr: Record<string, string> = row.current ?? null;
-    const recordName = prev.Name ?? prev.Id ?? 'Unknown';
-
-    if (!curr) {
-      // INSERT — only previous exists
-      insertCount++;
-      diffRows.push({ recordName, field: '—', before: '(new record)', after: '—', action: 'NEW' });
-    } else {
-      // UPDATE — show only fields where normalized values actually differ
-      const changedFields = Object.keys(prev).filter((key) => {
-        if (key === 'OwnerId') return false;
-        return normalizeValue(String(prev[key])) !== normalizeValue(String(curr[key]));
-      });
-      if (changedFields.length > 0) {
-        updateCount++;
-        for (const field of changedFields) {
-          diffRows.push({
-            recordName,
-            field,
-            before: prev[field] ?? '—',
-            after:  curr[field] ?? '—',
-            action: 'MOD',
-          });
-        }
-      }
-    }
-  }
-
-  return { diffRows, insertCount, updateCount };
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -148,10 +97,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
   const [dryRunDone,    setDryRunDone]    = useState(false);
   const [dryRunError,   setDryRunError]   = useState<string | null>(null);
 
-  const [diffRows,     setDiffRows]     = useState<DiffRow[]>([]);
-  const [insertCount,  setInsertCount]  = useState(0);
-  const [updateCount,  setUpdateCount]  = useState(0);
-  const [totalRowsRaw, setTotalRowsRaw] = useState(0);
+  const [totalCount,       setTotalCount]       = useState(0);
+  const [totalUpdateCount, setTotalUpdateCount] = useState(0);
+  const [totalDeleteCount, setTotalDeleteCount] = useState(0);
+  const [dryRunObjects,    setDryRunObjects]    = useState<DryRunObject[]>([]);
 
   const runDryRun = async () => {
     setDryRunLoading(true);
@@ -166,18 +115,17 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         configType: sourceSelection.configType ?? 'BACKUP',
         source: {
           type: sourceType,
-          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
-          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: toUTCISOString(sourceSelection.startDate) } : {}),
+          ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   toUTCISOString(sourceSelection.endDate)   } : {}),
         },
         selection: { restoreScope: restorePayload.selection.restoreScope },
       });
 
-      const rawRows: any[] = res?.data?.data?.rows ?? res?.data?.rows ?? [];
-      setTotalRowsRaw(rawRows.length);
-      const { diffRows: parsed, insertCount: ins, updateCount: upd } = parseDiffRows(rawRows);
-      setDiffRows(parsed);
-      setInsertCount(ins);
-      setUpdateCount(upd);
+      const d = res?.data?.data ?? res?.data ?? {};
+      setTotalCount(d.totalCount ?? 0);
+      setTotalUpdateCount(d.totalUpdateCount ?? 0);
+      setTotalDeleteCount(d.totalDeleteCount ?? 0);
+      setDryRunObjects(d.objects ?? []);
       setDryRunDone(true);
     } catch (err: any) {
       setDryRunError(err?.message ?? 'Dry-run failed. Please try again.');
@@ -192,7 +140,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
   const [diffViewLoading, setDiffViewLoading] = useState(false);
   const [diffViewDone,    setDiffViewDone]    = useState(false);
   const [diffViewError,   setDiffViewError]   = useState<string | null>(null);
-  const [diffViewData,    setDiffViewData]    = useState<Record<string, { records: { changeRecord: any; salesforceRecord: any }[] }>>({});
+  const [diffViewData,    setDiffViewData]    = useState<DiffObject[]>([]);
 
   const buildSourcePayload = () => {
     const sourceType = (sourceSelection.type === 'CHANGED_BETWEEN' || sourceSelection.type === 'DELETED_BETWEEN')
@@ -203,8 +151,8 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
       configType: (sourceSelection.configType ?? 'BACKUP') as 'BACKUP' | 'ARCHIVAL',
       source: {
         type: sourceType,
-        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: sourceSelection.startDate } : {}),
-        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   sourceSelection.endDate   } : {}),
+        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.startDate ? { startDate: toUTCISOString(sourceSelection.startDate) } : {}),
+        ...(sourceType === 'CHANGED_BETWEEN' && sourceSelection.endDate   ? { endDate:   toUTCISOString(sourceSelection.endDate)   } : {}),
       },
       selection: { restoreScope: restorePayload.selection.restoreScope },
     };
@@ -216,7 +164,8 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
     setDiffViewDone(false);
     try {
       const res: any = await restoreService.dryRunDiff({ ...buildSourcePayload(), limit: 50 });
-      setDiffViewData(res?.data?.data ?? res?.data ?? {});
+      const d = res?.data?.data ?? res?.data ?? {};
+      setDiffViewData(Array.isArray(d.objects) ? d.objects : []);
       setDiffViewDone(true);
     } catch (err: any) {
       setDiffViewError(err?.message ?? 'Diff failed. Please try again.');
@@ -258,11 +207,11 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         </div>
 
         {/* Impact summary stats */}
-        <div className='grid grid-cols-2 sm:grid-cols-3 gap-3 flex-shrink-0'>
+        <div className='grid grid-cols-3 gap-3 flex-shrink-0'>
           {[
-            { label: 'To Create',           value: dryRunDone ? String(insertCount)  : '—', color: '#16A34A' },
-            { label: 'To Update',           value: dryRunDone ? String(updateCount)  : '—', color: '#D97706' },
-            { label: 'Skipped (Conflicts)', value: dryRunDone ? '0'                  : '—', color: '#374151' },
+            { label: 'Total Changed', value: dryRunDone ? String(totalCount)       : '—', color: '#155DFC' },
+            { label: 'To Update',     value: dryRunDone ? String(totalUpdateCount) : '—', color: '#D97706' },
+            { label: 'To Delete',     value: dryRunDone ? String(totalDeleteCount) : '—', color: '#DC2626' },
           ].map(({ label, value, color }) => (
             <div key={label}
               className='bg-white rounded-xl px-5 py-4 flex flex-col gap-1 flex-shrink-0'
@@ -327,9 +276,9 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   Snapshot vs Current Diff
                   <InfoTooltip text='Compares the backup snapshot values against the current live data in the destination. Highlights fields that have changed since the snapshot was taken.' />
                 </span>
-                {dryRunDone && diffRows.length > 0 && (
+                {diffViewDone && diffViewData.some((o) => o.recordCount > 0) && (
                   <span className='inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700'>
-                    {diffRows.length}
+                    {diffViewData.reduce((s, o) => s + o.recordCount, 0)}
                   </span>
                 )}
               </button>
@@ -345,16 +294,35 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   Execute the full job pipeline without writing any data. Produces a complete preview report showing records to insert, update, and any conflicts.
                 </p>
 
-                {dryRunDone && (
-                  <div className='grid grid-cols-2 gap-3'>
-                    <div className='rounded-lg px-4 py-3 flex flex-col gap-0.5' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-                      <span className='text-[10px] font-semibold text-green-600 uppercase tracking-wide'>To Insert</span>
-                      <span className='text-2xl font-bold text-green-700'>{insertCount}</span>
-                    </div>
-                    <div className='rounded-lg px-4 py-3 flex flex-col gap-0.5' style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                      <span className='text-[10px] font-semibold text-amber-600 uppercase tracking-wide'>To Update</span>
-                      <span className='text-2xl font-bold text-amber-700'>{updateCount}</span>
-                    </div>
+                {dryRunDone && dryRunObjects.length > 0 && (
+                  <div className='rounded-lg border border-gray-200 overflow-hidden'>
+                    <table className='w-full text-xs'>
+                      <thead>
+                        <tr className='bg-gray-50 border-b border-gray-200'>
+                          <th className='text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Object</th>
+                          <th className='text-right px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Changed</th>
+                          <th className='text-right px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Updated</th>
+                          <th className='text-right px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Deleted</th>
+                          <th className='text-center px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dryRunObjects.map((obj) => (
+                          <tr key={obj.objectApiName} className='border-b border-gray-100 last:border-0 hover:bg-gray-50'>
+                            <td className='px-4 py-2.5 font-mono font-medium text-gray-800'>{obj.objectApiName}</td>
+                            <td className='px-4 py-2.5 text-right font-semibold text-blue-700'>{obj.count}</td>
+                            <td className='px-4 py-2.5 text-right font-semibold text-amber-600'>{obj.updateCount}</td>
+                            <td className='px-4 py-2.5 text-right font-semibold text-red-500'>{obj.deleteCount}</td>
+                            <td className='px-4 py-2.5 text-center'>
+                              {obj.ok
+                                ? <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700'>OK</span>
+                                : <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700'>Error</span>
+                              }
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
@@ -378,12 +346,10 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                     <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
                       <polyline points='20 6 9 17 4 12'/>
                     </svg>
-                    Dry-run completed · {totalRowsRaw} record{totalRowsRaw !== 1 ? 's' : ''} analysed · 0 blocking errors
-                    {diffRows.length > 0 && (
-                      <button onClick={() => setActiveTab('diff')} className='ml-auto text-blue-600 hover:underline font-semibold'>
-                        View Diff →
-                      </button>
-                    )}
+                    Dry-run completed · {totalCount} record{totalCount !== 1 ? 's' : ''} affected · 0 blocking errors
+                    <button onClick={() => setActiveTab('diff')} className='ml-auto text-blue-600 hover:underline font-semibold'>
+                      View Diff →
+                    </button>
                   </div>
                 )}
                 {dryRunError && (
@@ -430,8 +396,8 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                 )}
 
                 {diffViewDone && (() => {
-                  const objectNames = Object.keys(diffViewData);
-                  if (objectNames.length === 0) {
+                  const activeObjects = diffViewData.filter((o) => o.recordCount > 0);
+                  if (activeObjects.length === 0) {
                     return (
                       <div className='flex flex-col items-center justify-center py-10 gap-2'>
                         <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'>
@@ -443,56 +409,103 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   }
                   return (
                     <div className='flex flex-col gap-4'>
-                      {objectNames.map((objName) => {
-                        const records = diffViewData[objName]?.records ?? [];
-                        return (
-                          <div key={objName} className='rounded-lg border border-gray-200 overflow-hidden'>
-                            <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between'>
-                              <span className='text-xs font-bold text-gray-700 font-mono'>{objName}</span>
-                              <span className='text-[10px] font-semibold text-gray-400'>{records.length} record{records.length !== 1 ? 's' : ''}</span>
-                            </div>
-                            <div className='overflow-x-auto'>
-                              <table className='w-full text-xs'>
-                                <thead>
-                                  <tr className='border-b border-gray-100 bg-gray-50'>
-                                    <th className='text-left py-2 px-4 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Field</th>
-                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Snapshot (Backup)</th>
-                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Current (Salesforce)</th>
-                                    <th className='text-left py-2 px-3 font-semibold text-gray-500 uppercase tracking-wide text-[10px]'>Operation</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {records.map((rec, i) => {
-                                    const change = rec.changeRecord ?? {};
-                                    const live   = rec.salesforceRecord ?? {};
-                                    const operation = change.OPERATION ?? '—';
-                                    const allKeys = Array.from(new Set([...Object.keys(change), ...Object.keys(live)])).filter((k) => k !== 'OPERATION');
-                                    return allKeys.map((key, j) => (
-                                      <tr key={`${i}-${j}`} className='border-b border-gray-50 hover:bg-gray-50 transition-colors'>
-                                        <td className='py-2 px-4 font-mono text-[11px] text-gray-600 max-w-[130px] truncate' title={key}>{key}</td>
-                                        <td className='py-2 px-3 text-gray-400 max-w-[160px] truncate' title={String(change[key] ?? '')}>{change[key] ?? '—'}</td>
-                                        <td className='py-2 px-3 text-gray-800 font-medium max-w-[160px] truncate' title={String(live[key] ?? '')}>{live[key] ?? '—'}</td>
-                                        {j === 0 ? (
-                                          <td className='py-2 px-3' rowSpan={allKeys.length}>
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                                              operation === 'INSERT' ? 'bg-green-100 text-green-700' :
-                                              operation === 'UPDATE' ? 'bg-amber-100 text-amber-700' :
-                                              operation === 'DELETE' ? 'bg-red-100 text-red-700' :
-                                              'bg-gray-100 text-gray-600'
-                                            }`}>
-                                              {operation}
-                                            </span>
-                                          </td>
-                                        ) : null}
-                                      </tr>
-                                    ));
-                                  })}
-                                </tbody>
-                              </table>
+                      {activeObjects.map((obj) => (
+                        <div key={obj.objectApiName} className='rounded-lg border border-gray-200 overflow-hidden'>
+                          {/* Object header */}
+                          <div className='px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between'>
+                            <span className='text-xs font-bold text-gray-800 font-mono'>{obj.objectApiName}</span>
+                            <div className='flex items-center gap-2'>
+                              {!obj.ok && <span className='text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700'>Error</span>}
+                              <span className='text-[10px] font-semibold text-gray-400'>{obj.recordCount} record{obj.recordCount !== 1 ? 's' : ''}</span>
                             </div>
                           </div>
-                        );
-                      })}
+
+                          {/* Per-record cards */}
+                          <div className='flex flex-col divide-y divide-gray-100'>
+                            {obj.records.map((rec: DiffRecord, i: number) => {
+                              const change = rec.changeRecord ?? {};
+                              const live   = rec.salesforceRecord;
+                              const operation: string = change.OPERATION ?? '—';
+                              const recordId: string  = String(change.Id ?? live?.Id ?? `row-${i}`);
+                              const opStyle =
+                                operation === 'INSERT' ? { bg: 'bg-green-100', text: 'text-green-700' } :
+                                operation === 'UPDATE' ? { bg: 'bg-amber-100', text: 'text-amber-700' } :
+                                operation === 'DELETE' ? { bg: 'bg-red-100',   text: 'text-red-600'   } :
+                                                        { bg: 'bg-gray-100',   text: 'text-gray-600'  };
+
+                              // For UPDATE: show only non-empty fields in changeRecord (those are the changed backup values)
+                              // For INSERT: salesforceRecord is null — record will be inserted from changeRecord
+                              // For DELETE: changeRecord is minimal, salesforceRecord has current values
+                              const changedFields = operation === 'UPDATE'
+                                ? Object.keys(change).filter((k) => k !== 'OPERATION' && k !== 'Id' && change[k] !== '' && change[k] != null)
+                                : operation === 'INSERT'
+                                  ? Object.keys(change).filter((k) => k !== 'OPERATION' && change[k] !== '' && change[k] != null)
+                                  : Object.keys(live ?? {}).filter((k) => k !== 'Id');
+
+                              return (
+                                <div key={recordId} className='p-4'>
+                                  {/* Record header */}
+                                  <div className='flex items-center gap-2 mb-3'>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${opStyle.bg} ${opStyle.text}`}>
+                                      {operation}
+                                    </span>
+                                    <span className='text-[11px] font-mono text-gray-500'>{recordId}</span>
+                                    {operation === 'INSERT' && (
+                                      <span className='text-[10px] text-gray-400 ml-1'>— record will be inserted from backup</span>
+                                    )}
+                                    {operation === 'DELETE' && (
+                                      <span className='text-[10px] text-gray-400 ml-1'>— record will be deleted</span>
+                                    )}
+                                  </div>
+
+                                  {changedFields.length > 0 ? (
+                                    <div className='overflow-x-auto rounded-lg border border-gray-100'>
+                                      <table className='w-full text-xs'>
+                                        <thead>
+                                          <tr className='bg-gray-50 border-b border-gray-100'>
+                                            <th className='text-left py-1.5 px-3 font-semibold text-gray-400 uppercase tracking-wide text-[10px] w-[160px]'>Field</th>
+                                            {operation === 'UPDATE' && (
+                                              <>
+                                                <th className='text-left py-1.5 px-3 font-semibold text-gray-400 uppercase tracking-wide text-[10px]'>Backup Value</th>
+                                                <th className='text-left py-1.5 px-3 font-semibold text-gray-400 uppercase tracking-wide text-[10px]'>Current (Salesforce)</th>
+                                              </>
+                                            )}
+                                            {operation !== 'UPDATE' && (
+                                              <th className='text-left py-1.5 px-3 font-semibold text-gray-400 uppercase tracking-wide text-[10px]'>Value</th>
+                                            )}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {changedFields.map((field) => {
+                                            const backupVal  = String(change[field] ?? '—');
+                                            const currentVal = live ? String(live[field] ?? '—') : '—';
+                                            const isDiff = operation === 'UPDATE' && backupVal !== currentVal;
+                                            return (
+                                              <tr key={field} className={`border-b border-gray-50 last:border-0 ${isDiff ? 'bg-amber-50/40' : ''}`}>
+                                                <td className='py-2 px-3 font-mono text-[11px] text-gray-600 whitespace-nowrap'>{field}</td>
+                                                {operation === 'UPDATE' ? (
+                                                  <>
+                                                    <td className='py-2 px-3 text-gray-500 max-w-[200px] truncate' title={backupVal}>{backupVal}</td>
+                                                    <td className={`py-2 px-3 max-w-[200px] truncate font-medium ${isDiff ? 'text-amber-700' : 'text-gray-700'}`} title={currentVal}>{currentVal}</td>
+                                                  </>
+                                                ) : (
+                                                  <td className='py-2 px-3 text-gray-700 max-w-[320px] truncate' title={backupVal}>{backupVal}</td>
+                                                )}
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : (
+                                    <p className='text-xs text-gray-400 italic'>No field-level changes detected.</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   );
                 })()}
@@ -514,7 +527,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={() => onNext(dryRunDone ? { insertCount, updateCount, totalRowsRaw } : undefined)}
+            onClick={() => onNext(dryRunDone ? { totalCount, totalUpdateCount, totalDeleteCount, objects: dryRunObjects } : undefined)}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors'
             style={{ background: '#155DFC' }}
           >

@@ -120,7 +120,7 @@ type Step5Props = {
   selectedObjectIds?: string[];
   initialSelectedObjects?: SelectedObject[];
   strategy?: 'realtime' | 'scheduled';
-  onSelectionChange?: (selectedUuids: string[]) => void;
+  onSelectionChange?: (selectedObjects: SelectedObject[]) => void;
   displayObjects: BackupObject[];
   isLoadingObjects: boolean;
   objectsError: Error | null;
@@ -269,9 +269,24 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     initialSyncDone.current = true;
   }, [allObjects]);
 
-  // Notify parent of selection changes
+  // Notify parent of selection changes — emit full SelectedObject[] so parent
+  // retains isUserSelected and children across Back/Next navigation.
   useEffect(() => {
-    onSelectionChange?.(Array.from(selectedObjects));
+    if (!onSelectionChange) return;
+    const globalChildrenMap = buildGlobalChildrenMap(parentTreeMap);
+    const data: SelectedObject[] = Array.from(selectedObjects).map((uuid) => {
+      const obj = allObjects.find((o) => o.uuid === uuid);
+      const children = globalChildrenMap.get(uuid);
+      return {
+        uuid,
+        id: obj?.id ?? uuid,
+        type: (obj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM',
+        isUserSelected: userSelectedObjects.has(uuid),
+        ...(children?.length ? { children } : {}),
+      };
+    });
+    onSelectionChange(data);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedObjects]);
 
   // Auto-select all if entire dataset selected — only once

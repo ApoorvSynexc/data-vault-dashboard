@@ -297,13 +297,8 @@ export default function AddBackup() {
           displayObjects={displayObjects}
           isLoadingObjects={isLoadingObjects}
           objectsError={objectsError}
-          onSelectionChange={(uuids) => {
-            setSelectedObjects(uuids.map((uuid) => {
-              const displayObj = displayObjects.find((o) => o.uuid === uuid);
-              const existing = selectedObjects.find((o) => o.uuid === uuid || (displayObj && o.id === displayObj.id));
-              if (existing) return { ...existing, uuid };
-              return { uuid, id: displayObj?.id ?? uuid, type: (displayObj?.isCustom ? 'CUSTOM' : 'STANDARD') as 'STANDARD' | 'CUSTOM', isUserSelected: true };
-            }));
+          onSelectionChange={(objects) => {
+            setSelectedObjects(objects);
           }}
           onNext={(objects) => {
             setSelectedObjects(objects);
