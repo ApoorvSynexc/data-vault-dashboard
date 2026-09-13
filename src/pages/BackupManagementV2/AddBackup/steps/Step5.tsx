@@ -40,28 +40,6 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
   return result;
 }
 
-// Every object that appears anywhere in the selected tree — whether it's a
-// fetch root (clicked directly) or nested several levels deep — needs its own
-// entry in the final payload's `objects[]` array carrying its own children.
-// This flattens parentTreeMap (keyed by fetch-root uuid) plus every nested
-// node's own children into a single uuid -> children lookup.
-function buildGlobalChildrenMap(parentTreeMap: Map<string, PayloadChildNode[]>): Map<string, PayloadChildNode[]> {
-  const map = new Map<string, PayloadChildNode[]>();
-  function walk(nodes: PayloadChildNode[]) {
-    nodes.forEach((node) => {
-      if (node.children?.length) {
-        map.set(node.id, node.children);
-        walk(node.children);
-      }
-    });
-  }
-  parentTreeMap.forEach((children, parentUuid) => {
-    if (children.length > 0) map.set(parentUuid, children);
-    walk(children);
-  });
-  return map;
-}
-
 // Flattens a payload tree into uuids/labels (for locking rows and the toast message)
 function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
   const uuids: string[] = [];
@@ -733,14 +711,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           </button>
           <button
             onClick={() => {
-              // Every selected object (fetch root or nested) gets its own children here
-              const globalChildrenMap = buildGlobalChildrenMap(parentTreeMap);
               const selectedObjectsData = Array.from(selectedObjects).map((uuid) => {
                 const obj = allObjects.find((o) => o.uuid === uuid);
                 const type: 'STANDARD' | 'CUSTOM' = obj?.isCustom ? 'CUSTOM' : 'STANDARD';
-                const children = globalChildrenMap.get(uuid);
-                // Auto-selected (locked) objects were added because a parent was picked,
-                // not because the user checked them directly.
+                // Only user-selected root objects carry children — same as onSelectionChange.
+                // Auto-selected children must NOT carry children or they'll be treated as
+                // parents on the next Back → remount cycle.
+                const children = parentTreeMap.get(uuid);
                 const isUserSelected = userSelectedObjects.has(uuid);
                 return {
                   uuid,
