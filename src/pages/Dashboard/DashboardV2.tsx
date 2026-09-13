@@ -407,7 +407,7 @@ export default function DashboardV2() {
       restore: [
         {
           label: 'Start Restore →',
-          route: '/restore-center/new',
+          route: '/restore-center?action=new',
           icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='1 4 1 10 7 10'/><path d='M3.51 15a9 9 0 1 0 .49-4.5'/></svg>,
           bg: '#16A34A', color: '#ffffff',
         },
@@ -485,8 +485,8 @@ export default function DashboardV2() {
             {permissions.some((p) => p.startsWith('restore')) && (
               <button
                 type='button'
-                onClick={() => navigate('/restore-center/new')}
-                className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 whitespace-nowrap'
+                onClick={() => navigate('/restore-center?action=new')}
+                className='inline-flex items-center gap-2 rounded-lg border border-green-600 px-3 py-2 text-xs font-semibold text-green-600 transition hover:bg-green-50 whitespace-nowrap'
               >
                 + New Restore
               </button>

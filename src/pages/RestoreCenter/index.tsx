@@ -24,10 +24,13 @@ export default function RestoreCenter() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [screen, setScreen] = useState<Screen>(jobIdParam ? 'history' : 'home');
+  const searchParams = new URLSearchParams(location.search);
+  const [screen, setScreen] = useState<Screen>(
+    jobIdParam ? 'history' : searchParams.get('action') === 'new' ? 'new-restore' : 'home'
+  );
 
   useEffect(() => {
-    if (location.pathname === '/restore-center') {
+    if (location.pathname === '/restore-center' && !new URLSearchParams(location.search).get('action')) {
       setScreen('home');
     }
   }, [location.key]);
