@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard';
+import DashboardV2 from '../pages/Dashboard/DashboardV2';
 import Profile from '../pages/Profile';
 import ChangePassword from '../pages/ChangePassword';
 import LoginV2 from '../pages/auth/Login/LoginV2';
@@ -76,6 +77,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DefaultRedirect /> },
           { path: '/dashboard',                          element: <PermissionRoute permissions={['dashboard']}><Dashboard /></PermissionRoute> },
+          { path: '/dashboard-v2',                       element: <PermissionRoute permissions={['dashboard']}><DashboardV2 /></PermissionRoute> },
           { path: '/profile',                            element: <Profile /> },
           { path: '/change-password',                    element: <ChangePassword /> },
           { path: '/backup-management',                  element: <PermissionRoute permissions={['backup']}><BackupManagementV2 /></PermissionRoute> },

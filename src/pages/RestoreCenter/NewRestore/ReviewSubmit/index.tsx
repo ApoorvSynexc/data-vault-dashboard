@@ -115,7 +115,7 @@ interface Props {
   onComplete: () => void;
   restorePayload: RestoreRetrievePayload;
   updatePayload: (patch: Partial<RestoreRetrievePayload>) => void;
-  dryRunStats?: { insertCount: number; updateCount: number; totalRowsRaw: number };
+  dryRunStats?: { totalCount: number; totalUpdateCount: number; totalDeleteCount: number; objects: { objectApiName: string; count: number; updateCount: number; deleteCount: number; ok: boolean }[] };
   sourceSelection: SourceSelection;
   selectedConnection: Destination | null;
 }
@@ -269,7 +269,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
     createJobMutation.mutate();
   };
 
-  const totalAffected = dryRunStats ? dryRunStats.insertCount + dryRunStats.updateCount : null;
+  const totalAffected = dryRunStats ? dryRunStats.totalCount : null;
 
   if (isSuccess) {
     return (
@@ -398,12 +398,16 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                 {dryRunStats && (
                   <>
                     <div>
-                      <p className='text-xs text-gray-400 mb-0.5'>To Insert</p>
-                      <p className='text-sm font-semibold text-green-700'>{dryRunStats.insertCount.toLocaleString()}</p>
+                      <p className='text-xs text-gray-400 mb-0.5'>Total Changed</p>
+                      <p className='text-sm font-semibold text-blue-700'>{dryRunStats.totalCount.toLocaleString()}</p>
                     </div>
                     <div>
                       <p className='text-xs text-gray-400 mb-0.5'>To Update</p>
-                      <p className='text-sm font-semibold text-amber-600'>{dryRunStats.updateCount.toLocaleString()}</p>
+                      <p className='text-sm font-semibold text-amber-600'>{dryRunStats.totalUpdateCount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className='text-xs text-gray-400 mb-0.5'>To Delete</p>
+                      <p className='text-sm font-semibold text-red-600'>{dryRunStats.totalDeleteCount.toLocaleString()}</p>
                     </div>
                   </>
                 )}

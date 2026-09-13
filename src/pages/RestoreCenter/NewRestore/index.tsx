@@ -70,7 +70,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
     setRestorePayload((prev) => ({ ...prev, ...patch }));
 
   // Persist step-2 sub-phase so Back from step 3 lands on jobs table, not config list
-  const [dryRunStats, setDryRunStats] = useState<{ insertCount: number; updateCount: number; totalRowsRaw: number } | undefined>(undefined);
+  const [dryRunStats, setDryRunStats] = useState<{ totalCount: number; totalUpdateCount: number; totalDeleteCount: number; objects: { objectApiName: string; count: number; updateCount: number; deleteCount: number; ok: boolean }[] } | undefined>(undefined);
 
   const [step2BackupJobsPhase, setStep2BackupJobsPhase] = useState(false);
   const [step2ArchivalJobsPhase, setStep2ArchivalJobsPhase] = useState(false);
