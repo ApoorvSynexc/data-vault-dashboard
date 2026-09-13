@@ -84,7 +84,7 @@ function resolveSavedChildren(nodes: PayloadChildNode[] = [], objects: BackupObj
   const tree: PayloadChildNode[] = [];
   const uuids: string[] = [];
   nodes.forEach((node) => {
-    const obj = objects.find((o) => o.id === node.name);
+    const obj = objects.find((o) => o.id === node.name) ?? objects.find((o) => o.name === node.name);
     if (!obj) return;
     uuids.push(obj.uuid);
     const nested = node.children?.length ? resolveSavedChildren(node.children, objects) : null;
@@ -271,12 +271,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
   // Notify parent of selection changes — emit full SelectedObject[] so parent
   // retains isUserSelected and children across Back/Next navigation.
+  // Use parentTreeMap (not globalChildrenMap) so only user-selected root objects
+  // carry children; auto-selected children do not get their own parent entries.
   useEffect(() => {
     if (!onSelectionChange) return;
-    const globalChildrenMap = buildGlobalChildrenMap(parentTreeMap);
     const data: SelectedObject[] = Array.from(selectedObjects).map((uuid) => {
       const obj = allObjects.find((o) => o.uuid === uuid);
-      const children = globalChildrenMap.get(uuid);
+      const children = parentTreeMap.get(uuid);
       return {
         uuid,
         id: obj?.id ?? uuid,
