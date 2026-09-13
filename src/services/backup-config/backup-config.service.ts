@@ -222,10 +222,10 @@ export function useBackupConfigService() {
       const query = slug ? { slug } : {};
       return api.get<BackupStatsApiResponse>(BACKUP_CONFIG_ENDPOINTS.stats, { query });
     },
-    getDashboardOverview: () =>
-      api.get<DashboardOverview>('/v1/dashboard/overview'),
-    getLastJobs: () =>
-      api.get<any>('/v1/dashboard/last-jobs'),
+    getDashboardOverview: (mod?: 'backup' | 'archival' | 'restore') =>
+      api.get<DashboardOverview>('/v1/dashboard/overview', { query: mod ? { module: mod } : {} }),
+    getLastJobs: (mod?: 'backup' | 'archival' | 'restore') =>
+      api.get<any>('/v1/dashboard/last-jobs', { query: mod ? { module: mod } : {} }),
     processBackup: (slug: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
     runNow: (backupConfigId: string) =>
