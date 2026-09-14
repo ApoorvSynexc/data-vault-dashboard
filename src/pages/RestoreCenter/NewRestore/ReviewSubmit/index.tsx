@@ -233,7 +233,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   // Editable job detail fields pre-filled from restorePayload
   const [jobName, setJobName]     = useState(restorePayload.jobDetail?.name ?? '');
   const [jobDesc, setJobDesc]     = useState(restorePayload.jobDetail?.description ?? '');
-  const [jobTags, setJobTags]     = useState((restorePayload.jobDetail?.tags ?? []).join(', '));
+  // const [jobTags, setJobTags]  = useState((restorePayload.jobDetail?.tags ?? []).join(', '));
 
   useEffect(() => {
     console.log('[ReviewSubmit] Final restore payload:', JSON.stringify(restorePayload, null, 2));
@@ -253,7 +253,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
       jobDetail: {
         name: jobName,
         description: jobDesc || undefined,
-        tags: jobTags ? jobTags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+        // tags: jobTags ? jobTags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
       },
     }),
     onSuccess: () => setIsSuccess(true),
@@ -449,6 +449,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                     style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   />
                 </div>
+                {/* Tags field — commented out
                 <div className='flex flex-col gap-1.5'>
                   <label className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Tags</label>
                   <input
@@ -460,6 +461,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                     style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
                   />
                 </div>
+                */}
               </div>
             </div>
 
