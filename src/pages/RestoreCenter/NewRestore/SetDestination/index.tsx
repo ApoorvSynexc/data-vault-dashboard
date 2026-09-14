@@ -73,7 +73,7 @@ type DestType = 'same' | 'diff' | 'export';
 const DEST_TYPES: { id: DestType; title: string; desc: string }[] = [
   { id: 'same',   title: 'Same Org (Source)', desc: 'Default — disaster recovery to original org' },
   // { id: 'diff',   title: 'Different Org',      desc: 'Cross-org migration, DR drill, or seeding' },
-  { id: 'export', title: 'Export Only',        desc: 'CSV / Parquet / JSON — no restore to org' },
+  { id: 'export', title: 'Export Only',        desc: 'CSV only — no restore to org' },
 ];
 
 // ── Tooltip helper ────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername
             </span>
           </div>
         </div>
-
+{/* 
         <div className='flex flex-col gap-1.5'>
           <label className='text-sm font-medium text-gray-700'>
             Tag Restored Records
@@ -129,7 +129,7 @@ function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername
             style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
           />
           <p className='text-xs text-gray-400'>Written to a custom field on each restored record</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
