@@ -36,7 +36,9 @@ export default function RestoreCenter() {
   }, [location.key]);
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(jobIdParam);
-  const [selectedJobIsExport, setSelectedJobIsExport] = useState(false);
+  const [selectedJobIsExport, setSelectedJobIsExport] = useState(() =>
+    searchParams.get('export') === 'true'
+  );
 
   const goTo = (s: Screen) => {
     if (s === 'home') navigate('/restore-center');
@@ -51,7 +53,7 @@ export default function RestoreCenter() {
   const goToHistory = (jobId: string, isExport = false) => {
     setSelectedJobId(jobId);
     setSelectedJobIsExport(isExport);
-    navigate(`/restore-center/history/${jobId}`);
+    navigate(`/restore-center/history/${jobId}${isExport ? '?export=true' : ''}`);
     setScreen('history');
   };
 
