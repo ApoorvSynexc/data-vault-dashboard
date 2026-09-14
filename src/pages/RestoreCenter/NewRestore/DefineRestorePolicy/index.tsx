@@ -74,7 +74,7 @@ interface Props {
 export default function DefineRestorePolicy({ onNext, onBack, connectionName, destLabel }: Props) {
   const [policyName, setPolicyName]   = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags]               = useState('');
+  // const [tags, setTags]            = useState('');
 
   const canProceed = policyName.trim().length > 0;
 
@@ -147,38 +147,38 @@ export default function DefineRestorePolicy({ onNext, onBack, connectionName, de
             </div>
           </div>
 
-          {/* Row 2: Policy Name + Tags */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
-            <div className='flex flex-col gap-1.5'>
-              <label className='text-sm font-medium flex items-center gap-1.5'>
-                <span className='text-red-500'>*</span>
-                <span style={{ color: '#33363F' }}>Restore Job Name</span>
-                <InfoTooltip text='A unique name to identify this restore job. Use a descriptive name such as incident ticket or date for easy tracking later.' />
-              </label>
-              <input
-                type='text'
-                value={policyName}
-                onChange={(e) => setPolicyName(e.target.value)}
-                placeholder='Enter restore job name'
-                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-              />
-            </div>
-            <div className='flex flex-col gap-1.5'>
-              <label className='text-sm font-medium text-gray-700 flex items-center gap-1.5'>
-                Tags <span className='text-gray-400 font-normal'>(Optional)</span>
-                <InfoTooltip text='Comma-separated tags to categorize this job. Useful for filtering restore history by incident, team, or audit period.' />
-              </label>
-              <input
-                type='text'
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder='e.g. INC-4711, compliance, q2-audit'
-                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-              />
-            </div>
+          {/* Row 2: Policy Name (full width — Tags field commented out) */}
+          <div className='flex flex-col gap-1.5'>
+            <label className='text-sm font-medium flex items-center gap-1.5'>
+              <span className='text-red-500'>*</span>
+              <span style={{ color: '#33363F' }}>Restore Job Name</span>
+              <InfoTooltip text='A unique name to identify this restore job. Use a descriptive name such as incident ticket or date for easy tracking later.' />
+            </label>
+            <input
+              type='text'
+              value={policyName}
+              onChange={(e) => setPolicyName(e.target.value)}
+              placeholder='Enter restore job name'
+              className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+            />
           </div>
+          {/* Tags field — commented out
+          <div className='flex flex-col gap-1.5'>
+            <label className='text-sm font-medium text-gray-700 flex items-center gap-1.5'>
+              Tags <span className='text-gray-400 font-normal'>(Optional)</span>
+              <InfoTooltip text='Comma-separated tags to categorize this job. Useful for filtering restore history by incident, team, or audit period.' />
+            </label>
+            <input
+              type='text'
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder='e.g. INC-4711, compliance, q2-audit'
+              className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
+              style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+            />
+          </div>
+          */}
 
           {/* Row 3: Description (full width) */}
           <div className='flex flex-col gap-1.5'>
@@ -210,7 +210,7 @@ export default function DefineRestorePolicy({ onNext, onBack, connectionName, de
         <div className='flex items-center gap-2'>
           <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
           <button
-            onClick={() => onNext({ name: policyName, description, tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [] })}
+            onClick={() => onNext({ name: policyName, description, tags: [] })}
             disabled={!canProceed}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             style={{ background: '#155DFC' }}

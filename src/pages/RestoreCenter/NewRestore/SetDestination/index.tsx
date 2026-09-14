@@ -85,7 +85,7 @@ function Tip({ text }: { text: string }) {
 // ── Sub-configs ───────────────────────────────────────────────────────────────
 
 function SameOrgConfig({ crmName, crmUsername }: { crmName?: string; crmUsername?: string }) {
-  const [tag, setTag] = useState('Restored via DataCraft {job-id}');
+  // const [tag, setTag] = useState('Restored via DataCraft {job-id}');
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
