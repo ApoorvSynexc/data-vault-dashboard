@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery/*, useMutation, useQueryClient*/ } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Typography from '../../../components/Typography';
 import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
@@ -117,21 +117,21 @@ interface Props {
 
 export default function RestoreHistory({ onBack, jobId }: Props) {
   const restoreService = useRestoreService();
-  // const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
-  // const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
-  // const [rollbackError, setRollbackError] = useState<string | null>(null);
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [rollbackError, setRollbackError] = useState<string | null>(null);
 
-  // const rollbackMutation = useMutation({
-  //   mutationFn: (restoreId: string) => restoreService.rollbackRestoreJob(restoreId),
-  //   onSuccess: () => {
-  //     setShowRollbackConfirm(false);
-  //     queryClient.invalidateQueries({ queryKey: ['restore-job-detail', jobId] });
-  //   },
-  //   onError: (err: any) => {
-  //     setRollbackError(err?.message ?? 'Rollback failed. Please try again.');
-  //   },
-  // });
+  const rollbackMutation = useMutation({
+    mutationFn: (restoreId: string) => restoreService.rollbackRestoreJob(restoreId),
+    onSuccess: () => {
+      setShowRollbackConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['restore-job-detail', jobId] });
+    },
+    onError: (err: any) => {
+      setRollbackError(err?.message ?? 'Rollback failed. Please try again.');
+    },
+  });
 
   const { data: jobData, isLoading } = useQuery({
     queryKey: ['restore-job-detail', jobId],
@@ -402,7 +402,7 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
                 Your CSV is being generated, please wait…
               </div>
             )
-          ) : null /* Rollback button commented out:
+          ) : (
             <button
               onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
               className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
@@ -412,10 +412,9 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
               </svg>
               Rollback
             </button>
-          */}
+          )}
         </div>
 
-        {/* Rollback confirm modal — commented out
         {showRollbackConfirm && (
           <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
             <div className='bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4' onClick={(e) => e.stopPropagation()}>
@@ -455,7 +454,6 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
             </div>
           </div>
         )}
-        */}
 
         {/* Success/Status Card */}
         <div className='rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm flex-shrink-0 flex flex-col items-center'>

@@ -665,7 +665,12 @@ export default function AddDetailsWizard({
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
     }
-    return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
+    return {
+      timeZone,
+      type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
+      ...(frequency === 'Custom' ? { customFrequency: backupFrequency.toUpperCase() } : {}),
+      scheduling,
+    };
   };
 
   // ── navigation ─────────────────────────────────────────────────────────────
