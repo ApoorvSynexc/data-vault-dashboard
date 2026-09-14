@@ -664,11 +664,11 @@ export default function AddDetailsWizard({
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
+      scheduling.customFrequency = backupFrequency.toUpperCase();
     }
     return {
       timeZone,
       type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
-      ...(frequency === 'Custom' ? { customFrequency: backupFrequency.toUpperCase() } : {}),
       scheduling,
     };
   };
