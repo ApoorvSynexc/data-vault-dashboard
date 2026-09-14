@@ -6,6 +6,7 @@ import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 type ScheduleConfig = {
   timeZone: string;
   type: string;
+  customFrequency?: string;
   scheduling: {
     frequency: string;
     interval: number;
@@ -776,6 +777,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               const scheduleConfig: ScheduleConfig = {
                 timeZone,
                 type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
+                ...(frequency === 'Custom' ? { customFrequency: backupFrequency.toUpperCase() } : {}),
                 scheduling,
               };
               if (onDone) {

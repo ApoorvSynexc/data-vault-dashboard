@@ -10,6 +10,7 @@ type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'C
 export type ArchiveScheduleConfig = {
   timeZone: string;
   type: string;
+  customFrequency?: string;
   scheduling: {
     frequency: string;
     interval: number;
@@ -176,7 +177,12 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
     }
-    return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
+    return {
+      timeZone,
+      type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
+      ...(frequency === 'Custom' ? { customFrequency: archiveFrequency.toUpperCase() } : {}),
+      scheduling,
+    };
   };
 
   const buildCombinedPayload = (objects: SelectedArchiveObject[], globalSchedule: ArchiveScheduleConfig | null) => ({
