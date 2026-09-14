@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import LoginPagePicture from '../../../assets/icons/LoginPagePicture.svg';
 import DataCraftIcon from '../../../assets/icons/Datavault Logo Container.svg';
 import LockIcon from '../../../assets/icons/lock.svg?react';
@@ -10,9 +11,24 @@ import CustomURLModal from '../CustomURLModal';
 import { useAuthService } from '../../../services/auth/auth.service';
 
 export default function LoginV2() {
+  const [searchParams] = useSearchParams();
   const [isRecoverModalOpen, setIsRecoverModalOpen] = useState(false);
   const [isCustomURLModalOpen, setIsCustomURLModalOpen] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(() => {
+    // Check sessionStorage first (set by AuthContext when getMyProfile fails with 401/403)
+    const stored = sessionStorage.getItem('loginError');
+    if (stored) {
+      sessionStorage.removeItem('loginError');
+      return stored;
+    }
+    // Fall back to ?error= query param (set by SocialLoginCallback when opener is unavailable)
+    const err = searchParams.get('error');
+    if (!err) return null;
+    const is401 = err.includes('401') || /unauthorized/i.test(err);
+    return is401
+      ? 'You do not have permission to access Data Craft. Please contact your administrator to request access.'
+      : err;
+  });
   const authService = useAuthService();
 
   useEffect(() => {
