@@ -113,9 +113,10 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }
 interface Props {
   onBack?: () => void;
   jobId?: string;
+  isExport?: boolean;
 }
 
-export default function RestoreHistory({ onBack, jobId }: Props) {
+export default function RestoreHistory({ onBack, jobId, isExport: isExportProp = false }: Props) {
   const restoreService = useRestoreService();
   const queryClient = useQueryClient();
   const [errorPanel, setErrorPanel] = useState<{ obj: any } | null>(null);
@@ -198,8 +199,15 @@ export default function RestoreHistory({ onBack, jobId }: Props) {
   const totalFailed    = objects.reduce((s: number, o: any) => s + (o.failedRecordCount ?? 0), 0);
   const totalSuccess   = totalProcessed - totalFailed;
 
-  const destType = (job.destination?.type ?? job.destinationType ?? job.type ?? '').toUpperCase();
-  const isExportJob = destType.includes('EXPORT');
+  const destType = (
+    job.destination?.type ??
+    job.jobDetail?.destination?.type ??
+    job.jobDetail?.destinationType ??
+    job.destinationType ??
+    job.type ??
+    ''
+  ).toUpperCase();
+  const isExportJob = isExportProp || destType.includes('EXPORT');
   const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
 
   const objectColumns: TableColumn<any>[] = [

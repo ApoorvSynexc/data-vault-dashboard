@@ -36,6 +36,7 @@ export default function RestoreCenter() {
   }, [location.key]);
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(jobIdParam);
+  const [selectedJobIsExport, setSelectedJobIsExport] = useState(false);
 
   const goTo = (s: Screen) => {
     if (s === 'home') navigate('/restore-center');
@@ -47,8 +48,9 @@ export default function RestoreCenter() {
     setScreen('new-restore');
   };
 
-  const goToHistory = (jobId: string) => {
+  const goToHistory = (jobId: string, isExport = false) => {
     setSelectedJobId(jobId);
+    setSelectedJobIsExport(isExport);
     navigate(`/restore-center/history/${jobId}`);
     setScreen('history');
   };
@@ -58,7 +60,7 @@ export default function RestoreCenter() {
       {screen === 'home' && (
         <HomePage
           onNewRestore={() => goToNewRestore(false)}
-          onViewHistory={(jobId) => { if (jobId) goToHistory(jobId); }}
+          onViewHistory={(jobId, isExport) => { if (jobId) goToHistory(jobId, isExport); }}
         />
       )}
       {screen === 'new-restore' && (
@@ -75,7 +77,7 @@ export default function RestoreCenter() {
         <RestoreCompletion />
       )}
       {screen === 'history' && (
-        <RestoreHistory onBack={() => goTo('home')} jobId={selectedJobId} />
+        <RestoreHistory onBack={() => goTo('home')} jobId={selectedJobId} isExport={selectedJobIsExport} />
       )}
       {screen === 'templates' && (
         <RestoreTemplates onBack={() => goTo('home')} onNewTemplate={() => goToNewRestore(true)} onRun={() => goToNewRestore(false)} />
