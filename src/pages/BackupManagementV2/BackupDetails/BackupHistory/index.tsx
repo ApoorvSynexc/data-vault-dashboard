@@ -224,7 +224,14 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
     {
       key: 'objects',
       header: 'Objects',
-      render: (job) => job.object?.length || 0,
+      render: (job) => {
+        if (backup.schedule?.toUpperCase() === 'REALTIME') {
+          return job.object?.length || 1;
+        }
+        else {
+          return job.object?.length || 0;
+        }
+      }
     },
     {
       key: 'jobType',
