@@ -10,7 +10,6 @@ import PermissionGate from '../../../../components/PermissionGate';
 type ScheduleConfig = {
   timeZone: string;
   type: string;
-  customFrequency?: string;
   scheduling: {
     frequency: string;
     interval: number;
@@ -20,6 +19,7 @@ type ScheduleConfig = {
     startDate?: string;
     endDate?: string;
     startTime?: string;
+    customFrequency?: string;
   };
 };
 
