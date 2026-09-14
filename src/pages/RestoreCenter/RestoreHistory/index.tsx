@@ -5,52 +5,6 @@ import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { useRestoreService } from '../../../services/restore/restore.service';
 
-function DownloadAllCsvButton({ restoreJobId, objects }: { restoreJobId: string; objects: any[] }) {
-  const restoreService = useRestoreService();
-  const [loading, setLoading] = useState(false);
-
-  const handleDownloadAll = async () => {
-    setLoading(true);
-    try {
-      for (const obj of objects) {
-        const res = await restoreService.downloadCsv(restoreJobId, obj.name);
-        const files = (res as any)?.data?.files ?? [];
-        files.forEach((f: { url: string; fileName: string }) => {
-          const a = document.createElement('a');
-          a.href = f.url;
-          a.download = f.fileName;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleDownloadAll}
-      disabled={loading || objects.length === 0}
-      className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed'
-      style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC', border: '1px solid rgba(21,93,252,0.2)' }}
-    >
-      {loading ? (
-        <svg className='w-4 h-4 animate-spin' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-          <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
-        </svg>
-      ) : (
-        <svg className='w-4 h-4' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-          <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' /><polyline points='7 10 12 15 17 10' /><line x1='12' y1='15' x2='12' y2='3' />
-        </svg>
-      )}
-      {loading ? 'Downloading…' : 'Download CSV'}
-    </button>
-  );
-}
 
 function DownloadCsvButton({ restoreJobId, objectName, disabled }: { restoreJobId: string; objectName: string; disabled: boolean }) {
   const restoreService = useRestoreService();
@@ -399,18 +353,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
               <Typography variant='bodySm' color='muted' className='mt-0.5'>{jobName}</Typography>
             </div>
           </div>
-          {isExportJob ? (
-            isJobReady ? (
-              <DownloadAllCsvButton restoreJobId={jobId_display} objects={objects} />
-            ) : (
-              <div className='flex items-center gap-2 text-xs text-blue-600 font-medium'>
-                <svg className='w-3.5 h-3.5 animate-spin shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                  <path d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' />
-                </svg>
-                Your CSV is being generated, please wait…
-              </div>
-            )
-          ) : (
+          {!isExportJob && (
             <button
               onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
               className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
