@@ -479,14 +479,6 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
         </button>
         <div className='flex items-center gap-3'>
           <button
-            className='inline-flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'
-          >
-            <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-              <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-            </svg>
-            Schedule for Later
-          </button>
-          <button
             onClick={handleRun}
             disabled={createJobMutation.isPending || !jobName.trim()}
             className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed'
