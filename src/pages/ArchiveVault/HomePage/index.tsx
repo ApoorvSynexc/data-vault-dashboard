@@ -74,6 +74,15 @@ function normalizeStatus(raw: string): string {
   return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
 }
 
+function checkSchedulePast(sc?: { scheduling?: { startDate?: string; startTime?: string } }): boolean {
+  if (!sc) return false;
+  const { startDate, startTime } = sc.scheduling ?? {};
+  if (!startDate && !startTime) return false;
+  const dateStr = startDate ?? dayjs().format('YYYY-MM-DD');
+  const timeStr = startTime ?? '00:00';
+  return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
+}
+
 function crmNameToPlatform(name: string): string {
   const l = name?.toLowerCase() ?? '';
   if (l.includes('salesforce')) return 'Salesforce';
@@ -382,6 +391,15 @@ export default function ArchiveVaultHomePage() {
       queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
       setConfirmActivate(null);
     },
+  });
+
+  // Fetch full config detail (with per-object schedules) when Activate dialog is open
+  const activateDetailQuery = useQuery({
+    queryKey: ['archival-config-detail-activate', confirmActivate?.slug],
+    queryFn: () => archivalService.getDetail(confirmActivate!.slug),
+    enabled: !!confirmActivate,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   const runNowMutation = useMutation({
@@ -782,24 +800,102 @@ export default function ArchiveVaultHomePage() {
 
       {/* Activate confirm */}
       {confirmActivate && (() => {
-        const sched = confirmActivate.scheduleConfig?.scheduling;
-        const isPast = (() => {
-          if (!sched?.startDate && !sched?.startTime) return false;
-          const dateStr = sched.startDate ?? dayjs().format('YYYY-MM-DD');
-          const timeStr = sched.startTime ?? '00:00';
-          return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
-        })();
+        const isDetailLoading = activateDetailQuery.isLoading;
+        const detailRaw = activateDetailQuery.data;
+        const config = (detailRaw as any)?.data ?? detailRaw ?? {};
+
+        const pastObjectNames: string[] = [];
+        if (!isDetailLoading && config) {
+          (config.objects ?? []).forEach((obj: any) => {
+            if (obj.scheduleConfig && checkSchedulePast(obj.scheduleConfig)) {
+              pastObjectNames.push(obj.name ?? obj.id ?? 'Unknown object');
+            }
+          });
+        }
+
+        const globalPast = checkSchedulePast(confirmActivate.scheduleConfig);
+        const isPast = globalPast || pastObjectNames.length > 0;
+
         return (
-          <ConfirmDialog
-            title={`Activate "${confirmActivate.name}"?`}
-            message={isPast ? undefined : 'The archive will become active and run on its scheduled frequency.'}
-            confirmLabel='Activate'
-            loading={activateMutation.isPending}
-            confirmDisabled={isPast}
-            error={isPast ? `The schedule configured for this archive has already passed. Please use Edit Policy to set a future schedule before activating.` : null}
-            onConfirm={() => activateMutation.mutate(confirmActivate.backupConfigId)}
-            onCancel={() => setConfirmActivate(null)}
-          />
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden'>
+              {/* Header */}
+              <div className='flex items-center justify-between px-6 py-4 border-b border-gray-200'>
+                <h2 className='text-lg font-bold text-gray-900'>Activate Archive</h2>
+                <button onClick={() => setConfirmActivate(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                  <svg className='w-5 h-5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className='px-6 py-5'>
+                {isDetailLoading ? (
+                  <div className='flex items-center gap-3 text-sm text-gray-500'>
+                    <svg className='animate-spin h-4 w-4 text-blue-500' fill='none' viewBox='0 0 24 24'>
+                      <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                      <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
+                    </svg>
+                    Checking schedules…
+                  </div>
+                ) : isPast ? (
+                  <div className='rounded-lg border border-red-200 bg-red-50 p-4'>
+                    <div className='flex gap-3'>
+                      <svg className='mt-0.5 h-5 w-5 shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' />
+                      </svg>
+                      <div>
+                        <p className='text-sm font-semibold text-red-800'>Schedule is in the past</p>
+                        {globalPast && pastObjectNames.length === 0 ? (
+                          <p className='mt-1 text-sm text-red-700'>
+                            The schedule configured for <span className='font-semibold'>"{confirmActivate.name}"</span> has already passed. Please use <span className='font-semibold'>Edit Policy</span> to set a future schedule before activating.
+                          </p>
+                        ) : (
+                          <>
+                            <p className='mt-1 text-sm text-red-700'>
+                              The following object schedule{pastObjectNames.length > 1 ? 's have' : ' has'} already passed. Please use <span className='font-semibold'>Edit Policy</span> to update them before activating.
+                            </p>
+                            <ul className='mt-2 space-y-1'>
+                              {pastObjectNames.map((name) => (
+                                <li key={name} className='flex items-center gap-2 text-sm text-red-700'>
+                                  <span className='inline-block w-1.5 h-1.5 rounded-full bg-red-400 shrink-0' />
+                                  <span className='font-semibold'>{name}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className='text-sm text-gray-600'>
+                    Are you sure you want to activate <span className='font-semibold text-gray-900'>"{confirmActivate.name}"</span>? The archive will become active and run on its configured schedule.
+                  </p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50'>
+                <button
+                  onClick={() => setConfirmActivate(null)}
+                  className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors'
+                >
+                  {isPast ? 'Close' : 'Cancel'}
+                </button>
+                {!isPast && !isDetailLoading && (
+                  <button
+                    onClick={() => activateMutation.mutate(confirmActivate.backupConfigId)}
+                    disabled={activateMutation.isPending}
+                    className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                  >
+                    {activateMutation.isPending ? 'Activating…' : 'Activate Archive'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         );
       })()}
 
