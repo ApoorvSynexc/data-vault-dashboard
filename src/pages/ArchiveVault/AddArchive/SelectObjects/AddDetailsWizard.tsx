@@ -53,6 +53,21 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   picklist: ['=', '!='],
 };
 
+// Maps Salesforce CRM field types → internal FieldDataType
+const SF_TYPE_MAP: Record<string, FieldDataType> = {
+  string: 'string', boolean: 'boolean', date: 'date', datetime: 'datetime',
+  id: 'id', picklist: 'picklist',
+  // number-like
+  int: 'number', integer: 'number', double: 'number', currency: 'number',
+  percent: 'number', long: 'number', decimal: 'number',
+  // string-like
+  textarea: 'string', phone: 'string', email: 'string', url: 'string',
+  encryptedstring: 'string', multipicklist: 'picklist', combobox: 'string',
+  address: 'string', location: 'string', autonumber: 'string',
+  // reference → id
+  reference: 'id',
+};
+
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_MAP: Record<string, string> = { Mon: 'MON', Tue: 'TUE', Wed: 'WED', Thu: 'THU', Fri: 'FRI', Sat: 'SAT', Sun: 'SUN' };
@@ -327,7 +342,7 @@ export default function AddDetailsWizard({
       const matched = fields.find((f: any) => f.name === cond.field);
       if (!matched) return cond;
       const rawType = (matched.type as string | undefined)?.toLowerCase();
-      const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+      const dataType: FieldDataType = (rawType ? SF_TYPE_MAP[rawType] : undefined) ?? 'string';
       const picklistValues = dataType === 'picklist'
         ? (matched.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
         : cond.picklistValues;
@@ -385,7 +400,7 @@ export default function AddDetailsWizard({
   const handleFieldChange = (id: string, apiName: string) => {
     const matched = fields.find((f: any) => f.name === apiName);
     const rawType = (matched?.type as string | undefined)?.toLowerCase();
-    const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+    const dataType: FieldDataType = (rawType ? SF_TYPE_MAP[rawType] : undefined) ?? 'string';
     const operator = OPERATORS_BY_TYPE[dataType][0];
     const picklistValues = dataType === 'picklist'
       ? (matched?.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
