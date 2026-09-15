@@ -215,10 +215,9 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                   {(() => {
                     const date = displayData?.scheduleConfig?.scheduling?.startDate;
                     const time = displayData?.scheduleConfig?.scheduling?.startTime;
-                    if (!date && !time) return 'N/A';
-                    const dateStr = date ? formatDateTime(date, displayData?.scheduleConfig?.timeZone) : '--';
-                    const timeStr = time ? formatTime(`2000-01-01T${time}`, displayData?.scheduleConfig?.timeZone) : '';
-                    return timeStr ? `${dateStr} ${timeStr}` : dateStr;
+                    if (!date) return 'N/A';
+                    const combined = time ? `${date}T${time}` : date;
+                    return formatDateTime(combined, displayData?.scheduleConfig?.timeZone);
                   })()}
                 </p>
               </div>
