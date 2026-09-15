@@ -216,7 +216,7 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                       </p>
                       {(displayData as any).upcomingJob.skipDateTime && (
                         <p className='mt-1 text-xs text-amber-700'>
-                          Resumes on: <span className='font-semibold'>{formatDateTime((displayData as any).upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</span>
+                          Skipped run at: <span className='font-semibold'>{formatDateTime((displayData as any).upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</span>
                         </p>
                       )}
                     </div>
