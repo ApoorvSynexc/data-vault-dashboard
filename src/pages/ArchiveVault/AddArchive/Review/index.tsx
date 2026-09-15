@@ -868,10 +868,12 @@ export default function Step5({
           Cancel
         </button>
         <div className='flex gap-3'>
-          <button onClick={onBack}
-            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-            ←Back
-          </button>
+          {!editMode && (
+            <button onClick={onBack}
+              className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
+              ←Back
+            </button>
+          )}
           {!editMode && (
             <PermissionGate permission={['archival.write', 'archival.execute']}>
               <button onClick={handleSaveDraft} disabled={isLoading}
@@ -883,13 +885,26 @@ export default function Step5({
               </button>
             </PermissionGate>
           )}
+          {editMode && (
+            <PermissionGate permission={['archival.write', 'archival.execute']}>
+              <button onClick={handleSaveDraft} disabled={isLoading}
+                className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
+                style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
+                {isLoading ? 'Saving…' : 'Save Changes'}
+              </button>
+            </PermissionGate>
+          )}
           <PermissionGate permission='archival.execute'>
-            <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading || isSchedulePast}
+            <button
+              onClick={editMode ? handleSaveChanges : handleRunArchive}
+              disabled={isLoading || isSchedulePast}
               className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
               style={{ background: '#155DFC' }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
+              onMouseEnter={(e) => { if (!isLoading && !isSchedulePast) e.currentTarget.style.background = '#1246CC'; }}
               onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
-              {isLoading ? (editMode ? 'Saving…' : 'Creating…') : (editMode ? 'Save Changes' : 'Start Archive')}
+              {isLoading ? (editMode ? 'Activating…' : 'Creating…') : (editMode ? 'Activate Draft' : 'Start Archive')}
             </button>
           </PermissionGate>
         </div>
