@@ -13,6 +13,26 @@ import PermissionGate from '../../components/PermissionGate';
 import BackupManagementWelcome from './Welcome';
 import { useAuth } from '../../context/AuthContext';
 
+function isPermissionError(error: unknown): boolean {
+  const msg: string = (error as any)?.response?.data?.message ?? (error as any)?.message ?? '';
+  const status: number = (error as any)?.response?.status ?? 0;
+  return status === 403 || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('permission');
+}
+
+function NoPermissionState({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-4 px-4' : 'py-12 px-6'}`}>
+      <div className={`flex items-center justify-center rounded-full mb-3 ${compact ? 'w-9 h-9' : 'w-12 h-12'}`} style={{ background: 'rgba(100,116,139,0.1)' }}>
+        <svg viewBox='0 0 24 24' fill='none' stroke='#64748b' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className={compact ? 'w-4 h-4' : 'w-5 h-5'}>
+          <rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/>
+        </svg>
+      </div>
+      <p className='text-sm font-semibold text-gray-700 mb-1'>Access Restricted</p>
+      <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>You don't have permission to view this. Contact your administrator to request access.</p>
+    </div>
+  );
+}
+
 type MetricTone = 'default' | 'success' | 'warning' | 'danger';
 type BackupStatus = 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
 type BackupType = 'Realtime' | 'Schedule';
@@ -124,7 +144,9 @@ function JobsStatusSection({ service }: { service: { getStats: () => Promise<unk
           ))}
         </div>
       ) : statsQuery.isError ? (
-        <p className='text-xs text-red-500'>Failed to load job stats.</p>
+        isPermissionError(statsQuery.error)
+          ? <NoPermissionState compact />
+          : <p className='text-xs text-red-500'>Failed to load job stats.</p>
       ) : (
         <div className='grid grid-cols-4 gap-3'>
           <MetricCard label='Completed Jobs' value={pad(extractCount(stats?.completedJobs))} />
@@ -981,7 +1003,9 @@ export default function BackupManagementV2() {
         {backupQuery.isLoading ? (
           <div className='p-8 text-center text-gray-500'>Loading backup configs...</div>
         ) : backupQuery.isError ? (
-          <div className='p-8 text-center text-red-500'>Failed to load backup configs.</div>
+          isPermissionError(backupQuery.error)
+            ? <NoPermissionState />
+            : <div className='p-8 text-center text-red-500'>Failed to load backup configs.</div>
         ) : filteredBackups.length === 0 ? (
           <div className='flex flex-col items-center justify-center py-16 px-6 text-center'>
             <div className='flex items-center justify-center rounded-full mb-4' style={{ width: 56, height: 56, background: 'rgba(21, 93, 252, 0.07)' }}>

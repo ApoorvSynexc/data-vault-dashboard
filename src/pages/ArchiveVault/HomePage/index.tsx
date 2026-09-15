@@ -30,6 +30,26 @@ import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { formatBytes } from '../../../utils';
 
+function isPermissionError(error: unknown): boolean {
+  const msg: string = (error as any)?.response?.data?.message ?? (error as any)?.message ?? '';
+  const status: number = (error as any)?.response?.status ?? 0;
+  return status === 403 || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('permission');
+}
+
+function NoPermissionState({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-4 px-4' : 'py-12 px-6'}`}>
+      <div className={`flex items-center justify-center rounded-full mb-3 ${compact ? 'w-9 h-9' : 'w-12 h-12'}`} style={{ background: 'rgba(100,116,139,0.1)' }}>
+        <svg viewBox='0 0 24 24' fill='none' stroke='#64748b' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className={compact ? 'w-4 h-4' : 'w-5 h-5'}>
+          <rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/>
+        </svg>
+      </div>
+      <p className='text-sm font-semibold text-gray-700 mb-1'>Access Restricted</p>
+      <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>You don't have permission to view this. Contact your administrator to request access.</p>
+    </div>
+  );
+}
+
 // ── API types ─────────────────────────────────────────────────────────────────
 
 type ArchivalConfigItem = {
@@ -467,7 +487,7 @@ export default function ArchiveVaultHomePage() {
     }, { replace: true });
   }, [statusFilter, lastJobFilter]);
 
-  const { data: rawListData, isLoading: isLoadingList } = useQuery({
+  const { data: rawListData, isLoading: isLoadingList, isError: isListError, error: listError } = useQuery({
     queryKey: ['archival-config-list', currentCursor, debouncedSearch, statusFilter, lastJobFilter],
     queryFn: () => {
       const apiStatus = statusFilter !== 'All' ? statusFilter : undefined;
@@ -476,7 +496,7 @@ export default function ArchiveVaultHomePage() {
     },
   });
 
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+  const { data: statsData, isLoading: isLoadingStats, isError: isStatsError, error: statsError } = useQuery({
     queryKey: ['archival-config-stats'],
     queryFn: () => archivalService.getStats(),
   });
@@ -545,7 +565,7 @@ export default function ArchiveVaultHomePage() {
         <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>
           Archive Status
         </Typography>
-        <div className='grid grid-cols-4 gap-3'>
+        {isStatsError && isPermissionError(statsError) ? <NoPermissionState compact /> : <div className='grid grid-cols-4 gap-3'>
           <MetricCard loading={isLoading} label='Total archive Jobs' value={stats?.totalArchival != null ? pad(stats.totalArchival) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>}
           />
@@ -558,7 +578,7 @@ export default function ArchiveVaultHomePage() {
           <MetricCard loading={isLoading} label='Total records archived' value={stats?.totalRecords != null ? Number(stats.totalRecords).toLocaleString() : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
           />
-        </div>
+        </div>}
       </div>
 
       {/* Table Panel */}
@@ -609,7 +629,7 @@ export default function ArchiveVaultHomePage() {
       >
 
         {/* Table */}
-        {(() => {
+        {isListError && isPermissionError(listError) ? <NoPermissionState /> : (() => {
           type EnrichedPolicy = typeof enriched[number];
           const columns: TableColumn<EnrichedPolicy>[] = [
             {
