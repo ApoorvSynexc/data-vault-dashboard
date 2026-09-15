@@ -203,11 +203,29 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
                 <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? formatTime(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`, displayData?.scheduleConfig?.timeZone) : 'N/A'}</p>
               </div>
-              <div>
+              <div className='col-span-2'>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
-                <p className='text-xs font-medium text-gray-900'>
-                  {calculateNextRun(displayData?.scheduleConfig?.scheduling, displayData?.scheduleConfig?.timeZone)}
-                </p>
+                {(displayData as any)?.upcomingJob?.skip ? (
+                  <div className='flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5'>
+                    <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+                    </svg>
+                    <div className='min-w-0'>
+                      <p className='text-xs font-medium text-amber-800'>
+                        {(displayData as any).upcomingJob.skipReason ?? 'Next automatic run will be skipped.'}
+                      </p>
+                      {(displayData as any).upcomingJob.skipDateTime && (
+                        <p className='mt-1 text-xs text-amber-700'>
+                          Resumes on: <span className='font-semibold'>{formatDateTime((displayData as any).upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className='text-xs font-medium text-gray-900'>
+                    {calculateNextRun(displayData?.scheduleConfig?.scheduling, displayData?.scheduleConfig?.timeZone)}
+                  </p>
+                )}
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Initial Run</p>
