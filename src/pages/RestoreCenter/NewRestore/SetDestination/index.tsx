@@ -697,9 +697,6 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
           ← Back
         </button>
         <div className='flex items-center gap-2'>
-          {destType !== 'export' && (
-            <button className='inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors'>💾 Save as Draft</button>
-          )}
           {destType === 'export' ? (
             <button
               onClick={() => onGenerateCsv?.(exportName, exportDescription)}
