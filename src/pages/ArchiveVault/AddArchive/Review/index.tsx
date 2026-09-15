@@ -86,8 +86,8 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const today = dayjs().format('YYYY-MM-DD');
   const nowTime = dayjs().format('HH:mm');
 
-  const needsStartDate = overrideEnabled && frequency !== 'One Time';
-  const needsStartTime = overrideEnabled && frequency !== 'One Time';
+  const needsStartDate = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
+  const needsStartTime = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
 
   const isSchedulePast = (() => {
     if (!overrideEnabled) return false;
@@ -122,10 +122,13 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const weeklyError = overrideEnabled && frequency === 'Weekly' && selectedDays.length === 0
     ? 'Please select at least one day' : null;
 
+  const monthlyNoMonthsError = overrideEnabled && frequency === 'Monthly' && selectedMonths.length === 0
+    ? 'Please select at least one month' : null;
+
   const monthlyError = overrideEnabled && frequency === 'Monthly' && !dayOfMonth
     ? 'Please select the day of month' : null;
 
-  const hasErrors = !!(startDateError || startTimeError || endDateError || weeklyError || monthlyError);
+  const hasErrors = !!(startDateError || startTimeError || endDateError || weeklyError || monthlyNoMonthsError || monthlyError);
 
   const showErr = (err: string | null) => submitted && err
     ? <p className='mt-1 text-xs text-red-500'>{err}</p>
@@ -224,10 +227,16 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 ))}
                 {runMode === 'scheduleRun' && (
                   <div className='grid grid-cols-2 gap-4 pt-2'>
-                    <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Date</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} style={inputStyle} /></div>
-                    <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
-                      <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1'>Date</label>
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls}${submitted && startDateError ? ' border-red-400' : ''}`} style={inputStyle} />
+                      {showErr(startDateError)}
+                    </div>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
+                      <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={`${inputCls}${submitted && startTimeError ? ' border-red-400' : ''}`} style={inputStyle} />
+                      {showErr(startTimeError)}
+                    </div>
                     <div className='col-span-2'><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                       <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                         {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -332,11 +341,12 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                         if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
                         return next;
                       })}
-                        className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                        className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : `border ${submitted && monthlyNoMonthsError ? 'border-red-400' : 'border-gray-300'} text-gray-700 hover:bg-gray-50`}`}>
                         {month}
                       </button>
                     ))}
                   </div>
+                  {showErr(monthlyNoMonthsError)}
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
