@@ -57,6 +57,7 @@ type BackupConfigItem = {
   };
   crm?: { name: string; crmName: string };
   destination?: { name: string; type: string };
+  upcomingJob?: { skip?: boolean; skipReason?: string; skipDateTime?: string };
 };
 
 type BackupRow = {
@@ -76,6 +77,7 @@ type BackupRow = {
   backupStatus: 'DRAFT' | 'ACTIVE' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'PAUSED' | 'RESUMED' | 'RUNNING';
   isRealtime: boolean;
   isOneTime: boolean;
+  isSkipped: boolean;
   scheduleStartDate?: string;
   scheduleStartTime?: string;
 };
@@ -786,6 +788,7 @@ export default function BackupManagementV2() {
       backupStatus: (item.backupStatus as BackupStatus) || '' as any,
       isRealtime: item.schedule === 'REALTIME',
       isOneTime: item.scheduleConfig?.scheduling?.frequency === 'ONCE',
+      isSkipped: !!(item.upcomingJob?.skip && (!item.upcomingJob.skipDateTime || dayjs(item.upcomingJob.skipDateTime).isAfter(dayjs()))),
       scheduleStartDate: item.scheduleConfig?.scheduling?.startDate,
       scheduleStartTime: item.scheduleConfig?.scheduling?.startTime,
     };
@@ -877,8 +880,12 @@ export default function BackupManagementV2() {
               }] : []),
               ...(row.configStatus !== 'DRAFT' && !row.isRealtime && permissions.includes('backup.execute') ? [{
                 label: 'Run Now',
-                disabled: row.isOneTime && !!row.lastBackupAt,
-                title: row.isOneTime && !!row.lastBackupAt ? 'This one-time backup has already run' : undefined,
+                disabled: (row.isOneTime && !!row.lastBackupAt) || row.isSkipped,
+                title: row.isOneTime && !!row.lastBackupAt
+                  ? 'This one-time backup has already run'
+                  : row.isSkipped
+                  ? 'A manual run was already triggered — next scheduled run will be skipped'
+                  : undefined,
                 onClick: () => setRunNowTarget({ id: row.id, name: row.name }),
               }] : []),
               ...(row.configStatus !== 'DRAFT' && !row.isOneTime && permissions.includes('backup.write') ? [{
