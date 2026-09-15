@@ -401,9 +401,6 @@ export default function ArchiveVaultHomePage() {
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmActivate, setConfirmActivate] = useState<PolicyRow | null>(null);
-  const [confirmRunNow, setConfirmRunNow] = useState<PolicyRow | null>(null);
-  const [runNowError, setRunNowError] = useState<string | null>(null);
-
   const activateMutation = useMutation({
     mutationFn: (backupConfigId: string) =>
       archivalService.updateConfig(backupConfigId, { status: 'ACTIVE' }),
@@ -420,18 +417,6 @@ export default function ArchiveVaultHomePage() {
     enabled: !!confirmActivate,
     staleTime: 0,
     refetchOnWindowFocus: false,
-  });
-
-  const runNowMutation = useMutation({
-    mutationFn: (backupConfigId: string) => archivalService.runNow(backupConfigId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
-      setConfirmRunNow(null);
-      setRunNowError(null);
-    },
-    onError: (error: any) => {
-      setRunNowError(error?.response?.data?.message ?? error?.message ?? 'Failed to trigger archive run. Please try again.');
-    },
   });
 
   const pauseMutation = useMutation({
@@ -702,7 +687,6 @@ export default function ArchiveVaultHomePage() {
                   <ActionDropdown
                     items={[
                       ...(policy.displayStatus === 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Run Now', onClick: () => { setRunNowError(null); setConfirmRunNow(policy); } }] : []),
                       ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.write') ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
                       ...(permissions.includes('archival.write') ? [{
                         label: 'Edit Policy',
@@ -919,18 +903,6 @@ export default function ArchiveVaultHomePage() {
         );
       })()}
 
-      {/* Run Now confirm */}
-      {confirmRunNow && (
-        <ConfirmDialog
-          title={`Run "${confirmRunNow.name}" now?`}
-          message='This will trigger an immediate archive run outside the regular schedule. Note: your upcoming scheduled run will be skipped if you run now.'
-          confirmLabel='Run Now'
-          loading={runNowMutation.isPending}
-          error={runNowError}
-          onConfirm={() => { setRunNowError(null); runNowMutation.mutate(confirmRunNow.backupConfigId); }}
-          onCancel={() => { setConfirmRunNow(null); setRunNowError(null); runNowMutation.reset(); }}
-        />
-      )}
       </div>
     </div>
   );
