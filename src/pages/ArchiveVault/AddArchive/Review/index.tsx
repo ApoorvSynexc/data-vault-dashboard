@@ -525,10 +525,28 @@ export default function Step5({
   const schedStartDate = scheduleConfig?.scheduling.startDate;
   const schedStartTime = scheduleConfig?.scheduling.startTime;
   const isRunNow = scheduleConfig?.scheduling.frequency === 'ONCE' && !schedStartDate && !schedStartTime;
-  const isSchedulePast = !!scheduleConfig && !isRunNow && (() => {
-    if (!schedStartDate) return false;
-    const dt = schedStartTime ? `${schedStartDate}T${schedStartTime}` : schedStartDate;
-    return dayjs(dt).isBefore(now);
+
+  // If any object has a per-object schedule override, those take precedence over the global
+  // schedule for blocking purposes — only fall back to global when no overrides exist.
+  const objectsWithSchedule = dummyObjects.filter((o) => (o as any).scheduleConfig);
+  const isSchedulePast = (() => {
+    if (objectsWithSchedule.length > 0) {
+      return objectsWithSchedule.some((o) => {
+        const sc = (o as any).scheduleConfig;
+        const sd = sc?.scheduling?.startDate;
+        const st = sc?.scheduling?.startTime;
+        if (!sd && !st) return false;
+        const isOnce = sc?.scheduling?.frequency === 'ONCE' || sc?.type === 'ONE_TIME';
+        if (isOnce && !sd && !st) return false;
+        const dt = st ? `${sd ?? dayjs().format('YYYY-MM-DD')}T${st}` : sd;
+        return dayjs(dt).isBefore(now);
+      });
+    }
+    return !!scheduleConfig && !isRunNow && (() => {
+      if (!schedStartDate) return false;
+      const dt = schedStartTime ? `${schedStartDate}T${schedStartTime}` : schedStartDate;
+      return dayjs(dt).isBefore(now);
+    })();
   })();
   const scheduleDisplay = isRunNow
     ? 'One Time (Archive Now)'
