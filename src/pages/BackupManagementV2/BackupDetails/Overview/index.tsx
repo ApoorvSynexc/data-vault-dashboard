@@ -189,7 +189,15 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
             <div className='grid grid-cols-2 gap-4'>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Frequency</p>
-                <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.frequency || '----'}</p>
+                <p className='text-xs font-medium text-gray-900'>
+                  {(() => {
+                    const freq = displayData?.scheduleConfig?.scheduling?.frequency;
+                    const customFreq = (displayData?.scheduleConfig?.scheduling as any)?.customFrequency;
+                    if (!freq) return '----';
+                    if (freq === 'CUSTOM' && customFreq) return `Custom (${capitalize(customFreq.toLowerCase())})`;
+                    return capitalize(freq.toLowerCase());
+                  })()}
+                </p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
@@ -198,27 +206,34 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
                 <p className='text-xs font-medium text-gray-900'>
-                  {calculateNextRun(
-                    displayData?.scheduleConfig?.scheduling?.startTime,
-                    displayData?.scheduleConfig?.scheduling?.startDate,
-                    displayData?.scheduleConfig?.scheduling?.frequency,
-                    displayData?.scheduleConfig?.scheduling?.interval,
-                    displayData?.scheduleConfig?.timeZone
-                  )}
+                  {calculateNextRun(displayData?.scheduleConfig?.scheduling, displayData?.scheduleConfig?.timeZone)}
                 </p>
-                {displayData?.upcomingJob?.skip && (
-                  <p className='mt-1 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 leading-snug'>
-                    {displayData.upcomingJob.skipReason ?? 'The next automatic run will be skipped.'}
-                    {displayData.upcomingJob.skipDateTime && (
-                      <> Next real run: {formatDateTime(displayData.upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</>
-                    )}
-                  </p>
-                )}
+              </div>
+              <div>
+                <p className='text-xs text-gray-600 mb-1'>Initial Run</p>
+                <p className='text-xs font-medium text-gray-900'>
+                  {(() => {
+                    const date = displayData?.scheduleConfig?.scheduling?.startDate;
+                    const time = displayData?.scheduleConfig?.scheduling?.startTime;
+                    if (!date && !time) return 'N/A';
+                    const dateStr = date ? formatDateTime(date, displayData?.scheduleConfig?.timeZone) : '--';
+                    const timeStr = time ? formatTime(`2000-01-01T${time}`, displayData?.scheduleConfig?.timeZone) : '';
+                    return timeStr ? `${dateStr} ${timeStr}` : dateStr;
+                  })()}
+                </p>
               </div>
               <div>
                 <p className='text-xs text-gray-600 mb-1'>Time Zone</p>
                 <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.timeZone || 'N/A'}</p>
               </div>
+              {displayData?.scheduleConfig?.scheduling?.frequency === 'CUSTOM' && (displayData.scheduleConfig.scheduling as any)?.endDate && (
+                <div>
+                  <p className='text-xs text-gray-600 mb-1'>Ends On</p>
+                  <p className='text-xs font-medium text-gray-900'>
+                    {formatDateTime((displayData.scheduleConfig.scheduling as any).endDate, displayData.scheduleConfig.timeZone)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           )}

@@ -74,78 +74,137 @@ export function computeArchiveJobStats(objects: any[]): ArchiveJobStats {
   return { flatRows, totalInserted, totalApiCalls, completedObjects, failedObjects };
 }
 
+const WEEKDAY_NUM: Record<string, number> = {
+  SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6,
+};
+const MONTH_NUM: Record<string, number> = {
+  JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+  JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+};
+
 export function calculateNextRun(
-  startTime: string | null | undefined,
-  startDate: string | null | undefined,
-  frequency: string | null | undefined,
-  interval?: number,
-  tz?: string
+  scheduling: {
+    frequency?: string;
+    customFrequency?: string;
+    interval?: number;
+    startDate?: string;
+    startTime?: string;
+    endDate?: string;
+    weekDays?: string[];
+    monthDate?: number;
+    selectedMonths?: string[];
+  } | null | undefined,
+  _timeZone?: string
 ): string {
-  if (!startTime || !startDate || !frequency) return '--';
+  if (!scheduling?.frequency) return '--';
+
+  const {
+    frequency, customFrequency, startDate, startTime, endDate,
+    interval = 1, weekDays, monthDate, selectedMonths,
+  } = scheduling;
+
+  const freq = frequency.toUpperCase();
+  const now = dayjs();
+  const fmt = (d: dayjs.Dayjs) => d.format('MMM D, YYYY h:mm A');
+  const dt = (date: string, time = '00:00') => dayjs(`${date}T${time}`);
 
   try {
-    const baseDateTime = dayjs(`${startDate}T${startTime}`);
-    const now = dayjs();
-    const freq = (frequency || 'DAILY').toUpperCase();
-    const intervalValue = interval || 1;
-
-    // Handle one-time backups
-    if (freq === 'ONCE') {
-      return baseDateTime.isBefore(now) ? '--' : baseDateTime.format('MMM D, YYYY h:mm A');
-    }
-
-    let nextRun = baseDateTime;
-
-    // If base time is in the future, use it as next run
-    if (nextRun.isAfter(now)) {
-      if (tz) nextRun = nextRun.tz(tz);
-      return nextRun.format('MMM D, YYYY h:mm A');
-    }
-
-    // Calculate how many intervals have passed and get the next occurrence
-    const timeDiffMs = now.diff(baseDateTime, 'ms');
-    let intervalsPassedCeiling = 0;
-
     switch (freq) {
+
+      case 'ONCE': {
+        if (!startDate) return '--';
+        const run = dt(startDate, startTime);
+        return run.isAfter(now) ? fmt(run) : 'Completed';
+      }
+
       case 'HOURLY': {
-        const intervalMs = intervalValue * 60 * 60 * 1000;
-        intervalsPassedCeiling = Math.ceil(timeDiffMs / intervalMs);
-        nextRun = baseDateTime.add(intervalsPassedCeiling * intervalValue, 'hour');
-        break;
+        if (!startTime) return '--';
+        const base = dt(startDate ?? now.format('YYYY-MM-DD'), startTime);
+        if (base.isAfter(now)) return fmt(base);
+        const diffMs = now.diff(base, 'ms');
+        const stepMs = interval * 3_600_000;
+        const n = Math.ceil(diffMs / stepMs);
+        return fmt(base.add(n * interval, 'hour'));
       }
+
       case 'DAILY': {
-        const intervalDays = now.diff(baseDateTime, 'day');
-        intervalsPassedCeiling = Math.ceil(intervalDays / intervalValue);
-        nextRun = baseDateTime.add(intervalsPassedCeiling * intervalValue, 'day');
-        break;
+        if (!startTime) return '--';
+        const base = dt(startDate ?? now.format('YYYY-MM-DD'), startTime);
+        if (base.isAfter(now)) return fmt(base);
+        const days = now.diff(base, 'day');
+        let next = base.add(Math.ceil(days / interval) * interval, 'day');
+        if (!next.isAfter(now)) next = next.add(interval, 'day');
+        return fmt(next);
       }
+
       case 'WEEKLY': {
-        const intervalWeeks = Math.ceil(now.diff(baseDateTime, 'week'));
-        intervalsPassedCeiling = Math.ceil(intervalWeeks / intervalValue);
-        nextRun = baseDateTime.add(intervalsPassedCeiling * intervalValue, 'week');
-        break;
+        if (!startTime) return '--';
+        const [h, m] = startTime.split(':').map(Number);
+        const targets = (weekDays ?? [])
+          .map((d) => WEEKDAY_NUM[d.toUpperCase()])
+          .filter((d) => d !== undefined)
+          .sort((a, b) => a - b);
+
+        if (targets.length === 0) {
+          // No specific days — advance by interval weeks from startDate
+          const base = dt(startDate ?? now.format('YYYY-MM-DD'), startTime);
+          if (base.isAfter(now)) return fmt(base);
+          const weeks = now.diff(base, 'week');
+          let next = base.add(Math.ceil(weeks / interval) * interval, 'week');
+          if (!next.isAfter(now)) next = next.add(interval, 'week');
+          return fmt(next);
+        }
+
+        // Find the next matching weekday within the current or next valid week cycle
+        // Anchor week from startDate (or today)
+        const anchor = dayjs(startDate ?? now.format('YYYY-MM-DD')).startOf('week');
+        for (let w = 0; w <= 104; w += interval) {
+          const weekStart = anchor.add(w, 'week');
+          for (const targetDay of targets) {
+            const candidate = weekStart.day(targetDay).hour(h).minute(m).second(0).millisecond(0);
+            if (candidate.isAfter(now)) return fmt(candidate);
+          }
+        }
+        return '--';
       }
+
       case 'MONTHLY': {
-        const intervalMonths = Math.ceil(now.diff(baseDateTime, 'month'));
-        intervalsPassedCeiling = Math.ceil(intervalMonths / intervalValue);
-        nextRun = baseDateTime.add(intervalsPassedCeiling * intervalValue, 'month');
-        break;
+        if (!startTime || !monthDate) return '--';
+        const [h, m] = startTime.split(':').map(Number);
+        const validMonths = (selectedMonths && selectedMonths.length > 0)
+          ? selectedMonths.map((mo) => MONTH_NUM[mo.toUpperCase()]).filter((n) => n !== undefined).sort((a, b) => a - b)
+          : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+        // Search up to 5 years ahead
+        for (let i = 0; i < 60; i++) {
+          const cursor = now.add(i, 'month');
+          if (!validMonths.includes(cursor.month())) continue;
+          const day = Math.min(monthDate, cursor.daysInMonth());
+          const candidate = cursor.date(day).hour(h).minute(m).second(0).millisecond(0);
+          if (candidate.isAfter(now)) return fmt(candidate);
+        }
+        return '--';
       }
+
+      case 'CUSTOM': {
+        if (!startDate || !startTime || !customFrequency) return '--';
+        const base = dt(startDate, startTime);
+        const end = endDate ? dayjs(`${endDate}T23:59:59`) : null;
+        if (end && now.isAfter(end)) return 'Schedule ended';
+
+        const unit = customFrequency === 'DAILY' ? 'day' : customFrequency === 'WEEKLY' ? 'week' : 'month';
+        if (base.isAfter(now)) return fmt(base);
+        const diff = now.diff(base, unit);
+        let next = base.add(Math.ceil(diff / interval) * interval, unit);
+        if (!next.isAfter(now)) next = next.add(interval, unit);
+        if (end && next.isAfter(end)) return 'Schedule ended';
+        return fmt(next);
+      }
+
       default:
-        // Default to daily
-        const defaultDays = now.diff(baseDateTime, 'day');
-        intervalsPassedCeiling = Math.ceil(defaultDays / intervalValue);
-        nextRun = baseDateTime.add(intervalsPassedCeiling * intervalValue, 'day');
+        return '--';
     }
-
-    // Apply timezone if provided
-    if (tz) {
-      nextRun = nextRun.tz(tz);
-    }
-
-    return nextRun.format('MMM D, YYYY h:mm A');
-  } catch (error) {
-    console.error('Error calculating next run:', error);
+  } catch {
     return '--';
   }
 }
