@@ -84,9 +84,19 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const [backupIn, setBackupIn] = useState(init.backupIn);
 
   const today = dayjs().format('YYYY-MM-DD');
+  const nowTime = dayjs().format('HH:mm');
 
   const needsStartDate = overrideEnabled && frequency !== 'One Time';
   const needsStartTime = overrideEnabled && frequency !== 'One Time';
+
+  const isSchedulePast = (() => {
+    if (!overrideEnabled) return false;
+    if (frequency === 'One Time' && runMode === 'runNow') return false;
+    if (!startDate) return false;
+    if (startDate < today) return true;
+    if (startDate === today && startTime && startTime <= nowTime) return true;
+    return false;
+  })();
 
   const startDateError = (() => {
     if (!overrideEnabled) return null;
@@ -161,6 +171,18 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
 
         {/* Body */}
         <div className='flex-1 overflow-y-auto px-6 py-5 space-y-5'>
+          {/* Past-schedule warning banner */}
+          {isSchedulePast && (
+            <div className='flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3'>
+              <svg className='w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'>
+                <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+              </svg>
+              <p className='text-sm text-amber-700'>
+                The scheduled start time for <span className='font-medium'>{objectName}</span> has already passed. Please update the date and time to a future value before saving.
+              </p>
+            </div>
+          )}
+
           {/* Override toggle */}
           <div className='flex items-center justify-between gap-4 p-4 rounded-xl'
             style={{ background: overrideEnabled ? 'rgba(21,93,252,0.04)' : '#F8FAFC', border: `1px solid ${overrideEnabled ? 'rgba(21,93,252,0.18)' : '#E2E8F0'}` }}>
@@ -386,11 +408,12 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
           <button
             onClick={() => {
               setSubmitted(true);
-              if (hasErrors) return;
+              if (hasErrors || isSchedulePast) return;
               onSave(overrideEnabled ? computeSchedule() : undefined);
               onClose();
             }}
-            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
+            disabled={isSchedulePast}
+            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'>
             Save Schedule
           </button>
         </div>
