@@ -163,10 +163,13 @@ export default function DashboardV2() {
   const bkpStorageUsed = typeof overview?.totalSize === 'number' ? formatBytes(overview.totalSize) : '--';
   const bkpActiveConfigs = overview?.activeBackupConfigs ?? 0;
   const bkpSuccessStatus = overview?.successBackupStatus ?? 0;
-  const bkpFailedStatus = overview?.failedBackupStatus ?? 0;
-  const bkpPendingStatus = overview?.pendingBackupStatus ?? 0;
-  const bkpResolvedStatus = bkpSuccessStatus + bkpFailedStatus;
-  const bkpRate = bkpResolvedStatus > 0 ? ((bkpSuccessStatus / bkpResolvedStatus) * 100).toFixed(1) : '100.0';
+  const bkpFailedStatus  = overview?.failedBackupStatus  ?? 0;
+  // Job-level counts (used in the Jobs Summary block)
+  const bkpJobSuccess = overview?.jobOverview?.successStatus ?? 0;
+  const bkpJobFailed  = overview?.jobOverview?.failedStatus  ?? 0;
+  const bkpJobPending = overview?.jobOverview?.pendingStatus ?? 0;
+  const bkpJobResolved = bkpJobSuccess + bkpJobFailed;
+  const bkpRate = bkpJobResolved > 0 ? ((bkpJobSuccess / bkpJobResolved) * 100).toFixed(1) : '100.0';
 
   // Archive KPIs: same field names as backup
   const archActiveConfigs = overview?.activeBackupConfigs ?? 0;
@@ -350,9 +353,9 @@ export default function DashboardV2() {
       { label: 'Failed', value: archFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     return [
-      { label: 'Success', value: bkpSuccessStatus, color: 'text-green-600', bg: 'bg-green-50' },
-      { label: 'Pending', value: bkpPendingStatus, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Failed', value: bkpFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
+      { label: 'Success', value: bkpJobSuccess, color: 'text-green-600', bg: 'bg-green-50' },
+      { label: 'Pending', value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+      { label: 'Failed',  value: bkpJobFailed,  color: 'text-red-600',   bg: 'bg-red-50'   },
     ];
   })();
 
@@ -368,9 +371,9 @@ export default function DashboardV2() {
       { label: 'Failed Status', value: archFailedStatus, color: archFailedStatus > 0 ? 'text-red-600' : 'text-gray-400', dot: archFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
     ];
     return [
-      { label: 'Active Backup Configs', value: bkpActiveConfigs, color: 'text-blue-600', dot: '#3B82F6' },
-      { label: 'Success Status', value: bkpSuccessStatus, color: 'text-green-600', dot: '#16A34A' },
-      { label: 'Failed Status', value: bkpFailedStatus, color: bkpFailedStatus > 0 ? 'text-red-600' : 'text-gray-400', dot: bkpFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
+      { label: 'Active Backup Configs', value: bkpActiveConfigs,  color: 'text-blue-600',  dot: '#3B82F6' },
+      { label: 'Success Status',         value: bkpSuccessStatus, color: 'text-green-600', dot: '#16A34A' },
+      { label: 'Failed Status',          value: bkpFailedStatus,  color: bkpFailedStatus > 0 ? 'text-red-600' : 'text-gray-400', dot: bkpFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
     ];
   })();
 
@@ -601,7 +604,7 @@ export default function DashboardV2() {
           {/* Summary */}
           <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3 flex-1 flex flex-col min-h-0 overflow-hidden'>
             <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2'>
-              {TABS.find((t) => t.id === activeTab)?.label ?? activeTab} Summary
+              {TABS.find((t) => t.id === activeTab)?.label ?? activeTab} Jobs Summary
             </Typography>
             <div className='flex flex-col gap-2 flex-1 justify-center'>
               {summaryRows.map(({ label, value, color, bg }) => (
