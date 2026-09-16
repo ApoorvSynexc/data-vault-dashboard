@@ -31,6 +31,7 @@ import Reports from '../pages/Reports';
 // import AuditLogs from '../pages/AuditLogs';
 import Settings from '../pages/Settings';
 import RestoreCenter from '../pages/RestoreCenter';
+import ChildrenPanelPrototypeV3 from '../pages/ArchiveVault/AddArchive/SelectObjects/ChildrenPanelPrototypeV3';
 
 // Ordered list of tabs and the permission prefixes required to access them.
 // `permissions` is an OR check — tab is shown if user has ANY of the listed prefixes.
@@ -86,6 +87,7 @@ const router = createBrowserRouter([
           { path: '/connections/aws',                    element: <PermissionRoute permissions={['destinationConnection']}><AWSConnections /></PermissionRoute> },
           { path: '/connections/aws/connect',            element: <PermissionRoute permissions={['destinationConnection']}><ConnectAWSBucket /></PermissionRoute> },
           { path: '/connections/aws/edit/:destinationId',element: <PermissionRoute permissions={['destinationConnection']}><EditAWSBucket /></PermissionRoute> },
+          { path: '/prototype/children-panel-v3',         element: <ChildrenPanelPrototypeV3 /> },
           { path: '/archive-vault',                      element: <PermissionRoute permissions={['archival']}><ArchiveVault /></PermissionRoute> },
           { path: '/archive-vault/new',                  element: <PermissionRoute permissions={['archival']}><AddArchive /></PermissionRoute> },
           { path: '/archive-vault/edit/:slug',           element: <PermissionRoute permissions={['archival']}><EditArchive /></PermissionRoute> },
