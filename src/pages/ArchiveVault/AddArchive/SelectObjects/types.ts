@@ -14,7 +14,7 @@ export interface BuiltChildNode {
   children?: BuiltChildNode[];
 }
 
-export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'id' | 'picklist';
 
 export type FilterCondition = {
   id: string;

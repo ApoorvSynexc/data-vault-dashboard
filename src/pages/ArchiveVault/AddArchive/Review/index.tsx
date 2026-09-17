@@ -480,7 +480,7 @@ export default function Step5({
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [now, setNow] = useState(() => dayjs());
+const [now, setNow] = useState(() => dayjs());
   useEffect(() => {
     const id = setInterval(() => setNow(dayjs()), 60_000);
     return () => clearInterval(id);
@@ -568,9 +568,11 @@ export default function Step5({
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
-      await archivalService.updateConfig(backupConfigId, { ...archivalPayload, name: localName, backupStatus } as any);
+      const payload = { ...archivalPayload, name: localName, backupStatus };
+      await archivalService.updateConfig(backupConfigId, payload as any);
     } else {
-      await archivalService.applyConfig({ ...archivalPayload, name: localName, status: backupStatus } as any);
+      const payload = { ...archivalPayload, name: localName, status: backupStatus };
+      await archivalService.applyConfig(payload as any);
     }
   };
 

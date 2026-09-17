@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
-type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'id' | 'picklist';
 type FilterOperator = '>' | '<' | '>=' | '<=' | '=' | '!=' | 'IN' | 'LIKE';
 
 export interface ObjectConfig {
@@ -49,6 +49,7 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   boolean:  ['=', '!='],
   date:     ['=', '!=', '>', '<', '>=', '<='],
   datetime: ['=', '!=', '>', '<', '>=', '<='],
+  time:     ['=', '!=', '>', '<', '>=', '<='],
   id:       ['=', '!=', 'IN'],
   picklist: ['=', '!='],
 };
@@ -66,6 +67,8 @@ const SF_TYPE_MAP: Record<string, FieldDataType> = {
   address: 'string', location: 'string', autonumber: 'string',
   // reference → id
   reference: 'id',
+  // time
+  time: 'time',
 };
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -990,7 +993,7 @@ export default function AddDetailsWizard({
                             </div>
                           ) : (
                             <input
-                              type={cond.dataType === 'date' ? 'date' : cond.dataType === 'datetime' ? 'datetime-local' : cond.dataType === 'number' ? 'number' : 'text'}
+                              type={cond.dataType === 'date' ? 'date' : cond.dataType === 'datetime' ? 'datetime-local' : cond.dataType === 'time' ? 'time' : cond.dataType === 'number' ? 'number' : 'text'}
                               value={cond.value}
                               onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
                               placeholder='Value'
