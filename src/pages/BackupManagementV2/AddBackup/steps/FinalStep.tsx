@@ -397,6 +397,16 @@ export default function FinalStep({
         </div>
       )}
 
+      {/* Encrypted fields note */}
+      <div className='flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mt-4'>
+        <svg className='mt-0.5 shrink-0 text-amber-500' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+          <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+        </svg>
+        <p className='text-xs text-amber-800 leading-relaxed'>
+          <span className='font-semibold'>Note:</span> If any object has encrypted fields and you don't have the system permission <span className='font-semibold'>"View Encrypted Data"</span>, we will not be able to backup the value of those fields and their versions will also not be created.
+        </p>
+      </div>
+
       {/* Action Buttons */}
       <div className='flex justify-between gap-4 flex-shrink-0 mt-4'>
         <button onClick={() => navigate('/backup-management')} className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
