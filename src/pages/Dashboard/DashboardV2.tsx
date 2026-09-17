@@ -136,6 +136,7 @@ export default function DashboardV2() {
     tab === 'archive' ? 'archival' : tab;
 
   // ── data fetching ──────────────────────────────────────────────────────────
+  // Fetch jobs for the active tab (drives the table)
   const { data: jobsData, isLoading: isJobsLoading } = useQuery({
     queryKey: ['dashv2-last-jobs', activeTab],
     queryFn: () => backupConfigService.getLastJobs(tabToModule(activeTab)),
@@ -148,13 +149,43 @@ export default function DashboardV2() {
     staleTime: 0,
   });
 
-  const isLoading = isJobsLoading || isOverviewLoading;
+  // Fetch jobs for all available tabs to determine if the welcome screen should show
+  const { data: bkpJobsData, isLoading: isBkpJobsLoading } = useQuery({
+    queryKey: ['dashv2-last-jobs', 'backup'],
+    queryFn: () => backupConfigService.getLastJobs('backup'),
+    enabled: hasBackup,
+    staleTime: 0,
+  });
+  const { data: archJobsData, isLoading: isArchJobsLoading } = useQuery({
+    queryKey: ['dashv2-last-jobs', 'archival'],
+    queryFn: () => backupConfigService.getLastJobs('archival'),
+    enabled: hasArchive,
+    staleTime: 0,
+  });
+  const { data: rstJobsData, isLoading: isRstJobsLoading } = useQuery({
+    queryKey: ['dashv2-last-jobs', 'restore'],
+    queryFn: () => backupConfigService.getLastJobs('restore'),
+    enabled: hasRestore,
+    staleTime: 0,
+  });
+
+  const isLoading = isJobsLoading || isOverviewLoading ||
+    (hasBackup && isBkpJobsLoading) ||
+    (hasArchive && isArchJobsLoading) ||
+    (hasRestore && isRstJobsLoading);
 
   // ── derived values ─────────────────────────────────────────────────────────
-  // API already filters by module, so allJobs are for the active tab only
-  const allJobs: any[] = Array.isArray((jobsData as any)?.data)
-    ? (jobsData as any).data
-    : Array.isArray(jobsData) ? (jobsData as any) : [];
+  const parseJobs = (data: any): any[] =>
+    Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+
+  // Active tab jobs (drives the table)
+  const allJobs: any[] = parseJobs(jobsData);
+
+  // Total jobs across all available tabs — used to decide welcome vs dashboard
+  const totalJobsAcrossAllTabs =
+    (hasBackup  ? parseJobs(bkpJobsData).length  : 0) +
+    (hasArchive ? parseJobs(archJobsData).length : 0) +
+    (hasRestore ? parseJobs(rstJobsData).length  : 0);
 
   const overview = (overviewData as any)?.data ?? {};
 
@@ -177,9 +208,12 @@ export default function DashboardV2() {
   const archStorageUsed = typeof overview?.totalSize === 'number' ? formatBytes(overview.totalSize) : '--';
   const archSuccessStatus = overview?.successBackupStatus ?? 0;
   const archFailedStatus = overview?.failedBackupStatus ?? 0;
-  const archPendingStatus = overview?.pendingBackupStatus ?? 0;
-  const archResolvedStatus = archSuccessStatus + archFailedStatus;
-  const archRate = archResolvedStatus > 0 ? ((archSuccessStatus / archResolvedStatus) * 100).toFixed(1) : '100.0';
+  // Job-level counts (used in the Jobs Summary block)
+  const archJobSuccess = overview?.jobOverview?.successStatus ?? 0;
+  const archJobFailed  = overview?.jobOverview?.failedStatus  ?? 0;
+  const archJobPending = overview?.jobOverview?.pendingStatus ?? 0;
+  const archJobResolved = archJobSuccess + archJobFailed;
+  const archRate = archJobResolved > 0 ? ((archJobSuccess / archJobResolved) * 100).toFixed(1) : '100.0';
 
   // Restore KPIs: { totalRecords, totalSize, successStatus, failedStatus, pendingStatus }
   const rstTotalRecords = overview?.totalRecords ?? 0;
@@ -348,9 +382,9 @@ export default function DashboardV2() {
       { label: 'Failed', value: rstFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     if (activeTab === 'archive') return [
-      { label: 'Success', value: archSuccessStatus, color: 'text-green-600', bg: 'bg-green-50' },
-      { label: 'Pending', value: archPendingStatus, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Failed', value: archFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
+      { label: 'Success', value: archJobSuccess, color: 'text-green-600', bg: 'bg-green-50' },
+      { label: 'Pending', value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+      { label: 'Failed', value: archJobFailed, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     return [
       { label: 'Success', value: bkpJobSuccess, color: 'text-green-600', bg: 'bg-green-50' },
@@ -388,36 +422,28 @@ export default function DashboardV2() {
     );
   }
 
-  // ── empty / welcome state ──────────────────────────────────────────────────
-  if (allJobs.length === 0) {
-    const tabCtaMap: Record<Tab, { label: string; route: string; icon: ReactNode; border?: string; bg?: string; color?: string }[]> = {
-      backup: [
-        {
-          label: 'Start Backup →',
-          route: '/backup-management/add',
-          icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='16 16 12 12 8 16'/><line x1='12' y1='12' x2='12' y2='21'/><path d='M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3'/></svg>,
-          bg: '#155DFC', color: '#ffffff',
-        },
-      ],
-      archive: [
-        {
-          label: 'Start Archive →',
-          route: '/archive-vault/new',
-          icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>,
-          bg: '#7C3AED', color: '#ffffff',
-        },
-      ],
-      restore: [
-        {
-          label: 'Start Restore →',
-          route: '/restore-center?action=new',
-          icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='1 4 1 10 7 10'/><path d='M3.51 15a9 9 0 1 0 .49-4.5'/></svg>,
-          bg: '#16A34A', color: '#ffffff',
-        },
-      ],
-    };
-    const ctaBtns = tabCtaMap[activeTab];
-    const tabLabel = TABS.find((t) => t.id === activeTab)?.label ?? activeTab;
+  // ── empty / welcome state — only when NO jobs exist across any module ────────
+  if (totalJobsAcrossAllTabs === 0) {
+    const allCtaBtns: { label: string; route: string; icon: ReactNode; bg: string; color: string }[] = [
+      ...(hasBackup ? [{
+        label: 'Start Backup →',
+        route: '/backup-management/add',
+        icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='16 16 12 12 8 16'/><line x1='12' y1='12' x2='12' y2='21'/><path d='M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3'/></svg>,
+        bg: '#155DFC', color: '#ffffff',
+      }] : []),
+      ...(hasArchive ? [{
+        label: 'Start Archive →',
+        route: '/archive-vault/new',
+        icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>,
+        bg: '#7C3AED', color: '#ffffff',
+      }] : []),
+      ...(hasRestore ? [{
+        label: 'Start Restore →',
+        route: '/restore-center?action=new',
+        icon: <svg width='18' height='18' fill='none' stroke='white' strokeWidth='2' viewBox='0 0 24 24'><polyline points='1 4 1 10 7 10'/><path d='M3.51 15a9 9 0 1 0 .49-4.5'/></svg>,
+        bg: '#16A34A', color: '#ffffff',
+      }] : []),
+    ];
 
     return (
       <div
@@ -435,14 +461,14 @@ export default function DashboardV2() {
             Welcome {userName}!
           </h1>
           <p className='mb-10' style={{ color: '#64748B', fontSize: 22, fontWeight: 400, lineHeight: '34px', maxWidth: 700 }}>
-            Get started by creating your first {tabLabel.toLowerCase()} to protect your data.
+            Get started by protecting your data with Backup, Archive or Restore.
           </p>
           <div className='flex items-center gap-4 flex-wrap justify-center'>
-            {ctaBtns.map((btn) => (
+            {allCtaBtns.map((btn) => (
               <button
                 key={btn.label}
                 onClick={() => navigate(btn.route)}
-                style={{ width: 280, height: 58, background: btn.bg, borderRadius: 6, color: btn.color, fontSize: 16, fontWeight: 400, border: 'none', cursor: 'pointer', boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ width: 220, height: 58, background: btn.bg, borderRadius: 6, color: btn.color, fontSize: 16, fontWeight: 400, border: 'none', cursor: 'pointer', boxShadow: '0px 4px 4px 0px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 {btn.icon}
                 {btn.label}
@@ -558,9 +584,15 @@ export default function DashboardV2() {
             rowClassName='border-t border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer'
             cellPaddingClassName='px-4 py-2.5'
             emptyState={
-              <span className='text-sm text-gray-500'>
-                No recent {activeTab} jobs found.
-              </span>
+              <div className='flex flex-col items-center justify-center gap-2 py-8'>
+                <span className='text-sm font-medium text-gray-500'>No {activeTab} jobs yet.</span>
+                <button
+                  onClick={() => navigate(activeTab === 'archive' ? '/archive-vault/new' : activeTab === 'restore' ? '/restore-center?action=new' : '/backup-management/add')}
+                  className='text-xs font-semibold text-blue-600 hover:underline'
+                >
+                  Create your first {activeTab} →
+                </button>
+              </div>
             }
             columns={columns}
           />
