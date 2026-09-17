@@ -1207,8 +1207,8 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
@@ -1235,8 +1235,8 @@ export default function AddDetailsWizard({
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                      {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                     </div>
                   </div>
                 )}
@@ -1269,8 +1269,8 @@ export default function AddDetailsWizard({
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                      {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                     </div>
                   </div>
                 )}
@@ -1320,8 +1320,8 @@ export default function AddDetailsWizard({
                         </select></div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                     </div>
                   </div>
@@ -1333,8 +1333,8 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On</label>
