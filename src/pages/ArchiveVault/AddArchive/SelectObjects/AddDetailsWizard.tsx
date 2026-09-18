@@ -632,9 +632,10 @@ export default function AddDetailsWizard({
   const schedWeeklyErr   = overrideEnabled && frequency === 'Weekly'  && selectedDays.length === 0   ? 'Please select at least one day' : null;
   const schedMonthsErr   = overrideEnabled && frequency === 'Monthly' && selectedMonths.length === 0  ? 'Please select at least one month' : null;
   const schedDayErr      = overrideEnabled && frequency === 'Monthly' && !dayOfMonth                  ? 'Please select the day of month' : null;
-  const schedMissingDate = schedNeedsDate && !startDate ? 'Start date is required' : null;
+  const schedMissingDate    = schedNeedsDate && !startDate ? 'Start date is required' : null;
+  const schedMissingEndDate = overrideEnabled && frequency === 'Custom' && !endDate ? 'Please select an End Date.' : null;
   const schedMissingTime = schedNeedsTime && !startTime ? 'Start time is required' : null;
-  const schedHasErrors   = !!(startDateError || endDateError || startTimeError || schedWeeklyErr || schedMonthsErr || schedDayErr || schedMissingDate || schedMissingTime);
+  const schedHasErrors   = !!(startDateError || endDateError || startTimeError || schedWeeklyErr || schedMonthsErr || schedDayErr || schedMissingDate || schedMissingEndDate || schedMissingTime);
 
   const handleStartDateChange = (val: string) => {
     setStartDate(val);
@@ -1338,8 +1339,8 @@ export default function AddDetailsWizard({
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On</label>
-                        <input type='date' value={endDate} min={startDate || today} onChange={(e) => handleEndDateChange(e.target.value)} className={`${inputCls} ${endDateError ? 'border-red-400' : ''}`} />
-                        {endDateError && <p className='mt-1 text-xs text-red-500'>{endDateError}</p>}
+                        <input type='date' value={endDate} min={startDate || today} onChange={(e) => handleEndDateChange(e.target.value)} className={`${inputCls} ${endDateError || (schedSubmitted && schedMissingEndDate) ? 'border-red-400' : ''}`} />
+                        {(endDateError || (schedSubmitted && schedMissingEndDate)) && <p className='mt-1 text-xs text-red-500'>{endDateError || schedMissingEndDate}</p>}
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
