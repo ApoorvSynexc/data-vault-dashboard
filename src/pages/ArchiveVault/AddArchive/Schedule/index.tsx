@@ -42,6 +42,13 @@ const backDayMap: Record<string, string> = { MON: 'Mon', TUE: 'Tue', WED: 'Wed',
 const backMonthMap: Record<string, string> = { JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun', JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec' };
 const freqBackMap: Record<string, FrequencyType> = { ONCE: 'One Time', HOURLY: 'Hourly', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', CUSTOM: 'Custom' };
 
+const intervalToBackupIn = (interval: number): string => {
+  if (interval === 2) return '2 Hours';
+  if (interval === 6) return '6 Hours';
+  if (interval === 12) return '12 Hours';
+  return '1 Hour';
+};
+
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -78,6 +85,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
         timeZone: initialScheduleConfig.timeZone,
         startDate: s.startDate || '',
         endDate: s.endDate || '',
+        backupIn: s.interval ? intervalToBackupIn(s.interval) : '1 Hour',
       };
     }
     return {
@@ -90,6 +98,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       timeZone: getDefaultTimezone().value,
       startDate: '',
       endDate: '',
+      backupIn: '1 Hour',
     };
   };
 
@@ -115,7 +124,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const [timeZone, setTimeZone] = useState(initial.timeZone);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
-  const [backupIn, setBackupIn] = useState('1 Hour');
+  const [backupIn, setBackupIn] = useState(initial.backupIn);
   const [archiveFrequency, setArchiveFrequency] = useState('Daily');
   const [toast, setToast] = useState<string | null>(null);
 
