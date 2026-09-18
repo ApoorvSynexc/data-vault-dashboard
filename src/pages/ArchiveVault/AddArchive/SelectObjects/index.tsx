@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
@@ -69,13 +69,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Custom' | 'Standard'>('All');
-  // All warnings ever fired — stored as a ref so callbacks never go stale.
-  // Active warnings are derived by filtering out those whose parent is currently selected.
-  // sourceObjectId = uuid of the selected object whose wizard triggered this warning.
-  const allMdWarningsRef = useRef<{ child: string; parentField: string; parentLabel: string; sourceObjectId: string }[]>([]);
-  // Bumped whenever allMdWarningsRef changes so the derived mdWarnings useMemo re-runs.
-  const [warningTick, setWarningTick] = useState(0);
-  const [showMdToast, setShowMdToast] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedObjects, setSelectedObjects] = useState<Set<string>>(
     new Set(initialSelectedObjects.map((o) => o.uuid ?? o.id))
@@ -152,37 +145,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allObjectsData]);
 
-  // Set of API names from the object list — used to filter child rows
-  const allowedObjectNames = useMemo(() => new Set(allObjects.map((o) => o.id)), [allObjects]);
-
-  // Set of API names of currently selected objects — passed to wizard for MD warning suppression
-  const selectedObjectApiNames = useMemo(
-    () => new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id)),
-    [allObjects, selectedObjects]
-  );
-
-  const handleMasterDetailWarning = useCallback((childObject: string, parentField: string, sourceObjectId: string) => {
-    const parentObj = allObjects.find((o) => o.id === parentField);
-    const resolvedLabel = parentObj?.name ?? parentField;
-    const already = allMdWarningsRef.current.some((w) => w.child === childObject && w.parentField === parentField && w.sourceObjectId === sourceObjectId);
-    if (!already) {
-      allMdWarningsRef.current = [...allMdWarningsRef.current, { child: childObject, parentField, parentLabel: resolvedLabel, sourceObjectId }];
-      setWarningTick((t) => t + 1);
-    }
-    setShowMdToast(true);
-  }, [allObjects]);
-
-  // Derive active warnings:
-  // - sourceObjectId must be currently selected (the object that has the MD child)
-  // - parentField must NOT be currently selected (the missing required object)
-  const mdWarnings = useMemo(() => {
-    const selectedApiNames = new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id));
-    return allMdWarningsRef.current.filter((w) =>
-      selectedObjects.has(w.sourceObjectId) && !selectedApiNames.has(w.parentField)
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedObjects, allObjects, warningTick]);
-
   const allFiltered = useMemo(() => {
     return allObjects.filter((obj) => {
       const matchesSearch = obj.name.toLowerCase().includes(debouncedSearch.toLowerCase());
@@ -201,8 +163,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const totalSelected = selectedObjects.size;
   const clearAll = () => {
     setSelectedObjects(new Set());
-    allMdWarningsRef.current = [];
-    setWarningTick((t) => t + 1);
   };
 
   const handleNext = () => {
@@ -268,16 +228,12 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     <>
       {wizardTarget && (
         <AddDetailsWizard
-          objectId={wizardTarget.objectId}
           objectName={wizardTarget.objectName}
           objectLabel={wizardTarget.objectLabel}
           recordCount={wizardTarget.recordCount}
           crmId={crmId}
           isParent={wizardTarget.isParent}
           initialConfig={objectConfigs[wizardTarget.objectId]}
-          allowedObjectNames={allowedObjectNames}
-          selectedObjectApiNames={selectedObjectApiNames}
-          onMasterDetailWarning={(child, parentField) => handleMasterDetailWarning(child, parentField, wizardTarget.objectId)}
           onSave={(config) => {
             setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
             setWizardTarget(null);
@@ -313,30 +269,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               Step <span className='text-blue-600'>3</span> of 6
             </span>
           </div>
-
-          {/* MasterDetail warning — above the table so it never squashes it */}
-          {showMdToast && mdWarnings.length > 0 && (
-            <div className='flex items-start gap-2 px-4 py-3 rounded-lg text-sm font-medium flex-shrink-0'
-              style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
-                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-              </svg>
-              <div className='flex-1'>
-                <p className='font-semibold mb-1'>MasterDetail relationship detected — please add these objects to your selection:</p>
-                <ul className='list-disc list-inside space-y-0.5'>
-                  {mdWarnings.map(({ child, parentField, parentLabel }) => {
-                    const displayName = parentLabel || parentField;
-                    return (
-                      <li key={`${child}-${parentField}`}><strong>{child}</strong> is in a MasterDetail relationship with <strong>{displayName}</strong> — please select <strong>{displayName}</strong> from the objects list above.</li>
-                    );
-                  })}
-                </ul>
-              </div>
-              <button onClick={() => setShowMdToast(false)} className='flex-shrink-0 text-amber-600 hover:text-amber-800'>
-                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-              </button>
-            </div>
-          )}
 
           {/* Table card */}
           <div className='bg-white rounded-xl flex flex-col flex-1 overflow-hidden'
@@ -574,10 +506,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 ← Back
               </button>
               <button
-                onClick={() => {
-                  if (mdWarnings.length > 0) { setShowMdToast(true); return; }
-                  handleNext();
-                }}
+                onClick={handleNext}
                 disabled={totalSelected === 0}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors ${totalSelected > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
                 Next →

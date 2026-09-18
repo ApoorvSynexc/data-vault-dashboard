@@ -22,7 +22,6 @@ export interface ObjectConfig {
 }
 
 interface AddDetailsWizardProps {
-  objectId: string;
   objectName: string;
   objectLabel?: string;
   recordCount?: number;
@@ -31,9 +30,6 @@ interface AddDetailsWizardProps {
   initialConfig?: ObjectConfig;
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
-  allowedObjectNames?: Set<string>;
-  selectedObjectApiNames?: Set<string>;
-  onMasterDetailWarning?: (childObject: string, parentObject: string, parentLabel: string) => void;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -279,10 +275,6 @@ export default function AddDetailsWizard({
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
   const crmMetadataService = useCrmMetadataService();
-
-  // ── MD warning toast (auto-dismisses after 5s) ────────────────────────────
-
-
 
   // ── wizard step ────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2 | 3>(1);
