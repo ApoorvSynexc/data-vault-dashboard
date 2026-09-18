@@ -10,7 +10,6 @@ type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'C
 export type ArchiveScheduleConfig = {
   timeZone: string;
   type: string;
-  customFrequency?: string;
   scheduling: {
     frequency: string;
     interval: number;
@@ -20,6 +19,7 @@ export type ArchiveScheduleConfig = {
     startDate?: string;
     endDate?: string;
     startTime?: string;
+    customFrequency?: string;
   };
 };
 
@@ -176,11 +176,11 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
+      scheduling.customFrequency = archiveFrequency.toUpperCase();
     }
     return {
       timeZone,
       type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
-      ...(frequency === 'Custom' ? { customFrequency: archiveFrequency.toUpperCase() } : {}),
       scheduling,
     };
   };

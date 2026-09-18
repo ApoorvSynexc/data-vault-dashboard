@@ -117,7 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [profileLogout]);
 
   useEffect(() => {
-    refreshProfile().catch(() => setStatus('unauthenticated'));
+    refreshProfile().catch((err: any) => {
+      const msg: string = err?.message ?? err?.response?.data?.message ?? '';
+      const isNoAccess = msg.includes('401') || msg.includes('403') || /unauthorized|forbidden|permission/i.test(msg);
+      if (isNoAccess) {
+        sessionStorage.setItem(
+          'loginError',
+          'You do not have permission to access Data Craft. Please contact your administrator to request access.'
+        );
+      }
+      setStatus('unauthenticated');
+    });
   }, []);
 
   const value = useMemo(
