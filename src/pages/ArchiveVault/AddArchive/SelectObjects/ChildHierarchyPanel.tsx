@@ -34,6 +34,7 @@ interface TNode {
 
 type FlowNodeData = {
   apiName: string;
+  fieldApiName?: string;
   relType?: RelType;
   depth: number;
   isChecked: boolean;
@@ -103,7 +104,10 @@ function flattenChildren(
   map: Map<string, TNode>,
 ) {
   for (const n of nodes) {
-    const id = `${parentId}/${n.name}`;
+    // Combine name + field for a unique key:
+    // - same object (e.g. "Asset") can appear via different fields
+    // - same field (e.g. "AccountId") can be used by different objects
+    const id = `${parentId}/${n.name}/${n.field}`;
     const relType: RelType = n.cascadeDelete
       ? 'MasterDetail'
       : n.restrictedDelete
@@ -172,7 +176,10 @@ function restoreCheckedIds(
   const parent = treeMap.get(parentId);
   if (!parent) return;
   for (const s of saved) {
-    const matchId = parent.childIds.find((cid) => treeMap.get(cid)?.apiName === s.name);
+    const matchId = parent.childIds.find((cid) => {
+      const c = treeMap.get(cid);
+      return c?.apiName === s.name && c?.fieldApiName === s.fieldApiName;
+    });
     if (!matchId) continue;
     result.add(matchId);
     if (s.children?.length) restoreCheckedIds(s.children, matchId, treeMap, result);
@@ -182,7 +189,7 @@ function restoreCheckedIds(
 // ── Custom node ───────────────────────────────────────────────────────────────
 
 function ObjNode({ data, id }: NodeProps<FlowNode>) {
-  const { apiName, relType, depth, isChecked, isRequired, isRoot, hasChildren, isExpanded, onCheck, onToggleExpand } = data;
+  const { apiName, fieldApiName, relType, depth, isChecked, isRequired, isRoot, hasChildren, isExpanded, onCheck, onToggleExpand } = data;
   const col = dc(depth);
   const isMd = relType === 'MasterDetail';
   const isReqLookup = relType === 'RequiredLookup';
@@ -230,6 +237,13 @@ function ObjNode({ data, id }: NodeProps<FlowNode>) {
           L{depth + 1}
         </span>
       </div>
+
+      {/* Field API name — distinguishes same-object nodes with different relationship fields */}
+      {!isRoot && fieldApiName && (
+        <span style={{ fontSize: 9, color: '#94A3B8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          via {fieldApiName}
+        </span>
+      )}
 
       {/* Relation type badge */}
       {relType && (
@@ -352,6 +366,7 @@ function FlowCanvas({
         position: pos,
         data: {
           apiName: node.apiName,
+          fieldApiName: node.fieldApiName,
           relType: node.relType,
           depth: node.depth,
           isChecked: isRoot || checkedIds.has(id),
@@ -469,7 +484,7 @@ export function ChildHierarchyPanel({
       setTreeMap(map);
 
       try {
-        const res = await crmService.getObjectDepthChildren(objectName, 'normal', 'schedule');
+        const res = await crmService.getObjectDepthChildren(objectName, 'archival', 'schedule');
         if (cancelled) return;
 
         const children: DepthChildNode[] = (res as any)?.data?.children ?? (res as any)?.children ?? [];
