@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
-import { ChildRows, MAX_CHILD_DEPTH } from './ChildRows';
+import { ChildHierarchyPanel } from './ChildHierarchyPanel';
 import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import dayjs from 'dayjs';
@@ -274,20 +274,15 @@ function FieldDropdown({ value, options, onChange }: {
 // ─── main wizard component ────────────────────────────────────────────────────
 
 export default function AddDetailsWizard({
-  objectId, objectName, objectLabel, recordCount, crmId,
-  isParent = true, initialConfig, onSave, onClose, allowedObjectNames, selectedObjectApiNames, onMasterDetailWarning,
+  objectName, objectLabel, recordCount, crmId,
+  isParent = true, initialConfig, onSave, onClose,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
   const crmMetadataService = useCrmMetadataService();
 
   // ── MD warning toast (auto-dismisses after 5s) ────────────────────────────
-  const [mdToast, setMdToast] = useState<{ child: string; parentField: string; parentLabel: string } | null>(null);
 
-  const wrappedMdWarning = useCallback((child: string, parent: string, label: string) => {
-    onMasterDetailWarning?.(child, parent, label);
-    if (selectedObjectApiNames?.has(parent)) return;
-    setMdToast({ child, parentField: parent, parentLabel: label });
-  }, [onMasterDetailWarning, selectedObjectApiNames]);
+
 
   // ── wizard step ────────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -363,13 +358,6 @@ export default function AddDetailsWizard({
     onSuccess: (data: any) => {
       const payload = data?.data ?? data;
       const ok = payload?.isValid !== false;
-      // Always reset child selections on every validate so the children table
-      // refreshes and restores saved state against the new depth constraint.
-      setSelectedChildObjects(new Set());
-      setIncludeChild({});
-      restoredUuidsRef.current.clear();
-      setResetTick((t) => t + 1);
-
       if (ok) {
         setValidateStatus('valid');
         setValidateMessage('Query validated successfully.');
@@ -452,150 +440,8 @@ export default function AddDetailsWizard({
         !customLogicError;
 
   // ── step 2: children ───────────────────────────────────────────────────────
-  const [childLoadingCount, setChildLoadingCount] = useState(0);
-  const handleChildLoadingChange = useCallback((loading: boolean) => {
-    setChildLoadingCount((n) => Math.max(0, n + (loading ? 1 : -1)));
-  }, []);
-
-  // Stable UUID map lifted to wizard level so ChildRows instances that unmount/remount
-  // due to pagination always get the same UUID for the same (parentUuid, childName) pair.
-  const childUuidMapRef = useRef<Map<string, string>>(new Map());
-  const getOrCreateChildUuid = useCallback((parentUuid: string, childName: string): string => {
-    const key = `${parentUuid}::${childName}`;
-    if (!childUuidMapRef.current.has(key)) {
-      childUuidMapRef.current.set(key, crypto.randomUUID());
-    }
-    return childUuidMapRef.current.get(key)!;
-  }, []);
-
-  const [selectedChildObjects, setSelectedChildObjects] = useState<Set<string>>(new Set());
-  const [childApiNames, setChildApiNames] = useState<Record<string, string>>({});
-  const [childFieldApiNames, setChildFieldApiNames] = useState<Record<string, string>>({});
-  const [childParents, setChildParents] = useState<Record<string, string>>({});
-  const [includeChild, setIncludeChild] = useState<Record<string, boolean>>({});
-  const [resetTick, setResetTick] = useState(0);
-
-  // Restore child selections after ChildRows registers fresh UUIDs.
-  // Runs on every childApiNames/childParents change so deeper tiers (which only
-  // mount after their parent's includeChild is set) also get restored incrementally.
-  // restoredUuidsRef tracks already-processed UUIDs to avoid double-toggling.
-  //
-  // Key invariant: match by (parentApiName, childApiName) pair — not just childApiName
-  // alone — so the same object name appearing under different parents doesn't get
-  // incorrectly selected.
-  const restoredUuidsRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const saved = initialConfig?.builtChildren ?? [];
-    if (saved.length === 0 || Object.keys(childApiNames).length === 0) return;
-
-    // Build a set of "parentApiName|childApiName" keys from the saved tree.
-    // Root-level children use objectName as their parent key.
-    // Also track which child API names had includeChild on (had nested children).
-    const savedPairs = new Set<string>();
-    const savedPairsWithChildren = new Set<string>();
-    const collectPairs = (nodes: BuiltChildNode[], parentApiName: string) => {
-      nodes.forEach((n) => {
-        const pair = `${parentApiName}|${n.name}`;
-        savedPairs.add(pair);
-        if (n.includeChild || n.children?.length) {
-          savedPairsWithChildren.add(pair);
-          if (n.children?.length) collectPairs(n.children, n.name);
-        }
-      });
-    };
-    collectPairs(saved, objectName);
-
-    // Find newly registered UUIDs not yet restored, matched by (parent, child) pair
-    const newToSelect: string[] = [];
-    const newWithIncludeChild: string[] = [];
-    Object.entries(childApiNames).forEach(([uuid, apiName]) => {
-      if (restoredUuidsRef.current.has(uuid)) return;
-      const parentUuid = childParents[uuid];
-      if (!parentUuid) return;
-      // Resolve parent's API name: if parent is the root object, use objectName
-      const parentApiName = parentUuid === objectId ? objectName : (childApiNames[parentUuid] ?? '');
-      if (!parentApiName) return;
-      const pair = `${parentApiName}|${apiName}`;
-      if (savedPairs.has(pair)) {
-        newToSelect.push(uuid);
-        restoredUuidsRef.current.add(uuid);
-        if (savedPairsWithChildren.has(pair)) newWithIncludeChild.push(uuid);
-      }
-    });
-
-    if (newToSelect.length === 0) return;
-
-    setSelectedChildObjects((prev) => {
-      const next = new Set(prev);
-      newToSelect.forEach((uuid) => next.add(uuid));
-      return next;
-    });
-    if (newWithIncludeChild.length > 0) {
-      setIncludeChild((prev) => {
-        const next = { ...prev };
-        newWithIncludeChild.forEach((uuid) => { next[uuid] = true; });
-        return next;
-      });
-    }
-  }, [childApiNames, childParents, initialConfig]);
-
-  const toggleChildObject = useCallback((key: string) => {
-    setSelectedChildObjects((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
-  }, []);
-
-  const registerChildApiName = useCallback((uuid: string, apiName: string) => {
-    setChildApiNames((prev) => prev[uuid] === apiName ? prev : { ...prev, [uuid]: apiName });
-  }, []);
-
-  const registerChildFieldApiName = useCallback((uuid: string, fieldApiName: string) => {
-    setChildFieldApiNames((prev) => prev[uuid] === fieldApiName ? prev : { ...prev, [uuid]: fieldApiName });
-  }, []);
-
-  const registerChildParent = useCallback((childUuid: string, parentUuid: string) => {
-    setChildParents((prev) => prev[childUuid] === parentUuid ? prev : { ...prev, [childUuid]: parentUuid });
-  }, []);
-
-  // Recursively builds the nested children array for the archival payload.
-  // Only includes children that are checked (in selectedChildObjects) AND
-  // whose registered parent matches the given parentUuid.
-  //
-  // visited guards against circular references (e.g. A → B → A).
-  // seenNames deduplicates siblings with the same API name, which can happen
-  // when the same child object is registered under multiple parent contexts.
-  const buildChildTree = (parentUuid: string, visited = new Set<string>()): BuiltChildNode[] => {
-    if (visited.has(parentUuid)) return [];
-    visited.add(parentUuid);
-    const seenNames = new Set<string>();
-    return Array.from(selectedChildObjects)
-      .filter((uuid) => childParents[uuid] === parentUuid)
-      .filter((uuid) => {
-        const name = childApiNames[uuid] ?? uuid;
-        if (seenNames.has(name)) return false;
-        seenNames.add(name);
-        return true;
-      })
-      .map((uuid) => {
-        const hasInclude = !!includeChild[uuid];
-        // Only recurse into sub-children when includeChild is ON for this node.
-        // If the user toggled includeChild off, sub-children must not be saved —
-        // otherwise on restore the saved children force includeChild back to true.
-        const nested = hasInclude ? buildChildTree(uuid, visited) : [];
-        return {
-          id: uuid,
-          name: childApiNames[uuid] ?? uuid,
-          fieldApiName: childFieldApiNames[uuid],
-          type: 'STANDARD' as const,
-          condition: { type: 'AND' as const },
-          field: [] as never[],
-          ...(hasInclude ? { includeChild: true } : {}),
-          ...(nested.length > 0 ? { children: nested } : {}),
-        };
-      });
-  };
+  const [builtChildren, setBuiltChildren] = useState<BuiltChildNode[]>(initialConfig?.builtChildren ?? []);
+  const [childPanelLoading, setChildPanelLoading] = useState(false);
 
   // ── step 3: schedule ───────────────────────────────────────────────────────
   const schedInit = initSchedule(initialConfig?.schedule);
@@ -738,7 +584,7 @@ export default function AddDetailsWizard({
       conditions: filterTab === 'SOQL' ? [] : conditions,
       matchMode,
       soqlQuery: filterTab === 'SOQL' ? soqlUserClause.trim() : undefined,
-      builtChildren: buildChildTree(objectId),
+      builtChildren,
       schedule: overrideEnabled ? computeScheduleConfig() : undefined,
     });
   };
@@ -769,22 +615,6 @@ export default function AddDetailsWizard({
             </svg>
           </button>
         </div>
-
-        {/* ── MD warning toast ── */}
-        {mdToast && (
-          <div className='mx-6 mb-2 flex items-start gap-2 px-4 py-2.5 rounded-lg text-sm'
-            style={{ background: 'rgba(245,158,11,0.08)', color: '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
-            <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
-              <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
-            </svg>
-            <span>
-              <strong>{mdToast.child}</strong> is in a MasterDetail relationship with <strong>{mdToast.parentLabel}</strong> — please select <strong>{mdToast.parentLabel}</strong> from the objects list.
-            </span>
-            <button onClick={() => setMdToast(null)} className='ml-auto flex-shrink-0'>
-              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
-            </button>
-          </div>
-        )}
 
         {/* ── stepper ── */}
         <Stepper current={step} />
@@ -1040,71 +870,16 @@ export default function AddDetailsWizard({
 
           {/* ════ STEP 2: ADD CHILDS ════ */}
           <div className={step === 2 ? 'px-6 py-4 flex flex-col gap-3' : 'hidden'}>
-              <p className='text-sm text-gray-500'>
-                Select child relationships to include in the archive. Check a child to include it, then toggle to expand nested relationships.
-              </p>
-              <div className='flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 bg-blue-50 border border-blue-200'>
-                <svg className='flex-shrink-0 mt-0.5' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#1d4ed8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                </svg>
-                <p className='text-xs text-blue-800 leading-relaxed'>
-                  Only the first level of Master-Detail relationships is automatically included. To archive deeper levels of a relationship hierarchy, enable the <span className='font-semibold'>Include Child</span> toggle on the relevant child object and configure its nested relationships.
-                </p>
-              </div>
-              <div className='rounded-xl overflow-hidden' style={{ border: '1px solid #E2E8F0' }}>
-                <table className='w-full border-collapse table-fixed'>
-                  <colgroup>
-                    <col style={{ width: 6 }} />
-                    <col style={{ width: 44 }} />
-                    <col />
-                    <col style={{ width: 110 }} />
-                    <col style={{ width: 80 }} />
-                    <col style={{ width: 90 }} />
-                    <col style={{ width: 0 }} />
-                  </colgroup>
-                  <thead className='bg-gray-50'>
-                    <tr style={{ borderBottom: '1px solid #E2E8F0' }}>
-                      <th className='py-2.5' />
-                      <th className='py-2.5' />
-                      <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Object</th>
-                      <th className='px-3 py-2.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider'>Include Child</th>
-                      <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Depth</th>
-                      <th className='px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider'>Type</th>
-                      <th className='py-2.5' />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {crmId && (
-                      <ChildRows
-                        crmId={crmId}
-                        objectName={objectName}
-                        parentUuid={objectId}
-                        depth={1}
-                        selectedChildObjects={selectedChildObjects}
-                        toggleChildObject={toggleChildObject}
-                        registerChildApiName={registerChildApiName}
-                        registerChildFieldApiName={registerChildFieldApiName}
-                        registerChildParent={registerChildParent}
-                        includeChild={includeChild}
-                        setIncludeChild={setIncludeChild}
-                        maxDepth={Math.max(0, MAX_CHILD_DEPTH - (relationshipDepth ?? 0))}
-                        resetTick={resetTick}
-                        relationshipDepth={relationshipDepth}
-                        allowedObjectNames={allowedObjectNames}
-                        onMasterDetailWarning={wrappedMdWarning}
-                        onLoadingChange={handleChildLoadingChange}
-                        getChildUuid={getOrCreateChildUuid}
-                      />
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {selectedChildObjects.size > 0 && (
-                <p className='text-xs text-gray-400'>
-                  {selectedChildObjects.size} child relationship{selectedChildObjects.size !== 1 ? 's' : ''} selected.
-                </p>
-              )}
-            </div>
+            <p className='text-sm text-gray-500'>
+              <strong>MasterDetail</strong>and <strong>RequiredLookup</strong> children are auto-included and archived with the <strong>{objectName}</strong> across <strong>all levels</strong> (up to 5 deep). Click <strong>Lookup</strong> nodes to select/deselect. Use <strong>+</strong> on a node to expand deeper levels.
+            </p>
+            <ChildHierarchyPanel
+              objectName={objectName}
+              initialBuiltChildren={initialConfig?.builtChildren}
+              onSelectionChange={setBuiltChildren}
+              onLoadingChange={setChildPanelLoading}
+            />
+          </div>
 
           {/* ════ STEP 3: ADD SCHEDULE ════ */}
           {step === 3 && (
@@ -1384,7 +1159,7 @@ export default function AddDetailsWizard({
             <div className='flex items-center gap-3'>
               {/* Prev */}
               <button
-                onClick={() => { setMdToast(null); setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3); }}
+                onClick={() => { setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3); }}
                 disabled={step === 1}
                 className='px-5 py-2 text-sm font-medium border border-gray-300 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-700'>
                 ← Prev
@@ -1392,10 +1167,10 @@ export default function AddDetailsWizard({
               {/* Next */}
               {step < 3 && (
                 <button
-                  onClick={step === 1 ? handleNextStep1 : () => { setMdToast(null); setStep((s) => (s + 1) as 2 | 3); }}
-                  disabled={(step === 1 && !canProceedFromStep1) || (step === 2 && childLoadingCount > 0)}
+                  onClick={step === 1 ? handleNextStep1 : () => { setStep((s) => (s + 1) as 2 | 3); }}
+                  disabled={(step === 1 && !canProceedFromStep1) || (step === 2 && childPanelLoading)}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
-                  {step === 2 && childLoadingCount > 0 ? 'Loading…' : 'Next →'}
+                  {step === 2 && childPanelLoading ? 'Loading…' : 'Next →'}
                 </button>
               )}
               {/* Save */}

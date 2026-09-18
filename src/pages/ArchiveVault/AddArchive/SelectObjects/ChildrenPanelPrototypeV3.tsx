@@ -503,7 +503,7 @@ export default function ChildrenPanelPrototypeV3() {
       setTreeMap(map); // seed immediately so FlowCanvas doesn't crash before API resolves
 
       try {
-        const res = await crmService.getObjectDepthChildren(rootName, 'archival', undefined, 5);
+        const res = await crmService.getObjectDepthChildren(rootName, 'normal', 'schedule');
         const children: DepthChildNode[] = (res as any)?.data?.children ?? (res as any)?.children ?? [];
         flattenChildren(children, rootId, 1, map);
 
