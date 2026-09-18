@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsService, type StandardObject } from '../../services/settings/settings.service';
 import { useCrmMetadataService, type CrmMetadataObject } from '../../services/crm-metadata/crm-metadata.service';
@@ -221,14 +221,32 @@ function StandardObjectsSection({
 export default function Settings() {
   const settingsService = useSettingsService();
   const queryClient     = useQueryClient();
-  const [notifEmail, setNotifEmail] = useState(true);
+
+  const [apiThreshold, setApiThreshold]   = useState<number>(80);
+  const [rollbackDays, setRollbackDays]   = useState<number>(14);
+  const [notifEmail, setNotifEmail]       = useState<boolean>(true);
 
   const { data: settingsResp } = useQuery({
     queryKey: ['settings'],
     queryFn:  () => settingsService.getSettings(),
   });
 
+  // Initialise local state from API once data arrives
+  useEffect(() => {
+    const d = settingsResp?.data;
+    if (!d) return;
+    if (d.salesforceApiThreshold != null) setApiThreshold(d.salesforceApiThreshold);
+    if (d.rollbackWindow         != null) setRollbackDays(d.rollbackWindow);
+    if (d.notification?.email    != null) setNotifEmail(d.notification.email);
+  }, [settingsResp]);
+
   const objects: StandardObject[] = settingsResp?.data?.standardObjects ?? [];
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof settingsService.updateSettings>[0]) =>
+      settingsService.updateSettings(payload),
+    onSuccess: () => queryClient.refetchQueries({ queryKey: ['settings'] }),
+  });
 
   const addMutation = useMutation({
     mutationFn: (name: string) => settingsService.addStandardObject(name),
@@ -239,6 +257,22 @@ export default function Settings() {
     mutationFn: (name: string) => settingsService.removeStandardObject(name),
     onSuccess: () => queryClient.refetchQueries({ queryKey: ['settings'] }),
   });
+
+  function handleToggleEmail(val: boolean) {
+    setNotifEmail(val);
+    updateMutation.mutate({ notification: { email: val } });
+  }
+
+  function handleRollbackChange(val: number) {
+    setRollbackDays(val);
+    updateMutation.mutate({ rollbackWindow: val });
+  }
+
+  function handleThresholdBlur() {
+    const clamped = Math.min(100, Math.max(1, apiThreshold));
+    setApiThreshold(clamped);
+    updateMutation.mutate({ salesforceApiThreshold: clamped });
+  }
 
   return (
     <div className='flex flex-col gap-6 p-4 sm:p-6 w-full'>
@@ -256,23 +290,35 @@ export default function Settings() {
 
         <Section title='Performance' desc='API usage and job behaviour'>
           <SettingRow label='API guard threshold' hint='Auto-pause when daily limit hits this %'>
-            <input type='number' className={inputCls} defaultValue={80} />
+            <input
+              type='number'
+              min={0}
+              max={100}
+              className={inputCls}
+              value={apiThreshold}
+              onChange={(e) => setApiThreshold(Number(e.target.value))}
+              onBlur={handleThresholdBlur}
+            />
           </SettingRow>
         </Section>
 
         <Section title='Rollback & Retention' desc='Data recovery window'>
           <SettingRow label='Rollback window'>
-            <select className={selectCls} defaultValue='14'>
-              <option value='7'>7 days</option>
-              <option value='14'>14 days</option>
-              <option value='30'>30 days</option>
+            <select
+              className={selectCls}
+              value={rollbackDays}
+              onChange={(e) => handleRollbackChange(Number(e.target.value))}
+            >
+              <option value={7}>7 days</option>
+              <option value={14}>14 days</option>
+              <option value={30}>30 days</option>
             </select>
           </SettingRow>
         </Section>
 
         <Section title='Notifications' desc='Alert delivery channels'>
           <SettingRow label='Email alerts'>
-            <Toggle checked={notifEmail} onChange={setNotifEmail} />
+            <Toggle checked={notifEmail} onChange={handleToggleEmail} />
           </SettingRow>
         </Section>
 

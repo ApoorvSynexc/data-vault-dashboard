@@ -30,6 +30,26 @@ import Table from '../../../components/Table';
 import type { TableColumn } from '../../../components/Table';
 import { formatBytes } from '../../../utils';
 
+function isPermissionError(error: unknown): boolean {
+  const msg: string = (error as any)?.response?.data?.message ?? (error as any)?.message ?? '';
+  const status: number = (error as any)?.response?.status ?? 0;
+  return status === 403 || msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('permission');
+}
+
+function NoPermissionState({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-4 px-4' : 'py-12 px-6'}`}>
+      <div className={`flex items-center justify-center rounded-full mb-3 ${compact ? 'w-9 h-9' : 'w-12 h-12'}`} style={{ background: 'rgba(100,116,139,0.1)' }}>
+        <svg viewBox='0 0 24 24' fill='none' stroke='#64748b' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className={compact ? 'w-4 h-4' : 'w-5 h-5'}>
+          <rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/>
+        </svg>
+      </div>
+      <p className='text-sm font-semibold text-gray-700 mb-1'>Access Restricted</p>
+      <p className='text-xs text-gray-400 max-w-xs leading-relaxed'>You don't have permission to view this. Contact your administrator to request access.</p>
+    </div>
+  );
+}
+
 // ── API types ─────────────────────────────────────────────────────────────────
 
 type ArchivalConfigItem = {
@@ -72,6 +92,15 @@ function normalizeStatus(raw: string): string {
     PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'RESUMED',
   };
   return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
+}
+
+function checkSchedulePast(sc?: { scheduling?: { startDate?: string; startTime?: string } }): boolean {
+  if (!sc) return false;
+  const { startDate, startTime } = sc.scheduling ?? {};
+  if (!startDate && !startTime) return false;
+  const dateStr = startDate ?? dayjs().format('YYYY-MM-DD');
+  const timeStr = startTime ?? '00:00';
+  return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
 }
 
 function crmNameToPlatform(name: string): string {
@@ -372,9 +401,6 @@ export default function ArchiveVaultHomePage() {
   const [confirmDelete, setConfirmDelete] = useState<PolicyRow | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmActivate, setConfirmActivate] = useState<PolicyRow | null>(null);
-  const [confirmRunNow, setConfirmRunNow] = useState<PolicyRow | null>(null);
-  const [runNowError, setRunNowError] = useState<string | null>(null);
-
   const activateMutation = useMutation({
     mutationFn: (backupConfigId: string) =>
       archivalService.updateConfig(backupConfigId, { status: 'ACTIVE' }),
@@ -384,16 +410,13 @@ export default function ArchiveVaultHomePage() {
     },
   });
 
-  const runNowMutation = useMutation({
-    mutationFn: (backupConfigId: string) => archivalService.runNow(backupConfigId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['archival-config-list'] });
-      setConfirmRunNow(null);
-      setRunNowError(null);
-    },
-    onError: (error: any) => {
-      setRunNowError(error?.response?.data?.message ?? error?.message ?? 'Failed to trigger archive run. Please try again.');
-    },
+  // Fetch full config detail (with per-object schedules) when Activate dialog is open
+  const activateDetailQuery = useQuery({
+    queryKey: ['archival-config-detail-activate', confirmActivate?.slug],
+    queryFn: () => archivalService.getDetail(confirmActivate!.slug),
+    enabled: !!confirmActivate,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   const pauseMutation = useMutation({
@@ -449,7 +472,7 @@ export default function ArchiveVaultHomePage() {
     }, { replace: true });
   }, [statusFilter, lastJobFilter]);
 
-  const { data: rawListData, isLoading: isLoadingList } = useQuery({
+  const { data: rawListData, isLoading: isLoadingList, isError: isListError, error: listError } = useQuery({
     queryKey: ['archival-config-list', currentCursor, debouncedSearch, statusFilter, lastJobFilter],
     queryFn: () => {
       const apiStatus = statusFilter !== 'All' ? statusFilter : undefined;
@@ -458,7 +481,7 @@ export default function ArchiveVaultHomePage() {
     },
   });
 
-  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+  const { data: statsData, isLoading: isLoadingStats, isError: isStatsError, error: statsError } = useQuery({
     queryKey: ['archival-config-stats'],
     queryFn: () => archivalService.getStats(),
   });
@@ -527,7 +550,7 @@ export default function ArchiveVaultHomePage() {
         <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2.5'>
           Archive Status
         </Typography>
-        <div className='grid grid-cols-4 gap-3'>
+        {isStatsError && isPermissionError(statsError) ? <NoPermissionState compact /> : <div className='grid grid-cols-4 gap-3'>
           <MetricCard loading={isLoading} label='Total archive Jobs' value={stats?.totalArchival != null ? pad(stats.totalArchival) : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><polyline points='21 8 21 21 3 21 3 8'/><rect x='1' y='3' width='22' height='5'/><line x1='10' y1='12' x2='14' y2='12'/></svg>}
           />
@@ -540,7 +563,7 @@ export default function ArchiveVaultHomePage() {
           <MetricCard loading={isLoading} label='Total records archived' value={stats?.totalRecords != null ? Number(stats.totalRecords).toLocaleString() : '--'}
             icon={<svg viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round' className='h-5 w-5'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>}
           />
-        </div>
+        </div>}
       </div>
 
       {/* Table Panel */}
@@ -591,7 +614,7 @@ export default function ArchiveVaultHomePage() {
       >
 
         {/* Table */}
-        {(() => {
+        {isListError && isPermissionError(listError) ? <NoPermissionState /> : (() => {
           type EnrichedPolicy = typeof enriched[number];
           const columns: TableColumn<EnrichedPolicy>[] = [
             {
@@ -664,7 +687,6 @@ export default function ArchiveVaultHomePage() {
                   <ActionDropdown
                     items={[
                       ...(policy.displayStatus === 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Activate', onClick: () => setConfirmActivate(policy) }] : []),
-                      ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.execute') ? [{ label: 'Run Now', onClick: () => { setRunNowError(null); setConfirmRunNow(policy); } }] : []),
                       ...(policy.displayStatus !== 'DRAFT' && permissions.includes('archival.write') ? [{ label: policy.displayStatus === 'PAUSED' ? 'Resume' : 'Pause', onClick: () => setConfirmPause(policy) }] : []),
                       ...(permissions.includes('archival.write') ? [{
                         label: 'Edit Policy',
@@ -782,39 +804,105 @@ export default function ArchiveVaultHomePage() {
 
       {/* Activate confirm */}
       {confirmActivate && (() => {
-        const sched = confirmActivate.scheduleConfig?.scheduling;
-        const isPast = (() => {
-          if (!sched?.startDate && !sched?.startTime) return false;
-          const dateStr = sched.startDate ?? dayjs().format('YYYY-MM-DD');
-          const timeStr = sched.startTime ?? '00:00';
-          return dayjs(`${dateStr}T${timeStr}`).isBefore(dayjs());
-        })();
+        const isDetailLoading = activateDetailQuery.isLoading;
+        const detailRaw = activateDetailQuery.data;
+        const config = (detailRaw as any)?.data ?? detailRaw ?? {};
+
+        const pastObjectNames: string[] = [];
+        if (!isDetailLoading && config) {
+          (config.objects ?? []).forEach((obj: any) => {
+            if (obj.scheduleConfig && checkSchedulePast(obj.scheduleConfig)) {
+              pastObjectNames.push(obj.name ?? obj.id ?? 'Unknown object');
+            }
+          });
+        }
+
+        const globalPast = checkSchedulePast(confirmActivate.scheduleConfig);
+        const isPast = globalPast || pastObjectNames.length > 0;
+
         return (
-          <ConfirmDialog
-            title={`Activate "${confirmActivate.name}"?`}
-            message={isPast ? undefined : 'The archive will become active and run on its scheduled frequency.'}
-            confirmLabel='Activate'
-            loading={activateMutation.isPending}
-            confirmDisabled={isPast}
-            error={isPast ? `The schedule configured for this archive has already passed. Please use Edit Policy to set a future schedule before activating.` : null}
-            onConfirm={() => activateMutation.mutate(confirmActivate.backupConfigId)}
-            onCancel={() => setConfirmActivate(null)}
-          />
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+            <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden'>
+              {/* Header */}
+              <div className='flex items-center justify-between px-6 py-4 border-b border-gray-200'>
+                <h2 className='text-lg font-bold text-gray-900'>Activate Archive</h2>
+                <button onClick={() => setConfirmActivate(null)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+                  <svg className='w-5 h-5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className='px-6 py-5'>
+                {isDetailLoading ? (
+                  <div className='flex items-center gap-3 text-sm text-gray-500'>
+                    <svg className='animate-spin h-4 w-4 text-blue-500' fill='none' viewBox='0 0 24 24'>
+                      <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                      <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z' />
+                    </svg>
+                    Checking schedules…
+                  </div>
+                ) : isPast ? (
+                  <div className='rounded-lg border border-red-200 bg-red-50 p-4'>
+                    <div className='flex gap-3'>
+                      <svg className='mt-0.5 h-5 w-5 shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' />
+                      </svg>
+                      <div>
+                        <p className='text-sm font-semibold text-red-800'>Schedule is in the past</p>
+                        {globalPast && pastObjectNames.length === 0 ? (
+                          <p className='mt-1 text-sm text-red-700'>
+                            The schedule configured for <span className='font-semibold'>"{confirmActivate.name}"</span> has already passed. Please use <span className='font-semibold'>Edit Policy</span> to set a future schedule before activating.
+                          </p>
+                        ) : (
+                          <>
+                            <p className='mt-1 text-sm text-red-700'>
+                              The following object schedule{pastObjectNames.length > 1 ? 's have' : ' has'} already passed. Please use <span className='font-semibold'>Edit Policy</span> to update them before activating.
+                            </p>
+                            <ul className='mt-2 space-y-1'>
+                              {pastObjectNames.map((name) => (
+                                <li key={name} className='flex items-center gap-2 text-sm text-red-700'>
+                                  <span className='inline-block w-1.5 h-1.5 rounded-full bg-red-400 shrink-0' />
+                                  <span className='font-semibold'>{name}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className='text-sm text-gray-600'>
+                    Are you sure you want to activate <span className='font-semibold text-gray-900'>"{confirmActivate.name}"</span>? The archive will become active and run on its configured schedule.
+                  </p>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50'>
+                <button
+                  onClick={() => setConfirmActivate(null)}
+                  className='px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors'
+                >
+                  {isPast ? 'Close' : 'Cancel'}
+                </button>
+                {!isPast && !isDetailLoading && (
+                  <button
+                    onClick={() => activateMutation.mutate(confirmActivate.backupConfigId)}
+                    disabled={activateMutation.isPending}
+                    className='px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                  >
+                    {activateMutation.isPending ? 'Activating…' : 'Activate Archive'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         );
       })()}
 
-      {/* Run Now confirm */}
-      {confirmRunNow && (
-        <ConfirmDialog
-          title={`Run "${confirmRunNow.name}" now?`}
-          message='This will trigger an immediate archive run outside the regular schedule. Note: your upcoming scheduled run will be skipped if you run now.'
-          confirmLabel='Run Now'
-          loading={runNowMutation.isPending}
-          error={runNowError}
-          onConfirm={() => { setRunNowError(null); runNowMutation.mutate(confirmRunNow.backupConfigId); }}
-          onCancel={() => { setConfirmRunNow(null); setRunNowError(null); runNowMutation.reset(); }}
-        />
-      )}
       </div>
     </div>
   );

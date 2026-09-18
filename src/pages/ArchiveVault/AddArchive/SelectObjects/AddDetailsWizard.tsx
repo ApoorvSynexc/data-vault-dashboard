@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 // ─── types ────────────────────────────────────────────────────────────────────
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
-type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'id' | 'picklist';
 type FilterOperator = '>' | '<' | '>=' | '<=' | '=' | '!=' | 'IN' | 'LIKE';
 
 export interface ObjectConfig {
@@ -49,8 +49,26 @@ const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   boolean:  ['=', '!='],
   date:     ['=', '!=', '>', '<', '>=', '<='],
   datetime: ['=', '!=', '>', '<', '>=', '<='],
+  time:     ['=', '!=', '>', '<', '>=', '<='],
   id:       ['=', '!=', 'IN'],
   picklist: ['=', '!='],
+};
+
+// Maps Salesforce CRM field types → internal FieldDataType
+const SF_TYPE_MAP: Record<string, FieldDataType> = {
+  string: 'string', boolean: 'boolean', date: 'date', datetime: 'datetime',
+  id: 'id', picklist: 'picklist',
+  // number-like
+  int: 'number', integer: 'number', double: 'number', currency: 'number',
+  percent: 'number', long: 'number', decimal: 'number',
+  // string-like
+  textarea: 'string', phone: 'string', email: 'string', url: 'string',
+  encryptedstring: 'string', multipicklist: 'picklist', combobox: 'string',
+  address: 'string', location: 'string', autonumber: 'string',
+  // reference → id
+  reference: 'id',
+  // time
+  time: 'time',
 };
 
 const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -327,7 +345,7 @@ export default function AddDetailsWizard({
       const matched = fields.find((f: any) => f.name === cond.field);
       if (!matched) return cond;
       const rawType = (matched.type as string | undefined)?.toLowerCase();
-      const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+      const dataType: FieldDataType = (rawType ? SF_TYPE_MAP[rawType] : undefined) ?? 'string';
       const picklistValues = dataType === 'picklist'
         ? (matched.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
         : cond.picklistValues;
@@ -385,7 +403,7 @@ export default function AddDetailsWizard({
   const handleFieldChange = (id: string, apiName: string) => {
     const matched = fields.find((f: any) => f.name === apiName);
     const rawType = (matched?.type as string | undefined)?.toLowerCase();
-    const dataType: FieldDataType = rawType && rawType in OPERATORS_BY_TYPE ? (rawType as FieldDataType) : 'string';
+    const dataType: FieldDataType = (rawType ? SF_TYPE_MAP[rawType] : undefined) ?? 'string';
     const operator = OPERATORS_BY_TYPE[dataType][0];
     const picklistValues = dataType === 'picklist'
       ? (matched?.picklistValues ?? []).filter((pv: any) => pv.active !== false).map((pv: any) => ({ value: pv.value, label: pv.label }))
@@ -604,9 +622,20 @@ export default function AddDetailsWizard({
   const [startDateError, setStartDateError] = useState('');
   const [endDateError, setEndDateError] = useState('');
   const [startTimeError, setStartTimeError] = useState('');
+  const [schedSubmitted, setSchedSubmitted] = useState(false);
 
   const today = dayjs().format('YYYY-MM-DD');
   const currentTime = dayjs().format('HH:mm');
+
+  const schedNeedsDate = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
+  const schedNeedsTime = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
+  const schedWeeklyErr   = overrideEnabled && frequency === 'Weekly'  && selectedDays.length === 0   ? 'Please select at least one day' : null;
+  const schedMonthsErr   = overrideEnabled && frequency === 'Monthly' && selectedMonths.length === 0  ? 'Please select at least one month' : null;
+  const schedDayErr      = overrideEnabled && frequency === 'Monthly' && !dayOfMonth                  ? 'Please select the day of month' : null;
+  const schedMissingDate    = schedNeedsDate && !startDate ? 'Start date is required' : null;
+  const schedMissingEndDate = overrideEnabled && frequency === 'Custom' && !endDate ? 'Please select an End Date.' : null;
+  const schedMissingTime = schedNeedsTime && !startTime ? 'Start time is required' : null;
+  const schedHasErrors   = !!(startDateError || endDateError || startTimeError || schedWeeklyErr || schedMonthsErr || schedDayErr || schedMissingDate || schedMissingEndDate || schedMissingTime);
 
   const handleStartDateChange = (val: string) => {
     setStartDate(val);
@@ -664,11 +693,11 @@ export default function AddDetailsWizard({
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
+      scheduling.customFrequency = backupFrequency.toUpperCase();
     }
     return {
       timeZone,
       type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL',
-      ...(frequency === 'Custom' ? { customFrequency: backupFrequency.toUpperCase() } : {}),
       scheduling,
     };
   };
@@ -965,7 +994,7 @@ export default function AddDetailsWizard({
                             </div>
                           ) : (
                             <input
-                              type={cond.dataType === 'date' ? 'date' : cond.dataType === 'datetime' ? 'datetime-local' : cond.dataType === 'number' ? 'number' : 'text'}
+                              type={cond.dataType === 'date' ? 'date' : cond.dataType === 'datetime' ? 'datetime-local' : cond.dataType === 'time' ? 'time' : cond.dataType === 'number' ? 'number' : 'text'}
                               value={cond.value}
                               onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
                               placeholder='Value'
@@ -1145,8 +1174,8 @@ export default function AddDetailsWizard({
                         <div className='grid grid-cols-2 gap-4'>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Date</label>
-                            <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                            {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                            <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                            {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                           </div>
                           <div>
                             <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
@@ -1179,13 +1208,13 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
-                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError || (schedSubmitted && schedMissingTime) ? 'border-red-400' : ''}`} />
+                        {(startTimeError || (schedSubmitted && schedMissingTime)) && <p className='mt-1 text-xs text-red-500'>{startTimeError || schedMissingTime}</p>}
                       </div>
                     </div>
                   </div>
@@ -1197,8 +1226,8 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Run At</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
-                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError || (schedSubmitted && schedMissingTime) ? 'border-red-400' : ''}`} />
+                        {(startTimeError || (schedSubmitted && schedMissingTime)) && <p className='mt-1 text-xs text-red-500'>{startTimeError || schedMissingTime}</p>}
                       </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                         <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
@@ -1207,8 +1236,8 @@ export default function AddDetailsWizard({
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                      {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                     </div>
                   </div>
                 )}
@@ -1226,12 +1255,13 @@ export default function AddDetailsWizard({
                           </button>
                         ))}
                       </div>
+                      {schedSubmitted && schedWeeklyErr && <p className='mt-1 text-xs text-red-500'>{schedWeeklyErr}</p>}
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
-                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError || (schedSubmitted && schedMissingTime) ? 'border-red-400' : ''}`} />
+                        {(startTimeError || (schedSubmitted && schedMissingTime)) && <p className='mt-1 text-xs text-red-500'>{startTimeError || schedMissingTime}</p>}
                       </div>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
                         <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
@@ -1240,8 +1270,8 @@ export default function AddDetailsWizard({
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                      {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                      <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                      {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                     </div>
                   </div>
                 )}
@@ -1261,26 +1291,27 @@ export default function AddDetailsWizard({
                             if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
                             return next;
                           })}
-                            className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                            className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : `border ${schedSubmitted && schedMonthsErr ? 'border-red-400' : 'border-gray-300'} text-gray-700 hover:bg-gray-50`}`}>
                             {month}
                           </button>
                         ))}
                       </div>
+                      {schedSubmitted && schedMonthsErr && <p className='mt-1 text-xs text-red-500'>{schedMonthsErr}</p>}
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
                       <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Day of Month</label>
-                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={`${inputCls}${overrideEnabled && !dayOfMonth ? ' border-red-300' : ''}`}>
+                        <select value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)} className={`${inputCls}${schedSubmitted && schedDayErr ? ' border-red-400' : ''}`}>
                           <option value=''>Select day</option>
                           {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
                             <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
                           ))}
                         </select>
-                        {overrideEnabled && !dayOfMonth && <p className='mt-1 text-xs text-red-500'>Please select the day of month</p>}
+                        {schedSubmitted && schedDayErr && <p className='mt-1 text-xs text-red-500'>{schedDayErr}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
-                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError || (schedSubmitted && schedMissingTime) ? 'border-red-400' : ''}`} />
+                        {(startTimeError || (schedSubmitted && schedMissingTime)) && <p className='mt-1 text-xs text-red-500'>{startTimeError || schedMissingTime}</p>}
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
@@ -1290,8 +1321,8 @@ export default function AddDetailsWizard({
                         </select></div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                     </div>
                   </div>
@@ -1303,13 +1334,13 @@ export default function AddDetailsWizard({
                     <div className='grid grid-cols-2 gap-4'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts On</label>
-                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError ? 'border-red-400' : ''}`} />
-                        {startDateError && <p className='mt-1 text-xs text-red-500'>{startDateError}</p>}
+                        <input type='date' value={startDate} min={today} onChange={(e) => handleStartDateChange(e.target.value)} className={`${inputCls} ${startDateError || (schedSubmitted && schedMissingDate) ? 'border-red-400' : ''}`} />
+                        {(startDateError || (schedSubmitted && schedMissingDate)) && <p className='mt-1 text-xs text-red-500'>{startDateError || schedMissingDate}</p>}
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Ends On</label>
-                        <input type='date' value={endDate} min={startDate || today} onChange={(e) => handleEndDateChange(e.target.value)} className={`${inputCls} ${endDateError ? 'border-red-400' : ''}`} />
-                        {endDateError && <p className='mt-1 text-xs text-red-500'>{endDateError}</p>}
+                        <input type='date' value={endDate} min={startDate || today} onChange={(e) => handleEndDateChange(e.target.value)} className={`${inputCls} ${endDateError || (schedSubmitted && schedMissingEndDate) ? 'border-red-400' : ''}`} />
+                        {(endDateError || (schedSubmitted && schedMissingEndDate)) && <p className='mt-1 text-xs text-red-500'>{endDateError || schedMissingEndDate}</p>}
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-4'>
@@ -1319,8 +1350,8 @@ export default function AddDetailsWizard({
                         </select></div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
-                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError ? 'border-red-400' : ''}`} />
-                        {startTimeError && <p className='mt-1 text-xs text-red-500'>{startTimeError}</p>}
+                        <input type='time' value={startTime} min={startDate === today ? currentTime : undefined} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); handleStartTimeChange(e.target.value); }} className={`${inputCls} ${startTimeError || (schedSubmitted && schedMissingTime) ? 'border-red-400' : ''}`} />
+                        {(startTimeError || (schedSubmitted && schedMissingTime)) && <p className='mt-1 text-xs text-red-500'>{startTimeError || schedMissingTime}</p>}
                       </div>
                     </div>
                     <div><label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
@@ -1370,13 +1401,13 @@ export default function AddDetailsWizard({
               {/* Save */}
               {step === 3 && (
                 <button
-                  onClick={handleSave}
-                  disabled={overrideEnabled && (() => {
-                    if (startDate && startDate < today) return true;
-                    if (frequency === 'Custom' && endDate && endDate < (startDate || today)) return true;
-                    if (frequency === 'Monthly' && !dayOfMonth) return true;
-                    return false;
-                  })()}
+                  onClick={() => {
+                    if (overrideEnabled) {
+                      setSchedSubmitted(true);
+                      if (schedHasErrors) return;
+                    }
+                    handleSave();
+                  }}
                   className='px-6 py-2 text-sm font-semibold rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed'>
                   Save & Close
                 </button>

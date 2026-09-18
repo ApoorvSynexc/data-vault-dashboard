@@ -36,20 +36,25 @@ export default function SocialLoginCallback() {
   }, [isSuccess, refreshProfile]);
 
   useEffect(() => {
-    if (error && window.opener && !window.opener.closed) {
-      const message = error instanceof Error ? error.message : 'Unable to complete login. Please try again.';
-      // '*' because the opener may be a cross-origin Salesforce/LWC popup (the
-      // admin-authorization flow), not just this app's own origin — a
-      // same-origin targetOrigin here silently drops the message in that case.
+    if (!error) return;
+    const message = error instanceof Error ? error.message : 'Unable to complete login. Please try again.';
+    if (window.opener && !window.opener.closed) {
       window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message }, '*');
       window.close();
+    } else {
+      // Opener is gone (popup blocker, direct navigation, etc.) — redirect to login with the error
+      window.location.replace(`/login?error=${encodeURIComponent(message)}`);
     }
   }, [error]);
 
   useEffect(() => {
-    if (!hasRequiredParams && window.opener && !window.opener.closed) {
-      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message: 'Login link expired or invalid. Please try again.' }, '*');
+    if (hasRequiredParams) return;
+    const message = 'Login link expired or invalid. Please try again.';
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message }, '*');
       window.close();
+    } else {
+      window.location.replace(`/login?error=${encodeURIComponent(message)}`);
     }
   }, [hasRequiredParams]);
 

@@ -84,9 +84,19 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const [backupIn, setBackupIn] = useState(init.backupIn);
 
   const today = dayjs().format('YYYY-MM-DD');
+  const nowTime = dayjs().format('HH:mm');
 
-  const needsStartDate = overrideEnabled && frequency !== 'One Time';
-  const needsStartTime = overrideEnabled && frequency !== 'One Time';
+  const needsStartDate = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
+  const needsStartTime = overrideEnabled && (frequency !== 'One Time' || runMode === 'scheduleRun');
+
+  const isSchedulePast = (() => {
+    if (!overrideEnabled) return false;
+    if (frequency === 'One Time' && runMode === 'runNow') return false;
+    if (!startDate) return false;
+    if (startDate < today) return true;
+    if (startDate === today && startTime && startTime <= nowTime) return true;
+    return false;
+  })();
 
   const startDateError = (() => {
     if (!overrideEnabled) return null;
@@ -112,10 +122,13 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const weeklyError = overrideEnabled && frequency === 'Weekly' && selectedDays.length === 0
     ? 'Please select at least one day' : null;
 
+  const monthlyNoMonthsError = overrideEnabled && frequency === 'Monthly' && selectedMonths.length === 0
+    ? 'Please select at least one month' : null;
+
   const monthlyError = overrideEnabled && frequency === 'Monthly' && !dayOfMonth
     ? 'Please select the day of month' : null;
 
-  const hasErrors = !!(startDateError || startTimeError || endDateError || weeklyError || monthlyError);
+  const hasErrors = !!(startDateError || startTimeError || endDateError || weeklyError || monthlyNoMonthsError || monthlyError);
 
   const showErr = (err: string | null) => submitted && err
     ? <p className='mt-1 text-xs text-red-500'>{err}</p>
@@ -161,6 +174,18 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
 
         {/* Body */}
         <div className='flex-1 overflow-y-auto px-6 py-5 space-y-5'>
+          {/* Past-schedule warning banner */}
+          {isSchedulePast && (
+            <div className='flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3'>
+              <svg className='w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24' strokeWidth='2'>
+                <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+              </svg>
+              <p className='text-sm text-amber-700'>
+                The scheduled start time for <span className='font-medium'>{objectName}</span> has already passed. Please update the date and time to a future value before saving.
+              </p>
+            </div>
+          )}
+
           {/* Override toggle */}
           <div className='flex items-center justify-between gap-4 p-4 rounded-xl'
             style={{ background: overrideEnabled ? 'rgba(21,93,252,0.04)' : '#F8FAFC', border: `1px solid ${overrideEnabled ? 'rgba(21,93,252,0.18)' : '#E2E8F0'}` }}>
@@ -202,10 +227,16 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                 ))}
                 {runMode === 'scheduleRun' && (
                   <div className='grid grid-cols-2 gap-4 pt-2'>
-                    <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Date</label>
-                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} style={inputStyle} /></div>
-                    <div><label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
-                      <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={inputCls} style={inputStyle} /></div>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1'>Date</label>
+                      <input type='date' value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputCls}${submitted && startDateError ? ' border-red-400' : ''}`} style={inputStyle} />
+                      {showErr(startDateError)}
+                    </div>
+                    <div>
+                      <label className='block text-xs font-semibold text-gray-700 mb-1'>Time</label>
+                      <input type='time' value={startTime} onChange={(e) => { if (/^\d{2}:\d{2}$/.test(e.target.value)) e.target.blur(); setStartTime(e.target.value); }} className={`${inputCls}${submitted && startTimeError ? ' border-red-400' : ''}`} style={inputStyle} />
+                      {showErr(startTimeError)}
+                    </div>
                     <div className='col-span-2'><label className='block text-xs font-semibold text-gray-700 mb-1'>Time Zone</label>
                       <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls} style={inputStyle}>
                         {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
@@ -310,11 +341,12 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
                         if (dayOfMonth && parseInt(dayOfMonth) > newMax) setDayOfMonth('');
                         return next;
                       })}
-                        className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                        className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${selectedMonths.includes(month) ? 'bg-blue-600 text-white' : `border ${submitted && monthlyNoMonthsError ? 'border-red-400' : 'border-gray-300'} text-gray-700 hover:bg-gray-50`}`}>
                         {month}
                       </button>
                     ))}
                   </div>
+                  {showErr(monthlyNoMonthsError)}
                 </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
@@ -386,11 +418,12 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
           <button
             onClick={() => {
               setSubmitted(true);
-              if (hasErrors) return;
+              if (hasErrors || isSchedulePast) return;
               onSave(overrideEnabled ? computeSchedule() : undefined);
               onClose();
             }}
-            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
+            disabled={isSchedulePast}
+            className='px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'>
             Save Schedule
           </button>
         </div>
@@ -447,7 +480,7 @@ export default function Step5({
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [now, setNow] = useState(() => dayjs());
+const [now, setNow] = useState(() => dayjs());
   useEffect(() => {
     const id = setInterval(() => setNow(dayjs()), 60_000);
     return () => clearInterval(id);
@@ -502,10 +535,28 @@ export default function Step5({
   const schedStartDate = scheduleConfig?.scheduling.startDate;
   const schedStartTime = scheduleConfig?.scheduling.startTime;
   const isRunNow = scheduleConfig?.scheduling.frequency === 'ONCE' && !schedStartDate && !schedStartTime;
-  const isSchedulePast = !!scheduleConfig && !isRunNow && (() => {
-    if (!schedStartDate) return false;
-    const dt = schedStartTime ? `${schedStartDate}T${schedStartTime}` : schedStartDate;
-    return dayjs(dt).isBefore(now);
+
+  // If any object has a per-object schedule override, those take precedence over the global
+  // schedule for blocking purposes — only fall back to global when no overrides exist.
+  const objectsWithSchedule = dummyObjects.filter((o) => (o as any).scheduleConfig);
+  const isSchedulePast = (() => {
+    if (objectsWithSchedule.length > 0) {
+      return objectsWithSchedule.some((o) => {
+        const sc = (o as any).scheduleConfig;
+        const sd = sc?.scheduling?.startDate;
+        const st = sc?.scheduling?.startTime;
+        if (!sd && !st) return false;
+        const isOnce = sc?.scheduling?.frequency === 'ONCE' || sc?.type === 'ONE_TIME';
+        if (isOnce && !sd && !st) return false;
+        const dt = st ? `${sd ?? dayjs().format('YYYY-MM-DD')}T${st}` : sd;
+        return dayjs(dt).isBefore(now);
+      });
+    }
+    return !!scheduleConfig && !isRunNow && (() => {
+      if (!schedStartDate) return false;
+      const dt = schedStartTime ? `${schedStartDate}T${schedStartTime}` : schedStartDate;
+      return dayjs(dt).isBefore(now);
+    })();
   })();
   const scheduleDisplay = isRunNow
     ? 'One Time (Archive Now)'
@@ -517,9 +568,11 @@ export default function Step5({
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
-      await archivalService.updateConfig(backupConfigId, { ...archivalPayload, name: localName, backupStatus } as any);
+      const payload = { ...archivalPayload, name: localName, backupStatus };
+      await archivalService.updateConfig(backupConfigId, payload as any);
     } else {
-      await archivalService.applyConfig({ ...archivalPayload, name: localName, status: backupStatus } as any);
+      const payload = { ...archivalPayload, name: localName, status: backupStatus };
+      await archivalService.applyConfig(payload as any);
     }
   };
 
@@ -820,6 +873,16 @@ export default function Step5({
 
       </div>
 
+      {/* Encrypted fields note */}
+      <div className='flex-shrink-0 mx-6 mb-3 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3'>
+        <svg className='mt-0.5 shrink-0 text-amber-500' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+          <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+        </svg>
+        <p className='text-xs text-amber-800 leading-relaxed'>
+          <span className='font-semibold'>Note:</span> If any object has encrypted fields and you don't have the system permission <span className='font-semibold'>"View Encrypted Data"</span>, we will not be able to archive the value of those fields and their versions will also not be created.
+        </p>
+      </div>
+
       {/* Sticky Footer */}
       <div className='flex-shrink-0 flex justify-between gap-4 px-6 py-4 bg-gray-50 border-t border-gray-200'>
         <button onClick={() => navigate('/archive-vault')}
@@ -827,10 +890,12 @@ export default function Step5({
           Cancel
         </button>
         <div className='flex gap-3'>
-          <button onClick={onBack}
-            className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
-            ←Back
-          </button>
+          {!editMode && (
+            <button onClick={onBack}
+              className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
+              ←Back
+            </button>
+          )}
           {!editMode && (
             <PermissionGate permission={['archival.write', 'archival.execute']}>
               <button onClick={handleSaveDraft} disabled={isLoading}
@@ -842,13 +907,26 @@ export default function Step5({
               </button>
             </PermissionGate>
           )}
+          {editMode && (
+            <PermissionGate permission={['archival.write', 'archival.execute']}>
+              <button onClick={handleSaveDraft} disabled={isLoading}
+                className='px-6 py-2 font-medium border rounded-lg transition-colors disabled:opacity-50'
+                style={{ borderColor: '#155DFC', color: '#155DFC', background: 'white' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#EFF6FF')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}>
+                {isLoading ? 'Saving…' : 'Save Changes'}
+              </button>
+            </PermissionGate>
+          )}
           <PermissionGate permission='archival.execute'>
-            <button onClick={editMode ? handleSaveChanges : handleRunArchive} disabled={isLoading || isSchedulePast}
+            <button
+              onClick={editMode ? handleSaveChanges : handleRunArchive}
+              disabled={isLoading || isSchedulePast}
               className='px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-white'
               style={{ background: '#155DFC' }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#1246CC')}
+              onMouseEnter={(e) => { if (!isLoading && !isSchedulePast) e.currentTarget.style.background = '#1246CC'; }}
               onMouseLeave={(e) => (e.currentTarget.style.background = '#155DFC')}>
-              {isLoading ? (editMode ? 'Saving…' : 'Creating…') : (editMode ? 'Save Changes' : 'Start Archive')}
+              {isLoading ? (editMode ? 'Activating…' : 'Creating…') : (editMode ? 'Activate Draft' : 'Start Archive')}
             </button>
           </PermissionGate>
         </div>

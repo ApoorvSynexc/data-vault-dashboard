@@ -28,7 +28,7 @@ function MetricCard({ label, value, icon }: { label: string; value: string | num
 
 interface Props {
   onNewRestore: () => void;
-  onViewHistory?: (jobId?: string) => void;
+  onViewHistory?: (jobId?: string, isExport?: boolean) => void;
 }
 
 function Dropdown({
@@ -243,7 +243,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
       render: (row) => (
         onViewHistory ? (
           <button
-            onClick={() => onViewHistory(row.id)}
+            onClick={() => onViewHistory(row.id, row.isExport)}
             className='text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition'
           >
             View
