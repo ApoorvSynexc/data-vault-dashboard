@@ -229,6 +229,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   const restoreService = useRestoreService();
   const [isSuccess, setIsSuccess] = useState(false);
   const [showAckModal, setShowAckModal] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Editable job detail fields pre-filled from restorePayload
   const [jobName, setJobName]     = useState(restorePayload.jobDetail?.name ?? '');
@@ -257,7 +258,10 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
       },
     }),
     onSuccess: () => setIsSuccess(true),
-    onError: (err) => console.error('[RestoreJob] createRestoreJob failed:', err),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setSubmitError(msg);
+    },
   });
 
   const handleRun = () => {
@@ -266,6 +270,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
 
   const handleConfirm = (_enableRollback: boolean) => {
     setShowAckModal(false);
+    setSubmitError(null);
     createJobMutation.mutate();
   };
 
@@ -468,6 +473,23 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
           </div>
         </div>
       </div>
+
+      {/* API error banner */}
+      {submitError && (
+        <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 bg-red-50 border-t border-red-200'>
+          <div className='flex items-center gap-2'>
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+              <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+            </svg>
+            <p className='text-sm font-medium text-red-700'>{submitError}</p>
+          </div>
+          <button onClick={() => setSubmitError(null)} className='text-red-400 hover:text-red-600 transition-colors'>
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+              <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Sticky footer */}
       <div className='flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 bg-white'>
