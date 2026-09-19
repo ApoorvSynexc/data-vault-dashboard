@@ -721,10 +721,19 @@ export default function DashboardV2() {
             <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-100'>
               <button
                 onClick={() => {
+                  const j = selectedJob.job;
+                  const type = selectedJob.type;
                   setSelectedJob(null);
-                  if (selectedJob.type === 'archive') navigate('/archive-vault');
-                  else if (selectedJob.type === 'restore') navigate('/restore-center');
-                  else navigate('/backup-management');
+                  if (type === 'archive') {
+                    const slug = j.archivalConfigId ?? j.backupConfig?.slug ?? j.backupConfig?.backupConfigId ?? j.backupConfigId;
+                    navigate(slug ? `/archive-vault/${slug}` : '/archive-vault');
+                  } else if (type === 'restore') {
+                    const jobId = j.restoreJobId ?? j.id;
+                    navigate(jobId ? `/restore-center/history/${jobId}` : '/restore-center');
+                  } else {
+                    const slug = j.backupConfig?.slug ?? j.backupConfig?.backupConfigId ?? j.backupConfigId;
+                    navigate(slug ? `/backup-management-v2/details/${slug}` : '/backup-management');
+                  }
                 }}
                 className='text-xs font-semibold px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors'
               >
