@@ -22,6 +22,12 @@ import type { BuiltChildNode } from './types';
 
 type RelType = 'MasterDetail' | 'RequiredLookup' | 'Lookup';
 
+export type MdWarning = {
+  childName: string;
+  fieldApiName?: string;
+  otherParents: string[]; // other objects this child is also a MasterDetail child of
+};
+
 interface TNode {
   id: string;
   apiName: string;
@@ -30,6 +36,7 @@ interface TNode {
   depth: number;
   parentId: string | null;
   childIds: string[];
+  otherMdParents?: string[]; // populated when parent[] contains other MD relationships
 }
 
 type FlowNodeData = {
@@ -102,6 +109,7 @@ function flattenChildren(
   parentId: string,
   depth: number,
   map: Map<string, TNode>,
+  rootName: string,
 ) {
   for (const n of nodes) {
     // Combine name + field for a unique key:
@@ -113,12 +121,23 @@ function flattenChildren(
       : n.restrictedDelete
         ? 'RequiredLookup'
         : 'Lookup';
+
+    // Detect other MasterDetail parents: parent[] entries where cascadeDelete=true
+    // and referenceTo doesn't point to the root object being archived.
+    let otherMdParents: string[] | undefined;
+    if (relType === 'MasterDetail' && Array.isArray(n.parent) && n.parent.length > 0) {
+      const others = (n.parent as { cascadeDelete: boolean; referenceTo?: string[] }[])
+        .filter((p) => p.cascadeDelete && p.referenceTo?.some((ref) => ref !== rootName))
+        .flatMap((p) => (p.referenceTo ?? []).filter((ref) => ref !== rootName));
+      if (others.length > 0) otherMdParents = others;
+    }
+
     const existing = map.get(parentId);
     if (existing && !existing.childIds.includes(id)) existing.childIds.push(id);
     if (!map.has(id)) {
-      map.set(id, { id, apiName: n.name, fieldApiName: n.field, relType, depth, parentId, childIds: [] });
+      map.set(id, { id, apiName: n.name, fieldApiName: n.field, relType, depth, parentId, childIds: [], otherMdParents });
     }
-    if (n.children?.length) flattenChildren(n.children, id, depth + 1, map);
+    if (n.children?.length) flattenChildren(n.children, id, depth + 1, map, rootName);
   }
 }
 
@@ -440,6 +459,7 @@ interface ChildHierarchyPanelProps {
   initialBuiltChildren?: BuiltChildNode[];
   onSelectionChange: (children: BuiltChildNode[]) => void;
   onLoadingChange?: (loading: boolean) => void;
+  onMasterDetailWarnings?: (warnings: MdWarning[]) => void;
 }
 
 // ── Main panel component ──────────────────────────────────────────────────────
@@ -449,6 +469,7 @@ export function ChildHierarchyPanel({
   initialBuiltChildren,
   onSelectionChange,
   onLoadingChange,
+  onMasterDetailWarnings,
 }: ChildHierarchyPanelProps) {
   const [treeMap, setTreeMap] = useState<Map<string, TNode>>(new Map());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -458,9 +479,11 @@ export function ChildHierarchyPanel({
 
   // Prevents emitting onSelectionChange during initial load/restoration
   const isReadyRef = useRef(false);
-  // Always holds the latest callback without being a dep of the emit effect
+  // Always holds the latest callbacks without being deps of the emit effect
   const onSelectionChangeRef = useRef(onSelectionChange);
   onSelectionChangeRef.current = onSelectionChange;
+  const onMdWarningsRef = useRef(onMasterDetailWarnings);
+  onMdWarningsRef.current = onMasterDetailWarnings;
 
   const crmService = useCrmMetadataService();
 
@@ -488,7 +511,16 @@ export function ChildHierarchyPanel({
         if (cancelled) return;
 
         const children: DepthChildNode[] = (res as any)?.data?.children ?? (res as any)?.children ?? [];
-        flattenChildren(children, objectName, 1, map);
+        flattenChildren(children, objectName, 1, map, objectName);
+
+        // Collect multi-parent MasterDetail warnings from the freshly built tree
+        const warnings: MdWarning[] = [];
+        for (const [, node] of map) {
+          if (node.otherMdParents?.length) {
+            warnings.push({ childName: node.apiName, fieldApiName: node.fieldApiName, otherParents: node.otherMdParents });
+          }
+        }
+        onMdWarningsRef.current?.(warnings);
 
         // Auto-select MasterDetail and RequiredLookup nodes
         const mdIds = map.get(objectName)!.childIds.flatMap((cid) => collectAutoIds(cid, map));

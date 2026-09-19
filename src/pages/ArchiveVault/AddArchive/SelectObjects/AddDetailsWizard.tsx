@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
-import { ChildHierarchyPanel } from './ChildHierarchyPanel';
+import { ChildHierarchyPanel, type MdWarning } from './ChildHierarchyPanel';
 import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import dayjs from 'dayjs';
@@ -30,6 +30,7 @@ interface AddDetailsWizardProps {
   initialConfig?: ObjectConfig;
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
+  onMasterDetailWarnings?: (warnings: MdWarning[]) => void;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -271,7 +272,7 @@ function FieldDropdown({ value, options, onChange }: {
 
 export default function AddDetailsWizard({
   objectName, objectLabel, recordCount, crmId,
-  isParent = true, initialConfig, onSave, onClose,
+  isParent = true, initialConfig, onSave, onClose, onMasterDetailWarnings,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
   const crmMetadataService = useCrmMetadataService();
@@ -870,6 +871,7 @@ export default function AddDetailsWizard({
               initialBuiltChildren={initialConfig?.builtChildren}
               onSelectionChange={setBuiltChildren}
               onLoadingChange={setChildPanelLoading}
+              onMasterDetailWarnings={onMasterDetailWarnings}
             />
           </div>
 

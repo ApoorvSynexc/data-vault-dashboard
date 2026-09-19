@@ -6,6 +6,7 @@ import ProgressBar from '../ProgressBar';
 import { parseSalesforceError } from '../../../../utils';
 import AddDetailsWizard from './AddDetailsWizard';
 import type { ObjectConfig } from './AddDetailsWizard';
+import type { MdWarning } from './ChildHierarchyPanel';
 import type { ArchivalCondition, BuiltChildNode, ScheduleConfig } from './types';
 
 export type { ArchivalCondition };
@@ -110,6 +111,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // Wizard target — which object "Add Details" was clicked on
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
+  // MasterDetail multi-parent warnings per object UUID — blocks Next until resolved
+  const [mdWarningsMap, setMdWarningsMap] = useState<Record<string, MdWarning[]>>({});
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -165,7 +168,16 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setSelectedObjects(new Set());
   };
 
+  // Flatten active MD warnings across all currently selected objects
+  const activeMdWarnings: MdWarning[] = Array.from(selectedObjects).flatMap(
+    (uuid) => mdWarningsMap[uuid] ?? [],
+  );
+
   const handleNext = () => {
+    if (activeMdWarnings.length > 0) {
+      setFilterError('Resolve MasterDetail parent conflicts shown below before proceeding.');
+      return;
+    }
     // Collect all object IDs already covered as built children of another selected object.
     // Those don't need their own independent config entry.
     const builtChildIds = new Set<string>();
@@ -239,6 +251,13 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             setWizardTarget(null);
           }}
           onClose={() => setWizardTarget(null)}
+          onMasterDetailWarnings={(warnings) => {
+            const id = wizardTarget.objectId;
+            setMdWarningsMap((prev) => {
+              if (warnings.length === 0 && !prev[id]) return prev;
+              return { ...prev, [id]: warnings };
+            });
+          }}
         />
       )}
 
@@ -486,6 +505,28 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
 
         {/* Sticky Footer */}
         <div className='flex-shrink-0 flex flex-col gap-2 px-6 py-4 bg-gray-50 border-t border-gray-200'>
+          {activeMdWarnings.length > 0 && (
+            <div className='flex flex-col gap-1.5 px-4 py-3 rounded-lg text-sm'
+              style={{ background: 'rgba(217,119,6,0.07)', border: '1px solid rgba(217,119,6,0.25)' }}>
+              <div className='flex items-center gap-2 font-semibold' style={{ color: '#b45309' }}>
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                  <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z' />
+                  <line x1='12' y1='9' x2='12' y2='13' /><line x1='12' y1='17' x2='12.01' y2='17' />
+                </svg>
+                MasterDetail parent conflict — open "Set Configuration" for the affected object and review the child hierarchy
+              </div>
+              <ul className='flex flex-col gap-0.5 pl-5 list-disc' style={{ color: '#92400e' }}>
+                {activeMdWarnings.map((w, i) => (
+                  <li key={i} className='text-xs'>
+                    <strong>{w.childName}</strong>
+                    {w.fieldApiName ? ` (via ${w.fieldApiName})` : ''} is also a MasterDetail child of{' '}
+                    <strong>{w.otherParents.join(', ')}</strong>. Archive{' '}
+                    {w.otherParents.join(', ')} separately or include it to maintain data integrity.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {filterError && (
             <div className='flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium'
               style={{ background: 'rgba(239,68,68,0.08)', color: '#dc2626', border: '1px solid rgba(239,68,68,0.2)' }}>

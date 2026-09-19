@@ -23,6 +23,17 @@ export type CrmMetadataObject = {
 
 type ObjectListResponse = CrmMetadataObject[];
 
+// Describes one parent relationship field (from Salesforce describe) returned by
+// the depth-children endpoint's per-node `parent` array.
+export type ParentFieldDescriptor = {
+  name: string;
+  cascadeDelete: boolean;
+  restrictedDelete: boolean;
+  referenceTo: string[];
+  label?: string;
+  [key: string]: unknown;
+};
+
 // Same per-node shape as the describe endpoint's `children`, but each node can
 // itself carry a nested `children` array (relationships followed to full depth).
 export type DepthChildNode = {
@@ -32,6 +43,8 @@ export type DepthChildNode = {
   // The relationship field on this object that points back to its parent (e.g. "AccountId")
   field?: string;
   children?: DepthChildNode[];
+  // All parent relationship fields for this object — used to detect multi-parent MasterDetail situations
+  parent?: ParentFieldDescriptor[];
   [key: string]: unknown;
 };
 
