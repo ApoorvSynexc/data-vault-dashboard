@@ -872,6 +872,7 @@ export default function AddDetailsWizard({
               onSelectionChange={setBuiltChildren}
               onLoadingChange={setChildPanelLoading}
               onMasterDetailWarnings={onMasterDetailWarnings}
+              isVisible={step === 2}
             />
           </div>
 

@@ -341,7 +341,7 @@ const EDGE_TYPES = { expandEdge: ExpandEdge };
 // ── Inner canvas ──────────────────────────────────────────────────────────────
 
 function FlowCanvas({
-  treeMap, rootId, expandedIds, checkedIds, onToggleExpand, onCheck,
+  treeMap, rootId, expandedIds, checkedIds, onToggleExpand, onCheck, isVisible,
 }: {
   treeMap: Map<string, TNode>;
   rootId: string;
@@ -349,6 +349,7 @@ function FlowCanvas({
   checkedIds: Set<string>;
   onToggleExpand: (id: string) => void;
   onCheck: (id: string) => void;
+  isVisible: boolean;
 }) {
   const { fitView } = useReactFlow();
 
@@ -400,9 +401,11 @@ function FlowCanvas({
       }];
     }), [treeMap, visibleIds, positions, checkedIds, expandedIds, onCheck, onToggleExpand]);
 
-  // Refit after nodes are actually painted (double-RAF ensures layout is complete)
+  // Refit after nodes are painted, or when the panel becomes visible.
+  // isVisible is the key dep: fitView is a no-op when the container has display:none,
+  // so we must re-trigger it the moment the wizard navigates to this step.
   useEffect(() => {
-    if (rfNodes.length === 0) return;
+    if (rfNodes.length === 0 || !isVisible) return;
     let raf1: number, raf2: number;
     raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
@@ -410,9 +413,8 @@ function FlowCanvas({
       });
     });
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
-  // rfNodes.length covers initial appearance; visibleIds.size covers expand/collapse
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rfNodes.length, visibleIds.size]);
+  }, [rfNodes.length, visibleIds.size, isVisible]);
 
   const rfEdges: FlowEdge[] = useMemo(() =>
     [...visibleIds]
@@ -460,6 +462,7 @@ interface ChildHierarchyPanelProps {
   onSelectionChange: (children: BuiltChildNode[]) => void;
   onLoadingChange?: (loading: boolean) => void;
   onMasterDetailWarnings?: (warnings: MdWarning[]) => void;
+  isVisible?: boolean;
 }
 
 // ── Main panel component ──────────────────────────────────────────────────────
@@ -470,6 +473,7 @@ export function ChildHierarchyPanel({
   onSelectionChange,
   onLoadingChange,
   onMasterDetailWarnings,
+  isVisible = true,
 }: ChildHierarchyPanelProps) {
   const [treeMap, setTreeMap] = useState<Map<string, TNode>>(new Map());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -603,6 +607,7 @@ export function ChildHierarchyPanel({
           checkedIds={checkedIds}
           onToggleExpand={handleToggleExpand}
           onCheck={handleCheck}
+          isVisible={isVisible}
         />
       </ReactFlowProvider>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
