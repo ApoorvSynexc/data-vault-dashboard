@@ -168,9 +168,25 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     setSelectedObjects(new Set());
   };
 
-  // Flatten active MD warnings across all currently selected objects
-  const activeMdWarnings: MdWarning[] = Array.from(selectedObjects).flatMap(
-    (uuid) => mdWarningsMap[uuid] ?? [],
+  // API names of all currently selected objects
+  const selectedApiNames = useMemo(
+    () => new Set(allObjects.filter((o) => selectedObjects.has(o.uuid)).map((o) => o.id)),
+    [allObjects, selectedObjects],
+  );
+
+  // Flatten active MD warnings — suppress any warning whose conflicting parents are already
+  // covered by another selected object in this archive run.
+  const activeMdWarnings: MdWarning[] = useMemo(
+    () =>
+      Array.from(selectedObjects).flatMap((uuid) =>
+        (mdWarningsMap[uuid] ?? [])
+          .map((w) => ({
+            ...w,
+            otherParents: w.otherParents.filter((p) => !selectedApiNames.has(p)),
+          }))
+          .filter((w) => w.otherParents.length > 0),
+      ),
+    [selectedObjects, mdWarningsMap, selectedApiNames],
   );
 
   const handleNext = () => {

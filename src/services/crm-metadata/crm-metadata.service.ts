@@ -50,6 +50,9 @@ export type DepthChildNode = {
 
 type ObjectDepthChildrenResponse = {
   children?: DepthChildNode[];
+  // Root-level parent descriptors for children that have multiple MasterDetail parents.
+  // Each entry is a field descriptor on the child object; match by name === child.field.
+  parent?: ParentFieldDescriptor[];
 };
 
 export function useCrmMetadataService() {
