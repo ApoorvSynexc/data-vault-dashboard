@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useBackupConfigService } from '../../services/backup-config/backup-config.service';
+import { useArchivalService } from '../../services/archival/archival.service';
 import { formatBytes } from '../../utils';
 import Table from '../../components/Table';
 import type { TableColumn } from '../../components/Table';
@@ -121,6 +122,8 @@ export default function DashboardV2() {
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
 
   const backupConfigService = useBackupConfigService();
+  const archivalService = useArchivalService();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Determine which tabs this user can see, then default to the first available
   const hasBackup = permissions.some((p) => p.startsWith('backup'));
@@ -720,24 +723,45 @@ export default function DashboardV2() {
             {/* Modal footer */}
             <div className='flex justify-end gap-3 px-6 py-4 border-t border-gray-100'>
               <button
-                onClick={() => {
+                disabled={isNavigating}
+                onClick={async () => {
                   const j = selectedJob.job;
                   const type = selectedJob.type;
-                  setSelectedJob(null);
-                  if (type === 'archive') {
-                    const slug = j.archivalConfigId ?? j.backupConfig?.slug ?? j.backupConfig?.backupConfigId ?? j.backupConfigId;
-                    navigate(slug ? `/archive-vault/${slug}` : '/archive-vault');
-                  } else if (type === 'restore') {
+                  if (type === 'restore') {
+                    setSelectedJob(null);
                     const jobId = j.restoreJobId ?? j.id;
                     navigate(jobId ? `/restore-center/history/${jobId}` : '/restore-center');
-                  } else {
-                    const slug = j.backupConfig?.slug ?? j.backupConfig?.backupConfigId ?? j.backupConfigId;
-                    navigate(slug ? `/backup-management-v2/details/${slug}` : '/backup-management');
+                    return;
+                  }
+                  setIsNavigating(true);
+                  try {
+                    if (type === 'archive') {
+                      const configId = j.archivalConfigId ?? j.backupConfigId;
+                      const res = await archivalService.getList(undefined, undefined, undefined, undefined, false);
+                      const list: any[] = (res as any)?.data ?? [];
+                      const config = list.find((c: any) => c.backupConfigId === configId);
+                      const slug = config?.slug ?? j.backupConfig?.slug;
+                      setSelectedJob(null);
+                      navigate(slug ? `/archive-vault/${slug}` : '/archive-vault');
+                    } else {
+                      const configId = j.backupConfigId ?? j.backupConfig?.backupConfigId;
+                      const res = await backupConfigService.listBackupConfigs(false);
+                      const list: any[] = (res as any)?.data ?? [];
+                      const config = list.find((c: any) => c.backupConfigId === configId);
+                      const slug = config?.slug ?? j.backupConfig?.slug;
+                      setSelectedJob(null);
+                      navigate(slug ? `/backup-management-v2/details/${slug}` : '/backup-management');
+                    }
+                  } catch {
+                    setSelectedJob(null);
+                    navigate(type === 'archive' ? '/archive-vault' : '/backup-management');
+                  } finally {
+                    setIsNavigating(false);
                   }
                 }}
-                className='text-xs font-semibold px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors'
+                className='text-xs font-semibold px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               >
-                View Full Details
+                {isNavigating ? 'Loading…' : 'View Full Details'}
               </button>
               <button
                 onClick={() => setSelectedJob(null)}
