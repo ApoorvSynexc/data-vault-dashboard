@@ -3,6 +3,9 @@
 // 401 refresh retries, and response envelope unwrapping automatically.
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const slugOrId = (s: string) => UUID_RE.test(s) ? { backupConfigId: s } : { slug: s };
+
 // All archival endpoint paths in one place so URL changes only need to happen here
 export const ARCHIVAL_ENDPOINTS = {
   fields: '/v1/archival-config/fields',
@@ -175,7 +178,7 @@ export function useArchivalService() {
 
     // GET /v1/archival-config?slug= — full detail of one policy including object tree
     getDetail: (slug: string): Promise<any> =>
-      http.get(ARCHIVAL_ENDPOINTS.detail, { query: { slug } }),
+      http.get(ARCHIVAL_ENDPOINTS.detail, { query: slugOrId(slug) }),
 
     // PUT /v1/archival-config?backupConfigId= — update status (ACTIVE, PAUSED, etc.)
     updateConfig: (backupConfigId: string, payload: Record<string, unknown>): Promise<any> =>
@@ -192,7 +195,7 @@ export function useArchivalService() {
     // GET /v1/archival-job/list — paginated archive job run history
     // Supports cursor-based pagination: pass the nextCursor from the previous response
     listJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string) => {
-      const query: any = { slug, pagination, limit };
+      const query: any = { ...slugOrId(slug), pagination, limit };
       if (cursor) query.cursor = cursor;
       if (status) query.status = status.toUpperCase();
       return http.get<ArchivalJobListApiResponse>(ARCHIVAL_ENDPOINTS.jobs, { query });
