@@ -219,11 +219,11 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                       <p className='text-xs font-medium text-amber-800'>
                         {(displayData as any).upcomingJob.skipReason ?? 'Next automatic run will be skipped.'}
                       </p>
-                      {(displayData as any).upcomingJob.skipDateTime && (
-                        <p className='mt-1 text-xs text-amber-700'>
-                          Skipped run at: <span className='font-semibold'>{formatDateTime((displayData as any).upcomingJob.skipDateTime, displayData?.scheduleConfig?.timeZone)}</span>
-                        </p>
-                      )}
+                      <p className='mt-1 text-xs text-amber-700'>
+                        Skipped run at: <span className='font-semibold'>
+                          {calculateNextRun(displayData?.scheduleConfig?.scheduling, displayData?.scheduleConfig?.timeZone)}
+                        </span>
+                      </p>
                     </div>
                   </div>
                 ) : (
