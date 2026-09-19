@@ -193,12 +193,12 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         <div className='flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4'>
           <div className='flex items-start justify-between gap-4'>
             <div>
-              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 8 of 9</p>
+              <p className='text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1'>Step 7 of 8</p>
               <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>Preview &amp; Validate</h1>
               <p className='text-gray-500 mt-1 text-sm'>Review impact before committing — no data has been written yet.</p>
             </div>
             <span className='flex-shrink-0 text-sm font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full whitespace-nowrap'>
-              Step <span className='text-blue-600'>8</span> of 9
+              Step <span className='text-blue-600'>7</span> of 8
             </span>
           </div>
           <div className='mt-4'>
