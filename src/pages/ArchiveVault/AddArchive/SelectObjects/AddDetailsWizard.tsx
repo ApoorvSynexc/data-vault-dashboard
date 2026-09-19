@@ -19,6 +19,7 @@ export interface ObjectConfig {
   soqlQuery?: string;
   builtChildren: BuiltChildNode[];
   schedule?: ScheduleConfig;
+  mdWarnings?: MdWarning[];
 }
 
 interface AddDetailsWizardProps {

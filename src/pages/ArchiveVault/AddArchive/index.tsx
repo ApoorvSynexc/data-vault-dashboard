@@ -89,7 +89,10 @@ export default function AddArchive() {
             setSelectedObjects(objects);
             goNext();
           }}
-          onBack={goBack}
+          onBack={(objects) => {
+            setSelectedObjects(objects);
+            goBack();
+          }}
         />
       )}
       {currentStep === 4 && (

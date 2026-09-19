@@ -17,6 +17,7 @@ export type SelectedArchiveObject = {
   name: string;
   type: 'STANDARD' | 'CUSTOM';
   scheduleConfig?: ScheduleConfig;
+  mdWarnings?: MdWarning[];
   archivalPayload?: {
     name: string;
     condition: ArchivalCondition;
@@ -51,7 +52,7 @@ interface Step3Props {
   crmId?: string | null;
   initialSelectedObjects?: SelectedArchiveObject[];
   onNext?: (objects: SelectedArchiveObject[]) => void;
-  onBack?: () => void;
+  onBack?: (objects: SelectedArchiveObject[]) => void;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -98,6 +99,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
         soqlQuery: cond?.type === 'SOQL' ? (cond as any).soqlQuery : undefined,
         builtChildren: (o.archivalPayload?.children as BuiltChildNode[] | undefined) ?? [],
         schedule: o.scheduleConfig,
+        mdWarnings: o.mdWarnings ?? [],
       };
     });
     return configs;
@@ -111,8 +113,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // Wizard target — which object "Add Details" was clicked on
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
-  // MasterDetail multi-parent warnings per object UUID — blocks Next until resolved
-  const [mdWarningsMap, setMdWarningsMap] = useState<Record<string, MdWarning[]>>({});
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -164,9 +164,36 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   const displayObjects = allFiltered.slice(offset, offset + ITEMS_PER_PAGE);
 
   const totalSelected = selectedObjects.size;
-  const clearAll = () => {
-    setSelectedObjects(new Set());
-  };
+  const clearAll = () => { setSelectedObjects(new Set()); };
+
+  const buildResult = (): SelectedArchiveObject[] =>
+    Array.from(selectedObjects).map((uuid) => {
+      const obj = allObjects.find((o) => o.uuid === uuid) ?? allObjects.find((o) => o.id === uuid);
+      const config = objectConfigs[uuid];
+      const conditions = config?.conditions ?? [];
+      return {
+        uuid,
+        id: obj?.id ?? uuid,
+        name: obj?.name ?? obj?.id ?? uuid,
+        type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
+        ...(config?.schedule ? { scheduleConfig: config.schedule } : {}),
+        ...(config?.mdWarnings?.length ? { mdWarnings: config.mdWarnings } : {}),
+        archivalPayload: {
+          name: obj?.name ?? obj?.id ?? uuid,
+          condition: config?.soqlQuery
+            ? { type: 'SOQL' as const, soqlQuery: config.soqlQuery }
+            : config?.matchMode ?? { type: 'AND' as const },
+          field: conditions
+            .filter((c) => c.field)
+            .map((c) => ({
+              name: c.field,
+              dataType: (c.dataType ?? 'string').toUpperCase(),
+              filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
+            })),
+          children: config?.builtChildren ?? [],
+        },
+      };
+    });
 
   // API names of all currently selected objects
   const selectedApiNames = useMemo(
@@ -174,24 +201,25 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
     [allObjects, selectedObjects],
   );
 
-  // Flatten active MD warnings — suppress any warning whose conflicting parents are already
-  // covered by another selected object in this archive run.
+  // Flatten active MD warnings from objectConfigs (survives Next → Back navigation).
+  // Suppress any warning whose conflicting parent is already selected in this archive run.
   const activeMdWarnings: MdWarning[] = useMemo(
     () =>
       Array.from(selectedObjects).flatMap((uuid) =>
-        (mdWarningsMap[uuid] ?? [])
+        (objectConfigs[uuid]?.mdWarnings ?? [])
           .map((w) => ({
             ...w,
             otherParents: w.otherParents.filter((p) => !selectedApiNames.has(p)),
           }))
           .filter((w) => w.otherParents.length > 0),
       ),
-    [selectedObjects, mdWarningsMap, selectedApiNames],
+    [selectedObjects, objectConfigs, selectedApiNames],
   );
 
   const handleNext = () => {
     if (activeMdWarnings.length > 0) {
       setFilterError('Resolve MasterDetail parent conflicts shown below before proceeding.');
+      setTimeout(() => setFilterError(null), 4000);
       return;
     }
     // Collect all object IDs already covered as built children of another selected object.
@@ -220,36 +248,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
       return;
     }
     setFilterError(null);
-
-    const result: SelectedArchiveObject[] = Array.from(selectedObjects).map((uuid) => {
-      const obj = allObjects.find((o) => o.uuid === uuid) ?? allObjects.find((o) => o.id === uuid);
-      const config = objectConfigs[uuid];
-      const conditions = config?.conditions ?? [];
-
-      return {
-        uuid,
-        id: obj?.id ?? uuid,
-        name: obj?.name ?? obj?.id ?? uuid,
-        type: obj?.isCustom ? 'CUSTOM' : 'STANDARD',
-        ...(config?.schedule ? { scheduleConfig: config.schedule } : {}),
-        archivalPayload: {
-          name: obj?.name ?? obj?.id ?? uuid,
-          condition: config?.soqlQuery
-            ? { type: 'SOQL' as const, soqlQuery: config.soqlQuery }
-            : config?.matchMode ?? { type: 'AND' as const },
-          field: conditions
-            .filter((c) => c.field)
-            .map((c) => ({
-              name: c.field,
-              dataType: (c.dataType ?? 'string').toUpperCase(),
-              filter: { value: c.value, operator: OPERATOR_MAP[c.operator] ?? c.operator },
-            })),
-          children: config?.builtChildren ?? [],
-        },
-      };
-    });
-
-    onNext?.(result);
+    onNext?.(buildResult());
   };
 
   return (
@@ -263,15 +262,24 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           isParent={wizardTarget.isParent}
           initialConfig={objectConfigs[wizardTarget.objectId]}
           onSave={(config) => {
-            setObjectConfigs((prev) => ({ ...prev, [wizardTarget.objectId]: config }));
+            setObjectConfigs((prev) => ({
+              ...prev,
+              [wizardTarget.objectId]: {
+                ...config,
+                // Preserve mdWarnings set by the panel — onSave config doesn't carry them
+                mdWarnings: prev[wizardTarget.objectId]?.mdWarnings,
+              },
+            }));
             setWizardTarget(null);
           }}
           onClose={() => setWizardTarget(null)}
           onMasterDetailWarnings={(warnings) => {
             const id = wizardTarget.objectId;
-            setMdWarningsMap((prev) => {
-              if (warnings.length === 0 && !prev[id]) return prev;
-              return { ...prev, [id]: warnings };
+            setObjectConfigs((prev) => {
+              const existing = prev[id];
+              if (!existing && warnings.length === 0) return prev;
+              const base: ObjectConfig = existing ?? { conditions: [], matchMode: { type: 'AND' }, builtChildren: [] };
+              return { ...prev, [id]: { ...base, mdWarnings: warnings } };
             });
           }}
         />
@@ -532,14 +540,21 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 MasterDetail parent conflict — open "Set Configuration" for the affected object and review the child hierarchy
               </div>
               <ul className='flex flex-col gap-0.5 pl-5 list-disc' style={{ color: '#92400e' }}>
-                {activeMdWarnings.map((w, i) => (
-                  <li key={i} className='text-xs'>
-                    <strong>{w.childName}</strong>
-                    {w.fieldApiName ? ` (via ${w.fieldApiName})` : ''} is also a MasterDetail child of{' '}
-                    <strong>{w.otherParents.join(', ')}</strong>. Archive{' '}
-                    {w.otherParents.join(', ')} separately or include it to maintain data integrity.
-                  </li>
-                ))}
+                {activeMdWarnings.map((w, i) => {
+                  const childLabel = allObjects.find((o) => o.id === w.childName)?.name;
+                  const otherLabels = w.otherParents.map((p) => {
+                    const label = allObjects.find((o) => o.id === p)?.name;
+                    return label && label !== p ? `${label} (${p})` : p;
+                  });
+                  return (
+                    <li key={i} className='text-xs'>
+                      <strong>{childLabel ? `${childLabel} (${w.childName})` : w.childName}</strong>
+                      {w.fieldApiName ? ` (via ${w.fieldApiName})` : ''} is also a MasterDetail child of{' '}
+                      <strong>{otherLabels.join(', ')}</strong>. Archive{' '}
+                      {otherLabels.join(', ')} separately or include it to maintain data integrity.
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -558,7 +573,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
               Cancel
             </button>
             <div className='flex gap-3'>
-              <button onClick={onBack}
+              <button onClick={() => onBack?.(buildResult())}
                 className='px-6 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>
                 ← Back
               </button>
