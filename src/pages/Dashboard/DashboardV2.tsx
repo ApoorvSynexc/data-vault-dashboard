@@ -729,7 +729,7 @@ export default function DashboardV2() {
                   const type = selectedJob.type;
                   if (type === 'restore') {
                     setSelectedJob(null);
-                    const jobId = j.restoreJobId ?? j.id;
+                    const jobId = j.restoreId ?? j.restoreJobId ?? j.id;
                     navigate(jobId ? `/restore-center/history/${jobId}` : '/restore-center');
                     return;
                   }
