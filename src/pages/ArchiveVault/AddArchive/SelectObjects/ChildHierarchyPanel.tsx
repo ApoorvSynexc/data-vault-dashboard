@@ -515,13 +515,35 @@ export function ChildHierarchyPanel({
         if (cancelled) return;
 
         const children: DepthChildNode[] = (res as any)?.data?.children ?? (res as any)?.children ?? [];
+        // Root-level parent descriptors — each entry is a field on a child that has multiple MD parents.
+        // Match entry.name === child.fieldApiName to identify the affected child node.
+        const rootParentDescriptors: { name: string; cascadeDelete: boolean; referenceTo?: string[] }[] =
+          (res as any)?.data?.parent ?? [];
         flattenChildren(children, objectName, 1, map, objectName);
 
-        // Collect multi-parent MasterDetail warnings from the freshly built tree
+        // Detect multi-parent MasterDetail warnings from data.parent at the response root.
+        // Entries where referenceTo includes the root identify WHICH child is affected (match by field name).
+        // Entries where referenceTo does NOT include the root are the OTHER MD parents of that child.
         const warnings: MdWarning[] = [];
-        for (const [, node] of map) {
-          if (node.otherMdParents?.length) {
-            warnings.push({ childName: node.apiName, fieldApiName: node.fieldApiName, otherParents: node.otherMdParents });
+        if (rootParentDescriptors.length > 0) {
+          const otherMdObjects = rootParentDescriptors
+            .filter((p) => p.cascadeDelete && !p.referenceTo?.includes(objectName))
+            .flatMap((p) => p.referenceTo ?? []);
+
+          if (otherMdObjects.length > 0) {
+            // Build a lookup of field names → descriptor for entries that point to the root
+            const primaryFieldNames = new Set(
+              rootParentDescriptors
+                .filter((p) => p.cascadeDelete && p.referenceTo?.includes(objectName))
+                .map((p) => p.name),
+            );
+            // Find tree nodes whose fieldApiName is in that set
+            for (const [, node] of map) {
+              if (node.depth === 0 || !node.fieldApiName) continue;
+              if (primaryFieldNames.has(node.fieldApiName)) {
+                warnings.push({ childName: node.apiName, fieldApiName: node.fieldApiName, otherParents: otherMdObjects });
+              }
+            }
           }
         }
         onMdWarningsRef.current?.(warnings);
