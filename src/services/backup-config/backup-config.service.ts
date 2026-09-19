@@ -1,5 +1,9 @@
 import { useHttpRequest } from '../../hooks/useHttpRequest';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUUID = (s: string) => UUID_RE.test(s);
+const slugOrId = (s: string) => isUUID(s) ? { backupConfigId: s } : { slug: s };
+
 export type CreateBackupPayload = Record<string, unknown>;
 
 export const BACKUP_CONFIG_ENDPOINTS = {
@@ -197,14 +201,14 @@ export function useBackupConfigService() {
 
     getBackupConfig: async (slug: string) => {
       const response = await api.get<BackupConfigDetailApiResponse>(BACKUP_CONFIG_ENDPOINTS.detail, {
-        query: { slug },
+        query: slugOrId(slug),
       });
       return response;
     },
     updateBackupConfig: (backupConfigId: string, payload: Record<string, unknown>) =>
       api.put<void>(BACKUP_CONFIG_ENDPOINTS.update, payload, { query: { backupConfigId } }),
     listBackupJobs: async (slug: string, pagination = true, cursor?: string, limit = 20, status?: string, startDate?: string, endDate?: string) => {
-      const query: any = { slug, pagination, cursor, limit };
+      const query: any = { ...slugOrId(slug), pagination, cursor, limit };
       if (status) query.status = status.toUpperCase();
       if (startDate) query.startDate = startDate;
       if (endDate) query.endDate = endDate;
@@ -227,11 +231,11 @@ export function useBackupConfigService() {
     getLastJobs: (mod?: 'backup' | 'archival' | 'restore') =>
       api.get<any>('/v1/dashboard/last-jobs', { query: mod ? { module: mod } : {} }),
     processBackup: (slug: string) =>
-      api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: { slug } }),
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.processBackup, { query: slugOrId(slug) }),
     runNow: (backupConfigId: string) =>
       api.get<void>(BACKUP_CONFIG_ENDPOINTS.runNow, { query: { backupConfigId } }),
     syncSchema: (slug: string) =>
-      api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: { slug } }),
+      api.get<void>(BACKUP_CONFIG_ENDPOINTS.syncSchema, { query: slugOrId(slug) }),
     getObjectRecords: (payload: { id: string; name: string; fieldNames: string[]; soql: string }) =>
       api.post<any>('/v1/archival-config/object-records', payload),
     recoverTrigger: (payload: { backupConfigId: string; objectApiName: string; recordId: string }) =>
