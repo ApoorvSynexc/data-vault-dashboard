@@ -10,16 +10,20 @@ function depthNodesToSourceObjects(nodes: DepthChildNode[], allObjects: RestoreS
     for (const o of list) { flatLookup.set(o.name, o); if (o.children?.length) walk(o.children); }
   };
   walk(allObjects);
+  // Only keep describe-API nodes whose name appears in the backup config's object list.
+  // This prevents showing Salesforce schema children that were never backed up.
   const convert = (list: DepthChildNode[]): RestoreSourceObject[] =>
-    list.map((n) => {
-      const known = flatLookup.get(n.name);
-      return {
-        id:       known?.id,
-        name:     n.name,
-        type:     known?.type ?? 'STANDARD',
-        children: n.children?.length ? convert(n.children) : [],
-      };
-    });
+    list
+      .filter((n) => flatLookup.has(n.name))
+      .map((n) => {
+        const known = flatLookup.get(n.name)!;
+        return {
+          id:       known.id,
+          name:     n.name,
+          type:     known.type ?? 'STANDARD',
+          children: n.children?.length ? convert(n.children) : [],
+        };
+      });
   return convert(nodes);
 }
 
