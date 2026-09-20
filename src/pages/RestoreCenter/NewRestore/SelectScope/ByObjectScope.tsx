@@ -21,6 +21,7 @@ function depthNodesToSourceObjects(nodes: DepthChildNode[], allObjects: RestoreS
           id:       known.id,
           name:     n.name,
           type:     known.type ?? 'STANDARD',
+          field:    n.field,
           children: n.children?.length ? convert(n.children) : [],
         };
       });
@@ -109,6 +110,9 @@ function ChildTree({ nodes, depth, pathPrefix, selected, expanded, onToggle, onE
 
               <span className={`flex-1 text-sm font-mono truncate ${isSelected ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
                 {node.name}
+                {node.field && (
+                  <span className='ml-1.5 text-[11px] font-normal text-gray-400'>({node.field})</span>
+                )}
               </span>
 
               <TypeBadge type={node.type} />
