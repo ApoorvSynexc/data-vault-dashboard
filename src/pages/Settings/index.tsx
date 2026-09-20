@@ -3,16 +3,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSettingsService, type StandardObject } from '../../services/settings/settings.service';
 import { useCrmMetadataService, type CrmMetadataObject } from '../../services/crm-metadata/crm-metadata.service';
 import PermissionGate from '../../components/PermissionGate';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       type='button'
-      onClick={() => onChange(!checked)}
-      className='relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200'
-      style={{ background: checked ? '#155DFC' : '#d1d5db' }}
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      className='relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+      style={{ background: checked ? '#155DFC' : '#d1d5db', cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       <span
         className='pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200'
@@ -221,6 +223,8 @@ function StandardObjectsSection({
 export default function Settings() {
   const settingsService = useSettingsService();
   const queryClient     = useQueryClient();
+  const { permissions } = useAuth();
+  const canWrite = permissions.includes('settings.write');
 
   const [apiThreshold, setApiThreshold]   = useState<number>(80);
   const [rollbackDays, setRollbackDays]   = useState<number>(14);
@@ -259,16 +263,19 @@ export default function Settings() {
   });
 
   function handleToggleEmail(val: boolean) {
+    if (!canWrite) return;
     setNotifEmail(val);
     updateMutation.mutate({ notification: { email: val } });
   }
 
   function handleRollbackChange(val: number) {
+    if (!canWrite) return;
     setRollbackDays(val);
     updateMutation.mutate({ rollbackWindow: val });
   }
 
   function handleThresholdBlur() {
+    if (!canWrite) return;
     const clamped = Math.min(100, Math.max(1, apiThreshold));
     setApiThreshold(clamped);
     updateMutation.mutate({ salesforceApiThreshold: clamped });
@@ -294,9 +301,10 @@ export default function Settings() {
               type='number'
               min={0}
               max={100}
-              className={inputCls}
+              className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50`}
               value={apiThreshold}
-              onChange={(e) => setApiThreshold(Number(e.target.value))}
+              disabled={!canWrite}
+              onChange={(e) => canWrite && setApiThreshold(Number(e.target.value))}
               onBlur={handleThresholdBlur}
             />
           </SettingRow>
@@ -305,8 +313,9 @@ export default function Settings() {
         <Section title='Rollback & Retention' desc='Data recovery window'>
           <SettingRow label='Rollback window'>
             <select
-              className={selectCls}
+              className={`${selectCls} disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50`}
               value={rollbackDays}
+              disabled={!canWrite}
               onChange={(e) => handleRollbackChange(Number(e.target.value))}
             >
               <option value={7}>7 days</option>
@@ -318,7 +327,7 @@ export default function Settings() {
 
         <Section title='Notifications' desc='Alert delivery channels'>
           <SettingRow label='Email alerts'>
-            <Toggle checked={notifEmail} onChange={handleToggleEmail} />
+            <Toggle checked={notifEmail} onChange={handleToggleEmail} disabled={!canWrite} />
           </SettingRow>
         </Section>
 
