@@ -12,19 +12,20 @@ function depthNodesToSourceObjects(nodes: DepthChildNode[], allObjects: RestoreS
   walk(allObjects);
   // Only keep describe-API nodes whose name appears in the backup config's object list.
   // This prevents showing Salesforce schema children that were never backed up.
-  const convert = (list: DepthChildNode[]): RestoreSourceObject[] =>
-    list
-      .filter((n) => flatLookup.has(n.name))
+  const convert = (list: DepthChildNode[]): RestoreSourceObject[] => {
+    const seen = new Set<string>();
+    return list
+      .filter((n) => flatLookup.has(n.name) && !seen.has(n.name) && seen.add(n.name) !== undefined)
       .map((n) => {
         const known = flatLookup.get(n.name)!;
         return {
           id:       known.id,
           name:     n.name,
           type:     known.type ?? 'STANDARD',
-          field:    n.field,
           children: n.children?.length ? convert(n.children) : [],
         };
       });
+  };
   return convert(nodes);
 }
 
@@ -110,9 +111,6 @@ function ChildTree({ nodes, depth, pathPrefix, selected, expanded, onToggle, onE
 
               <span className={`flex-1 text-sm font-mono truncate ${isSelected ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
                 {node.name}
-                {node.field && (
-                  <span className='ml-1.5 text-[11px] font-normal text-gray-400'>({node.field})</span>
-                )}
               </span>
 
               <TypeBadge type={node.type} />

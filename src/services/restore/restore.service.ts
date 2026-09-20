@@ -298,7 +298,6 @@ export interface RestoreSourceObject {
   name: string;
   type: 'STANDARD' | 'CUSTOM' | string;
   completedRecordCount?: number;
-  field?: string;
   children?: RestoreSourceObject[];
 }
 
