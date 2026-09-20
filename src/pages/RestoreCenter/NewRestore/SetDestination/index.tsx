@@ -610,13 +610,14 @@ interface Props {
   configType: 'BACKUP' | 'ARCHIVAL';
   crmName?: string;
   crmUsername?: string;
-  onGenerateCsv?: (name: string, description: string) => void;
+  onGenerateCsv?: (name: string, description: string) => Promise<void> | void;
 }
 
 export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername, onGenerateCsv }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
   const [exportName, setExportName] = useState('');
   const [exportDescription, setExportDescription] = useState('');
+  const [csvGenerating, setCsvGenerating] = useState(false);
 
   return (
     <div className='flex flex-col h-full min-h-0 bg-gray-50'>
@@ -699,12 +700,23 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
         <div className='flex items-center gap-2'>
           {destType === 'export' ? (
             <button
-              onClick={() => onGenerateCsv?.(exportName, exportDescription)}
-              disabled={!exportName.trim()}
+              onClick={async () => {
+                if (csvGenerating) return;
+                setCsvGenerating(true);
+                try {
+                  await onGenerateCsv?.(exportName, exportDescription);
+                } finally {
+                  setCsvGenerating(false);
+                }
+              }}
+              disabled={!exportName.trim() || csvGenerating}
               className='inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
               style={{ background: '#155DFC' }}
             >
-              Generate CSV
+              {csvGenerating && (
+                <div className='w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin' />
+              )}
+              {csvGenerating ? 'Generating…' : 'Generate CSV'}
             </button>
           ) : (
             <button
