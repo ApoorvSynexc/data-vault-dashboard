@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import InfoTooltip from '../../../../components/InfoTooltip';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import type { RestoreRetrievePayload } from '../../../../services/restore/restore.service';
+import { HttpError } from '../../../../services/api';
 import { toUTCISOString } from '../../../../utils';
 import type { SourceSelection } from '../SelectSourceType';
 
@@ -88,6 +89,34 @@ interface Props {
 }
 
 
+// ── Error message helpers ─────────────────────────────────────────────────────
+
+function getDryRunErrorMessage(err: unknown): { title: string; detail: string } {
+  const status = err instanceof HttpError ? err.status : 0;
+  if (status === 504 || status === 524) {
+    return {
+      title: 'Server timeout — the dataset may be too large',
+      detail: 'The server took too long to process this dry-run. This usually happens with large datasets. Please wait a moment and try again, or reduce the scope of the restore.',
+    };
+  }
+  if (status === 503 || status === 502) {
+    return {
+      title: 'Server is temporarily unavailable',
+      detail: 'The server is busy or restarting. Please wait a minute and try again.',
+    };
+  }
+  if (status >= 500) {
+    return {
+      title: 'Server error',
+      detail: err instanceof Error ? err.message : 'An unexpected error occurred on the server. Please try again.',
+    };
+  }
+  return {
+    title: 'Dry-run failed',
+    detail: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+  };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PreviewValidate({ onNext, onBack, sourceSelection, restorePayload }: Props) {
@@ -127,8 +156,9 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
       setTotalDeleteCount(d.totalDeleteCount ?? 0);
       setDryRunObjects(d.objects ?? []);
       setDryRunDone(true);
-    } catch (err: any) {
-      setDryRunError(err?.message ?? 'Dry-run failed. Please try again.');
+    } catch (err: unknown) {
+      const { title, detail } = getDryRunErrorMessage(err);
+      setDryRunError(`${title}\n${detail}`);
     } finally {
       setDryRunLoading(false);
     }
@@ -167,8 +197,9 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
       const d = res?.data?.data ?? res?.data ?? {};
       setDiffViewData(Array.isArray(d.objects) ? d.objects : []);
       setDiffViewDone(true);
-    } catch (err: any) {
-      setDiffViewError(err?.message ?? 'Diff failed. Please try again.');
+    } catch (err: unknown) {
+      const { title, detail } = getDryRunErrorMessage(err);
+      setDiffViewError(`${title}\n${detail}`);
     } finally {
       setDiffViewLoading(false);
     }
@@ -340,6 +371,11 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   )}
                   {dryRunLoading ? 'Running…' : dryRunDone ? 'Re-run Dry-Run' : 'Run Dry-Run'}
                 </button>
+                {dryRunLoading && (
+                  <p className='text-center text-xs text-gray-400'>
+                    This may take a minute for large datasets — please keep this tab open.
+                  </p>
+                )}
 
                 {dryRunDone && !dryRunError && (
                   <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
@@ -352,14 +388,21 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                     </button>
                   </div>
                 )}
-                {dryRunError && (
-                  <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}>
-                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                      <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                    </svg>
-                    {dryRunError}
-                  </div>
-                )}
+                {dryRunError && (() => {
+                  const [title, ...rest] = dryRunError.split('\n');
+                  const detail = rest.join('\n');
+                  return (
+                    <div className='rounded-lg px-4 py-3 flex gap-3' style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                      <svg className='shrink-0 mt-0.5' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                      </svg>
+                      <div className='flex flex-col gap-1'>
+                        <p className='text-xs font-bold text-red-700'>{title}</p>
+                        {detail && <p className='text-xs text-red-600 leading-relaxed'>{detail}</p>}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -385,15 +428,27 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                   )}
                   {diffViewLoading ? 'Loading…' : diffViewDone ? 'Re-run View Difference' : 'View Difference'}
                 </button>
-
-                {diffViewError && (
-                  <div className='flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-semibold' style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}>
-                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                      <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-                    </svg>
-                    {diffViewError}
-                  </div>
+                {diffViewLoading && (
+                  <p className='text-center text-xs text-gray-400'>
+                    This may take a minute for large datasets — please keep this tab open.
+                  </p>
                 )}
+
+                {diffViewError && (() => {
+                  const [title, ...rest] = diffViewError.split('\n');
+                  const detail = rest.join('\n');
+                  return (
+                    <div className='rounded-lg px-4 py-3 flex gap-3' style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                      <svg className='shrink-0 mt-0.5' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                      </svg>
+                      <div className='flex flex-col gap-1'>
+                        <p className='text-xs font-bold text-red-700'>{title}</p>
+                        {detail && <p className='text-xs text-red-600 leading-relaxed'>{detail}</p>}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {diffViewDone && (() => {
                   const activeObjects = diffViewData.filter((o) => o.recordCount > 0);
