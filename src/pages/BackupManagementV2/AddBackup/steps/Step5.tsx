@@ -381,8 +381,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               ))}
             </div>
 
+            <div className='flex-1' />
+
             {/* Selected objects popover */}
-            <div className='relative flex-1 flex justify-center' ref={selectedPanelRef}>
+            <div className='relative flex-shrink-0' ref={selectedPanelRef}>
               <button
                 onClick={() => { setShowSelectedPanel((v) => !v); setPanelSearch(''); }}
                 className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors'
@@ -411,7 +413,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   : selectedList;
 
                 return (
-                  <div className='absolute top-full mt-2 left-1/2 -translate-x-1/2 z-30 w-72 rounded-xl bg-white shadow-xl overflow-hidden'
+                  <div className='absolute top-full mt-2 right-0 z-30 w-72 rounded-xl bg-white shadow-xl overflow-hidden'
                     style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
                     {/* Panel header */}
                     <div className='px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2'>
@@ -470,35 +472,27 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                     </div>
 
                     {/* Footer */}
-                    {selectedObjects.size > 0 && !_entireDatasetSelected && (
+                    {(searchQuery || selectedFilter !== 'All') && (
                       <div className='px-4 py-2 border-t border-gray-100'>
                         <button
                           onClick={() => {
-                            setSelectedObjects(new Set());
-                            setParentChildMap(new Map());
-                            setParentTreeMap(new Map());
-                            setLastSelectedSfName(null);
-                            setDescribeFetchCount(0);
-                            setToast(null);
+                            setSearchQuery('');
+                            setSelectedFilter('All');
+                            setCurrentPage(0);
                             setShowSelectedPanel(false);
                           }}
-                          className='w-full text-xs font-semibold text-red-500 hover:text-red-700 py-1 transition-colors'
+                          className='w-full text-xs font-semibold text-blue-600 hover:text-blue-800 py-1 transition-colors flex items-center justify-center gap-1.5'
                         >
-                          Clear all selections
+                          <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                            <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+                          </svg>
+                          Clear search — show all objects
                         </button>
                       </div>
                     )}
                   </div>
                 );
               })()}
-            </div>
-
-            <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm flex-shrink-0'
-              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
-              <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <polyline points='20 6 9 17 4 12' />
-              </svg>
-              <span className='font-medium'>{selectedObjects.size} objects selected</span>
             </div>
 
             {!_entireDatasetSelected && (
