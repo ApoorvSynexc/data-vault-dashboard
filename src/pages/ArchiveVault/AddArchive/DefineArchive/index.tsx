@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProgressBar from '../ProgressBar';
+import { useArchivalService } from '../../../../services/archival/archival.service';
+
+const NAME_MAX = 150;
+const DESC_MAX = 400;
 
 interface Step2Props {
   archiveSource?: string;
@@ -20,13 +24,50 @@ export default function AddArchiveStep2({
   onBack,
 }: Step2Props) {
   const navigate = useNavigate();
+  const archivalService = useArchivalService();
 
   const defaultPolicyName = `Accounts-Contact-Opportunity Archive – ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
   const [policyName, setPolicyName] = useState(initialPolicyName ?? defaultPolicyName);
   const [description, setDescription] = useState(initialDescription);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [checkingName, setCheckingName] = useState(false);
 
-  const canProceed = policyName.trim().length > 0;
+  // track last checked name to avoid redundant API calls
+  const lastCheckedName = useRef<string>('');
+
+  const handleNameBlur = async () => {
+    const trimmed = policyName.trim();
+    if (!trimmed || trimmed === lastCheckedName.current) return;
+    lastCheckedName.current = trimmed;
+
+    setCheckingName(true);
+    setNameError(null);
+    try {
+      const res = await archivalService.getList(undefined, trimmed, undefined, undefined, false);
+      const items: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const duplicate = items.some((item: any) => (item.name ?? '').toLowerCase() === trimmed.toLowerCase());
+      if (duplicate) setNameError('An archive policy with this name already exists. Please choose a different name.');
+    } catch {
+      // skip — network error shouldn't block the user
+    } finally {
+      setCheckingName(false);
+    }
+  };
+
+  const handleNameChange = (val: string) => {
+    if (val.length > NAME_MAX) return;
+    setPolicyName(val);
+    if (nameError) setNameError(null);
+    lastCheckedName.current = '';
+  };
+
+  const handleDescChange = (val: string) => {
+    if (val.length > DESC_MAX) return;
+    setDescription(val);
+  };
+
+  const canProceed = policyName.trim().length > 0 && !nameError && !checkingName;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -93,33 +134,70 @@ export default function AddArchiveStep2({
 
           {/* Row 2: Archive Policy Name + Archive Description */}
           <div className='grid grid-cols-2 gap-6'>
+
+            {/* Policy Name */}
             <div className='flex flex-col gap-1.5'>
-              <label className='text-sm font-medium'>
-                <span className='text-red-500'>* </span>
-                <span style={{ color: '#33363F' }}>Archive Policy Name</span>
-              </label>
-              <input
-                type='text'
-                value={policyName}
-                onChange={(e) => setPolicyName(e.target.value)}
-                placeholder='Enter archive policy name'
-                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
-                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
-              />
+              <div className='flex items-center justify-between'>
+                <label className='text-sm font-medium'>
+                  <span className='text-red-500'>* </span>
+                  <span style={{ color: '#33363F' }}>Archive Policy Name</span>
+                </label>
+                <span className={`text-[11px] tabular-nums ${policyName.length >= NAME_MAX ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                  {policyName.length}/{NAME_MAX}
+                </span>
+              </div>
+              <div className='relative'>
+                <input
+                  type='text'
+                  value={policyName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={handleNameBlur}
+                  placeholder='Enter archive policy name'
+                  className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 transition-shadow'
+                  style={{
+                    border: `1px solid ${nameError ? '#FCA5A5' : '#E2E8F0'}`,
+                    color: '#33363F',
+                    ...(nameError ? { background: '#FFF5F5' } : {}),
+                  }}
+                />
+                {checkingName && (
+                  <span className='absolute right-3 top-1/2 -translate-y-1/2'>
+                    <svg className='animate-spin text-gray-400' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
+                      <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
+                    </svg>
+                  </span>
+                )}
+              </div>
+              {nameError && (
+                <p className='text-xs text-red-500 flex items-center gap-1 mt-0.5'>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
+                  </svg>
+                  {nameError}
+                </p>
+              )}
             </div>
+
+            {/* Description */}
             <div className='flex flex-col gap-1.5'>
-              <label className='text-sm font-medium text-gray-700'>
-                Archive Description <span className='text-gray-400 font-normal'>(Optional)</span>
-              </label>
+              <div className='flex items-center justify-between'>
+                <label className='text-sm font-medium text-gray-700'>
+                  Archive Description <span className='text-gray-400 font-normal'>(Optional)</span>
+                </label>
+                <span className={`text-[11px] tabular-nums ${description.length >= DESC_MAX ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                  {description.length}/{DESC_MAX}
+                </span>
+              </div>
               <input
                 type='text'
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => handleDescChange(e.target.value)}
                 placeholder=''
                 className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30'
                 style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
               />
             </div>
+
           </div>
 
         </div>
