@@ -20,6 +20,17 @@ const idSchema = Joi.string().min(1).required().messages({
 
 const blank = (): CsvConfig => ({ text: '', parsedIds: [], fileName: null, errors: [] });
 
+const MAX_CSV_BYTES = 5 * 1024 * 1024; // 5 MB
+function validateCsvFile(file: File): string | null {
+  if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
+    return 'Only CSV files are supported. Please upload a .csv file.';
+  }
+  if (file.size > MAX_CSV_BYTES) {
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 5 MB.`;
+  }
+  return null;
+}
+
 export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, onChange }: Props) {
   const [objSearch,   setObjSearch]   = useState('');
   const [addedObjs,   setAddedObjs]   = useState<string[]>([]);
@@ -194,13 +205,27 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
             {/* Body */}
             <div className='flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5'>
               <input ref={fileInputRef} type='file' accept='.csv' className='hidden'
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) parseCsvFile(f, modalObj); e.target.value = ''; }} />
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  const err = validateCsvFile(f);
+                  if (err) { setCfg(modalObj, { errors: [{ row: 0, message: err }], fileName: f.name }); setErrorOpen(true); return; }
+                  parseCsvFile(f, modalObj);
+                }} />
 
               {/* Drop zone */}
               <div className='border-2 border-dashed border-gray-300 rounded-xl px-6 py-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-colors cursor-pointer'
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) parseCsvFile(f, modalObj); }}>
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const f = e.dataTransfer.files?.[0];
+                  if (!f) return;
+                  const err = validateCsvFile(f);
+                  if (err) { setCfg(modalObj, { errors: [{ row: 0, message: err }], fileName: f.name }); setErrorOpen(true); return; }
+                  parseCsvFile(f, modalObj);
+                }}>
                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.5' className='w-10 h-10 mx-auto mb-3 text-gray-300'>
                   <path strokeLinecap='round' strokeLinejoin='round' d='M12 16V4m0 0L8 8m4-4l4 4M4 20h16' />
                 </svg>
