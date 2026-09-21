@@ -161,7 +161,7 @@ export function useArchivalService() {
       http.post(ARCHIVAL_ENDPOINTS.config, payload),
 
     // GET /v1/archival-config/list — paginated archive policies for this workspace
-    getList: async (cursor?: string, search?: string, status?: string, backupStatus?: string, pagination = true): Promise<any> =>
+    getList: async (cursor?: string, search?: string, status?: string, backupStatus?: string, pagination = true, destinationId?: string): Promise<any> =>
       http.get(ARCHIVAL_ENDPOINTS.list, {
         query: {
           pagination,
@@ -170,6 +170,7 @@ export function useArchivalService() {
           ...(search ? { search } : {}),
           ...(status ? { status } : {}),
           ...(backupStatus ? { backupStatus } : {}),
+          ...(destinationId ? { destinationId } : {}),
         },
       }),
 

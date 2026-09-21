@@ -26,9 +26,10 @@ interface Props {
   onSelectedRowChange?: (row: any) => void;
   onSelectedConfigIdChange?: (id: string) => void;
   onSelectedJobIdsChange?: (ids: string[]) => void;
+  destinationId?: string;
 }
 
-export default function BackupPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange }: Props) {
+export default function BackupPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange, destinationId }: Props) {
   const backupConfigService = useBackupConfigService();
 
   // ── Phase 1: config list ──────────────────────────────────────────────────
@@ -65,12 +66,12 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const apiSchedule = typeFilter === 'Realtime' ? 'REALTIME' : typeFilter === 'Schedule' ? 'SCHEDULE' : undefined;
 
   const backupQueryFn = useCallback(
-    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, apiSchedule),
-    [backupCurrentCursor, debouncedSearch, apiSchedule]
+    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, apiSchedule, undefined, destinationId),
+    [backupCurrentCursor, debouncedSearch, apiSchedule, destinationId]
   );
 
   const { data: backupListData, isLoading: isLoadingConfigs, isFetching: isFetchingConfigs } = useQuery({
-    queryKey: ['restore-backup-config-list', backupCurrentCursor, debouncedSearch, typeFilter],
+    queryKey: ['restore-backup-config-list', backupCurrentCursor, debouncedSearch, typeFilter, destinationId],
     queryFn: backupQueryFn,
     refetchOnWindowFocus: false,
   });

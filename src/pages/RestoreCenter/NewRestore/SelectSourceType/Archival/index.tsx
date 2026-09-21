@@ -27,6 +27,7 @@ interface Props {
   onSelectedRowChange?: (row: any) => void;
   onSelectedConfigIdChange?: (id: string) => void;
   onSelectedJobIdsChange?: (ids: string[]) => void;
+  destinationId?: string;
 }
 
 
@@ -87,7 +88,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 
-export default function ArchivalPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange }: Props) {
+export default function ArchivalPicker({ onConfigSelected, onSelectionChange, showJobsPhase, initialSelectedConfigId = '', onSelectedRowChange, onSelectedConfigIdChange, destinationId }: Props) {
   const archivalService = useArchivalService();
 
   // ── Phase 1: config list ──────────────────────────────────────────────────
@@ -113,12 +114,12 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
   }, [search]);
 
   const queryFn = useCallback(
-    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined),
-    [currentCursor, debouncedSearch]
+    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, undefined, undefined, true, destinationId),
+    [currentCursor, debouncedSearch, destinationId]
   );
 
   const { data: rawData, isLoading, isFetching } = useQuery({
-    queryKey: ['restore-archival-list', currentCursor, debouncedSearch],
+    queryKey: ['restore-archival-list', currentCursor, debouncedSearch, destinationId],
     queryFn,
     refetchOnWindowFocus: false,
   });

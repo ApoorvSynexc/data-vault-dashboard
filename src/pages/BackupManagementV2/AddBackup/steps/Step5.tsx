@@ -544,7 +544,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               },
               {
                 key: 'records',
-                header: 'Records',
+                header: 'Total Records',
                 render: (obj) => <span className='text-sm text-gray-600'>{obj.recordCount !== undefined ? obj.recordCount.toLocaleString() : '--'}</span>,
               },
               {
