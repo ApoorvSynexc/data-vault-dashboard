@@ -498,14 +498,16 @@ export default function DashboardV2() {
             </Typography>
           </div>
           <div className='flex items-center gap-2 flex-wrap justify-end'>
-            <button
-              type='button'
-              onClick={() => navigate('/backup-management/add')}
-              className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-3 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 whitespace-nowrap'
-            >
-              + New Backup
-            </button>
-            {permissions.some((p) => p.startsWith('archival')) && (
+            {permissions.includes('backup.write') && (
+              <button
+                type='button'
+                onClick={() => navigate('/backup-management/add')}
+                className='inline-flex items-center gap-2 rounded-lg border border-blue-600 px-3 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 whitespace-nowrap'
+              >
+                + New Backup
+              </button>
+            )}
+            {permissions.includes('archival.write') && (
               <button
                 type='button'
                 onClick={() => navigate('/archive-vault/new')}
@@ -514,7 +516,7 @@ export default function DashboardV2() {
                 + New Archive
               </button>
             )}
-            {permissions.some((p) => p.startsWith('restore')) && (
+            {permissions.includes('restore.write') && (
               <button
                 type='button'
                 onClick={() => navigate('/restore-center?action=new')}
@@ -589,12 +591,16 @@ export default function DashboardV2() {
             emptyState={
               <div className='flex flex-col items-center justify-center gap-2 py-8'>
                 <span className='text-sm font-medium text-gray-500'>No {activeTab} jobs yet.</span>
-                <button
-                  onClick={() => navigate(activeTab === 'archive' ? '/archive-vault/new' : activeTab === 'restore' ? '/restore-center?action=new' : '/backup-management/add')}
-                  className='text-xs font-semibold text-blue-600 hover:underline'
-                >
-                  Create your first {activeTab} →
-                </button>
+                {((activeTab === 'backup' && permissions.includes('backup.write')) ||
+                  (activeTab === 'archive' && permissions.includes('archival.write')) ||
+                  (activeTab === 'restore' && permissions.includes('restore.write'))) && (
+                  <button
+                    onClick={() => navigate(activeTab === 'archive' ? '/archive-vault/new' : activeTab === 'restore' ? '/restore-center?action=new' : '/backup-management/add')}
+                    className='text-xs font-semibold text-blue-600 hover:underline'
+                  >
+                    Create your first {activeTab} →
+                  </button>
+                )}
               </div>
             }
             columns={columns}
