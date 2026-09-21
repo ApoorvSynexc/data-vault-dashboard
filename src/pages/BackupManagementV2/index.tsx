@@ -546,6 +546,9 @@ function PauseConflictDialog({ conflict, onClose }: { conflict: SharedObjectConf
               <p className='mt-0.5 text-xs text-gray-500 leading-relaxed'>
                 The following objects are shared with another real-time backup. Pausing this config would also stop syncing for the other config.
               </p>
+              <p className='mt-1 text-[11px] text-orange-400 leading-relaxed'>
+                Some of the configs listed here may belong to other users in your org and may not be visible to you.
+              </p>
             </div>
           </div>
         </div>
