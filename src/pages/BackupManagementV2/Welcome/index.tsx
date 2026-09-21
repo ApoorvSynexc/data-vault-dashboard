@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
 
 // const TEMPLATES = [
 //   { id: 1, title: 'Full org backup — all 200 objects',       subtitle: 'Daily schedule · ~5 min setup' },
@@ -15,6 +16,8 @@ const STEPS = [
 
 export default function BackupManagementWelcome() {
   const navigate = useNavigate();
+  const { permissions } = useAuth();
+  const canWrite = permissions.includes('backup.write');
 
   return (
     <div className='flex-1 min-h-0 flex flex-col bg-gray-50 overflow-hidden w-full'>
@@ -94,13 +97,15 @@ export default function BackupManagementWelcome() {
         ── */}
 
         {/* ── CTA button ── */}
-        <button
-          onClick={() => navigate('/backup-management/add')}
-          className='flex items-center justify-center font-semibold text-white rounded-full transition hover:opacity-90 flex-shrink-0'
-          style={{ background: '#155DFC', width: 'clamp(220px, 26vw, 362px)', height: 'clamp(44px, 5vh, 58px)', fontSize: 'clamp(13px, 1.1vw, 16px)', gap: 10 }}
-        >
-          + New Backup
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => navigate('/backup-management/add')}
+            className='flex items-center justify-center font-semibold text-white rounded-full transition hover:opacity-90 flex-shrink-0'
+            style={{ background: '#155DFC', width: 'clamp(220px, 26vw, 362px)', height: 'clamp(44px, 5vh, 58px)', fontSize: 'clamp(13px, 1.1vw, 16px)', gap: 10 }}
+          >
+            + New Backup
+          </button>
+        )}
 
       </div>
     </div>
