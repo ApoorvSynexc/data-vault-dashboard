@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState, createContext, useContext } from 'r
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
-import { useAppDispatch } from '../store/hooks';
-import { fetchPlatforms } from '../store/slices/platformsSlice';
 import { usePlatformService } from '../services/platform/platform.service';
 import type { ConnectedPlatform } from '../services/platform/platform.service';
 import { useNotificationService } from '../services/notification/notification.service';
@@ -208,7 +206,6 @@ function OrgDropdown({ selectedOrg, userCrmId, userProfileId, onAutoSelect, onSe
 export default function MainLayout() {
   const { logout, hasPermission, setCrmUserId, setCrmOrgId, userCrmId, userProfileId, refreshProfile } = useAuth();
   const visibleNav = mainNav.filter(({ permissions }) => !permissions || permissions.some((p) => hasPermission(p)));
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -238,10 +235,6 @@ export default function MainLayout() {
     await refreshProfile();
     navigate('/', { replace: true });
   };
-
-  useEffect(() => {
-    dispatch(fetchPlatforms());
-  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
