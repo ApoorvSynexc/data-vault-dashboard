@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '../../../../hooks/useDebounce';
@@ -152,6 +152,29 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [parentTreeMap, setParentTreeMap] = useState<Map<string, PayloadChildNode[]>>(new Map());
   // Toast message (child labels for display)
   const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
+
+  // Selected-objects panel
+  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
+  const [panelSearch, setPanelSearch] = useState('');
+  const selectedPanelRef = useRef<HTMLDivElement>(null);
+
+  // Close selected panel on outside click
+  useEffect(() => {
+    if (!showSelectedPanel) return;
+    const handler = (e: MouseEvent) => {
+      if (!selectedPanelRef.current?.contains(e.target as Node)) setShowSelectedPanel(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSelectedPanel]);
+
+  const jumpToObject = useCallback((name: string) => {
+    setShowSelectedPanel(false);
+    setPanelSearch('');
+    setSelectedFilter('All');
+    setSearchQuery(name);
+    setCurrentPage(0);
+  }, []);
 
   // Flat set of all currently locked child uuids
   const autoSelectedIds = useMemo(() => {
@@ -358,7 +381,117 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               ))}
             </div>
 
-            <div className='flex-1' />
+            {/* Selected objects popover */}
+            <div className='relative flex-1 flex justify-center' ref={selectedPanelRef}>
+              <button
+                onClick={() => { setShowSelectedPanel((v) => !v); setPanelSearch(''); }}
+                className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors'
+                style={showSelectedPanel
+                  ? { background: '#EFF6FF', borderColor: '#93C5FD', color: '#1D4ED8' }
+                  : { background: 'rgba(21,93,252,0.06)', borderColor: 'rgba(21,93,252,0.2)', color: '#155DFC' }
+                }
+              >
+                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <polyline points='20 6 9 17 4 12' />
+                </svg>
+                <span>{selectedObjects.size} selected</span>
+                <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'
+                  style={{ transition: 'transform 0.15s', transform: showSelectedPanel ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  <polyline points='6 9 12 15 18 9' />
+                </svg>
+              </button>
+
+              {showSelectedPanel && (() => {
+                const selectedList = [...selectedObjects]
+                  .map((uuid) => allObjects.find((o) => o.uuid === uuid))
+                  .filter((o): o is BackupObject => !!o);
+
+                const filtered = panelSearch.trim()
+                  ? selectedList.filter((o) => o.name.toLowerCase().includes(panelSearch.toLowerCase()))
+                  : selectedList;
+
+                return (
+                  <div className='absolute top-full mt-2 left-1/2 -translate-x-1/2 z-30 w-72 rounded-xl bg-white shadow-xl overflow-hidden'
+                    style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
+                    {/* Panel header */}
+                    <div className='px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2'>
+                      <span className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Selected Objects</span>
+                      <span className='text-[11px] font-bold px-2 py-0.5 rounded-full' style={{ background: 'rgba(21,93,252,0.1)', color: '#155DFC' }}>
+                        {selectedObjects.size}
+                      </span>
+                    </div>
+
+                    {/* Search within selected */}
+                    {selectedList.length > 5 && (
+                      <div className='px-3 pt-2.5 pb-1'>
+                        <div className='relative'>
+                          <svg className='absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+                            <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                          </svg>
+                          <input
+                            autoFocus
+                            value={panelSearch}
+                            onChange={(e) => setPanelSearch(e.target.value)}
+                            placeholder='Search selected…'
+                            className='w-full pl-7 pr-3 py-1.5 text-xs rounded-lg outline-none'
+                            style={{ border: '1px solid #E2E8F0' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* List */}
+                    <div className='overflow-y-auto' style={{ maxHeight: 260 }}>
+                      {filtered.length === 0 ? (
+                        <p className='text-xs text-gray-400 text-center py-6'>No objects match.</p>
+                      ) : filtered.map((obj) => {
+                        const isAuto = autoSelectedIds.has(obj.uuid);
+                        return (
+                          <button
+                            key={obj.uuid}
+                            onClick={() => jumpToObject(obj.name)}
+                            title='Click to find in table'
+                            className='w-full flex items-center gap-2.5 px-4 py-2 text-left hover:bg-blue-50/60 transition-colors group'
+                          >
+                            <span className='flex-1 text-sm text-gray-800 font-medium truncate'>{obj.name}</span>
+                            {isAuto ? (
+                              <span className='flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600'>Auto</span>
+                            ) : (
+                              <span className='flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full' style={{ background: obj.isCustom ? '#F3E8FF' : '#F0F9FF', color: obj.isCustom ? '#7C3AED' : '#0369A1' }}>
+                                {obj.isCustom ? 'Custom' : 'Standard'}
+                              </span>
+                            )}
+                            <svg className='flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2.5'>
+                              <circle cx='11' cy='11' r='8' /><line x1='21' y1='21' x2='16.65' y2='16.65' />
+                            </svg>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer */}
+                    {selectedObjects.size > 0 && !_entireDatasetSelected && (
+                      <div className='px-4 py-2 border-t border-gray-100'>
+                        <button
+                          onClick={() => {
+                            setSelectedObjects(new Set());
+                            setParentChildMap(new Map());
+                            setParentTreeMap(new Map());
+                            setLastSelectedSfName(null);
+                            setDescribeFetchCount(0);
+                            setToast(null);
+                            setShowSelectedPanel(false);
+                          }}
+                          className='w-full text-xs font-semibold text-red-500 hover:text-red-700 py-1 transition-colors'
+                        >
+                          Clear all selections
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
 
             <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm flex-shrink-0'
               style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
