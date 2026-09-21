@@ -109,7 +109,7 @@ const SOURCE_TYPES: { id: SourceType; icon: React.ReactNode; title: string; desc
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange }: Props) {
+export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhase = false, initialArchivalJobsPhase = false, onBackupJobsPhaseChange, selectedConnection }: Props) {
   const [sourceType, setSourceType] = useState<SourceType>(initialArchivalJobsPhase ? 'archive' : 'backup');
   const [showJobsPhase, setShowJobsPhase] = useState(initialBackupJobsPhase);
 
@@ -254,6 +254,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             onSelectedRowChange={setBackupSelectedRow}
             onSelectedConfigIdChange={setBackupSelectedConfigId}
             onSelectedJobIdsChange={setBackupSelectedJobIds}
+            destinationId={selectedConnection?.destinationId}
           />
         )}
 
@@ -266,6 +267,7 @@ export default function SelectSourceType({ onNext, onBack, initialBackupJobsPhas
             initialSelectedConfigId={archivalSelectedConfigId}
             onSelectedRowChange={setArchivalSelectedRow}
             onSelectedConfigIdChange={setArchivalSelectedConfigId}
+            destinationId={selectedConnection?.destinationId}
           />
         )}
 
