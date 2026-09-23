@@ -865,7 +865,7 @@ export default function AddDetailsWizard({
           {/* ════ STEP 2: ADD CHILDS ════ */}
           <div className={step === 2 ? 'px-6 py-4 flex flex-col gap-3' : 'hidden'}>
             <p className='text-sm text-gray-500'>
-              <strong>MasterDetail</strong>and <strong>RequiredLookup</strong> children are auto-included and archived with the <strong>{objectName}</strong> across <strong>all levels</strong> (up to 5 deep). Click <strong>Lookup</strong> nodes to select/deselect. Use <strong>+</strong> on a node to expand deeper levels.
+              <strong>MasterDetail</strong> and <strong>RequiredLookup</strong> children are auto-included and archived with the <strong>{objectName}</strong> across <strong>all levels</strong> (up to 5 deep). Click <strong>Lookup</strong> nodes to select/deselect. Use <strong>+</strong> on a node to expand deeper levels.
             </p>
             <ChildHierarchyPanel
               objectName={objectName}
