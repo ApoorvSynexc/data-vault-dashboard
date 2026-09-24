@@ -74,8 +74,9 @@ const getStatusDisplayText = (job: BackupJob) => {
   if (isPartiallyFailed(job)) return 'Partially Failed';
   const upperStatus = job.status?.toUpperCase();
   switch (upperStatus) {
-    case 'SUCCESS': return 'Completed';
-    case 'FAILED':  return 'Failed';
+    case 'SUCCESS':      return 'Success';
+    case 'COMPLETED':    return 'Completed';
+    case 'FAILED':       return 'Failed';
     case 'RUNNING':      return 'Running';
     case 'IN_PROGRESS':  return 'In Progress';
     case 'PENDING':      return 'Pending';
