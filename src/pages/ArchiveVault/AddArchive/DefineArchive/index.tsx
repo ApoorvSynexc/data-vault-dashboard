@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ProgressBar from '../ProgressBar';
-import { useArchivalService } from '../../../../services/archival/archival.service';
 
 const NAME_MAX = 150;
 const DESC_MAX = 400;
@@ -24,42 +23,15 @@ export default function AddArchiveStep2({
   onBack,
 }: Step2Props) {
   const navigate = useNavigate();
-  const archivalService = useArchivalService();
 
   const defaultPolicyName = `Accounts-Contact-Opportunity Archive – ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
 
   const [policyName, setPolicyName] = useState(initialPolicyName ?? defaultPolicyName);
   const [description, setDescription] = useState(initialDescription);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [checkingName, setCheckingName] = useState(false);
-
-  // track last checked name to avoid redundant API calls
-  const lastCheckedName = useRef<string>('');
-
-  const handleNameBlur = async () => {
-    const trimmed = policyName.trim();
-    if (!trimmed || trimmed === lastCheckedName.current) return;
-    lastCheckedName.current = trimmed;
-
-    setCheckingName(true);
-    setNameError(null);
-    try {
-      const res = await archivalService.getList(undefined, trimmed, undefined, undefined, false);
-      const items: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      const duplicate = items.some((item: any) => (item.name ?? '').toLowerCase() === trimmed.toLowerCase());
-      if (duplicate) setNameError('An archive policy with this name already exists. Please choose a different name.');
-    } catch {
-      // skip — network error shouldn't block the user
-    } finally {
-      setCheckingName(false);
-    }
-  };
 
   const handleNameChange = (val: string) => {
     if (val.length > NAME_MAX) return;
     setPolicyName(val);
-    if (nameError) setNameError(null);
-    lastCheckedName.current = '';
   };
 
   const handleDescChange = (val: string) => {
@@ -67,7 +39,7 @@ export default function AddArchiveStep2({
     setDescription(val);
   };
 
-  const canProceed = policyName.trim().length > 0 && !nameError && !checkingName;
+  const canProceed = policyName.trim().length > 0;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -146,36 +118,14 @@ export default function AddArchiveStep2({
                   {policyName.length}/{NAME_MAX}
                 </span>
               </div>
-              <div className='relative'>
-                <input
-                  type='text'
-                  value={policyName}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  onBlur={handleNameBlur}
-                  placeholder='Enter archive policy name'
-                  className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 transition-shadow'
-                  style={{
-                    border: `1px solid ${nameError ? '#FCA5A5' : '#E2E8F0'}`,
-                    color: '#33363F',
-                    ...(nameError ? { background: '#FFF5F5' } : {}),
-                  }}
-                />
-                {checkingName && (
-                  <span className='absolute right-3 top-1/2 -translate-y-1/2'>
-                    <svg className='animate-spin text-gray-400' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
-                      <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
-                    </svg>
-                  </span>
-                )}
-              </div>
-              {nameError && (
-                <p className='text-xs text-red-500 flex items-center gap-1 mt-0.5'>
-                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
-                  </svg>
-                  {nameError}
-                </p>
-              )}
+              <input
+                type='text'
+                value={policyName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder='Enter archive policy name'
+                className='w-full px-4 py-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500/30 transition-shadow'
+                style={{ border: '1px solid #E2E8F0', color: '#33363F' }}
+              />
             </div>
 
             {/* Description */}
@@ -222,14 +172,9 @@ export default function AddArchiveStep2({
           <button
             onClick={() => onNext?.(policyName, description)}
             disabled={!canProceed}
-            className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${canProceed ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${canProceed ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
           >
-            {checkingName && (
-              <svg className='animate-spin' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
-                <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
-              </svg>
-            )}
-            {checkingName ? 'Checking…' : 'Next →'}
+            Next →
           </button>
         </div>
       </div>

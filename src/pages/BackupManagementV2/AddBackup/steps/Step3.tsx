@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBackupConfigService } from '../../../../services/backup-config/backup-config.service';
 
 const NAME_MAX = 150;
 const DESC_MAX = 400;
@@ -18,40 +17,15 @@ type Step3Props = {
 
 export default function Step3({ onNext, onBack, strategy = 'realtime', sourceName = '', destinationName = '', policyName: initialPolicyName = '', description: initialDescription = '', onDone }: Step3Props) {
   const navigate = useNavigate();
-  const backupConfigService = useBackupConfigService();
 
   const [policyName, setPolicyName] = useState(initialPolicyName);
   const [description, setDescription] = useState(initialDescription);
-  const [policyNameError, setPolicyNameError] = useState<string | null>(null);
-  const [checkingName, setCheckingName] = useState(false);
-
-  const lastCheckedName = useRef<string>('');
 
   const maxSteps = strategy === 'realtime' ? 6 : 7;
-
-  const handleNameBlur = async () => {
-    const trimmed = policyName.trim();
-    if (!trimmed || trimmed === lastCheckedName.current) return;
-    lastCheckedName.current = trimmed;
-
-    setCheckingName(true);
-    try {
-      const res = await backupConfigService.listBackupConfigs(false, undefined, trimmed);
-      const items: any[] = Array.isArray((res as any)?.data) ? (res as any).data : Array.isArray(res) ? res as any : [];
-      const duplicate = items.some((item: any) => (item.name ?? '').toLowerCase() === trimmed.toLowerCase());
-      if (duplicate) setPolicyNameError('A backup policy with this name already exists. Please choose a different name.');
-    } catch {
-      // skip — network error shouldn't block the user
-    } finally {
-      setCheckingName(false);
-    }
-  };
 
   const handleNameChange = (val: string) => {
     if (val.length > NAME_MAX) return;
     setPolicyName(val);
-    if (policyNameError) setPolicyNameError(null);
-    lastCheckedName.current = '';
   };
 
   const handleDescChange = (val: string) => {
@@ -60,11 +34,7 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', sourceNam
   };
 
   const handleNext = () => {
-    if (!policyName.trim()) {
-      setPolicyNameError('Backup Policy Name is required');
-      return;
-    }
-    if (policyNameError || checkingName) return;
+    if (!policyName.trim()) return;
     if (onDone) {
       onDone(policyName, description);
     } else {
@@ -72,7 +42,7 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', sourceNam
     }
   };
 
-  const canProceed = policyName.trim().length > 0 && !policyNameError && !checkingName;
+  const canProceed = policyName.trim().length > 0;
 
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
@@ -129,35 +99,13 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', sourceNam
                   {policyName.length}/{NAME_MAX}
                 </span>
               </div>
-              <div className='relative'>
-                <input
-                  type='text'
-                  value={policyName}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  onBlur={handleNameBlur}
-                  placeholder='Enter backup policy name'
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent ${
-                    policyNameError
-                      ? 'border-red-400 focus:ring-red-400 bg-red-50'
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                />
-                {checkingName && (
-                  <span className='absolute right-3 top-1/2 -translate-y-1/2'>
-                    <svg className='animate-spin text-gray-400' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
-                      <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
-                    </svg>
-                  </span>
-                )}
-              </div>
-              {policyNameError && (
-                <p className='text-sm text-red-600 mt-2 flex items-center gap-1'>
-                  <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                    <circle cx='12' cy='12' r='10' /><line x1='12' y1='8' x2='12' y2='12' /><line x1='12' y1='16' x2='12.01' y2='16' />
-                  </svg>
-                  {policyNameError}
-                </p>
-              )}
+              <input
+                type='text'
+                value={policyName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder='Enter backup policy name'
+                className='w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+              />
             </div>
 
             {/* Backup Description */}
@@ -201,18 +149,13 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', sourceNam
           <button
             onClick={handleNext}
             disabled={!canProceed}
-            className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               canProceed
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {checkingName && (
-              <svg className='animate-spin' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
-                <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
-              </svg>
-            )}
-            {checkingName ? 'Checking…' : onDone ? 'Save & Return →' : 'Next Step →'}
+            {onDone ? 'Save & Return →' : 'Next Step →'}
           </button>
         </div>
       </div>
