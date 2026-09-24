@@ -33,7 +33,7 @@ type BackupConfigItem = {
   name: string;
   status: 'ACTIVE' | 'INACTIVE' | 'ERROR' | string;
   schedule?: 'SCHEDULE' | 'REALTIME' | string;
-  backupStatus?: 'SUCCESS' | 'FAILED' | 'RUNNING' | string;
+  backupStatus?: 'SUCCESS' | 'FAILED' | 'PENDING' | 'PARTIAL_FAILURE' | 'CANCELLED' | string;
   lastBackupAt?: string;
   sizeInBytes?: number;
   platform?: string;
@@ -89,7 +89,7 @@ export type BackupJobItem = {
   backupConfigId: string;
   userId: string;
   jobType: 'BULK' | 'REALTIME' | string;
-  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'PARTIAL_FAILURE' | 'CANCELLED' | string;
   startedAt?: string;
   completedAt?: string;
   lastUpdatedAt?: string;

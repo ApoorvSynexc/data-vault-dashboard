@@ -9,23 +9,35 @@ type JobDetailsModalProps = {
   onRefresh?: () => Promise<void>;
 };
 
-const IN_PROGRESS_STATUSES = ['RUNNING', 'COMPRESSION_JOB_IN_PROGRESS', 'IN_PROGRESS', 'PROCESSING'];
+const IN_PROGRESS_STATUSES = new Set(['RUNNING', 'IN_PROGRESS', 'COMPRESSION_JOB_IN_PROGRESS', 'COMPRESSION_IN_PROGRESS', 'TRANSFER_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS', 'DELETION_IN_PROGRESS']);
 
 const getStatusStyle = (status: string) => {
   const s = status?.toUpperCase();
-  if (s === 'SUCCESS' || s === 'COMPLETED') return { bg: 'rgba(55,197,91,0.15)', color: '#008020' };
-  if (s === 'FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
-  if (IN_PROGRESS_STATUSES.includes(s)) return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
-  if (s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
+  if (s === 'SUCCESS' || s === 'UPLOAD_COMPLETED' || s === 'COMPLETED') return { bg: 'rgba(55,197,91,0.15)', color: '#008020' };
+  if (s === 'FAILED' || s === 'COMPRESSION_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
+  if (s === 'PARTIAL_FAILURE') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
+  if (s === 'CANCELLED') return { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' };
+  if (IN_PROGRESS_STATUSES.has(s)) return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
+  if (s === 'PENDING' || s === 'CREATED' || s === 'BULK_QUERY_COMPLETED') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
 };
 
 const getStatusLabel = (status: string) => {
   const s = status?.toUpperCase();
-  if (s === 'SUCCESS' || s === 'COMPLETED') return 'Completed';
+  if (s === 'SUCCESS') return 'Success';
+  if (s === 'COMPLETED') return 'Completed';
+  if (s === 'UPLOAD_COMPLETED') return 'Upload Completed';
   if (s === 'FAILED') return 'Failed';
-  if (IN_PROGRESS_STATUSES.includes(s)) return 'In Progress';
-  if (s === 'PENDING') return 'Pending';
+  if (s === 'COMPRESSION_FAILED') return 'Compression Failed';
+  if (s === 'PARTIAL_FAILURE') return 'Partial Failure';
+  if (s === 'CANCELLED') return 'Cancelled';
+  if (s === 'RUNNING') return 'Running';
+  if (s === 'IN_PROGRESS') return 'In Progress';
+  if (s === 'TRANSFER_IN_PROGRESS') return 'Transfer In Progress';
+  if (s === 'BULK_QUERY_IN_PROGRESS') return 'Query In Progress';
+  if (s === 'DELETION_IN_PROGRESS') return 'Deletion In Progress';
+  if (s === 'COMPRESSION_IN_PROGRESS' || s === 'COMPRESSION_JOB_IN_PROGRESS') return 'Compressing';
+  if (s === 'PENDING' || s === 'CREATED') return 'Pending';
   return status || 'Unknown';
 };
 

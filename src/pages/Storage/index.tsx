@@ -242,9 +242,12 @@ export default function Storage() {
                       {p.lastBackupAt ? new Date(p.lastBackupAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
                     <td className='py-2.5 px-3'>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${p.backupStatus === 'SUCCESS' ? 'bg-green-100 text-green-700' :
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          (p.backupStatus === 'SUCCESS' || p.backupStatus === 'COMPLETED') ? 'bg-green-100 text-green-700' :
                           p.backupStatus === 'FAILED' ? 'bg-red-100 text-red-700' :
-                            p.backupStatus === 'RUNNING' ? 'bg-blue-100 text-blue-700' :
+                          p.backupStatus === 'PARTIAL_FAILURE' ? 'bg-orange-100 text-orange-700' :
+                          (p.backupStatus === 'PENDING' || p.backupStatus === 'RUNNING' || p.backupStatus === 'IN_PROGRESS') ? 'bg-yellow-100 text-yellow-700' :
+                          p.backupStatus === 'CANCELLED' ? 'bg-gray-100 text-gray-500' :
                               'bg-gray-100 text-gray-600'
                         }`}>{p.backupStatus ?? '—'}</span>
                     </td>
@@ -321,9 +324,12 @@ export default function Storage() {
                         {p.lastBackupAt ? new Date(p.lastBackupAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                       </td>
                       <td className='py-2.5 px-3'>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${p.backupStatus === 'SUCCESS' ? 'bg-green-100 text-green-700' :
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            (p.backupStatus === 'SUCCESS' || p.backupStatus === 'COMPLETED') ? 'bg-green-100 text-green-700' :
                             p.backupStatus === 'FAILED' ? 'bg-red-100 text-red-700' :
-                              p.backupStatus === 'RUNNING' ? 'bg-blue-100 text-blue-700' :
+                            p.backupStatus === 'PARTIAL_FAILURE' ? 'bg-orange-100 text-orange-700' :
+                            (p.backupStatus === 'PENDING' || p.backupStatus === 'RUNNING' || p.backupStatus === 'IN_PROGRESS') ? 'bg-yellow-100 text-yellow-700' :
+                            p.backupStatus === 'CANCELLED' ? 'bg-gray-100 text-gray-500' :
                                 'bg-gray-100 text-gray-600'
                           }`}>{p.backupStatus ?? '—'}</span>
                       </td>

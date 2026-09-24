@@ -53,15 +53,18 @@ function DownloadCsvButton({ restoreJobId, objectName, disabled }: { restoreJobI
 }
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
-  COMPLETED:    { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
-  SUCCESS:     { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
-  DONE:        { label: '✓ Completed',   cls: 'text-green-600', icon: '✓' },
-  PARTIAL:     { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
-  FAILED:      { label: '✗ Failed',      cls: 'text-red-600', icon: '✗' },
-  ROLLED_BACK: { label: '↩ Rolled Back', cls: 'text-gray-600', icon: '↩' },
-  DRAFT:       { label: '📝 Draft',      cls: 'text-orange-600', icon: '📝' },
-  PENDING:     { label: '⏳ Pending',    cls: 'text-blue-600', icon: '⏳' },
-  RUNNING:     { label: '⏳ Running',    cls: 'text-blue-600', icon: '⏳' },
+  SUCCESS:          { label: '✓ Success',     cls: 'text-green-600',  icon: '✓' },
+  COMPLETED:        { label: '✓ Completed',   cls: 'text-green-600',  icon: '✓' },
+  DONE:             { label: '✓ Done',        cls: 'text-green-600',  icon: '✓' },
+  PARTIAL_FAILURE:  { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
+  PARTIAL:          { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
+  FAILED:           { label: '✗ Failed',      cls: 'text-red-600',    icon: '✗' },
+  CANCELLED:        { label: '⊘ Cancelled',   cls: 'text-gray-500',   icon: '⊘' },
+  ROLLED_BACK:      { label: '↩ Rolled Back', cls: 'text-gray-600',   icon: '↩' },
+  DRAFT:            { label: '📝 Draft',      cls: 'text-orange-600', icon: '📝' },
+  PENDING:          { label: '⏳ Pending',    cls: 'text-blue-600',   icon: '⏳' },
+  RUNNING:          { label: '⏳ Running',    cls: 'text-blue-600',   icon: '⏳' },
+  IN_PROGRESS:      { label: '⏳ In Progress', cls: 'text-blue-600',  icon: '⏳' },
 };
 
 interface Props {
@@ -162,7 +165,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
     ''
   ).toUpperCase();
   const isExportJob = isExportProp || destType.includes('EXPORT');
-  const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'FAILED'].includes(status);
+  const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
 
   const objectColumns: TableColumn<any>[] = [
     {
@@ -176,12 +179,22 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
       render: (row) => {
         const s = (row.status as string)?.toUpperCase();
         const style =
-          s === 'SUCCESS'  ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
-          s === 'FAILED'   ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
-          s === 'PENDING'  ? { bg: 'rgba(234,179,8,0.1)',  color: '#A16207' } :
-          s === 'RUNNING'  ? { bg: 'rgba(21,93,252,0.1)',  color: '#155DFC' } :
-                             { bg: '#F3F4F6',               color: '#374151' };
-        const label = s === 'SUCCESS' ? 'Success' : s === 'FAILED' ? 'Failed' : s === 'PENDING' ? 'Pending' : s === 'RUNNING' ? 'Running' : (row.status || '—');
+          s === 'SUCCESS'              ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
+          s === 'FAILED'               ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
+          s === 'PARTIAL_FAILURE'      ? { bg: 'rgba(217,119,6,0.1)',  color: '#D97706' } :
+          s === 'CANCELLED'            ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
+          s === 'ROLLBACK_COMPLETED'   ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
+          s === 'RESTORE_IN_PROGRESS' || s === 'ROLLBACK_IN_PROGRESS' ? { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' } :
+          (s === 'PENDING' || s === 'RUNNING' || s === 'IN_PROGRESS' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS')  ? { bg: 'rgba(234,179,8,0.1)',  color: '#A16207' } :
+                                         { bg: '#F3F4F6',               color: '#374151' };
+        const labelMap: Record<string, string> = {
+          SUCCESS: 'Success', FAILED: 'Failed', PARTIAL_FAILURE: 'Partial Failure',
+          CANCELLED: 'Cancelled', ROLLBACK_COMPLETED: 'Rolled Back',
+          RESTORE_IN_PROGRESS: 'Restoring', ROLLBACK_IN_PROGRESS: 'Rolling Back',
+          PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
+          CSV_CREATING: 'Creating CSV', INGEST_IN_PROGRESS: 'Ingesting',
+        };
+        const label = labelMap[s] ?? (row.status || '—');
         return (
           <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold'
             style={{ background: style.bg, color: style.color }}>
