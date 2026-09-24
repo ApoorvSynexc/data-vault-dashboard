@@ -58,9 +58,13 @@ export default function SmartSelect({ value, onChange, options, placeholder, cla
   }, [open]);
 
   // close on scroll/resize to avoid stale position
+  // but skip if the scroll is happening *inside* the dropdown itself
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
+    const close = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
     window.addEventListener('scroll', close, true);
     window.addEventListener('resize', close);
     return () => {
