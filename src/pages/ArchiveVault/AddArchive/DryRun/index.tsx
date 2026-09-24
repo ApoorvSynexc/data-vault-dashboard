@@ -41,7 +41,7 @@ function fmtNumber(n: number | undefined): string {
 function now(): string {
   const d = new Date();
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 // ─── Preview Modal ────────────────────────────────────────────────────────────

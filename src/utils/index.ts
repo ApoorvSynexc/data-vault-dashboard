@@ -14,13 +14,32 @@ export function formatDate(date: Date | string | null | undefined, tz?: string):
 export function formatTime(date: Date | string | null | undefined, tz?: string): string {
   if (!date) return '--';
   const d = tz ? dayjs(date).tz(tz) : dayjs(date);
-  return d.format('h:mm A');
+  return d.format('HH:mm');
 }
 
 export function formatDateTime(date: Date | string | null | undefined, tz?: string): string {
   if (!date) return '--';
   const d = tz ? dayjs(date).tz(tz) : dayjs(date);
-  return d.format('MMM D, YYYY h:mm A');
+  return d.format('MMM D, YYYY HH:mm');
+}
+
+/**
+ * Converts a 12-hour time string (e.g. "3:05 PM", "03:05 PM") to 24-hour "HH:mm".
+ * Returns the input unchanged if it's already in 24-hour format or unrecognised.
+ */
+export function to24h(timeStr: string | null | undefined): string {
+  if (!timeStr) return '';
+  const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return timeStr; // already 24-hour or unrecognised — pass through
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = match[3].toUpperCase();
+  if (period === 'AM') {
+    if (h === 12) h = 0;
+  } else {
+    if (h !== 12) h += 12;
+  }
+  return `${String(h).padStart(2, '0')}:${m}`;
 }
 
 export function toUTCISOString(date: string | undefined): string | undefined {

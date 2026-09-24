@@ -105,7 +105,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const minDatetime = toDatetimeLocal(selectedBackupCreatedAt);
   const maxDatetime = toDatetimeLocal(new Date().toISOString());
   const createdAtReadable = selectedBackupCreatedAt
-    ? new Date(selectedBackupCreatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    ? new Date(selectedBackupCreatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
     : '';
 
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
