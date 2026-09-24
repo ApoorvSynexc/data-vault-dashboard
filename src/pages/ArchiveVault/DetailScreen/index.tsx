@@ -30,13 +30,13 @@ import ArchiveJobDetailsModal from './ArchiveJobDetailsModal';
 
 function StatusDot({ status }: { status: string }) {
   const color: Record<string, string> = {
-    ACTIVE: 'bg-green-500', SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500',
+    ACTIVE: 'bg-green-500', SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500', DELETION_COMPLETED: 'bg-green-500',
     PARTIAL_FAILURE: 'bg-amber-400', CANCELLED: 'bg-gray-400',
     PENDING: 'bg-yellow-400', RUNNING: 'bg-yellow-400', IN_PROGRESS: 'bg-yellow-400', DRAFT: 'bg-yellow-400',
     PAUSED: 'bg-gray-400', FAILED: 'bg-red-500',
   };
   const label: Record<string, string> = {
-    ACTIVE: 'Active', SUCCESS: 'Success', COMPLETED: 'Completed',
+    ACTIVE: 'Active', SUCCESS: 'Success', COMPLETED: 'Completed', DELETION_COMPLETED: 'Deletion Completed',
     PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress', DRAFT: 'Draft',
     PAUSED: 'Paused', FAILED: 'Failed', PARTIAL_FAILURE: 'Partial Failure',
     CANCELLED: 'Cancelled',

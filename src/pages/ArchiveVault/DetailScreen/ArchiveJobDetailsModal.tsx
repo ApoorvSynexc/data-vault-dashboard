@@ -66,7 +66,7 @@ interface ArchiveJobDetail {
 
 function getStatusStyle(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'SUCCESS' || s === 'COMPLETED') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
+  if (s === 'SUCCESS' || s === 'COMPLETED' || s === 'DELETION_COMPLETED') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
   if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
   if (s === 'FAILED' || s === 'DELETION_JOB_FAILED' || s === 'COMPRESSION_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
   if (s === 'PARTIAL_FAILURE' || s === 'DELETION_RECORDS_FAILED') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
@@ -80,6 +80,7 @@ function getStatusLabel(status: string) {
   const s = status?.toUpperCase();
   if (s === 'SUCCESS') return 'Success';
   if (s === 'COMPLETED') return 'Completed';
+  if (s === 'DELETION_COMPLETED') return 'Deletion Completed';
   if (s === 'UPLOAD_COMPLETED') return 'Upload Completed';
   if (s === 'FAILED') return 'Failed';
   if (s === 'COMPRESSION_FAILED') return 'Compression Failed';

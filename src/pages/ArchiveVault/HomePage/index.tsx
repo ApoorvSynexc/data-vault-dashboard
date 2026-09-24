@@ -166,8 +166,9 @@ function StatusBadge({ status }: { status: string }) {
     ACTIVE:           'bg-blue-100 text-blue-700',
     RESUMED:          'bg-blue-100 text-blue-700',
     SCHEDULED:        'bg-blue-100 text-blue-700',
-    SUCCESS:          'bg-green-100 text-green-700',
-    COMPLETED:        'bg-green-100 text-green-700',
+    SUCCESS:            'bg-green-100 text-green-700',
+    COMPLETED:          'bg-green-100 text-green-700',
+    DELETION_COMPLETED: 'bg-green-100 text-green-700',
     PENDING:          'bg-yellow-100 text-yellow-700',
     RUNNING:          'bg-yellow-100 text-yellow-700',
     IN_PROGRESS:      'bg-yellow-100 text-yellow-700',
@@ -181,7 +182,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const labels: Record<string, string> = {
     ACTIVE: 'Active', RESUMED: 'Resumed', SCHEDULED: 'Scheduled',
-    SUCCESS: 'Success', COMPLETED: 'Completed',
+    SUCCESS: 'Success', COMPLETED: 'Completed', DELETION_COMPLETED: 'Deletion Completed',
     PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
     DRAFT: 'Draft', PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
     PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time', CANCELLED: 'Cancelled',
