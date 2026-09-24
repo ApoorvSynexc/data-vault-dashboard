@@ -239,11 +239,6 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   );
 
   const handleNext = () => {
-    if (activeMdWarnings.length > 0) {
-      setFilterError('Resolve MasterDetail parent conflicts shown below before proceeding.');
-      setTimeout(() => setFilterError(null), 4000);
-      return;
-    }
     // Collect all object IDs already covered as built children of another selected object.
     // Those don't need their own independent config entry.
     const builtChildIds = new Set<string>();
