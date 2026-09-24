@@ -272,7 +272,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
         <div className='flex items-start justify-between px-7 pt-6 pb-4 flex-shrink-0'>
           <div>
             <h2 className='font-bold' style={{ fontSize: '20px', color: '#111827' }}>
-              Archive Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | hh:mm A')}` : ''}
+              Archive Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | HH:mm')}` : ''}
             </h2>
             <p className='text-sm mt-1' style={{ color: '#64748B' }}>Archive job details →</p>
           </div>

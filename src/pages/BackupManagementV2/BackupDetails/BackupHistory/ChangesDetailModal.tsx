@@ -139,7 +139,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
             )}
             <div>
               <h2 className='font-bold' style={{ fontSize: '20px', color: '#111827' }}>
-                Object Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | hh:mm A')}` : ''}
+                Object Details{startedAt ? ` - ${dayjs(startedAt).format('MMMM D, YYYY | HH:mm')}` : ''}
               </h2>
               <p className='text-sm mt-1' style={{ color: '#64748B' }}>Object updates details in backup →</p>
             </div>

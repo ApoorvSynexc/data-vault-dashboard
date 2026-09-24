@@ -263,7 +263,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
     yesterdayOnly.setDate(yesterdayOnly.getDate() - 1);
 
     if (dateOnly.getTime() === todayOnly.getTime()) {
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
     if (dateOnly.getTime() === yesterdayOnly.getTime()) {
       return 'Yesterday';
