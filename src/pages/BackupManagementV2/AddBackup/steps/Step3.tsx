@@ -201,13 +201,18 @@ export default function Step3({ onNext, onBack, strategy = 'realtime', sourceNam
           <button
             onClick={handleNext}
             disabled={!canProceed}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors ${
               canProceed
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {onDone ? 'Save & Return →' : 'Next Step →'}
+            {checkingName && (
+              <svg className='animate-spin' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5'>
+                <path d='M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' strokeLinecap='round' />
+              </svg>
+            )}
+            {checkingName ? 'Checking…' : onDone ? 'Save & Return →' : 'Next Step →'}
           </button>
         </div>
       </div>
