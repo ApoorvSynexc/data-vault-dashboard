@@ -100,7 +100,7 @@ export type ArchivalChildObject = {
 export type ArchivalJobItem = {
   archivalJobId: string;
   archivalConfigId?: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'PARTIAL_FAILURE' | 'CANCELLED' | string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'PARTIAL_FAILURE' | 'CANCELLED' | 'DELETION_COMPLETED' | string;
   jobType?: string;
   startedAt?: string;
   completedAt?: string;
