@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import type { SelectedArchiveObject } from '../SelectObjects';
 import ProgressBar from '../ProgressBar';
+import SmartSelect from '../../../../components/SmartSelect';
 
 type FrequencyType = 'One Time' | 'Hourly' | 'Daily' | 'Weekly' | 'Monthly' | 'Custom';
 
@@ -127,6 +128,19 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
   const [backupIn, setBackupIn] = useState(initial.backupIn);
   const [archiveFrequency, setArchiveFrequency] = useState('Daily');
   const [toast, setToast] = useState<string | null>(null);
+
+  const timezoneOptions = TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label }));
+  const backupInOptions = [
+    { value: '1 Hour', label: '1 Hour' },
+    { value: '2 Hours', label: '2 Hours' },
+    { value: '6 Hours', label: '6 Hours' },
+    { value: '12 Hours', label: '12 Hours' },
+  ];
+  const archiveFrequencyOptions = [
+    { value: 'Daily', label: 'Daily' },
+    { value: 'Weekly', label: 'Weekly' },
+    { value: 'Monthly', label: 'Monthly' },
+  ];
 
   function showToast(msg: string) {
     setToast(msg);
@@ -398,9 +412,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                         </div>
                         <div>
                           <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                          <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                            {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                          </select>
+                          <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                         </div>
                       </div>
                     )}
@@ -413,15 +425,11 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive in Every</label>
-                        <select value={backupIn} onChange={(e) => setBackupIn(e.target.value)} className={inputCls}>
-                          <option>1 Hour</option><option>2 Hours</option><option>6 Hours</option><option>12 Hours</option>
-                        </select>
+                        <SmartSelect value={backupIn} onChange={setBackupIn} options={backupInOptions} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                        </select>
+                        <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                       </div>
                     </div>
                     <div className='grid grid-cols-2 gap-5'>
@@ -450,9 +458,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                        </select>
+                        <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                       </div>
                     </div>
                     <div>
@@ -486,9 +492,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                        </select>
+                        <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                       </div>
                     </div>
                     <div>
@@ -524,12 +528,18 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
-                        <select value={dayOfMonth} onChange={(e) => { setDayOfMonth(e.target.value); if (e.target.value) setDayOfMonthError(''); }} className={`${inputCls}${dayOfMonthError ? ' border-red-400' : ''}`}>
-                          <option value=''>Select day</option>
-                          {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((d) => (
-                            <option key={d} value={String(d).padStart(2, '0')}>{String(d).padStart(2, '0')}</option>
-                          ))}
-                        </select>
+                        <SmartSelect
+                          value={dayOfMonth}
+                          onChange={(v) => { setDayOfMonth(v); if (v) setDayOfMonthError(''); }}
+                          options={[
+                            { value: '', label: 'Select day' },
+                            ...Array.from({ length: maxDayForSelectedMonths }, (_, i) => {
+                              const d = String(i + 1).padStart(2, '0');
+                              return { value: d, label: d };
+                            }),
+                          ]}
+                          hasError={!!dayOfMonthError}
+                        />
                         {dayOfMonthError && <p className='mt-1.5 text-xs text-red-500'>{dayOfMonthError}</p>}
                       </div>
                       <div>
@@ -540,9 +550,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                          {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                        </select>
+                        <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
@@ -571,9 +579,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     <div className='grid grid-cols-2 gap-5'>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Archive Frequency</label>
-                        <select value={archiveFrequency} onChange={(e) => setArchiveFrequency(e.target.value)} className={inputCls}>
-                          <option>Daily</option><option>Weekly</option><option>Monthly</option>
-                        </select>
+                        <SmartSelect value={archiveFrequency} onChange={setArchiveFrequency} options={archiveFrequencyOptions} />
                       </div>
                       <div>
                         <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
@@ -583,9 +589,7 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                     </div>
                     <div>
                       <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                      <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className={inputCls}>
-                        {TIMEZONES.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                      </select>
+                      <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                     </div>
                   </div>
                 )}
