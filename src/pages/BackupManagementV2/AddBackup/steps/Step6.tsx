@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
+import SmartSelect from '../../../../components/SmartSelect';
 
 type ScheduleConfig = {
   timeZone: string;
@@ -129,6 +130,19 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
   const [endDate, setEndDate] = useState(initialState.endDate);
   const [backupFrequency, setBackupFrequency] = useState('Daily');
   const [backupIn, setBackupIn] = useState('1 Hour');
+
+  const timezoneOptions = TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label }));
+  const backupInOptions = [
+    { value: '1 Hour', label: '1 Hour' },
+    { value: '2 Hours', label: '2 Hours' },
+    { value: '6 Hours', label: '6 Hours' },
+    { value: '12 Hours', label: '12 Hours' },
+  ];
+  const backupFrequencyOptions = [
+    { value: 'Daily', label: 'Daily' },
+    { value: 'Weekly', label: 'Weekly' },
+    { value: 'Monthly', label: 'Monthly' },
+  ];
   const [toast, setToast] = useState<string | null>(null);
   const [startTimeError, setStartTimeError] = useState('');
   const [startDateError, setStartDateError] = useState('');
@@ -348,17 +362,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
                 </div>
                 <div>
                   <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                  <select
-                    value={timeZone}
-                    onChange={(e) => setTimeZone(e.target.value)}
-                    className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  >
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
+                  <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
                 </div>
               </div>
             )}
@@ -370,30 +374,11 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Backup in Every</label>
-                <select
-                  value={backupIn}
-                  onChange={(e) => setBackupIn(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>1 Hour</option>
-                  <option>2 Hours</option>
-                  <option>6 Hours</option>
-                  <option>12 Hours</option>
-                </select>
+                <SmartSelect value={backupIn} onChange={setBackupIn} options={backupInOptions} />
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                <select
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
               </div>
             </div>
             <div className='grid grid-cols-2 gap-6'>
@@ -439,17 +424,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                <select
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
               </div>
             </div>
             <div>
@@ -500,17 +475,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                <select
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
               </div>
             </div>
             <div>
@@ -550,18 +515,18 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Day of the Month</label>
-                <select
+                <SmartSelect
                   value={dayOfMonth}
-                  onChange={(e) => { setDayOfMonth(e.target.value); if (e.target.value) setDayOfMonthError(''); }}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${dayOfMonthError ? 'border-red-400' : 'border-gray-300'}`}
-                >
-                  <option value=''>Select day</option>
-                  {Array.from({ length: maxDayForSelectedMonths }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={String(day).padStart(2, '0')}>
-                      {String(day).padStart(2, '0')}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => { setDayOfMonth(v); if (v) setDayOfMonthError(''); }}
+                  options={[
+                    { value: '', label: 'Select day' },
+                    ...Array.from({ length: maxDayForSelectedMonths }, (_, i) => {
+                      const d = String(i + 1).padStart(2, '0');
+                      return { value: d, label: d };
+                    }),
+                  ]}
+                  hasError={!!dayOfMonthError}
+                />
                 {dayOfMonthError && <p className='mt-1.5 text-xs text-red-500'>{dayOfMonthError}</p>}
               </div>
               <div>
@@ -579,17 +544,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-                <select
-                  value={timeZone}
-                  onChange={(e) => setTimeZone(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  {TIMEZONES.map((tz) => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Starts From</label>
@@ -635,15 +590,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             <div className='grid grid-cols-2 gap-6'>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Backup Frequency</label>
-                <select
-                  value={backupFrequency}
-                  onChange={(e) => setBackupFrequency(e.target.value)}
-                  className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option>Daily</option>
-                  <option>Weekly</option>
-                  <option>Monthly</option>
-                </select>
+                <SmartSelect value={backupFrequency} onChange={setBackupFrequency} options={backupFrequencyOptions} />
               </div>
               <div>
                 <label className='block text-sm font-semibold text-gray-900 mb-2'>Starting Time</label>
@@ -659,17 +606,7 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
             </div>
             <div>
               <label className='block text-sm font-semibold text-gray-900 mb-2'>Time Zone</label>
-              <select
-                value={timeZone}
-                onChange={(e) => setTimeZone(e.target.value)}
-                className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
+              <SmartSelect value={timeZone} onChange={setTimeZone} options={timezoneOptions} />
             </div>
           </div>
         )}
