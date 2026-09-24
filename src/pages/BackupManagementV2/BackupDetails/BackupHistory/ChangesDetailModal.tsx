@@ -333,7 +333,7 @@ export default function ChangesDetailModal({ isOpen, onClose, onBack, job, onRef
                     <td colSpan={8} className='px-5 pb-3.5 pt-0'>
                       {(() => {
                         const s = item.status?.toUpperCase();
-                        const isSuccess = s === 'SUCCESS' || s === 'COMPLETED';
+                        const isSuccess = s === 'SUCCESS' || s === 'UPLOAD_COMPLETED' || s === 'COMPLETED';
                         const isFailed = s === 'FAILED';
                         const isInProgress = IN_PROGRESS_OBJ_STATUSES.has(s);
                         if (isFailed || item.errorMessage) {
@@ -428,22 +428,29 @@ function parseErrorMessage(raw: string): string {
 }
 
 const IN_PROGRESS_OBJ_STATUSES = new Set([
-  'RUNNING', 'IN_PROGRESS', 'TRANSFER_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS',
-  'PROCESSING', 'COMPRESSION_JOB_IN_PROGRESS',
+  'RUNNING', 'TRANSFER_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS',
+  'COMPRESSION_JOB_IN_PROGRESS', 'COMPRESSION_IN_PROGRESS',
+  'DELETION_IN_PROGRESS', 'RESTORE_IN_PROGRESS', 'ROLLBACK_IN_PROGRESS',
 ]);
 
 /* ── Status Badge ── */
 function StatusBadge({ status }: { status: string }) {
   const s = status?.toUpperCase();
   let bg = '#F3F4F6', color = '#374151';
-  if (s === 'SUCCESS' || s === 'COMPLETED') { bg = 'rgba(0,128,32,0.1)'; color = '#008020'; }
-  else if (s === 'FAILED') { bg = 'rgba(242,68,0,0.1)'; color = '#F24400'; }
+  if (s === 'SUCCESS' || s === 'UPLOAD_COMPLETED' || s === 'COMPLETED') { bg = 'rgba(0,128,32,0.1)'; color = '#008020'; }
+  else if (s === 'FAILED' || s === 'COMPRESSION_FAILED') { bg = 'rgba(242,68,0,0.1)'; color = '#F24400'; }
+  else if (s === 'CANCELLED') { bg = 'rgba(107,114,128,0.1)'; color = '#6B7280'; }
   else if (IN_PROGRESS_OBJ_STATUSES.has(s)) { bg = 'rgba(21,93,252,0.1)'; color = '#155DFC'; }
-  else if (s === 'PENDING') { bg = 'rgba(234,179,8,0.1)'; color = '#A16207'; }
+  else if (s === 'PENDING' || s === 'CREATED' || s === 'BULK_QUERY_COMPLETED' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS') { bg = 'rgba(234,179,8,0.1)'; color = '#A16207'; }
   const label = s === 'SUCCESS' || s === 'COMPLETED' ? 'Completed'
+    : s === 'UPLOAD_COMPLETED' ? 'Upload Completed'
     : s === 'FAILED' ? 'Failed'
+    : s === 'COMPRESSION_FAILED' ? 'Compression Failed'
+    : s === 'CANCELLED' ? 'Cancelled'
     : IN_PROGRESS_OBJ_STATUSES.has(s) ? 'In Progress'
-    : s === 'PENDING' ? 'Pending'
+    : s === 'PENDING' || s === 'CREATED' ? 'Pending'
+    : s === 'CSV_CREATING' ? 'Creating CSV'
+    : s === 'INGEST_IN_PROGRESS' ? 'Ingesting'
     : status || 'Unknown';
   return (
     <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap' style={{ background: bg, color }}>

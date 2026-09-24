@@ -87,7 +87,7 @@ export function computeArchiveJobStats(objects: any[]): ArchiveJobStats {
     totalInserted  += obj.insertCount ?? obj.completedRecordCount ?? obj.totalRecordCount ?? 0;
     totalApiCalls  += obj.salesforceApiCount ?? 0;
     const s = obj.status?.toUpperCase() ?? '';
-    if (s === 'COMPLETED' || s === 'SUCCESS') completedObjects++;
+    if (s === 'SUCCESS' || s === 'UPLOAD_COMPLETED' || s === 'COMPLETED') completedObjects++;
     else if (s === 'FAILED') failedObjects++;
   }
   return { flatRows, totalInserted, totalApiCalls, completedObjects, failedObjects };

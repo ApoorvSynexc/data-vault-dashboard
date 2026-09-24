@@ -40,15 +40,6 @@ function formatDate(iso?: string): string {
     ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function normalizeStatus(raw?: string): string {
-  const map: Record<string, string> = {
-    ACTIVE: 'ACTIVE', RUNNING: 'RUNNING', SCHEDULED: 'SCHEDULED',
-    DRAFT: 'DRAFT', PAUSED: 'PAUSED', FAILED: 'FAILED',
-    ONE_TIME: 'ONE_TIME', PENDING: 'PENDING', SUCCESS: 'SUCCESS',
-    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'ACTIVE',
-  };
-  return map[raw?.toUpperCase() ?? ''] ?? raw ?? 'DRAFT';
-}
 
 function PlatformBadge({ name }: { name: string }) {
   const letter = name?.charAt(0)?.toUpperCase() ?? '?';
@@ -67,16 +58,26 @@ function PlatformBadge({ name }: { name: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ACTIVE: 'bg-blue-100 text-blue-700', RUNNING: 'bg-green-100 text-green-700',
-    SUCCESS: 'bg-green-100 text-green-700', PENDING: 'bg-indigo-100 text-indigo-700',
-    DRAFT: 'bg-yellow-100 text-yellow-700', PAUSED: 'bg-gray-100 text-gray-700',
-    INACTIVE: 'bg-gray-100 text-gray-500', FAILED: 'bg-red-100 text-red-700',
+    ACTIVE:          'bg-blue-100 text-blue-700',
+    RESUMED:         'bg-blue-100 text-blue-700',
+    SUCCESS:         'bg-green-100 text-green-700',
+    COMPLETED:       'bg-green-100 text-green-700',
+    PENDING:         'bg-yellow-100 text-yellow-700',
+    RUNNING:         'bg-yellow-100 text-yellow-700',
+    IN_PROGRESS:     'bg-yellow-100 text-yellow-700',
+    DRAFT:           'bg-yellow-100 text-yellow-700',
+    PAUSED:          'bg-gray-100 text-gray-700',
+    INACTIVE:        'bg-gray-100 text-gray-500',
+    FAILED:          'bg-red-100 text-red-700',
     PARTIAL_FAILURE: 'bg-orange-100 text-orange-700',
+    CANCELLED:       'bg-gray-100 text-gray-500',
   };
   const labels: Record<string, string> = {
-    ACTIVE: 'Active', RUNNING: 'Running', SUCCESS: 'Success', PENDING: 'Pending',
+    ACTIVE: 'Active', RESUMED: 'Resumed',
+    SUCCESS: 'Success', COMPLETED: 'Completed',
+    PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
     DRAFT: 'Draft', PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
-    PARTIAL_FAILURE: 'Partial Failure',
+    PARTIAL_FAILURE: 'Partial Failure', CANCELLED: 'Cancelled',
   };
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-700'}`}>
@@ -127,11 +128,11 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
   const rawList: any[] = Array.isArray((rawData as any)?.data) ? (rawData as any).data : [];
   const apiMeta = (rawData as any)?.meta ?? { limit: 25, nextCursor: null, totalRecords: rawList.length };
 
-  const rows = rawList.filter((item: any) => normalizeStatus(item.status) !== 'DRAFT').map((item: any) => ({
+  const rows = rawList.filter((item: any) => (item.status?.toUpperCase() ?? '') !== 'DRAFT').map((item: any) => ({
     ...item,
     displayName: item.name ?? item.slug ?? '--',
-    displayStatus: normalizeStatus(item.status),
-    lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
+    displayStatus: item.status ?? '',
+    lastJobStatus: item.backupStatus ?? '',
     displayDate: formatDate(item.lastBackupAt ?? item.createdAt),
   }));
 

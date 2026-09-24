@@ -66,23 +66,40 @@ interface ArchiveJobDetail {
 
 function getStatusStyle(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'COMPLETED' || s === 'SUCCESS') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
+  if (s === 'SUCCESS' || s === 'COMPLETED') return { bg: 'rgba(0,128,32,0.1)', color: '#008020' };
   if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
-  if (s === 'FAILED' || s === 'DELETION_JOB_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
+  if (s === 'FAILED' || s === 'DELETION_JOB_FAILED' || s === 'COMPRESSION_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
   if (s === 'PARTIAL_FAILURE' || s === 'DELETION_RECORDS_FAILED') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
-  if (s === 'RUNNING' || s === 'IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
-  if (s === 'CREATED' || s === 'PENDING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
+  if (s === 'CANCELLED') return { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' };
+  if (s === 'RUNNING' || s === 'IN_PROGRESS' || s === 'BULK_QUERY_IN_PROGRESS' || s === 'TRANSFER_IN_PROGRESS' || s === 'DELETION_IN_PROGRESS' || s === 'RESTORE_IN_PROGRESS' || s === 'ROLLBACK_IN_PROGRESS' || s === 'COMPRESSION_IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
+  if (s === 'CREATED' || s === 'PENDING' || s === 'BULK_QUERY_COMPLETED' || s === 'ROLLBACK_COMPLETED' || s === 'COMPRESSED' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS' || s === 'RESTORE_CSV_CREATING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
 }
 
 function getStatusLabel(status: string) {
   const s = status?.toUpperCase();
-  if (s === 'COMPLETED' || s === 'SUCCESS') return 'Completed';
+  if (s === 'SUCCESS') return 'Success';
+  if (s === 'COMPLETED') return 'Completed';
+  if (s === 'UPLOAD_COMPLETED') return 'Upload Completed';
   if (s === 'FAILED') return 'Failed';
+  if (s === 'COMPRESSION_FAILED') return 'Compression Failed';
   if (s === 'DELETION_JOB_FAILED') return 'Deletion Failed';
   if (s === 'DELETION_RECORDS_FAILED') return 'Records Failed';
   if (s === 'PARTIAL_FAILURE') return 'Partial Failure';
-  if (s === 'RUNNING') return 'In Progress';
+  if (s === 'CANCELLED') return 'Cancelled';
+  if (s === 'RUNNING') return 'Running';
+  if (s === 'IN_PROGRESS') return 'In Progress';
+  if (s === 'BULK_QUERY_IN_PROGRESS') return 'Query In Progress';
+  if (s === 'BULK_QUERY_COMPLETED') return 'Query Completed';
+  if (s === 'TRANSFER_IN_PROGRESS') return 'Transfer In Progress';
+  if (s === 'DELETION_IN_PROGRESS') return 'Deletion In Progress';
+  if (s === 'RESTORE_IN_PROGRESS') return 'Restore In Progress';
+  if (s === 'ROLLBACK_IN_PROGRESS') return 'Rollback In Progress';
+  if (s === 'ROLLBACK_COMPLETED') return 'Rolled Back';
+  if (s === 'COMPRESSION_IN_PROGRESS') return 'Compressing';
+  if (s === 'COMPRESSED') return 'Compressed';
+  if (s === 'CSV_CREATING' || s === 'RESTORE_CSV_CREATING') return 'Creating CSV';
+  if (s === 'INGEST_IN_PROGRESS') return 'Ingesting';
   if (s === 'CREATED' || s === 'PENDING') return 'Pending';
   return status || 'Unknown';
 }
@@ -220,9 +237,9 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
   let filtered = visibleRows.filter(({ obj }) =>
     obj.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['COMPLETED', 'SUCCESS', 'UPLOAD_COMPLETED'].includes(obj.status?.toUpperCase() ?? ''));
-  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => ['FAILED', 'DELETION_JOB_FAILED', 'DELETION_RECORDS_FAILED'].includes(obj.status?.toUpperCase() ?? ''));
-  if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING'].includes(obj.status?.toUpperCase() ?? ''));
+  if (activeFilter === 'Completed') filtered = filtered.filter(({ obj }) => ['SUCCESS', 'COMPLETED', 'UPLOAD_COMPLETED', 'ROLLBACK_COMPLETED', 'COMPRESSED'].includes(obj.status?.toUpperCase() ?? ''));
+  if (activeFilter === 'Failed')    filtered = filtered.filter(({ obj }) => ['FAILED', 'DELETION_JOB_FAILED', 'DELETION_RECORDS_FAILED', 'COMPRESSION_FAILED'].includes(obj.status?.toUpperCase() ?? ''));
+  if (activeFilter === 'Pending')   filtered = filtered.filter(({ obj }) => ['CREATED', 'PENDING', 'RUNNING', 'BULK_QUERY_IN_PROGRESS', 'BULK_QUERY_COMPLETED', 'TRANSFER_IN_PROGRESS', 'DELETION_IN_PROGRESS', 'RESTORE_IN_PROGRESS', 'ROLLBACK_IN_PROGRESS', 'COMPRESSION_IN_PROGRESS', 'CSV_CREATING', 'RESTORE_CSV_CREATING', 'INGEST_IN_PROGRESS'].includes(obj.status?.toUpperCase() ?? ''));
 
   const statCards = [
     { value: flatRows.length,   label: 'Objects Archived',    color: '#008020', icon: <IconBox color='#008020' /> },
@@ -558,8 +575,8 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               header: 'Records Failed',
               render: ({ obj }) => {
                 const n = obj.deletedfailedRecordCount ?? 0;
-                const ACTIVE_STATUSES = new Set(['DELETION_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS', 'BULK_QUERY_COMPLETED', 'TRANSFER_IN_PROGRESS', 'UPLOAD_COMPLETED', 'RUNNING', 'PENDING', 'CREATED']);
-                const jobIsActive = job?.status?.toUpperCase() === 'RUNNING' || job?.status?.toUpperCase() === 'PENDING';
+                const ACTIVE_STATUSES = new Set(['DELETION_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS', 'BULK_QUERY_COMPLETED', 'TRANSFER_IN_PROGRESS', 'RESTORE_IN_PROGRESS', 'ROLLBACK_IN_PROGRESS', 'COMPRESSION_IN_PROGRESS', 'CSV_CREATING', 'RESTORE_CSV_CREATING', 'INGEST_IN_PROGRESS', 'RUNNING', 'PENDING', 'CREATED']);
+                const jobIsActive = job?.status?.toUpperCase() === 'PENDING' || job?.status?.toUpperCase() === 'RUNNING';
                 const hasPerRecord = !!obj.recordErrorsS3Prefix && !ACTIVE_STATUSES.has(obj.status?.toUpperCase() ?? '') && !jobIsActive;
                 return (
                   <span className='inline-flex items-center gap-2'>

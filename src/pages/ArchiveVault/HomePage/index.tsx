@@ -84,15 +84,6 @@ function formatDate(iso: string): string {
     ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-function normalizeStatus(raw: string): string {
-  const map: Record<string, string> = {
-    ACTIVE: 'ACTIVE', RUNNING: 'RUNNING', SCHEDULED: 'SCHEDULED',
-    DRAFT: 'DRAFT', PAUSED: 'PAUSED', FAILED: 'FAILED',
-    ONE_TIME: 'ONE_TIME', PENDING: 'PENDING', SUCCESS: 'SUCCESS',
-    PARTIAL_FAILURE: 'PARTIAL_FAILURE', INACTIVE: 'INACTIVE', RESUMED: 'RESUMED',
-  };
-  return map[raw?.toUpperCase()] ?? raw ?? 'DRAFT';
-}
 
 function checkSchedulePast(sc?: { scheduling?: { startDate?: string; startTime?: string } }): boolean {
   if (!sc) return false;
@@ -174,22 +165,26 @@ function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     ACTIVE:           'bg-blue-100 text-blue-700',
     RESUMED:          'bg-blue-100 text-blue-700',
-    RUNNING:          'bg-green-100 text-green-700',
     SCHEDULED:        'bg-blue-100 text-blue-700',
     SUCCESS:          'bg-green-100 text-green-700',
-    PENDING:          'bg-indigo-100 text-indigo-700',
+    COMPLETED:        'bg-green-100 text-green-700',
+    PENDING:          'bg-yellow-100 text-yellow-700',
+    RUNNING:          'bg-yellow-100 text-yellow-700',
+    IN_PROGRESS:      'bg-yellow-100 text-yellow-700',
     DRAFT:            'bg-yellow-100 text-yellow-700',
     PAUSED:           'bg-gray-100 text-gray-700',
     INACTIVE:         'bg-gray-100 text-gray-500',
     FAILED:           'bg-red-100 text-red-700',
     PARTIAL_FAILURE:  'bg-orange-100 text-orange-700',
     ONE_TIME:         'bg-gray-100 text-gray-700',
+    CANCELLED:        'bg-gray-100 text-gray-500',
   };
   const labels: Record<string, string> = {
-    ACTIVE: 'Active', RESUMED: 'Resumed', RUNNING: 'Running', SCHEDULED: 'Scheduled',
-    SUCCESS: 'Success', PENDING: 'Pending', DRAFT: 'Draft',
-    PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
-    PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time',
+    ACTIVE: 'Active', RESUMED: 'Resumed', SCHEDULED: 'Scheduled',
+    SUCCESS: 'Success', COMPLETED: 'Completed',
+    PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
+    DRAFT: 'Draft', PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
+    PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time', CANCELLED: 'Cancelled',
   };
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-700'}`}>
@@ -515,8 +510,8 @@ export default function ArchiveVaultHomePage() {
     ...item,
     displayName: item.name ?? item.slug ?? '--',
     platform: crmPlatformMap[item.crmId] ?? 'Salesforce',
-    displayStatus: normalizeStatus(item.status),
-    lastJobStatus: item.backupStatus ? normalizeStatus(item.backupStatus) : '',
+    displayStatus: item.status ?? '',
+    lastJobStatus: item.backupStatus ?? '',
     displayDate: formatDate(item.lastBackupAt ?? ''),
   }));
 

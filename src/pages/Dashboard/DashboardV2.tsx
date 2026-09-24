@@ -58,11 +58,15 @@ type Tab = 'backup' | 'archive' | 'restore';
 
 function statusBadge(status?: string): { label: string; bg: string; color: string } {
   const s = (status ?? '').toUpperCase();
-  if (s === 'SUCCESS' || s === 'COMPLETED' || s === 'DONE')
-    return { label: 'Completed', bg: '#DCFCE7', color: '#16A34A' };
+  if (s === 'SUCCESS' || s === 'DONE' || s === 'UPLOAD_COMPLETED')
+    return { label: 'Success', bg: '#DCFCE7', color: '#16A34A' };
+  if (s === 'COMPLETED') return { label: 'Completed', bg: '#DCFCE7', color: '#16A34A' };
   if (s === 'FAILED') return { label: 'Failed', bg: '#FEE2E2', color: '#DC2626' };
-  if (s === 'RUNNING' || s === 'IN_PROGRESS') return { label: 'Running', bg: '#DBEAFE', color: '#155DFC' };
   if (s === 'PENDING') return { label: 'Pending', bg: '#FEF9C3', color: '#A16207' };
+  if (s === 'RUNNING') return { label: 'Running', bg: '#FEF9C3', color: '#A16207' };
+  if (s === 'IN_PROGRESS') return { label: 'In Progress', bg: '#FEF9C3', color: '#A16207' };
+  if (s === 'CANCELLED') return { label: 'Cancelled', bg: '#F3F4F6', color: '#6B7280' };
+  if (s === 'PARTIAL_FAILURE') return { label: 'Partial Failure', bg: '#FFF7ED', color: '#C2410C' };
   if (s === 'PARTIAL') return { label: 'Partial', bg: 'rgba(234,179,8,0.12)', color: '#A16207' };
   if (s === 'DRAFT') return { label: 'Draft', bg: '#F3F4F6', color: '#6B7280' };
   return { label: status || 'Unknown', bg: '#F3F4F6', color: '#374151' };

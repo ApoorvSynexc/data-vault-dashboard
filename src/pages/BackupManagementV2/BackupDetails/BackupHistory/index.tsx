@@ -63,8 +63,9 @@ const getStatusColor = (job: BackupJob) => {
   switch (upperStatus) {
     case 'SUCCESS': return 'bg-green-100 text-green-700';
     case 'FAILED':  return 'bg-red-100 text-red-700';
-    case 'RUNNING': return 'bg-yellow-100 text-yellow-700';
-    case 'PENDING': return 'bg-blue-100 text-blue-700';
+    case 'RUNNING':      return 'bg-yellow-100 text-yellow-700';
+    case 'IN_PROGRESS':  return 'bg-yellow-100 text-yellow-700';
+    case 'PENDING':      return 'bg-blue-100 text-blue-700';
     default:        return 'bg-gray-100 text-gray-700';
   }
 };
@@ -75,8 +76,9 @@ const getStatusDisplayText = (job: BackupJob) => {
   switch (upperStatus) {
     case 'SUCCESS': return 'Completed';
     case 'FAILED':  return 'Failed';
-    case 'RUNNING': return 'In Progress';
-    case 'PENDING': return 'Pending';
+    case 'RUNNING':      return 'Running';
+    case 'IN_PROGRESS':  return 'In Progress';
+    case 'PENDING':      return 'Pending';
     default:        return job.status || '';
   }
 };

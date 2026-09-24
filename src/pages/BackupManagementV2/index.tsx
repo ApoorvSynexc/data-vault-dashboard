@@ -305,25 +305,33 @@ function ScheduleFrequencyBadge({ frequency }: { frequency: string }) {
 
 function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
   const styles: Record<string, string> = {
-    'DRAFT': 'bg-yellow-100 text-yellow-700',
-    'ACTIVE': 'bg-blue-100 text-blue-700',
-    'PENDING': 'bg-indigo-100 text-indigo-700',
-    'RUNNING': 'bg-indigo-100 text-indigo-700',
-    'SUCCESS': 'bg-green-100 text-green-700',
-    'FAILED': 'bg-red-100 text-red-700',
-    'PAUSED': 'bg-gray-100 text-gray-700',
-    'RESUMED': 'bg-purple-100 text-purple-700',
+    'DRAFT':          'bg-yellow-100 text-yellow-700',
+    'ACTIVE':         'bg-blue-100 text-blue-700',
+    'PENDING':        'bg-yellow-100 text-yellow-700',
+    'RUNNING':        'bg-yellow-100 text-yellow-700',
+    'IN_PROGRESS':    'bg-yellow-100 text-yellow-700',
+    'SUCCESS':        'bg-green-100 text-green-700',
+    'COMPLETED':      'bg-green-100 text-green-700',
+    'FAILED':         'bg-red-100 text-red-700',
+    'PARTIAL_FAILURE':'bg-orange-100 text-orange-700',
+    'CANCELLED':      'bg-gray-100 text-gray-500',
+    'PAUSED':         'bg-gray-100 text-gray-700',
+    'RESUMED':        'bg-purple-100 text-purple-700',
   };
 
   const labels: Record<string, string> = {
-    'DRAFT': 'Draft',
-    'ACTIVE': 'Active',
-    'PENDING': 'Running',
-    'RUNNING': 'Running',
-    'SUCCESS': 'Success',
-    'FAILED': 'Failed',
-    'PAUSED': 'Paused',
-    'RESUMED': 'Resumed',
+    'DRAFT':          'Draft',
+    'ACTIVE':         'Active',
+    'PENDING':        'Pending',
+    'RUNNING':        'Running',
+    'IN_PROGRESS':    'In Progress',
+    'SUCCESS':        'Success',
+    'COMPLETED':      'Completed',
+    'FAILED':         'Failed',
+    'PARTIAL_FAILURE':'Partial Failure',
+    'CANCELLED':      'Cancelled',
+    'PAUSED':         'Paused',
+    'RESUMED':        'Resumed',
   };
 
   return (
@@ -722,8 +730,8 @@ export default function BackupManagementV2() {
 
   // Derive API filter params from filter state
   const apiStatus = filters.status !== 'All' ? filters.status : undefined;
-  const apiBackupStatus = filters.lastJobStatus !== 'All' && filters.lastJobStatus !== 'RUNNING' ? filters.lastJobStatus : undefined;
-  const apiRunningStatus = filters.lastJobStatus === 'RUNNING' ? 'RUNNING' : undefined;
+  const apiBackupStatus = filters.lastJobStatus !== 'All' ? filters.lastJobStatus : undefined;
+  const apiRunningStatus = undefined;
   const apiSchedule = filters.backupType === 'Realtime' ? 'REALTIME' : filters.backupType === 'Schedule' ? 'SCHEDULE' : undefined;
 
   const queryFn = useCallback(() =>
@@ -988,11 +996,12 @@ export default function BackupManagementV2() {
               label='Last Job'
               value={filters.lastJobStatus}
               options={[
-                { label: 'All',     value: 'All'     },
-                { label: 'Success', value: 'SUCCESS' },
-                { label: 'Failed',  value: 'FAILED'  },
-                { label: 'Running', value: 'RUNNING' },
-                { label: 'Pending', value: 'PENDING' },
+                { label: 'All',           value: 'All'             },
+                { label: 'Success',       value: 'SUCCESS'         },
+                { label: 'Failed',        value: 'FAILED'          },
+                { label: 'In Progress',   value: 'PENDING'         },
+                { label: 'Partial',       value: 'PARTIAL_FAILURE' },
+                { label: 'Cancelled',     value: 'CANCELLED'       },
               ]}
               onChange={(v) => setFilters((f) => ({ ...f, lastJobStatus: v }))}
             />
