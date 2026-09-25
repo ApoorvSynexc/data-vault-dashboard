@@ -498,8 +498,19 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                       </svg>
                       <div>
                         <p className='text-[10px] text-gray-400 leading-none'>Default schedule</p>
-                        <p className='text-[11px] font-bold text-blue-700 leading-tight mt-0.5 uppercase'>
-                          {rootSc?.scheduling?.frequency ?? '--'}
+                        <p className='text-[11px] font-bold text-blue-700 leading-tight mt-0.5'>
+                          {(() => {
+                            const freq = rootSc?.scheduling?.frequency;
+                            const customFreq = (rootSc?.scheduling as any)?.customFrequency;
+                            const interval = (rootSc?.scheduling as any)?.interval;
+                            if (freq === 'CUSTOM' && customFreq) {
+                              const label = interval && interval > 1
+                                ? `Every ${interval} ${customFreq.toLowerCase()}`
+                                : customFreq.charAt(0).toUpperCase() + customFreq.slice(1).toLowerCase();
+                              return `Custom · ${label}`;
+                            }
+                            return freq ? freq.charAt(0).toUpperCase() + freq.slice(1).toLowerCase() : '--';
+                          })()}
                           {rootSc?.scheduling?.startTime ? ` · ${rootSc.scheduling.startTime}` : ''}
                         </p>
                       </div>
@@ -532,10 +543,16 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                       const isParent = depth === 0;
                       const osc = isParent ? (obj.scheduleConfig ?? rootSc) : null;
                       const isObjSchedule = isParent && !!obj.scheduleConfig;
-                      const oscFreq = osc?.scheduling?.frequency;
-                      const oscTime = osc?.scheduling?.startTime ?? null;
-                      const oscTz   = osc?.timeZone ?? null;
-                      const oscDate = osc?.scheduling?.startDate ?? null;
+                      const oscFreq       = osc?.scheduling?.frequency;
+                      const oscCustomFreq = (osc?.scheduling as any)?.customFrequency ?? null;
+                      const oscInterval   = (osc?.scheduling as any)?.interval ?? null;
+                      const oscTime       = osc?.scheduling?.startTime ?? null;
+                      const oscTz         = osc?.timeZone ?? null;
+                      const oscDate       = osc?.scheduling?.startDate ?? null;
+                      const oscEndDate    = (osc?.scheduling as any)?.endDate ?? null;
+                      const oscFreqLabel  = oscFreq === 'CUSTOM' && oscCustomFreq
+                        ? `Custom · ${oscInterval && oscInterval > 1 ? `Every ${oscInterval} ` : ''}${oscCustomFreq.charAt(0).toUpperCase() + oscCustomFreq.slice(1).toLowerCase()}`
+                        : oscFreq ?? '--';
                       const conditionType: string = obj.condition?.type ?? 'AND';
                       const hasChildren = !!(obj.children?.length);
 
@@ -686,9 +703,9 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                             ) : osc ? (
                               <div className='flex flex-col gap-0.5'>
                                 <div className='flex items-center gap-1.5 flex-wrap'>
-                                  <span className='rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide border'
+                                  <span className='rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide border'
                                     style={{ background: isObjSchedule ? 'rgba(21,93,252,0.08)' : 'rgba(148,163,184,0.1)', borderColor: isObjSchedule ? 'rgba(21,93,252,0.2)' : '#e2e8f0', color: isObjSchedule ? '#155DFC' : '#64748b' }}>
-                                    {oscFreq}
+                                    {oscFreqLabel}
                                   </span>
                                   {!isObjSchedule && (
                                     <span className='text-[9px] text-gray-400 italic'>inherited</span>
@@ -703,6 +720,9 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                                 )}
                                 {oscDate && (
                                   <p className='text-[10px] text-gray-400'>from {oscDate}</p>
+                                )}
+                                {oscEndDate && (
+                                  <p className='text-[10px] text-gray-400'>until {oscEndDate}</p>
                                 )}
                                 {obj.upcomingJob?.skip && (
                                   <p className='mt-1 text-[9px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-1 leading-snug max-w-[190px]'
