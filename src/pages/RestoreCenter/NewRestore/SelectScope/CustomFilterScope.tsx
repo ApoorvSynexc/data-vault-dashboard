@@ -4,6 +4,49 @@ import Typography from '../../../../components/Typography';
 import { useRestoreService } from '../../../../services/restore/restore.service';
 import { OP_LABELS, OPERATORS_BY_TYPE, SF_TYPE_MAP } from './types';
 import type { FilterTab, FilterRow, OrGroup, FieldDataType, FilterOperator, FieldOption } from './types';
+
+function FilterRowEditor({ row, fields, onFieldChange, onOpChange, onValueChange, onRemove }: {
+  row: FilterRow;
+  fields: FieldOption[];
+  onFieldChange: (v: string) => void;
+  onOpChange: (v: FilterOperator) => void;
+  onValueChange: (v: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className='flex items-center gap-2 flex-wrap'>
+      <select value={row.field} onChange={(e) => onFieldChange(e.target.value)}
+        className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'>
+        {fields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
+      </select>
+      <select value={row.op} onChange={(e) => onOpChange(e.target.value as FilterOperator)}
+        className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'>
+        {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
+      </select>
+      {row.dataType === 'boolean' ? (
+        <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
+          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
+          <option value=''>Select</option>
+          <option value='true'>True</option>
+          <option value='false'>False</option>
+        </select>
+      ) : row.dataType === 'picklist' ? (
+        <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
+          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
+          <option value=''>Select value</option>
+          {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
+        </select>
+      ) : (
+        <input
+          type={row.dataType === 'date' ? 'date' : row.dataType === 'datetime' ? 'datetime-local' : row.dataType === 'time' ? 'time' : row.dataType === 'number' ? 'number' : 'text'}
+          value={row.value} onChange={(e) => onValueChange(e.target.value)}
+          placeholder='Value'
+          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32' />
+      )}
+      <button onClick={onRemove} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
+    </div>
+  );
+}
 import type { SourceSelection } from '../SelectSourceType';
 import type { RestoreScopeFilter } from '../../../../services/restore/restore.service';
 
@@ -164,46 +207,6 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const filteredObjs = sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()));
   const totalFiltered = addedObjs.filter(hasFilter).length;
 
-  const FilterRowEditor = ({ row, onFieldChange, onOpChange, onValueChange, onRemove }: {
-    row: FilterRow;
-    onFieldChange: (v: string) => void;
-    onOpChange: (v: FilterOperator) => void;
-    onValueChange: (v: string) => void;
-    onRemove: () => void;
-  }) => (
-    <div className='flex items-center gap-2 flex-wrap'>
-      <select value={row.field} onChange={(e) => onFieldChange(e.target.value)}
-        className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-48'>
-        {filterFields.map((f) => <option key={f.apiName} value={f.apiName}>{f.label}</option>)}
-      </select>
-      <select value={row.op} onChange={(e) => onOpChange(e.target.value as FilterOperator)}
-        className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'>
-        {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
-      </select>
-      {row.dataType === 'boolean' ? (
-        <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
-          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
-          <option value=''>Select</option>
-          <option value='true'>True</option>
-          <option value='false'>False</option>
-        </select>
-      ) : row.dataType === 'picklist' ? (
-        <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
-          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
-          <option value=''>Select value</option>
-          {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
-        </select>
-      ) : (
-        <input
-          type={row.dataType === 'date' ? 'date' : row.dataType === 'datetime' ? 'datetime-local' : row.dataType === 'time' ? 'time' : row.dataType === 'number' ? 'number' : 'text'}
-          value={row.value} onChange={(e) => onValueChange(e.target.value)}
-          placeholder='Value'
-          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32' />
-      )}
-      <button onClick={onRemove} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
-    </div>
-  );
-
   return (
     <>
       <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
@@ -323,6 +326,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                             <span className='text-xs text-gray-400 font-semibold w-5 flex-shrink-0 text-right'>{idx + 1}</span>
                             <FilterRowEditor
                               row={row}
+                              fields={filterFields}
                               onFieldChange={(v) => handleFilterFieldChange(row.id, v)}
                               onOpChange={(v) => updateFilterRow(row.id, { op: v })}
                               onValueChange={(v) => updateFilterRow(row.id, { value: v })}
@@ -343,6 +347,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                             <FilterRowEditor
                               key={row.id}
                               row={row}
+                              fields={filterFields}
                               onFieldChange={(v) => handleOrGroupFieldChange(group.id, row.id, v)}
                               onOpChange={(v) => updateOrGroupRow(group.id, row.id, { op: v })}
                               onValueChange={(v) => updateOrGroupRow(group.id, row.id, { value: v })}
