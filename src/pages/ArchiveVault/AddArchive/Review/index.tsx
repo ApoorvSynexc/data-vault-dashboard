@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PermissionGate from '../../../../components/PermissionGate';
 import { useQueryClient } from '@tanstack/react-query';
@@ -493,7 +493,7 @@ const [now, setNow] = useState(() => dayjs());
   const [editScheduleTarget, setEditScheduleTarget] = useState<{ uuid: string; apiName: string; name: string; schedule?: ScheduleConfig } | null>(null);
   const [localName, setLocalName] = useState(policyName);
   const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(policyName);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Schedule editing is only allowed for draft configs. Active/resumed configs
   // cannot have their schedule changed via the Review screen.
@@ -501,7 +501,7 @@ const [now, setNow] = useState(() => dayjs());
   const canEditSchedule = !editMode || configStatus === 'DRAFT' || configStatus === '';
 
   const confirmNameEdit = () => {
-    const trimmed = nameInput.trim();
+    const trimmed = nameInputRef.current?.value.trim() ?? '';
     if (!trimmed) return;
     setLocalName(trimmed);
     onUpdatePolicyName?.(trimmed);
@@ -509,7 +509,6 @@ const [now, setNow] = useState(() => dayjs());
   };
 
   const cancelNameEdit = () => {
-    setNameInput(localName);
     setEditingName(false);
   };
 
@@ -724,20 +723,21 @@ const [now, setNow] = useState(() => dayjs());
           </div>
 
           {/* Review rows */}
-          <ReviewRow label='Archive name' onEdit={editingName ? undefined : () => { setNameInput(localName); setEditingName(true); }}>
+          <ReviewRow label='Archive name' onEdit={editingName ? undefined : () => setEditingName(true)}>
             {editingName ? (
               <div className='flex items-center gap-2'>
                 <input
-                  autoFocus
+                  ref={nameInputRef}
                   type='text'
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
+                  defaultValue={localName}
                   onKeyDown={(e) => { if (e.key === 'Enter') confirmNameEdit(); if (e.key === 'Escape') cancelNameEdit(); }}
                   className='flex-1 px-3 py-1.5 text-sm rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20'
                   style={{ border: '1px solid #3b82f6', maxWidth: 360 }}
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
                 />
-                <button onClick={confirmNameEdit} disabled={!nameInput.trim()}
-                  className='px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors'>
+                <button onClick={confirmNameEdit}
+                  className='px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>
                   Save
                 </button>
                 <button onClick={cancelNameEdit}
