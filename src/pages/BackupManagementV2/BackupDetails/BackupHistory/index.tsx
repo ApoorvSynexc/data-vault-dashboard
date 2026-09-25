@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -112,12 +112,9 @@ const calculateJobDataSize = (job: any) => {
 export default function BackupHistory({ backup }: BackupHistoryProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
-  const queryClient = useQueryClient();
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [pageIndex, setPageIndex] = useState(0);
-  const [resumingJobId, setResumingJobId] = useState<string | null>(null);
-  const [resumeError,   setResumeError]   = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const itemsPerPage = 20;
 
@@ -187,20 +184,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
     }
   };
 
-  const handleResume = async (backupJobId: string) => {
-    setResumingJobId(backupJobId);
-    setResumeError(null);
-    try {
-      await backupConfigService.resumeBackupJob(backupJobId);
-      queryClient.invalidateQueries({ queryKey: ['backup-jobs', slug] });
-      setResumingJobId(null);
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : 'Failed to resume backup job. Please try again.';
-      setResumeError(msg);
-      setResumingJobId(null);
-    }
-  };
-
   // Define columns for the Table component
   const columns: TableColumn<BackupJob>[] = [
     {
@@ -263,36 +246,17 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
       key: 'action',
       header: 'Action',
       render: (job) => (
-        <div className='flex items-center gap-2'>
-          {job.status === 'FAILED' ? (
-            <button
-              type='button'
-              disabled={resumingJobId === job.backupJobId}
-              onClick={() => handleResume(job.backupJobId)}
-              className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60'
-            >
-              {resumingJobId === job.backupJobId ? (
-                <span className='h-2.5 w-2.5 animate-spin rounded-full border-2 border-white border-t-transparent' />
-              ) : (
-                <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='h-2.5 w-2.5'>
-                  <polygon points='5 3 19 12 5 21 5 3' fill='currentColor' stroke='none' />
-                </svg>
-              )}
-              {resumingJobId === job.backupJobId ? 'Resuming…' : 'Resume'}
-            </button>
-          ) : null}
-          <button
-            type='button'
-            onClick={() => setSelectedJobId(job.backupJobId)}
-            className='text-gray-400 hover:text-gray-600 transition'
-            aria-label='View details'
-          >
-            <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
-              <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
-              <circle cx='12' cy='12' r='3' />
-            </svg>
-          </button>
-        </div>
+        <button
+          type='button'
+          onClick={() => setSelectedJobId(job.backupJobId)}
+          className='text-gray-400 hover:text-gray-600 transition'
+          aria-label='View details'
+        >
+          <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' className='h-4 w-4'>
+            <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+            <circle cx='12' cy='12' r='3' />
+          </svg>
+        </button>
       ),
     },
   ];
@@ -344,19 +308,6 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
         </div>
       </div>
 
-      {/* Resume error banner */}
-      {resumeError && (
-        <div className='flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 flex-shrink-0'>
-          <div className='flex items-center gap-2'>
-            <svg className='shrink-0' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-              <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
-            </svg>
-            <p className='text-sm font-medium text-red-700'>{resumeError}</p>
-          </div>
-          <button onClick={() => setResumeError(null)} className='text-red-400 hover:text-red-600 text-xs font-bold shrink-0'>✕</button>
-        </div>
-      )}
-
       {/* Backup History Table */}
       <Table<BackupJob>
         columns={columns}
@@ -384,9 +335,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
           job={currentJobs.find((j: any) => j.backupJobId === selectedJobId)}
           backup={backup}
           onClose={() => setSelectedJobId(null)}
-          onRefresh={async () => {
-            await queryClient.refetchQueries({ queryKey: ['backup-jobs', slug, cursor] });
-          }}
+          onRefresh={async () => {}}
         />
       )}
 

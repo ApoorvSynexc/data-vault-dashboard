@@ -151,6 +151,7 @@ export interface RestoreEdgeCases {
   parentMissing?: string;
   recordTypeMissing?: RestoreRecordTypeMissing;
   missingRequiredFieldValue?: RestoreMissingRequiredFieldValue;
+  includeAuditFields?: boolean;
 }
 
 // ── Merge rule types ──────────────────────────────────────────────────────────
