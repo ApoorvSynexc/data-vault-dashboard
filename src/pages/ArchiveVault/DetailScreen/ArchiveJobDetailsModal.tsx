@@ -510,7 +510,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               header: 'Records Failed',
               render: ({ obj }) => {
                 const n = obj.deletedfailedRecordCount ?? 0;
-                const hasPerRecord = (obj.errors?.length ?? 0) > 0;
+                const hasPerRecord = (obj.deletedfailedRecordCount ?? 0) > 0 || (obj.errors?.length ?? 0) > 0;
                 return (
                   <span className='inline-flex items-center gap-2'>
                     {n > 0
