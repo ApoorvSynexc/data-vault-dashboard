@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import { useRestoreService } from '../../../../services/restore/restore.service';
-import { OP_LABELS, OPERATORS_BY_TYPE } from './types';
+import { OP_LABELS, OPERATORS_BY_TYPE, SF_TYPE_MAP } from './types';
 import type { FilterTab, FilterRow, OrGroup, FieldDataType, FilterOperator, FieldOption } from './types';
 import type { SourceSelection } from '../SelectSourceType';
 import type { RestoreScopeFilter } from '../../../../services/restore/restore.service';
@@ -43,7 +43,13 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     enabled: !!modalObj && !!sourceSelection.backupConfigId,
     retry: 1,
   });
-  const filterFields: FieldOption[] = (filterFieldsData as any)?.data ?? [];
+  const filterFields: FieldOption[] = ((filterFieldsData as any)?.data ?? []).map((f: any) => ({
+    label: f.label,
+    apiName: f.name,
+    dataType: f.type,
+    isUpdateable: f.isUpdateable ?? true,
+    isCreateable: f.isCreateable ?? true,
+  }));
 
   const { data: picklistData } = useQuery({
     queryKey: ['restore-picklist', sourceSelection.backupConfigId, modalObj, pendingPicklist?.fieldApiName],
@@ -67,8 +73,8 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   }, [picklistData]);
 
   const resolveDataType = (apiName: string): FieldDataType => {
-    const rawType = filterFields.find((f) => f.apiName === apiName)?.dataType?.toLowerCase();
-    return rawType && rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string';
+    const rawType = filterFields.find((f) => f.apiName === apiName)?.dataType?.toLowerCase() ?? '';
+    return SF_TYPE_MAP[rawType] ?? (rawType in OPERATORS_BY_TYPE ? rawType as FieldDataType : 'string');
   };
 
   const makeBlankRow = (): FilterRow => {
@@ -174,14 +180,24 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
         className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:flex-none sm:w-36'>
         {OPERATORS_BY_TYPE[row.dataType ?? 'string'].map((o) => <option key={o} value={o}>{OP_LABELS[o]}</option>)}
       </select>
-      {row.dataType === 'picklist' ? (
+      {row.dataType === 'boolean' ? (
+        <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
+          className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
+          <option value=''>Select</option>
+          <option value='true'>True</option>
+          <option value='false'>False</option>
+        </select>
+      ) : row.dataType === 'picklist' ? (
         <select value={row.value} onChange={(e) => onValueChange(e.target.value)}
           className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32'>
           <option value=''>Select value</option>
           {(row.picklistValues ?? []).map((pv) => <option key={pv.value} value={pv.value}>{pv.label}</option>)}
         </select>
       ) : (
-        <input value={row.value} onChange={(e) => onValueChange(e.target.value)}
+        <input
+          type={row.dataType === 'date' ? 'date' : row.dataType === 'datetime' ? 'datetime-local' : row.dataType === 'time' ? 'time' : row.dataType === 'number' ? 'number' : 'text'}
+          value={row.value} onChange={(e) => onValueChange(e.target.value)}
+          placeholder='Value'
           className='h-8 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none flex-1 min-w-0 sm:w-32' />
       )}
       <button onClick={onRemove} className='w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0'>×</button>
