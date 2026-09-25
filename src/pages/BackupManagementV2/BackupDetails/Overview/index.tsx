@@ -252,7 +252,7 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                 <div>
                   <p className='text-xs text-gray-600 mb-1'>Ends On</p>
                   <p className='text-xs font-medium text-gray-900'>
-                    {formatDateTime((displayData.scheduleConfig.scheduling as any).endDate, displayData.scheduleConfig.timeZone)}
+                    {formatDateTime(`${(displayData.scheduleConfig.scheduling as any).endDate}T23:59`, displayData.scheduleConfig.timeZone)}
                   </p>
                 </div>
               )}
