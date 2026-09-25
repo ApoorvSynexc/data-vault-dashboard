@@ -18,12 +18,11 @@
 //
 // Filters: All / Completed / Failed / Pending — applied client-side on the visible rows.
 // Refresh: re-invalidates the React Query cache key to re-fetch the latest job state.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { formatBytes, computeArchiveJobStats } from '../../../utils';
 import { useBackupConfigService } from '../../../services';
-import { useArchivalService } from '../../../services/archival/archival.service';
 import type { TableColumn } from '../../../components/Table';
 // to support colSpan inline-error rows.
 
@@ -42,6 +41,7 @@ interface ArchiveJobObject {
   deletedSuccessRecordCount?: number;
   deletedfailedRecordCount?: number;
   recordErrorsS3Prefix?: string;
+  errors?: { recordId?: string; error?: string; message?: string }[];
   errorMessage?: string;
   bulkJobId?: string;
   condition?: { type: string };
@@ -128,7 +128,6 @@ function buildTreeRows(items: ArchiveJobObject[], depth = 0, parentId: string | 
 
 export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClose }: Props) {
   const archivalService = useBackupConfigService();
-  const archivalApi = useArchivalService();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('All');
@@ -140,38 +139,11 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
     setExpandedInlineErrors(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const itemsPerPage = 10;
 
-  // ── Error panel state (S3-paginated per-record errors) ──
-  const [errorPanel, setErrorPanel] = useState<{ obj: ArchiveJobObject; page: number } | null>(null);
-  const [errorRecords, setErrorRecords] = useState<{ recordId: string; error: string }[]>([]);
-  const [errorTotalPages, setErrorTotalPages] = useState(0);
-  const [errorTotalRecords, setErrorTotalRecords] = useState(0);
-  const [errorLoading, setErrorLoading] = useState(false);
+  // ── Error panel state (errors come directly from the list API response) ──
+  const [errorPanel, setErrorPanel] = useState<ArchiveJobObject | null>(null);
 
-  const fetchErrorPage = useCallback(async (obj: ArchiveJobObject, page: number) => {
-    setErrorLoading(true);
-    try {
-      const res = await archivalApi.getRecordErrors(backupJobId, obj.id, page);
-      const d = (res as any)?.data ?? res;
-      setErrorRecords(d.records ?? []);
-      setErrorTotalPages(d.totalPages ?? 0);
-      setErrorTotalRecords(d.totalRecords ?? 0);
-      setErrorPanel({ obj, page });
-    } catch {
-      // leave existing records visible
-    } finally {
-      setErrorLoading(false);
-    }
-  }, [archivalApi, backupJobId]);
-
-  // Open the panel immediately so the spinner is visible during the first fetch.
-  const openErrorPanel = (obj: ArchiveJobObject) => {
-    setErrorPanel({ obj, page: 1 });
-    setErrorRecords([]);
-    setErrorTotalPages(0);
-    setErrorTotalRecords(0);
-    fetchErrorPage(obj, 1);
-  };
-  const closeErrorPanel = () => { setErrorPanel(null); setErrorRecords([]); setErrorTotalPages(0); setErrorTotalRecords(0); };
+  const openErrorPanel = (obj: ArchiveJobObject) => setErrorPanel(obj);
+  const closeErrorPanel = () => setErrorPanel(null);
 
   // Re-use the parent screen's job-list cache (keyed by ['archival-jobs', configSlug, null])
   // so object statuses update automatically whenever the parent polls — no duplicate fetch.
@@ -375,14 +347,12 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                       Record Errors
                       <span className='ml-2 font-normal text-xs px-2 py-0.5 rounded-full'
                         style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400' }}>
-                        {errorPanel.obj.name}
+                        {errorPanel.name}
                       </span>
                     </h3>
                     <p className='text-xs mt-0.5' style={{ color: '#94A3B8' }}>
-                      {errorLoading && errorTotalRecords === 0
-                        ? 'Fetching errors…'
-                        : errorTotalRecords > 0
-                        ? `${errorTotalRecords.toLocaleString()} failed record${errorTotalRecords !== 1 ? 's' : ''}`
+                      {(errorPanel.errors?.length ?? 0) > 0
+                        ? `${errorPanel.errors!.length.toLocaleString()} failed record${errorPanel.errors!.length !== 1 ? 's' : ''}`
                         : 'No error records found'}
                     </p>
                   </div>
@@ -397,7 +367,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               </div>
 
               {/* Job-level error banner */}
-              {errorPanel.obj.errorMessage && (
+              {errorPanel.errorMessage && (
                 <div className='mx-5 mt-4 rounded-xl p-3.5 flex items-start gap-3 flex-shrink-0'
                   style={{ background: 'rgba(242,68,0,0.05)', border: '1px solid rgba(242,68,0,0.18)' }}>
                   <svg className='flex-shrink-0 mt-0.5' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
@@ -405,25 +375,14 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                   </svg>
                   <div className='min-w-0'>
                     <p className='text-xs font-semibold mb-0.5' style={{ color: '#F24400' }}>Job-level Error</p>
-                    <p className='text-xs font-mono break-all leading-relaxed' style={{ color: '#374151' }}>{errorPanel.obj.errorMessage}</p>
+                    <p className='text-xs font-mono break-all leading-relaxed' style={{ color: '#374151' }}>{errorPanel.errorMessage}</p>
                   </div>
                 </div>
               )}
 
               {/* Records list */}
-              <div className='overflow-y-auto flex-1 relative px-5 py-3'>
-                {errorLoading && (
-                  <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 z-10' style={{ background: 'rgba(255,255,255,0.9)' }}>
-                    <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: 'rgba(242,68,0,0.08)' }}>
-                      <svg className='animate-spin' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                        <path d='M21 12a9 9 0 11-6.219-8.56' />
-                      </svg>
-                    </div>
-                    <span className='text-xs font-medium' style={{ color: '#94A3B8' }}>Loading error records…</span>
-                  </div>
-                )}
-
-                {!errorLoading && errorRecords.length === 0 ? (
+              <div className='overflow-y-auto flex-1 px-5 py-3'>
+                {(errorPanel.errors?.length ?? 0) === 0 ? (
                   <div className='flex flex-col items-center justify-center py-12 gap-2'>
                     <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
                       <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#94A3B8' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -434,49 +393,24 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                   </div>
                 ) : (
                   <div className='flex flex-col gap-2'>
-                    {errorRecords.map((r, i) => (
+                    {(errorPanel.errors ?? []).map((r, i) => (
                       <div key={i} className='rounded-xl p-4'
                         style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
-                        <div className='flex items-center gap-2 mb-2'>
-                          <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Record ID</span>
-                          <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
-                            style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
-                            {r.recordId}
-                          </span>
-                        </div>
-                        <p className='text-xs leading-relaxed' style={{ color: '#374151' }}>{r.error}</p>
+                        {r.recordId && (
+                          <div className='flex items-center gap-2 mb-2'>
+                            <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Record ID</span>
+                            <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
+                              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+                              {r.recordId}
+                            </span>
+                          </div>
+                        )}
+                        <p className='text-xs leading-relaxed' style={{ color: '#374151' }}>{r.error ?? r.message ?? '--'}</p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Pagination footer */}
-              {errorTotalPages > 1 && (
-                <div className='flex items-center justify-between px-6 py-3 flex-shrink-0'
-                  style={{ borderTop: '1px solid #F1F5F9', background: '#FAFAFA' }}>
-                  <span className='text-xs' style={{ color: '#94A3B8' }}>
-                    {((errorPanel.page - 1) * 10) + 1}–{Math.min(errorPanel.page * 10, errorTotalRecords)} of {errorTotalRecords.toLocaleString()} records
-                  </span>
-                  <div className='flex items-center gap-1'>
-                    <button
-                      onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page - 1)}
-                      disabled={errorPanel.page <= 1 || errorLoading}
-                      className='w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100 transition'
-                      style={{ color: '#374151', border: '1px solid #E2E8F0' }}>
-                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='15 18 9 12 15 6'/></svg>
-                    </button>
-                    <span className='text-xs px-2 font-medium' style={{ color: '#374151' }}>{errorPanel.page} / {errorTotalPages}</span>
-                    <button
-                      onClick={() => fetchErrorPage(errorPanel.obj, errorPanel.page + 1)}
-                      disabled={errorPanel.page >= errorTotalPages || errorLoading}
-                      className='w-8 h-8 flex items-center justify-center rounded-lg disabled:opacity-30 hover:bg-gray-100 transition'
-                      style={{ color: '#374151', border: '1px solid #E2E8F0' }}>
-                      <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'><polyline points='9 18 15 12 9 6'/></svg>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -576,9 +510,7 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
               header: 'Records Failed',
               render: ({ obj }) => {
                 const n = obj.deletedfailedRecordCount ?? 0;
-                const ACTIVE_STATUSES = new Set(['DELETION_IN_PROGRESS', 'BULK_QUERY_IN_PROGRESS', 'BULK_QUERY_COMPLETED', 'TRANSFER_IN_PROGRESS', 'RESTORE_IN_PROGRESS', 'ROLLBACK_IN_PROGRESS', 'COMPRESSION_IN_PROGRESS', 'CSV_CREATING', 'RESTORE_CSV_CREATING', 'INGEST_IN_PROGRESS', 'RUNNING', 'PENDING', 'CREATED']);
-                const jobIsActive = job?.status?.toUpperCase() === 'PENDING' || job?.status?.toUpperCase() === 'RUNNING';
-                const hasPerRecord = !!obj.recordErrorsS3Prefix && !ACTIVE_STATUSES.has(obj.status?.toUpperCase() ?? '') && !jobIsActive;
+                const hasPerRecord = (obj.errors?.length ?? 0) > 0;
                 return (
                   <span className='inline-flex items-center gap-2'>
                     {n > 0
