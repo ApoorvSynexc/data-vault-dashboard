@@ -38,6 +38,7 @@ function initSched(s?: ScheduleConfig) {
       selectedMonths: [] as string[],
       dayOfMonth: '',
       backupIn: '1 Hour',
+      archiveFrequency: 'Daily',
     };
   }
   const sc = s.scheduling;
@@ -52,6 +53,9 @@ function initSched(s?: ScheduleConfig) {
     selectedMonths: sc?.selectedMonths?.map((m) => MONTH_REVERSE[m] ?? m) ?? [],
     dayOfMonth: sc?.monthDate !== undefined ? String(sc.monthDate).padStart(2, '0') : '',
     backupIn: sc?.interval !== undefined ? `${sc.interval} Hour${sc.interval !== 1 ? 's' : ''}` : '1 Hour',
+    archiveFrequency: sc?.customFrequency
+      ? (sc.customFrequency.charAt(0).toUpperCase() + sc.customFrequency.slice(1).toLowerCase())
+      : 'Daily',
   };
 }
 
@@ -82,6 +86,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
   const [startDate, setStartDate] = useState(init.startDate);
   const [endDate, setEndDate] = useState(init.endDate);
   const [backupIn, setBackupIn] = useState(init.backupIn);
+  const [archiveFrequency, setArchiveFrequency] = useState(init.archiveFrequency);
 
   const today = dayjs().format('YYYY-MM-DD');
   const nowTime = dayjs().format('HH:mm');
@@ -152,6 +157,7 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
       scheduling.startDate = startDate; scheduling.startTime = startTime;
     } else if (frequency === 'Custom') {
       scheduling.startDate = startDate; scheduling.endDate = endDate; scheduling.startTime = startTime;
+      scheduling.customFrequency = archiveFrequency.toUpperCase();
     }
     return { timeZone, type: frequency === 'One Time' ? 'ONE_TIME' : 'INCREMENTAL', scheduling };
   };
@@ -382,6 +388,14 @@ function EditObjectScheduleModal({ objectName, initialSchedule, onSave, onClose 
             {/* Custom */}
             {frequency === 'Custom' && (
               <div className='space-y-4'>
+                <div>
+                  <label className='block text-xs font-semibold text-gray-700 mb-1'>Frequency</label>
+                  <select value={archiveFrequency} onChange={(e) => setArchiveFrequency(e.target.value)} className={inputCls} style={inputStyle}>
+                    <option>Daily</option>
+                    <option>Weekly</option>
+                    <option>Monthly</option>
+                  </select>
+                </div>
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
                     <label className='block text-xs font-semibold text-gray-700 mb-1'>Starts On</label>
