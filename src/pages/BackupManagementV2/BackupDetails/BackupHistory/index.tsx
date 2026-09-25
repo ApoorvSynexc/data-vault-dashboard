@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import Table from '../../../../components/Table';
 import type { TableColumn } from '../../../../components/Table';
@@ -112,6 +112,7 @@ const calculateJobDataSize = (job: any) => {
 export default function BackupHistory({ backup }: BackupHistoryProps) {
   const { slug } = useParams();
   const backupConfigService = useBackupConfigService();
+  const queryClient = useQueryClient();
   const [cursor, setCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [pageIndex, setPageIndex] = useState(0);
@@ -335,7 +336,12 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
           job={currentJobs.find((j: any) => j.backupJobId === selectedJobId)}
           backup={backup}
           onClose={() => setSelectedJobId(null)}
-          onRefresh={async () => {}}
+          onRefresh={async () => {
+            await Promise.all([
+              queryClient.refetchQueries({ queryKey: ['backup-jobs', slug, cursor] }),
+              queryClient.refetchQueries({ queryKey: ['backup-stats', slug] }),
+            ]);
+          }}
         />
       )}
 
