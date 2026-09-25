@@ -41,7 +41,7 @@ interface ArchiveJobObject {
   deletedSuccessRecordCount?: number;
   deletedfailedRecordCount?: number;
   recordErrorsS3Prefix?: string;
-  errors?: { recordId?: string; error?: string; message?: string }[];
+  errors?: (string | { recordId?: string; error?: string; message?: string })[];
   errorMessage?: string;
   bulkJobId?: string;
   condition?: { type: string };
@@ -393,21 +393,26 @@ export default function ArchiveJobDetailsModal({ backupJobId, configSlug, onClos
                   </div>
                 ) : (
                   <div className='flex flex-col gap-2'>
-                    {(errorPanel.errors ?? []).map((r, i) => (
-                      <div key={i} className='rounded-xl p-4'
-                        style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
-                        {r.recordId && (
-                          <div className='flex items-center gap-2 mb-2'>
-                            <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Record ID</span>
-                            <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
-                              style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
-                              {r.recordId}
-                            </span>
-                          </div>
-                        )}
-                        <p className='text-xs leading-relaxed' style={{ color: '#374151' }}>{r.error ?? r.message ?? '--'}</p>
-                      </div>
-                    ))}
+                    {(errorPanel.errors ?? []).map((r, i) => {
+                      const isStr = typeof r === 'string';
+                      const text = isStr ? r : (r.error ?? r.message ?? '--');
+                      const recordId = isStr ? undefined : r.recordId;
+                      return (
+                        <div key={i} className='rounded-xl p-4'
+                          style={{ background: i % 2 === 0 ? '#FAFAFA' : '#FFF', border: '1px solid #F1F5F9' }}>
+                          {recordId && (
+                            <div className='flex items-center gap-2 mb-2'>
+                              <span className='text-xs font-semibold uppercase tracking-wide' style={{ color: '#94A3B8' }}>Record ID</span>
+                              <span className='font-mono text-xs px-2 py-0.5 rounded-md font-semibold'
+                                style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+                                {recordId}
+                              </span>
+                            </div>
+                          )}
+                          <p className='text-xs leading-relaxed font-mono break-all' style={{ color: '#374151' }}>{text}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
