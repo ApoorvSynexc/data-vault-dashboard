@@ -37,5 +37,6 @@ export type ScheduleConfig = {
     startDate?: string;
     endDate?: string;
     startTime?: string;
+    customFrequency?: string;
   };
 };
