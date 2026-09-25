@@ -3,7 +3,7 @@ import type { RestoreScope } from '../../../../services/restore/restore.service'
 
 export type ScopeMode = 'full' | 'object' | 'record' | 'field' | 'filter' | 'deleted' | 'csv';
 export type FilterTab = 'visual' | 'soql';
-export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'id' | 'picklist';
+export type FieldDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'time' | 'id' | 'picklist';
 export type FilterOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | 'IN' | 'LIKE';
 
 export interface SFRecord {
@@ -49,8 +49,20 @@ export const OPERATORS_BY_TYPE: Record<FieldDataType, FilterOperator[]> = {
   boolean:  ['=', '!='],
   date:     ['=', '!=', '>', '<', '>=', '<='],
   datetime: ['=', '!=', '>', '<', '>=', '<='],
+  time:     ['=', '!=', '>', '<', '>=', '<='],
   id:       ['=', '!=', 'IN'],
   picklist: ['=', '!='],
+};
+
+export const SF_TYPE_MAP: Record<string, FieldDataType> = {
+  string: 'string', boolean: 'boolean', date: 'date', datetime: 'datetime', time: 'time',
+  id: 'id', picklist: 'picklist',
+  int: 'number', integer: 'number', double: 'number', currency: 'number',
+  percent: 'number', long: 'number', decimal: 'number',
+  textarea: 'string', phone: 'string', email: 'string', url: 'string',
+  encryptedstring: 'string', multipicklist: 'picklist', combobox: 'string',
+  address: 'string', location: 'string', autonumber: 'string',
+  reference: 'id',
 };
 
 export const SCOPE_MODES: { id: ScopeMode; icon: string; title: string; desc: string; tooltip: string }[] = [
