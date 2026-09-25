@@ -124,17 +124,15 @@ function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   DONE:        { label: '✓ Done',        cls: 'bg-green-100 text-green-700' },
-  PARTIAL:     { label: '⚠ Partial',     cls: 'bg-yellow-100 text-yellow-700' },
   FAILED:      { label: '✗ Failed',      cls: 'bg-red-100 text-red-700' },
-  DRAFT:       { label: '📝 Draft',      cls: 'bg-orange-100 text-orange-700' },
   PENDING:     { label: '⏳ Pending',    cls: 'bg-blue-100 text-blue-700' },
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type FilterChip = 'All' | 'Success' | 'Failed' | 'Partial' | 'Drafts' | 'Pending';
+type FilterChip = 'All' | 'Success' | 'Failed' | 'Pending';
 
-const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed', 'Partial', 'Drafts'];
+const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed'];
   
 type RestoreRow = {
   id: string;
