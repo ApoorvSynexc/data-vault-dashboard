@@ -186,20 +186,22 @@ export default function Notifications() {
       </div>
 
       {/* 2. Overview */}
-      <div className='rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex-shrink-0'>
-        <h3 className='mb-4 text-sm font-semibold text-gray-900'>Overview</h3>
-        <div className='flex gap-3'>
-          {[
-            { label: 'Total',  value: notifications.length,                                     color: 'text-gray-900'    },
-            { label: 'Unread', value: unreadCount,                                              color: 'text-blue-600'    },
-            { label: 'Read',   value: notifications.filter((n) => n.status === 'READ').length,  color: 'text-emerald-600' },
-          ].map((s) => (
-            <div key={s.label} className='flex-1 rounded-lg border border-gray-100 py-3 text-center'>
-              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              <p className='mt-0.5 text-[11px] text-gray-500'>{s.label}</p>
+      <div className='flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3 shadow-sm flex-shrink-0'>
+        <span className='text-xs font-semibold text-gray-500 uppercase tracking-wide'>Overview</span>
+        <div className='h-4 w-px bg-gray-200' />
+        {[
+          { label: 'Total',  value: notifications.length,                                     color: 'text-gray-900'    },
+          { label: 'Unread', value: unreadCount,                                              color: 'text-blue-600'    },
+          { label: 'Read',   value: notifications.filter((n) => n.status === 'READ').length,  color: 'text-emerald-600' },
+        ].map((s, i) => (
+          <div key={s.label} className='flex items-center gap-3'>
+            {i > 0 && <div className='h-4 w-px bg-gray-200' />}
+            <div className='flex items-center gap-1.5'>
+              <span className={`text-sm font-bold ${s.color}`}>{s.value}</span>
+              <span className='text-xs text-gray-400'>{s.label}</span>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       {/* 3. Notification feed — grows to fill remaining height */}
