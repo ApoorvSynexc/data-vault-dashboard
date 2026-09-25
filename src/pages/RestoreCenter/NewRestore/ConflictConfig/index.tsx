@@ -368,11 +368,12 @@ export default function ConflictConfig({
   const FIELD_MERGE_OPTIONS   = ['Use default', 'Source always wins', 'Destination always wins'];
 
   // ── Phase 2 state ─────────────────────────────────────────────────────────
-  const [ecMissingField, setEcMissingField] = useState('Skip the field');
-  const [ecOwner,        setEcOwner]        = useState('Skip record');
-  const [ecParent,       setEcParent]       = useState('Restore parent first');
-  const [ecRecordType,   setEcRecordType]   = useState('Skip');
-  const [ecMissRequired, setEcMissRequired] = useState('Skip the record');
+  const [ecMissingField,    setEcMissingField]    = useState('Skip the field');
+  const [ecOwner,           setEcOwner]           = useState('Skip record');
+  const [ecParent,          setEcParent]          = useState('Restore parent first');
+  const [ecRecordType,      setEcRecordType]      = useState('Skip');
+  const [ecMissRequired,    setEcMissRequired]    = useState('Skip the record');
+  const [ecAuditFields,     setEcAuditFields]     = useState('Skip');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
 
   const [fieldMapRows, setFieldMapRows] = useState<FieldMapRow[]>([{ id: 1, objectName: '', committedObjectName: '', destFieldBySource: {} }]);
@@ -474,6 +475,7 @@ export default function ConflictConfig({
         objects: Object.entries(rtMappingByObject).map(([name, bySource]) => ({ name, mapping: Object.entries(bySource).filter(([, d]) => d).map(([s, d]) => ({ sourceRecordTypeId: s, destinationRecordTypeId: d })) })).filter((o) => o.mapping.length > 0),
       } : {}),
     };
+    edgeCases.includeAuditFields = ecAuditFields === 'Include';
     edgeCases.missingRequiredFieldValue = {
       type: MISS_REQUIRED_ENUM[ecMissRequired] ?? 'SKIP_THE_RECORD',
       ...(ecMissRequired === 'Use specified default per field' ? {
@@ -692,6 +694,26 @@ export default function ConflictConfig({
                   {ecMissRequired === 'Use specified default per field' && (
                     <div className='ml-0 sm:ml-48'>
                       <button onClick={() => fieldDefaultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className='text-xs text-blue-600 hover:underline font-medium'>Configure defaults ↓</button>
+                    </div>
+                  )}
+                </div>
+                <div className='py-3 flex flex-col gap-2'>
+                  <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
+                    <span className='text-xs font-medium text-gray-700 sm:w-44 flex-shrink-0'>Audit fields <Tip text='Controls whether audit fields (CreatedById, CreatedDate, LastModifiedById, LastModifiedDate) are preserved during restore.' /></span>
+                    <select value={ecAuditFields} onChange={(e) => setEcAuditFields(e.target.value)} className={selectClass} style={selectStyle}>
+                      <option>Skip</option>
+                      <option>Include</option>
+                    </select>
+                  </div>
+                  {ecAuditFields === 'Include' && (
+                    <div className='ml-0 sm:ml-48 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2'>
+                      <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <path d='M12 9v4'/><circle cx='12' cy='16.5' r='0.5' fill='currentColor' stroke='none'/>
+                        <path d='M10.29 3.86L1.82 18a2 2 0 001.72 3h16.92a2 2 0 001.72-3L13.71 3.86a2 2 0 00-3.42 0z'/>
+                      </svg>
+                      <p className='text-[11px] text-amber-700 leading-relaxed'>
+                        You must have the <span className='font-semibold'>"Enable 'Set Audit Fields upon Record Creation'"</span> permission assigned to you in Salesforce to use this option.
+                      </p>
                     </div>
                   )}
                 </div>
