@@ -373,7 +373,7 @@ export default function ConflictConfig({
   const [ecParent,          setEcParent]          = useState('Restore parent first');
   const [ecRecordType,      setEcRecordType]      = useState('Skip');
   const [ecMissRequired,    setEcMissRequired]    = useState('Skip the record');
-  const [ecAuditFields,     setEcAuditFields]     = useState('Skip');
+  const [ecAuditFields,     setEcAuditFields]     = useState('Include');
   const [fallbackOwner,  setFallbackOwner]  = useState('');
 
   const [fieldMapRows, setFieldMapRows] = useState<FieldMapRow[]>([{ id: 1, objectName: '', committedObjectName: '', destFieldBySource: {} }]);
@@ -475,7 +475,7 @@ export default function ConflictConfig({
         objects: Object.entries(rtMappingByObject).map(([name, bySource]) => ({ name, mapping: Object.entries(bySource).filter(([, d]) => d).map(([s, d]) => ({ sourceRecordTypeId: s, destinationRecordTypeId: d })) })).filter((o) => o.mapping.length > 0),
       } : {}),
     };
-    edgeCases.includeAuditFields = ecAuditFields === 'Include';
+    edgeCases.includeAuditFields = ecAuditFields as 'Include' | 'Skip';
     edgeCases.missingRequiredFieldValue = {
       type: MISS_REQUIRED_ENUM[ecMissRequired] ?? 'SKIP_THE_RECORD',
       ...(ecMissRequired === 'Use specified default per field' ? {
