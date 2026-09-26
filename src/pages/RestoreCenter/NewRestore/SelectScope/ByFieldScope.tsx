@@ -91,7 +91,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
     isUpdateable: f.isUpdateable ?? true,
     isCreateable: f.isCreateable ?? true,
     isCustom: typeof f.name === 'string' && f.name.endsWith('__c'),
-    isRequired: f.restrictedDelete === true,
+    isRequired: f.nillable === false,
   }));
 
   const availableFields = sourceFields.filter((f) => {
