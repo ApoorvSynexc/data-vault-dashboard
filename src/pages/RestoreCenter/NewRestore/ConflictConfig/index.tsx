@@ -117,17 +117,18 @@ function InlineErrorState({ message }: { message: string }) {
 }
 
 function MissingFieldsForObject({
-  backupConfigId, crmId, objectName, destFieldBySource, onDestFieldChange, onMissingFieldsLoaded,
+  backupConfigId, configType, crmId, objectName, startDate, endDate, destFieldBySource, onDestFieldChange, onMissingFieldsLoaded,
 }: {
-  backupConfigId: string; crmId?: string; objectName: string;
+  backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; crmId?: string; objectName: string;
+  startDate?: string; endDate?: string;
   destFieldBySource: Record<string, string>;
   onDestFieldChange: (sourceApiName: string, destApiName: string) => void;
   onMissingFieldsLoaded: (objectName: string, fields: MissingSourceField[]) => void;
 }) {
   const restoreService = useRestoreService();
   const { data: missingData, isLoading: missingLoading, isError: missingError } = useQuery({
-    queryKey: ['missing-fields', backupConfigId, objectName],
-    queryFn: () => restoreService.fetchMissingFields(backupConfigId, objectName),
+    queryKey: ['missing-fields', backupConfigId, objectName, configType, startDate, endDate],
+    queryFn: () => restoreService.fetchMissingFields(backupConfigId, objectName, configType, startDate, endDate),
     enabled: !!backupConfigId && !!objectName, retry: 1,
   });
   const missingFields: MissingSourceField[] = missingData?.data?.missingFields ?? [];
@@ -640,7 +641,7 @@ export default function ConflictConfig({
                             </select>
                             {fieldMapRows.length > 1 && <button onClick={() => removeFieldMapRow(row.id)} className='text-gray-400 hover:text-red-500 transition-colors flex-shrink-0'><svg width='14' height='14' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></button>}
                           </div>
-                          {row.committedObjectName && <MissingFieldsForObject backupConfigId={backupConfigId} crmId={destinationCrmId} objectName={row.committedObjectName} destFieldBySource={row.destFieldBySource} onDestFieldChange={(src, dest) => setFieldMapDestField(row.id, src, dest)} onMissingFieldsLoaded={onMissingFieldsLoaded} />}
+                          {row.committedObjectName && <MissingFieldsForObject backupConfigId={backupConfigId} configType={configType ?? 'BACKUP'} crmId={destinationCrmId} objectName={row.committedObjectName} startDate={sourceStartDate} endDate={sourceEndDate} destFieldBySource={row.destFieldBySource} onDestFieldChange={(src, dest) => setFieldMapDestField(row.id, src, dest)} onMissingFieldsLoaded={onMissingFieldsLoaded} />}
                         </div>
                       ))}
                       <button onClick={addFieldMapRow} className='self-start text-xs text-blue-600 hover:underline font-medium'>+ Add object</button>

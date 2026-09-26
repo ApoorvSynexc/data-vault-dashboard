@@ -351,8 +351,8 @@ export function useRestoreService() {
         query: { crmId, objectName, ...(excludeSystemFields ? { excludeSystemFields: true } : {}) },
       }),
 
-    fetchMissingFields: (backupConfigId: string, objectApiName: string) =>
-      api.post<FetchMissingFieldsResult>(RESTORE_ENDPOINTS.fetchMissingFields, { backupConfigId, objectApiName }),
+    fetchMissingFields: (backupConfigId: string, objectApiName: string, configType: 'BACKUP' | 'ARCHIVAL', startDate?: string, endDate?: string) =>
+      api.post<FetchMissingFieldsResult>(RESTORE_ENDPOINTS.fetchMissingFields, { backupConfigId, objectApiName, configType, ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) }),
 
     // objectApiNames omitted resolves to every restorable object on the config
     // (an ENTIRE restore) — the backend does that resolution, not the caller.
@@ -383,8 +383,8 @@ export function useRestoreService() {
     getObjectListByConfigId: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL') =>
       api.get<{ data: RestoreSourceObject[] }>(RESTORE_ENDPOINTS.objectListByConfigId, { query: { backupConfigId, configType } }),
 
-    fetchObjectFields: (objectApiName: string, backupConfigId: string) =>
-      api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId } }),
+    fetchObjectFields: (objectApiName: string, backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL', startDate?: string, endDate?: string) =>
+      api.get<unknown>(RESTORE_ENDPOINTS.fetchObjectFields, { query: { objectApiName, backupConfigId, configType, ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) } }),
 
     getPicklistValues: (objectApiName: string, fieldApiName: string, backupConfigId: string) =>
       api.get<unknown>(RESTORE_ENDPOINTS.picklistValues, { query: { objectApiName, fieldApiName, backupConfigId } }),
