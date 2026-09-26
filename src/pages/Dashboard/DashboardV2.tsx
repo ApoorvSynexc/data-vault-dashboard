@@ -308,7 +308,7 @@ export default function DashboardV2() {
         const ts = job.startedAt ?? job.createdAt ?? null;
         return (
           <span className='text-sm font-light whitespace-nowrap' style={{ color: '#0A0A0A' }}>
-            {ts ? dayjs(ts).format('MMM D, YYYY h:mm A') : '--'}
+            {ts ? dayjs(ts).format('MMM D, YYYY HH:mm') : '--'}
           </span>
         );
       },
@@ -716,8 +716,8 @@ export default function DashboardV2() {
                 const rows = [
                   { label: 'Name', value: name },
                   { label: 'Status', value: <span className='inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium' style={{ background: st.bg, color: st.color }}>{st.label}</span> },
-                  { label: 'Started', value: start ? dayjs(start).format('MMM D, YYYY h:mm A') : '--' },
-                  { label: 'Completed', value: end ? dayjs(end).format('MMM D, YYYY h:mm A') : '--' },
+                  { label: 'Started', value: start ? dayjs(start).format('MMM D, YYYY HH:mm') : '--' },
+                  { label: 'Completed', value: end ? dayjs(end).format('MMM D, YYYY HH:mm') : '--' },
                   { label: 'Duration', value: dur },
                   { label: 'Data Size', value: bytes > 0 ? formatBytes(bytes) : '--' },
                 ];
