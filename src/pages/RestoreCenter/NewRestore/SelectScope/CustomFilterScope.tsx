@@ -70,6 +70,8 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const [configByObj,     setConfigByObj]     = useState<Record<string, FilterConfig>>({});
   const [soqlByObj,       setSoqlByObj]       = useState<Record<string, string>>({});
   const [pendingPicklist, setPendingPicklist] = useState<{ rowId: string; groupId?: string; fieldApiName: string } | null>(null);
+  const [queryValidating, setQueryValidating] = useState(false);
+  const [queryValidation, setQueryValidation] = useState<{ valid: boolean; message?: string } | null>(null);
 
   const activeCfg: FilterConfig = configByObj[modalObj ?? ''] ?? { rows: [], orGroups: [], filterLogic: '' };
   const filterRows  = activeCfg.rows;
@@ -79,7 +81,10 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const setCfg = (obj: string, patch: Partial<FilterConfig>) =>
     setConfigByObj((p) => ({ ...p, [obj]: { ...(p[obj] ?? { rows: [], orGroups: [], filterLogic: '' }), ...patch } }));
 
-  const setSoqlWhere = (val: string) => setSoqlByObj((p) => ({ ...p, [modalObj!]: val }));
+  const setSoqlWhere = (val: string) => {
+    setSoqlByObj((p) => ({ ...p, [modalObj!]: val }));
+    setQueryValidation(null);
+  };
 
   const { data: filterFieldsData, isLoading: filterFieldsLoading } = useQuery({
     queryKey: ['filter-object-fields', modalObj, sourceSelection.backupConfigId, sourceSelection.configType, sourceSelection.startDate, sourceSelection.endDate],
@@ -196,6 +201,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     setModalObj(name);
     setFilterTab('visual');
     setPendingPicklist(null);
+    setQueryValidation(null);
   };
 
   const closeModal = () => setModalObj(null);
@@ -390,6 +396,39 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                     <textarea value={soqlWhere} onChange={(e) => setSoqlWhere(e.target.value)} rows={5}
                       placeholder={`e.g. Status = 'Closed' AND LastModifiedDate > 2026-01-01`}
                       className='w-full text-sm font-mono border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50' />
+                  </div>
+                  <div className='flex items-center gap-3'>
+                    <button
+                      disabled={!soqlWhere.trim() || queryValidating}
+                      onClick={async () => {
+                        setQueryValidating(true);
+                        setQueryValidation(null);
+                        try {
+                          const fullQuery = `SELECT Id FROM ${modalObj} WHERE ${soqlWhere.trim()}`;
+                          const res = await restoreService.validateQuery(sourceSelection.backupConfigId, sourceSelection.configType, modalObj!, fullQuery);
+                          setQueryValidation((res as any)?.data ?? res);
+                        } catch {
+                          setQueryValidation({ valid: false, message: 'Request failed. Please try again.' });
+                        } finally {
+                          setQueryValidating(false);
+                        }
+                      }}
+                      className='inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                    >
+                      {queryValidating ? (
+                        <><div className='w-3 h-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin' />Validating…</>
+                      ) : 'Validate Query'}
+                    </button>
+                    {queryValidation && (
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${queryValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
+                        {queryValidation.valid ? (
+                          <svg width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'><polyline points='20 6 9 17 4 12'/></svg>
+                        ) : (
+                          <svg width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2.5' viewBox='0 0 24 24'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
+                        )}
+                        {queryValidation.valid ? 'Query is valid' : (queryValidation.message || 'Invalid query')}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
