@@ -164,10 +164,101 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
     job.type ??
     ''
   ).toUpperCase();
-  const isExportJob = isExportProp || destType.includes('EXPORT');
+  // Detect export by explicit type OR by presence of csvCount on objects (new API shape)
+  const isExportJob = isExportProp || destType.includes('EXPORT') || objects.some((o: any) => o.csvCount !== undefined);
   const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
 
-  const objectColumns: TableColumn<any>[] = [
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
+  const statusBadge = (rowStatus: string) => {
+    const s = (rowStatus as string)?.toUpperCase();
+    const style =
+      s === 'SUCCESS'              ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
+      s === 'FAILED'               ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
+      s === 'PARTIAL_FAILURE'      ? { bg: 'rgba(217,119,6,0.1)',  color: '#D97706' } :
+      s === 'CANCELLED'            ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
+      s === 'ROLLBACK_COMPLETED'   ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
+      s === 'RESTORE_IN_PROGRESS' || s === 'ROLLBACK_IN_PROGRESS' ? { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' } :
+      (s === 'PENDING' || s === 'RUNNING' || s === 'IN_PROGRESS' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS') ? { bg: 'rgba(234,179,8,0.1)', color: '#A16207' } :
+                                     { bg: '#F3F4F6',               color: '#374151' };
+    const labelMap: Record<string, string> = {
+      SUCCESS: 'Success', FAILED: 'Failed', PARTIAL_FAILURE: 'Partial Failure',
+      CANCELLED: 'Cancelled', ROLLBACK_COMPLETED: 'Rolled Back',
+      RESTORE_IN_PROGRESS: 'Restoring', ROLLBACK_IN_PROGRESS: 'Rolling Back',
+      PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
+      CSV_CREATING: 'Creating CSV', INGEST_IN_PROGRESS: 'Ingesting',
+    };
+    return (
+      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold'
+        style={{ background: style.bg, color: style.color }}>
+        {labelMap[s] ?? (rowStatus || '—')}
+      </span>
+    );
+  };
+
+  // Export-specific aggregates
+  const totalCsvFiles  = objects.reduce((s: number, o: any) => s + (o.csvCount ?? 0), 0);
+  const totalSizeBytes = objects.reduce((s: number, o: any) => s + (o.sizeInBytes ?? 0), 0);
+
+  const exportObjectColumns: TableColumn<any>[] = [
+    {
+      key: 'name',
+      header: 'Object',
+      render: (row) => (
+        <div className='flex items-center gap-2'>
+          <div className='w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0' style={{ background: 'rgba(21,93,252,0.08)' }}>
+            <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/>
+            </svg>
+          </div>
+          <span className='font-semibold text-gray-900 text-sm'>{row.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => statusBadge(row.status),
+    },
+    {
+      key: 'csvCount',
+      header: 'CSV Files',
+      render: (row) => (
+        <div className='flex items-center gap-1.5'>
+          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#64748B' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+            <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/>
+          </svg>
+          <span className='text-sm font-semibold text-gray-800'>{row.csvCount ?? 0}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'sizeInBytes',
+      header: 'Size',
+      render: (row) => (
+        <span className='text-sm font-semibold text-gray-700'>{formatBytes(row.sizeInBytes ?? 0)}</span>
+      ),
+    },
+    {
+      key: 'download',
+      header: 'Download',
+      render: (row: any) => (
+        <DownloadCsvButton
+          restoreJobId={jobId_display}
+          objectName={row.name}
+          disabled={!isJobReady || (row.csvCount ?? 0) === 0}
+        />
+      ),
+    },
+  ];
+
+  const restoreObjectColumns: TableColumn<any>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -176,32 +267,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
     {
       key: 'status',
       header: 'Status',
-      render: (row) => {
-        const s = (row.status as string)?.toUpperCase();
-        const style =
-          s === 'SUCCESS'              ? { bg: 'rgba(0,128,32,0.1)',   color: '#008020' } :
-          s === 'FAILED'               ? { bg: 'rgba(242,68,0,0.1)',   color: '#F24400' } :
-          s === 'PARTIAL_FAILURE'      ? { bg: 'rgba(217,119,6,0.1)',  color: '#D97706' } :
-          s === 'CANCELLED'            ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
-          s === 'ROLLBACK_COMPLETED'   ? { bg: 'rgba(107,114,128,0.1)',color: '#6B7280' } :
-          s === 'RESTORE_IN_PROGRESS' || s === 'ROLLBACK_IN_PROGRESS' ? { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' } :
-          (s === 'PENDING' || s === 'RUNNING' || s === 'IN_PROGRESS' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS')  ? { bg: 'rgba(234,179,8,0.1)',  color: '#A16207' } :
-                                         { bg: '#F3F4F6',               color: '#374151' };
-        const labelMap: Record<string, string> = {
-          SUCCESS: 'Success', FAILED: 'Failed', PARTIAL_FAILURE: 'Partial Failure',
-          CANCELLED: 'Cancelled', ROLLBACK_COMPLETED: 'Rolled Back',
-          RESTORE_IN_PROGRESS: 'Restoring', ROLLBACK_IN_PROGRESS: 'Rolling Back',
-          PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
-          CSV_CREATING: 'Creating CSV', INGEST_IN_PROGRESS: 'Ingesting',
-        };
-        const label = labelMap[s] ?? (row.status || '—');
-        return (
-          <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold'
-            style={{ background: style.bg, color: style.color }}>
-            {label}
-          </span>
-        );
-      },
+      render: (row) => statusBadge(row.status),
     },
     {
       key: 'successRecords',
@@ -209,8 +275,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
       render: (row) => {
         const processed = row.processedRecordCount ?? 0;
         const failed    = row.failedRecordCount ?? 0;
-        const success   = processed - failed;
-        return <span className='text-sm font-semibold text-green-600'>{success}</span>;
+        return <span className='text-sm font-semibold text-green-600'>{processed - failed}</span>;
       },
     },
     {
@@ -242,18 +307,9 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
         );
       },
     },
-    ...(isExportJob ? [{
-      key: 'download',
-      header: 'Download',
-      render: (row: any) => (
-        <DownloadCsvButton
-          restoreJobId={jobId_display}
-          objectName={row.name}
-          disabled={!isJobReady}
-        />
-      ),
-    }] : []),
   ];
+
+  const objectColumns = isExportJob ? exportObjectColumns : restoreObjectColumns;
 
   const runtime = updatedAt && createdAt
     ? (() => {
@@ -421,11 +477,17 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
 
         {/* Success/Status Card */}
         <div className='rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm flex-shrink-0 flex flex-col items-center'>
-          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${status === 'DONE' ? 'bg-green-100' : status === 'FAILED' ? 'bg-red-100' : 'bg-yellow-100'}`}>
-            <span className={`text-3xl font-bold ${statusConfig.cls}`}>{statusConfig.icon}</span>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${status === 'SUCCESS' || status === 'DONE' || status === 'COMPLETED' ? (isExportJob ? 'bg-blue-100' : 'bg-green-100') : status === 'FAILED' ? 'bg-red-100' : 'bg-yellow-100'}`}>
+            {isExportJob ? (
+              <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke={status === 'FAILED' ? '#F24400' : '#155DFC'} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/>
+              </svg>
+            ) : (
+              <span className={`text-3xl font-bold ${statusConfig.cls}`}>{statusConfig.icon}</span>
+            )}
           </div>
-          <h3 className={`mt-4 text-xl font-bold ${statusConfig.cls}`}>
-            Restore {statusConfig.label.split(' ')[1]}
+          <h3 className={`mt-4 text-xl font-bold ${isExportJob ? (status === 'FAILED' ? 'text-red-600' : 'text-blue-600') : statusConfig.cls}`}>
+            {isExportJob ? `CSV Export ${statusConfig.label.split(' ').slice(1).join(' ')}` : `Restore ${statusConfig.label.split(' ')[1]}`}
           </h3>
           <p className='mt-2 text-sm text-gray-600 text-center'>
             Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -433,29 +495,75 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
         </div>
 
         {/* Summary Stats */}
-        <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
-          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>Records Restored</p>
-            <p className='mt-2 text-lg font-bold text-green-600'>{totalSuccess.toLocaleString()}</p>
+        {isExportJob ? (
+          <div className='grid grid-cols-3 gap-3 flex-shrink-0'>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='w-6 h-6 rounded-md flex items-center justify-center' style={{ background: 'rgba(21,93,252,0.08)' }}>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/>
+                  </svg>
+                </div>
+                <p className='text-xs text-gray-600 font-semibold'>Total CSV Files</p>
+              </div>
+              <p className='text-lg font-bold text-blue-600'>{totalCsvFiles.toLocaleString()}</p>
+            </div>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='w-6 h-6 rounded-md flex items-center justify-center' style={{ background: 'rgba(16,185,129,0.08)' }}>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#059669' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
+                  </svg>
+                </div>
+                <p className='text-xs text-gray-600 font-semibold'>Total Size</p>
+              </div>
+              <p className='text-lg font-bold text-gray-900'>{formatBytes(totalSizeBytes)}</p>
+            </div>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <div className='flex items-center gap-2 mb-2'>
+                <div className='w-6 h-6 rounded-md flex items-center justify-center' style={{ background: 'rgba(107,114,128,0.08)' }}>
+                  <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <rect x='3' y='3' width='7' height='7'/><rect x='14' y='3' width='7' height='7'/><rect x='14' y='14' width='7' height='7'/><rect x='3' y='14' width='7' height='7'/>
+                  </svg>
+                </div>
+                <p className='text-xs text-gray-600 font-semibold'>Objects Exported</p>
+              </div>
+              <p className='text-lg font-bold text-gray-900'>{objects.length}</p>
+            </div>
           </div>
-          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>Failed</p>
-            <p className='mt-2 text-lg font-bold text-red-600'>{totalFailed.toLocaleString()}</p>
+        ) : (
+          <div className='grid grid-cols-4 gap-3 flex-shrink-0'>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <p className='text-xs text-gray-600 font-semibold'>Records Restored</p>
+              <p className='mt-2 text-lg font-bold text-green-600'>{totalSuccess.toLocaleString()}</p>
+            </div>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <p className='text-xs text-gray-600 font-semibold'>Failed</p>
+              <p className='mt-2 text-lg font-bold text-red-600'>{totalFailed.toLocaleString()}</p>
+            </div>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <p className='text-xs text-gray-600 font-semibold'>Total Processed</p>
+              <p className='mt-2 text-lg font-bold text-gray-900'>{totalProcessed.toLocaleString()}</p>
+            </div>
+            <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
+              <p className='text-xs text-gray-600 font-semibold'>Objects</p>
+              <p className='mt-2 text-lg font-bold text-gray-900'>{objects.length}</p>
+            </div>
           </div>
-          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>Total Processed</p>
-            <p className='mt-2 text-lg font-bold text-gray-900'>{totalProcessed.toLocaleString()}</p>
-          </div>
-          <div className='rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm'>
-            <p className='text-xs text-gray-600 font-semibold'>Objects</p>
-            <p className='mt-2 text-lg font-bold text-gray-900'>{objects.length}</p>
-          </div>
-        </div>
+        )}
 
         {/* Per-Object Breakdown */}
         <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
-          <div className='px-6 py-4 border-b border-gray-100'>
-            <h3 className='font-semibold text-gray-900'>Per-Object Breakdown</h3>
+          <div className='px-6 py-4 border-b border-gray-100 flex items-center justify-between'>
+            <h3 className='font-semibold text-gray-900'>{isExportJob ? 'Exported Objects' : 'Per-Object Breakdown'}</h3>
+            {isExportJob && (
+              <span className='inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full' style={{ background: 'rgba(21,93,252,0.08)', color: '#155DFC' }}>
+                <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4'/><polyline points='7 10 12 15 17 10'/><line x1='12' y1='15' x2='12' y2='3'/>
+                </svg>
+                CSV Export
+              </span>
+            )}
           </div>
           <Table
             columns={objectColumns}
