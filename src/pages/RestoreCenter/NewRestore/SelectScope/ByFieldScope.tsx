@@ -23,12 +23,10 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Fetches one object's fields in the background regardless of whether it's
-// the currently active (visible) panel — needed so every ticked object's
-// fields default-select the moment they load, not just whichever one the
-// user happens to have open. Shares its react-query cache key with the
-// visible panel's own fetch, so activating this object later reads from
-// cache instead of re-fetching. Renders nothing.
+// Pre-warms the field cache for a ticked object in the background so that
+// opening its field panel is instant. Marks the object as initialized
+// (empty selection) when data arrives. Shares its react-query cache key
+// with the visible panel's own fetch. Renders nothing.
 function FieldsAutoLoader({
   objectName, backupConfigId, alreadyInitialized, onFieldsLoaded,
 }: {
@@ -63,13 +61,12 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
   const [fieldFilter,    setFieldFilter]    = useState<'All' | 'Standard' | 'Custom' | 'Required'>('All');
   const [fieldSearch,    setFieldSearch]    = useState('');
 
-  // Default-select every field the first time an object's fields load. Never
-  // overwrites a field set that already exists (user edits, or a prior
-  // default-init, survive reloads/re-selection).
-  const onFieldsLoaded = (objectName: string, fields: FieldOption[]) => {
+  // Mark the object as initialized with an empty selection the first time its
+  // fields load. Never overwrites existing user choices.
+  const onFieldsLoaded = (objectName: string, _fields: FieldOption[]) => {
     setSelectedFields((prev) => {
-      if (prev[objectName]) return prev;
-      return { ...prev, [objectName]: new Set(fields.map((f) => f.apiName)) };
+      if (prev[objectName] !== undefined) return prev;
+      return { ...prev, [objectName]: new Set<string>() };
     });
   };
 
@@ -87,7 +84,15 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
     enabled: !!activeObj && !!sourceSelection.backupConfigId,
     retry: 1,
   });
-  const sourceFields: FieldOption[] = (fieldOptionsData as any)?.data ?? [];
+  const sourceFields: FieldOption[] = ((fieldOptionsData as any)?.data ?? []).map((f: any) => ({
+    label: f.label,
+    apiName: f.name,
+    dataType: f.type,
+    isUpdateable: f.isUpdateable ?? true,
+    isCreateable: f.isCreateable ?? true,
+    isCustom: typeof f.name === 'string' && f.name.endsWith('__c'),
+    isRequired: f.restrictedDelete === true,
+  }));
 
   const availableFields = sourceFields.filter((f) => {
     if (fieldSearch && !f.label.toLowerCase().includes(fieldSearch.toLowerCase())) return false;
@@ -127,9 +132,8 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
 
   return (
     <div className='rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden'>
-      {/* Background field loaders — one per ticked object, so every ticked
-          object's fields get default-selected even if the user never opens
-          its field panel. No UI of their own. */}
+      {/* Background field loaders — pre-warm the cache for each ticked object
+          so opening its field panel is instant. No UI of their own. */}
       {[...selectedObjs].map((obj) => (
         <FieldsAutoLoader
           key={obj}
@@ -149,7 +153,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
       </div>
       <div className='p-5 space-y-4'>
         <InfoCallout>
-          Tick objects to include them — all of an object's fields are selected by default. Click <strong>Select Fields →</strong> on any ticked object to fine-tune which fields to restore.
+          Tick objects to include them, then click <strong>Select Fields →</strong> to choose which fields to restore. Use <strong>Select all</strong> inside the field panel to pick every field at once.
         </InfoCallout>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {/* Left — object list */}
