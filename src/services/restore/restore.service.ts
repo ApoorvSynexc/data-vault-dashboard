@@ -356,7 +356,7 @@ export function useRestoreService() {
       api.post<FetchMissingFieldsResult>(RESTORE_ENDPOINTS.fetchMissingFields, { backupConfigId, objectApiName, configType, ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) }),
 
     validateQuery: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL', objectApiName: string, soqlQuery: string) =>
-      api.post<{ valid: boolean; message?: string }>(RESTORE_ENDPOINTS.validateQuery, { backupConfigId, configType, objectApiName, soqlQuery }),
+      api.get<{ valid: boolean; message?: string }>(RESTORE_ENDPOINTS.validateQuery, { query: { backupConfigId, configType, objectApiName, soqlQuery } }),
 
     // objectApiNames omitted resolves to every restorable object on the config
     // (an ENTIRE restore) — the backend does that resolution, not the caller.
