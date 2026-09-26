@@ -490,7 +490,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
             {isExportJob ? `CSV Export ${statusConfig.label.split(' ').slice(1).join(' ')}` : `Restore ${statusConfig.label.split(' ')[1]}`}
           </h3>
           <p className='mt-2 text-sm text-gray-600 text-center'>
-            Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+            Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
           </p>
         </div>
 
