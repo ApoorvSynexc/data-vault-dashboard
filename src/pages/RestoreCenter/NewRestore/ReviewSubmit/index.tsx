@@ -118,6 +118,7 @@ interface Props {
   dryRunStats?: { totalCount: number; totalUpdateCount: number; totalDeleteCount: number; objects: { objectApiName: string; count: number; updateCount: number; deleteCount: number; ok: boolean }[] };
   sourceSelection: SourceSelection;
   selectedConnection: Destination | null;
+  bulkCsvFiles?: Record<string, File>;
 }
 
 // ── Acknowledgement Modal ─────────────────────────────────────────────────────
@@ -225,7 +226,7 @@ function AcknowledgementModal({ onConfirm, onCancel, jobName, destinationOrg, to
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats, sourceSelection, selectedConnection }: Props) {
+export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRunStats, sourceSelection, selectedConnection, bulkCsvFiles }: Props) {
   const restoreService = useRestoreService();
   const [isSuccess, setIsSuccess] = useState(false);
   const [showAckModal, setShowAckModal] = useState(false);
@@ -244,14 +245,31 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
   }, [isSuccess]);
 
   const createJobMutation = useMutation({
-    mutationFn: () => restoreService.createRestoreJob({
-      ...restorePayload,
-      jobDetail: {
-        name: jobName,
-        description: jobDesc || undefined,
-        // tags: jobTags ? jobTags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
-      },
-    }),
+    mutationFn: async () => {
+      let finalPayload = { ...restorePayload, jobDetail: { name: jobName, description: jobDesc || undefined } };
+
+      // Upload CSV files for BULK_CSV scope, then patch csvFilePath into each entry
+      if (
+        finalPayload.selection.restoreScope.type === 'BULK_CSV' &&
+        bulkCsvFiles && Object.keys(bulkCsvFiles).length > 0
+      ) {
+        const uploads = await Promise.all(
+          finalPayload.selection.restoreScope.bulkCsvIds.map(async (entry) => {
+            const file = bulkCsvFiles[entry.objectName];
+            if (!file) return entry;
+            const res = await restoreService.uploadBulkCsv(entry.objectName, finalPayload.source.backupConfigId, file);
+            const s3Key = (res as any)?.data?.s3Key ?? (res as any)?.s3Key;
+            return { ...entry, ...(s3Key ? { csvFilePath: s3Key } : {}) };
+          })
+        );
+        finalPayload = {
+          ...finalPayload,
+          selection: { restoreScope: { type: 'BULK_CSV', bulkCsvIds: uploads } },
+        };
+      }
+
+      return restoreService.createRestoreJob(finalPayload);
+    },
     onSuccess: () => setIsSuccess(true),
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';

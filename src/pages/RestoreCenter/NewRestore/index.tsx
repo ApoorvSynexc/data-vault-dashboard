@@ -65,6 +65,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
   const [selectedConnection, setSelectedConnection] = useState<Destination | null>(null);
   const [sourceSelection, setSourceSelection] = useState<SourceSelection>({ configType: 'BACKUP', backupConfigId: '', backupJobIds: [], crmId: '' });
   const [restorePayload, setRestorePayload] = useState<RestoreRetrievePayload>(INITIAL_PAYLOAD);
+  const [bulkCsvFiles, setBulkCsvFiles] = useState<Record<string, File>>({});
 
   const updatePayload = (patch: Partial<RestoreRetrievePayload>) =>
     setRestorePayload((prev) => ({ ...prev, ...patch }));
@@ -131,7 +132,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       </div>
       <div className={currentStep === 3 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
-        <SelectScope onNext={(scope, mode) => { setScopeMode(mode); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />
+        <SelectScope onNext={(scope, mode, csvFiles) => { setScopeMode(mode); if (csvFiles) setBulkCsvFiles(csvFiles); updatePayload({ selection: { restoreScope: scope } }); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} />
       </div>
       <div className={currentStep === 4 ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}>
         <SetDestination
@@ -187,7 +188,7 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
         />
       </div>
       {currentStep === 7 && <PreviewValidate onNext={(stats) => { setDryRunStats(stats); goNext(); }} onBack={goBack} sourceSelection={sourceSelection} restorePayload={restorePayload} />}
-      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} />}
+      {currentStep === 8 && <ReviewSubmit onBack={goBack} onComplete={onComplete} restorePayload={restorePayload} updatePayload={updatePayload} dryRunStats={dryRunStats} sourceSelection={sourceSelection} selectedConnection={selectedConnection} bulkCsvFiles={bulkCsvFiles} />}
     </div>
   );
 }

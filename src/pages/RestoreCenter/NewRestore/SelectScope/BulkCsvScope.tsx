@@ -4,13 +4,13 @@ import Joi from 'joi';
 import Typography from '../../../../components/Typography';
 import type { SourceSelection } from '../SelectSourceType';
 
-type CsvConfig = { text: string; parsedIds: string[]; fileName: string | null; errors: { row: number; message: string }[] };
+type CsvConfig = { text: string; parsedIds: string[]; fileName: string | null; file: File | null; errors: { row: number; message: string }[] };
 
 interface Props {
   sourceObjectNames: string[];
   sourceObjectsLoading: boolean;
   sourceSelection: SourceSelection;
-  onChange: (bulkCsvIds: { objectName: string; ids: string[] }[]) => void;
+  onChange: (bulkCsvIds: { objectName: string; ids: string[]; file?: File }[]) => void;
 }
 
 const idSchema = Joi.string().min(1).required().messages({
@@ -18,7 +18,7 @@ const idSchema = Joi.string().min(1).required().messages({
   'any.required': 'ID is required',
 });
 
-const blank = (): CsvConfig => ({ text: '', parsedIds: [], fileName: null, errors: [] });
+const blank = (): CsvConfig => ({ text: '', parsedIds: [], fileName: null, file: null, errors: [] });
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024; // 5 MB
 function validateCsvFile(file: File): string | null {
@@ -47,10 +47,10 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
   const notifyChange = (nextConfig: Record<string, CsvConfig>, nextAdded: string[]) =>
     onChange(nextAdded
       .filter((obj) => (nextConfig[obj]?.parsedIds?.length ?? 0) > 0)
-      .map((obj) => ({ objectName: obj, ids: nextConfig[obj].parsedIds })));
+      .map((obj) => ({ objectName: obj, ids: nextConfig[obj].parsedIds, file: nextConfig[obj].file ?? undefined })));
 
   const parseCsvFile = (file: File, targetObj: string) => {
-    setCfg(targetObj, { errors: [], parsedIds: [], fileName: file.name });
+    setCfg(targetObj, { errors: [], parsedIds: [], fileName: file.name, file });
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
@@ -72,7 +72,7 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
         });
         if (errors.length > 0) setErrorOpen(true);
         setConfigByObj((prev) => {
-          const next = { ...prev, [targetObj]: { ...(prev[targetObj] ?? blank()), parsedIds: ids, errors, fileName: file.name } };
+          const next = { ...prev, [targetObj]: { ...(prev[targetObj] ?? blank()), parsedIds: ids, errors, fileName: file.name, file } };
           notifyChange(next, addedObjs);
           return next;
         });
@@ -193,7 +193,7 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
             <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
               <div>
                 <h2 className='text-base font-bold text-gray-900 font-mono'>{modalObj}</h2>
-                <p className='text-xs text-gray-400 mt-0.5'>Upload a CSV or paste record IDs for this object</p>
+                <p className='text-xs text-gray-400 mt-0.5'>Upload a CSV for this object</p>
               </div>
               <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'>
                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -240,23 +240,6 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
                 <div className='flex-1 h-px bg-gray-200' />
                 <span className='text-xs text-gray-400 font-medium'>or paste IDs</span>
                 <div className='flex-1 h-px bg-gray-200' />
-              </div>
-
-              {/* Paste area */}
-              <div className='space-y-1.5'>
-                <label className='text-xs font-semibold text-gray-700'>Paste record IDs <span className='font-normal text-gray-400'>(one per line)</span></label>
-                <textarea value={modalCfg.text}
-                  onChange={(e) => {
-                    const text = e.target.value;
-                    const ids = text.split('\n').map((l) => l.trim()).filter(Boolean);
-                    const errors: { row: number; message: string }[] = [];
-                    const valid: string[] = [];
-                    ids.forEach((id, i) => { const { error } = idSchema.validate(id); if (error) errors.push({ row: i + 1, message: error.message }); else valid.push(id); });
-                    setConfigByObj((prev) => { const next = { ...prev, [modalObj]: { ...(prev[modalObj] ?? blank()), text, parsedIds: valid, errors, fileName: null } }; notifyChange(next, addedObjs); return next; });
-                  }}
-                  rows={5}
-                  placeholder={'001dN00000xECllQAG\n001dN00000xEClmQAG\n001dN00000xEClnQAG'}
-                  className='w-full text-xs font-mono border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50' />
               </div>
 
               {/* Status banners */}
