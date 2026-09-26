@@ -386,10 +386,9 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                 <div className='space-y-4'>
                   <p className='text-xs text-gray-500'>Write only the WHERE clause for <strong className='text-gray-800'>{modalObj}</strong>. The full query is built automatically.</p>
                   <div className='rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs leading-relaxed text-gray-300 select-none'>
-                    <span className='text-blue-400'>SELECT</span> Id <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{modalObj}</span>
-                    {soqlWhere.trim() && (
-                      <> <span className='text-blue-400'>WHERE</span> <span className='text-yellow-300'>{soqlWhere.trim()}</span></>
-                    )}
+                    <span className='text-blue-400'>SELECT</span> Fields(All) <span className='text-blue-400'>FROM</span> <span className='text-green-400'>{modalObj}</span>{' '}
+                    <span className='text-blue-400'>WHERE</span>{' '}
+                    <span className='text-yellow-300'>{soqlWhere.trim() || '…'}</span>
                   </div>
                   <div className='space-y-1.5'>
                     <label className='text-xs font-semibold text-gray-700'>WHERE clause</label>
@@ -404,8 +403,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                         setQueryValidating(true);
                         setQueryValidation(null);
                         try {
-                          const fullQuery = `SELECT Id FROM ${modalObj} WHERE ${soqlWhere.trim()}`;
-                          const res = await restoreService.validateQuery(sourceSelection.backupConfigId, sourceSelection.configType, modalObj!, fullQuery);
+                          const res = await restoreService.validateQuery(sourceSelection.backupConfigId, sourceSelection.configType, modalObj!, soqlWhere.trim());
                           setQueryValidation((res as any)?.data ?? res);
                         } catch {
                           setQueryValidation({ valid: false, message: 'Request failed. Please try again.' });
