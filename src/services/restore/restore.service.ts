@@ -314,6 +314,7 @@ const RESTORE_ENDPOINTS = {
   fetchObjectFields:    '/v1/restore/fetch-object-fields',
   fetchMissingFields:   '/v1/restore/retrieve/fetch-missing-fields',
   validateQuery:        '/v1/restore/retrieve/validate-query',
+  uploadBulkCsv:        '/v1/restore/bulk-csv/upload',
   fetchMissingRecordTypes: '/v1/restore/retrieve/fetch-missing-record-types',
   crmRecordTypes:       '/v1/crm-metadata/record-types/list',
   requiredFields:       '/v1/restore/retrieve/required-fields',
@@ -357,6 +358,15 @@ export function useRestoreService() {
 
     validateQuery: (backupConfigId: string, configType: 'BACKUP' | 'ARCHIVAL', objectApiName: string, soqlQuery: string) =>
       api.post<{ valid: boolean; message?: string }>(RESTORE_ENDPOINTS.validateQuery, { backupConfigId, configType, objectApiName, soqlQuery }),
+
+    uploadBulkCsv: (objectApiName: string, backupConfigId: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api.post<{ s3Key: string }>(
+        `${RESTORE_ENDPOINTS.uploadBulkCsv}?objectApiName=${encodeURIComponent(objectApiName)}&backupConfigId=${encodeURIComponent(backupConfigId)}`,
+        formData,
+      );
+    },
 
     // objectApiNames omitted resolves to every restorable object on the config
     // (an ENTIRE restore) — the backend does that resolution, not the caller.

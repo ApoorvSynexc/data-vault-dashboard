@@ -71,7 +71,7 @@ function ProgressBar({ active }: { active: number }) {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  onNext: (scope: RestoreScope, scopeMode: string) => void;
+  onNext: (scope: RestoreScope, scopeMode: string, bulkCsvFiles?: Record<string, File>) => void;
   onBack: () => void;
   sourceSelection: SourceSelection;
 }
@@ -138,7 +138,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [recordScope,     setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
   const [fieldScope,      setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
-  const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[] }[]>([]);
+  const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
 
   const buildScope = (): RestoreScope => {
     switch (scopeMode) {
@@ -146,7 +146,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'record':  return { type: 'RECORD', records: recordScope };
       case 'field':   return { type: 'FIELD',  fields:  fieldScope };
       case 'filter':  return { type: 'FILTER', filters: filterScope };
-      case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope };
+      case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope.map(({ objectName, ids }) => ({ objectName, ids })) };
       case 'deleted': return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':
       default:        return { type: 'ALL' };
@@ -277,7 +277,13 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           </button>
           <div className='flex items-center gap-2'>
             <button
-              onClick={() => onNext(buildScope(), scopeMode)}
+              onClick={() => {
+                const scope = buildScope();
+                const csvFiles = scopeMode === 'csv'
+                  ? Object.fromEntries(csvScope.filter((c) => c.file).map((c) => [c.objectName, c.file!]))
+                  : undefined;
+                onNext(scope, scopeMode, csvFiles);
+              }}
               className='flex items-center gap-2 text-sm font-semibold px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors'
             >
               Next: Set Destination →
