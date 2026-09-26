@@ -127,7 +127,7 @@ function calcDuration(startedAt?: string, completedAt?: string): string {
 
 function fmtJobTime(iso?: string): string {
   if (!iso) return '--';
-  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 
@@ -249,7 +249,7 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
   const destType       = item?.destinationDetail?.type ?? '--';
 
   const createdAt      = item?.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--';
-  const lastBackupAt   = item?.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '--';
+  const lastBackupAt   = item?.lastBackupAt ? new Date(item.lastBackupAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '--';
 
   const filteredRecords = DUMMY_RECORDS.filter((r) =>
     r.name.toLowerCase().includes(recordSearch.toLowerCase()) ||
