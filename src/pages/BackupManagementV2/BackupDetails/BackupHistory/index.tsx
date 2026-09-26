@@ -190,7 +190,7 @@ export default function BackupHistory({ backup }: BackupHistoryProps) {
     {
       key: 'startedAt',
       header: 'Start Time',
-      render: (job) => job.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY h:mm A') : '--',
+      render: (job) => job.startedAt ? dayjs(job.startedAt).format('MMM D, YYYY HH:mm') : '--',
     },
     {
       key: 'status',

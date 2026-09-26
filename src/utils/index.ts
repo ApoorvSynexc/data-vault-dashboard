@@ -124,7 +124,7 @@ export function calculateNextRun(
 
   const freq = frequency.toUpperCase();
   const now = dayjs();
-  const fmt = (d: dayjs.Dayjs) => d.format('MMM D, YYYY h:mm A');
+  const fmt = (d: dayjs.Dayjs) => d.format('MMM D, YYYY HH:mm');
   const dt = (date: string, time = '00:00') => dayjs(`${date}T${time}`);
 
   try {
