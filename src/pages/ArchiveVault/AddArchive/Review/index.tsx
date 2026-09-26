@@ -581,7 +581,7 @@ const [now, setNow] = useState(() => dayjs());
 
   const fireApi = async (backupStatus: 'DRAFT' | 'ACTIVE') => {
     if (editMode && backupConfigId) {
-      const payload = { ...archivalPayload, name: localName, backupStatus };
+      const payload = { ...archivalPayload, name: localName, backupStatus, status: backupStatus };
       await archivalService.updateConfig(backupConfigId, payload as any);
     } else {
       const payload = { ...archivalPayload, name: localName, status: backupStatus };
