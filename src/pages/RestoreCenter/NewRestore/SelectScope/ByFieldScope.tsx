@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toUTCISOString } from '../../../../utils';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import { useRestoreService } from '../../../../services/restore/restore.service';
@@ -28,17 +29,20 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 // (empty selection) when data arrives. Shares its react-query cache key
 // with the visible panel's own fetch. Renders nothing.
 function FieldsAutoLoader({
-  objectName, backupConfigId, alreadyInitialized, onFieldsLoaded,
+  objectName, backupConfigId, configType, startDate, endDate, alreadyInitialized, onFieldsLoaded,
 }: {
   objectName: string;
   backupConfigId: string;
+  configType: 'BACKUP' | 'ARCHIVAL';
+  startDate?: string;
+  endDate?: string;
   alreadyInitialized: boolean;
   onFieldsLoaded: (objectName: string, fields: FieldOption[]) => void;
 }) {
   const restoreService = useRestoreService();
   const { data } = useQuery({
-    queryKey: ['source-object-fields', objectName, backupConfigId],
-    queryFn: () => restoreService.fetchObjectFields(objectName, backupConfigId),
+    queryKey: ['source-object-fields', objectName, backupConfigId, configType, startDate, endDate],
+    queryFn: () => restoreService.fetchObjectFields(objectName, backupConfigId, configType, toUTCISOString(startDate), toUTCISOString(endDate)),
     enabled: !!objectName && !!backupConfigId && !alreadyInitialized,
     retry: 1,
   });
@@ -79,8 +83,8 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
   }, [selectedObjs, selectedFields]);
 
   const { data: fieldOptionsData, isLoading: fieldOptionsLoading } = useQuery({
-    queryKey: ['source-object-fields', activeObj, sourceSelection.backupConfigId],
-    queryFn: () => restoreService.fetchObjectFields(activeObj, sourceSelection.backupConfigId),
+    queryKey: ['source-object-fields', activeObj, sourceSelection.backupConfigId, sourceSelection.configType, sourceSelection.startDate, sourceSelection.endDate],
+    queryFn: () => restoreService.fetchObjectFields(activeObj, sourceSelection.backupConfigId, sourceSelection.configType, toUTCISOString(sourceSelection.startDate), toUTCISOString(sourceSelection.endDate)),
     enabled: !!activeObj && !!sourceSelection.backupConfigId,
     retry: 1,
   });
@@ -139,6 +143,9 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
           key={obj}
           objectName={obj}
           backupConfigId={sourceSelection.backupConfigId}
+          configType={sourceSelection.configType}
+          startDate={sourceSelection.startDate}
+          endDate={sourceSelection.endDate}
           alreadyInitialized={!!selectedFields[obj]}
           onFieldsLoaded={onFieldsLoaded}
         />

@@ -246,7 +246,7 @@ function CrmDropdown({ destinations, value, selectedUserId, onChange, loading }:
   );
 }
 
-function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL' }) {
+function DifferentOrgConfig({ backupConfigId, configType, startDate, endDate }: { backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL'; startDate?: string; endDate?: string }) {
   const restoreService = useRestoreService();
   const platformService = usePlatformService();
   const [tag, setTag]              = useState('Restored via DataCraft {job-id}');
@@ -312,8 +312,8 @@ function DifferentOrgConfig({ backupConfigId, configType }: { backupConfigId: st
   const activeFieldObject = selectedFieldObject || mappedObjects[0] || '';
 
   const { data: sourceFieldsData, isLoading: sourceFieldsLoading } = useQuery({
-    queryKey: ['source-fields', backupConfigId, activeFieldObject],
-    queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId),
+    queryKey: ['source-fields', backupConfigId, activeFieldObject, configType, startDate, endDate],
+    queryFn: () => restoreService.fetchObjectFields(activeFieldObject, backupConfigId, configType, startDate, endDate),
     enabled: objectMappingConfirmed && !!activeFieldObject && !!backupConfigId,
     retry: 1,
   });
@@ -608,12 +608,14 @@ interface Props {
   onBack: () => void;
   backupConfigId: string;
   configType: 'BACKUP' | 'ARCHIVAL';
+  startDate?: string;
+  endDate?: string;
   crmName?: string;
   crmUsername?: string;
   onGenerateCsv?: (name: string, description: string) => Promise<void> | void;
 }
 
-export default function SetDestination({ onNext, onBack, backupConfigId, configType, crmName, crmUsername, onGenerateCsv }: Props) {
+export default function SetDestination({ onNext, onBack, backupConfigId, configType, startDate, endDate, crmName, crmUsername, onGenerateCsv }: Props) {
   const [destType, setDestType] = useState<DestType>('same');
   const [exportName, setExportName] = useState('');
   const [exportDescription, setExportDescription] = useState('');
@@ -677,7 +679,7 @@ export default function SetDestination({ onNext, onBack, backupConfigId, configT
 
         {/* Sub-config panel */}
         {destType === 'same'   && <SameOrgConfig crmName={crmName} crmUsername={crmUsername} />}
-        {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} />}
+        {destType === 'diff'   && <DifferentOrgConfig backupConfigId={backupConfigId} configType={configType} startDate={startDate} endDate={endDate} />}
         {destType === 'export' && (
           <ExportOnlyConfig
             name={exportName}

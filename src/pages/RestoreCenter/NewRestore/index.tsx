@@ -139,6 +139,8 @@ export default function NewRestore({ onBack, onComplete, isTemplateMode = false 
           onBack={goBack}
           backupConfigId={sourceSelection.backupConfigId}
           configType={sourceSelection.configType}
+          startDate={toUTCISOString(sourceSelection.startDate)}
+          endDate={toUTCISOString(sourceSelection.endDate)}
           crmName={sourceSelection.crmName}
           crmUsername={sourceSelection.crmUsername}
           onGenerateCsv={async (name, description) => {

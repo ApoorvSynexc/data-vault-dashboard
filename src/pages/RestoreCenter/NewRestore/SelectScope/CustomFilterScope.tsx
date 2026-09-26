@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Typography from '../../../../components/Typography';
 import { useRestoreService } from '../../../../services/restore/restore.service';
+import { toUTCISOString } from '../../../../utils';
 import { OP_LABELS, OPERATORS_BY_TYPE, SF_TYPE_MAP } from './types';
 import type { FilterTab, FilterRow, OrGroup, FieldDataType, FilterOperator, FieldOption } from './types';
 
@@ -81,8 +82,8 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const setSoqlWhere = (val: string) => setSoqlByObj((p) => ({ ...p, [modalObj!]: val }));
 
   const { data: filterFieldsData, isLoading: filterFieldsLoading } = useQuery({
-    queryKey: ['filter-object-fields', modalObj, sourceSelection.backupConfigId],
-    queryFn: () => restoreService.fetchObjectFields(modalObj!, sourceSelection.backupConfigId),
+    queryKey: ['filter-object-fields', modalObj, sourceSelection.backupConfigId, sourceSelection.configType, sourceSelection.startDate, sourceSelection.endDate],
+    queryFn: () => restoreService.fetchObjectFields(modalObj!, sourceSelection.backupConfigId, sourceSelection.configType, toUTCISOString(sourceSelection.startDate), toUTCISOString(sourceSelection.endDate)),
     enabled: !!modalObj && !!sourceSelection.backupConfigId,
     retry: 1,
   });

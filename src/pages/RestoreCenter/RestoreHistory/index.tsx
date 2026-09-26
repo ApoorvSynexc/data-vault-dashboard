@@ -145,7 +145,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
 
   const status = job.status || 'PENDING';
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
-  const jobName = job.jobDetail?.name || 'Untitled Restore';
+  const jobName = job.name || job.jobDetail?.name || 'Untitled Restore';
   const jobId_display = job.restoreJobId;
   const createdAt = job.createdAt;
   const updatedAt = job.updatedAt || job.completedAt;
