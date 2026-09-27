@@ -383,11 +383,15 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       if (newStart === '') { setStartDate(''); return; }
                       const todayDate = new Date().toISOString().slice(0, 10);
                       const prevDate = startDate.slice(0, 10);
-                      const val = newStart.slice(0, 10) === todayDate && prevDate !== todayDate
-                        ? toDatetimeLocal(new Date().toISOString())
-                        : newStart;
-                      setStartDate(val);
-                      if (endDate && val && endDate < val) setEndDate('');
+                      if (newStart.slice(0, 10) === todayDate && prevDate !== todayDate) {
+                        const nowLocal = toDatetimeLocal(new Date().toISOString());
+                        setStartDate(nowLocal);
+                        if (endDate && endDate < nowLocal) setEndDate('');
+                        e.target.blur();
+                        return;
+                      }
+                      setStartDate(newStart);
+                      if (endDate && newStart && endDate < newStart) setEndDate('');
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       startDate && (startDate > toDatetimeLocal(new Date().toISOString()) || (minDatetime && startDate < minDatetime))
@@ -432,10 +436,12 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       if (newEnd === '') { setEndDate(''); return; }
                       const todayDate = new Date().toISOString().slice(0, 10);
                       const prevDate = endDate.slice(0, 10);
-                      const val = newEnd.slice(0, 10) === todayDate && prevDate !== todayDate
-                        ? toDatetimeLocal(new Date().toISOString())
-                        : newEnd;
-                      setEndDate(val);
+                      if (newEnd.slice(0, 10) === todayDate && prevDate !== todayDate) {
+                        setEndDate(toDatetimeLocal(new Date().toISOString()));
+                        e.target.blur();
+                        return;
+                      }
+                      setEndDate(newEnd);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       endDate && (endDate > toDatetimeLocal(new Date().toISOString()) || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
