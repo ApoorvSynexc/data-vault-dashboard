@@ -381,8 +381,13 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     onChange={(e) => {
                       const newStart = e.target.value;
                       if (newStart === '') { setStartDate(''); return; }
-                      setStartDate(newStart);
-                      if (endDate && newStart && endDate < newStart) setEndDate('');
+                      const todayDate = new Date().toISOString().slice(0, 10);
+                      const prevDate = startDate.slice(0, 10);
+                      const val = newStart.slice(0, 10) === todayDate && prevDate !== todayDate
+                        ? toDatetimeLocal(new Date().toISOString())
+                        : newStart;
+                      setStartDate(val);
+                      if (endDate && val && endDate < val) setEndDate('');
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       startDate && (startDate > toDatetimeLocal(new Date().toISOString()) || (minDatetime && startDate < minDatetime))
@@ -425,7 +430,12 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     onChange={(e) => {
                       const newEnd = e.target.value;
                       if (newEnd === '') { setEndDate(''); return; }
-                      setEndDate(newEnd);
+                      const todayDate = new Date().toISOString().slice(0, 10);
+                      const prevDate = endDate.slice(0, 10);
+                      const val = newEnd.slice(0, 10) === todayDate && prevDate !== todayDate
+                        ? toDatetimeLocal(new Date().toISOString())
+                        : newEnd;
+                      setEndDate(val);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       endDate && (endDate > toDatetimeLocal(new Date().toISOString()) || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
