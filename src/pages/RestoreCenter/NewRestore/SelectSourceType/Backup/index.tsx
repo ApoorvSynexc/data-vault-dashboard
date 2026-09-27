@@ -108,15 +108,21 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     : '';
 
   const [type, setScopeType] = useState<ScopeType>('ENTIRE');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
 
-  // Split helpers — state stores "YYYY-MM-DDTHH:mm", UI shows date + time separately
-  const splitDT = (dt: string) => ({ date: dt.slice(0, 10), time: dt.slice(11, 16) });
-  const joinDT  = (date: string, time: string) => (date && time ? `${date}T${time}` : '');
+  // Date and time stored separately so picking a date doesn't auto-fill time
+  const [startDatePart, setStartDatePart] = useState('');
+  const [startTimePart, setStartTimePart] = useState('');
+  const [endDatePart,   setEndDatePart]   = useState('');
+  const [endTimePart,   setEndTimePart]   = useState('');
 
-  const setStartPart = (datePart: string, timePart: string) => setStartDate(joinDT(datePart, timePart));
-  const setEndPart   = (datePart: string, timePart: string) => setEndDate(joinDT(datePart, timePart));
+  // Combined values — empty until BOTH date and time are set
+  const startDate = startDatePart && startTimePart ? `${startDatePart}T${startTimePart}` : '';
+  const endDate   = endDatePart   && endTimePart   ? `${endDatePart}T${endTimePart}`     : '';
+
+  const clearStart = () => { setStartDatePart(''); setStartTimePart(''); };
+  const clearEnd   = () => { setEndDatePart('');   setEndTimePart('');   };
+  const setNowStart = () => { const n = toDatetimeLocal(new Date().toISOString()); setStartDatePart(n.slice(0, 10)); setStartTimePart(n.slice(11, 16)); };
+  const setNowEnd   = () => { const n = toDatetimeLocal(new Date().toISOString()); setEndDatePart(n.slice(0, 10));   setEndTimePart(n.slice(11, 16));   };
 
   const dateRangeRef = useRef<HTMLDivElement>(null);
 
@@ -132,8 +138,8 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     if (prevConfigIdRef.current !== selectedBackupConfigId) {
       prevConfigIdRef.current = selectedBackupConfigId;
       setScopeType('ENTIRE');
-      setStartDate('');
-      setEndDate('');
+      clearStart();
+      clearEnd();
     }
   }, [selectedBackupConfigId]);
 
@@ -358,7 +364,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               <div className='grid grid-cols-2 gap-5'>
                 {/* ── Start ── */}
                 {(() => {
-                  const { date: sd, time: st } = splitDT(startDate);
                   const nowLocal = toDatetimeLocal(new Date().toISOString());
                   const isInvalid = !!startDate && (startDate > nowLocal || (!!minDatetime && startDate < minDatetime));
                   return (
@@ -366,24 +371,24 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       <div className='flex items-center justify-between'>
                         <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
                         <div className='flex items-center gap-2'>
-                          <button type='button' onClick={() => setStartDate('')} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
+                          <button type='button' onClick={clearStart} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
                           <span className='text-gray-300 text-[10px]'>|</span>
-                          <button type='button' onClick={() => { const n = toDatetimeLocal(new Date().toISOString()); setStartDate(n); if (endDate && endDate < n) setEndDate(''); }} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
+                          <button type='button' onClick={() => { setNowStart(); if (endDate && endDate < toDatetimeLocal(new Date().toISOString())) clearEnd(); }} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
                         </div>
                       </div>
                       <div className={`flex gap-1.5 rounded-lg border-2 bg-white px-2 transition-colors ${isInvalid ? 'border-red-400' : 'border-gray-200 focus-within:border-blue-500'}`}>
                         <input
                           type='date'
-                          value={sd}
+                          value={startDatePart}
                           min={minDatetime?.slice(0, 10) || undefined}
                           max={new Date().toISOString().slice(0, 10)}
-                          onChange={(e) => setStartPart(e.target.value, st || new Date().toTimeString().slice(0, 5))}
+                          onChange={(e) => setStartDatePart(e.target.value)}
                           className='flex-1 h-10 text-sm bg-transparent text-gray-800 outline-none'
                         />
                         <input
                           type='time'
-                          value={st}
-                          onChange={(e) => { if (sd) setStartPart(sd, e.target.value); }}
+                          value={startTimePart}
+                          onChange={(e) => setStartTimePart(e.target.value)}
                           className='w-24 h-10 text-sm bg-transparent text-gray-800 outline-none'
                         />
                       </div>
@@ -396,7 +401,6 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
 
                 {/* ── End ── */}
                 {(() => {
-                  const { date: ed, time: et } = splitDT(endDate);
                   const nowLocal = toDatetimeLocal(new Date().toISOString());
                   const isInvalid = !!endDate && (endDate > nowLocal || (!!startDate && endDate < startDate) || (!!minDatetime && endDate < minDatetime));
                   return (
@@ -404,24 +408,24 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       <div className='flex items-center justify-between'>
                         <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
                         <div className='flex items-center gap-2'>
-                          <button type='button' onClick={() => setEndDate('')} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
+                          <button type='button' onClick={clearEnd} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
                           <span className='text-gray-300 text-[10px]'>|</span>
-                          <button type='button' onClick={() => setEndDate(toDatetimeLocal(new Date().toISOString()))} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
+                          <button type='button' onClick={setNowEnd} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
                         </div>
                       </div>
                       <div className={`flex gap-1.5 rounded-lg border-2 bg-white px-2 transition-colors ${isInvalid ? 'border-red-400' : 'border-gray-200 focus-within:border-blue-500'}`}>
                         <input
                           type='date'
-                          value={ed}
-                          min={startDate?.slice(0, 10) || minDatetime?.slice(0, 10) || undefined}
+                          value={endDatePart}
+                          min={startDatePart || minDatetime?.slice(0, 10) || undefined}
                           max={new Date().toISOString().slice(0, 10)}
-                          onChange={(e) => setEndPart(e.target.value, et || new Date().toTimeString().slice(0, 5))}
+                          onChange={(e) => setEndDatePart(e.target.value)}
                           className='flex-1 h-10 text-sm bg-transparent text-gray-800 outline-none'
                         />
                         <input
                           type='time'
-                          value={et}
-                          onChange={(e) => { if (ed) setEndPart(ed, e.target.value); }}
+                          value={endTimePart}
+                          onChange={(e) => setEndTimePart(e.target.value)}
                           className='w-24 h-10 text-sm bg-transparent text-gray-800 outline-none'
                         />
                       </div>
