@@ -111,6 +111,16 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef   = useRef<HTMLInputElement>(null);
+  const startBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endBlurTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleBlur = (ref: React.RefObject<HTMLInputElement | null>, timerRef: React.RefObject<ReturnType<typeof setTimeout> | null>) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => ref.current?.blur(), 800);
+  };
+
   const dateRangeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -375,6 +385,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     </div>
                   </div>
                   <input
+                    ref={startInputRef}
                     type='datetime-local'
                     value={startDate}
                     min={minDatetime || undefined}
@@ -392,6 +403,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                       }
                       setStartDate(newStart);
                       if (endDate && newStart && endDate < newStart) setEndDate('');
+                      scheduleBlur(startInputRef, startBlurTimer);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       startDate && (startDate > toDatetimeLocal(new Date().toISOString()) || (minDatetime && startDate < minDatetime))
@@ -428,6 +440,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                     </div>
                   </div>
                   <input
+                    ref={endInputRef}
                     type='datetime-local'
                     value={endDate}
                     min={startDate || minDatetime || undefined}
@@ -442,6 +455,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                         return;
                       }
                       setEndDate(newEnd);
+                      scheduleBlur(endInputRef, endBlurTimer);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
                       endDate && (endDate > toDatetimeLocal(new Date().toISOString()) || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
