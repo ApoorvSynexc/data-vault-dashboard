@@ -10,17 +10,15 @@ export default function Connectors() {
   const location = useLocation();
   const { hasPermission } = useAuth();
 
-  const canSource      = hasPermission('sourceConnection');
   const canDestination = hasPermission('destinationConnection');
 
   const allTabs: { id: Tab; label: string; visible: boolean }[] = [
-    { id: 'source',      label: 'Source Platforms',      visible: canSource      },
+    { id: 'source',      label: 'Source Platforms',      visible: true           },
     { id: 'destination', label: 'Destination Platforms', visible: canDestination },
   ];
   const tabs = allTabs.filter((t) => t.visible);
 
-  const initialTab: Tab = (location.state as { tab?: Tab } | null)?.tab
-    ?? (canSource ? 'source' : 'destination');
+  const initialTab: Tab = (location.state as { tab?: Tab } | null)?.tab ?? 'source';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   return (
