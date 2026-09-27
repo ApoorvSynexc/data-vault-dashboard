@@ -3,8 +3,10 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 // ── Restore scope types ───────────────────────────────────────────────────────
 
 export interface RestoreScopeRecord {
-  objectName: string;
   id: string;
+  objectName: string;
+  recordIds: string[];
+  children?: RestoreScopeRecord[];
 }
 
 export interface RestoreScopeField {
