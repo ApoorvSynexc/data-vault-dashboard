@@ -111,15 +111,12 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const startInputRef = useRef<HTMLInputElement>(null);
-  const endInputRef   = useRef<HTMLInputElement>(null);
-  const startBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const endBlurTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Split helpers — state stores "YYYY-MM-DDTHH:mm", UI shows date + time separately
+  const splitDT = (dt: string) => ({ date: dt.slice(0, 10), time: dt.slice(11, 16) });
+  const joinDT  = (date: string, time: string) => (date && time ? `${date}T${time}` : '');
 
-  const scheduleBlur = (ref: React.RefObject<HTMLInputElement | null>, timerRef: React.RefObject<ReturnType<typeof setTimeout> | null>) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => ref.current?.blur(), 800);
-  };
+  const setStartPart = (datePart: string, timePart: string) => setStartDate(joinDT(datePart, timePart));
+  const setEndPart   = (datePart: string, timePart: string) => setEndDate(joinDT(datePart, timePart));
 
   const dateRangeRef = useRef<HTMLDivElement>(null);
 
@@ -359,120 +356,82 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                 <p className='text-sm font-semibold text-blue-700'>Select time range</p>
               </div>
               <div className='grid grid-cols-2 gap-5'>
-                <div className='flex flex-col gap-1.5'>
-                  <div className='flex items-center justify-between'>
-                    <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
-                    <div className='flex items-center gap-2'>
-                      <button
-                        type='button'
-                        onClick={() => setStartDate('')}
-                        className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'
-                      >
-                        Clear
-                      </button>
-                      <span className='text-gray-300 text-[10px]'>|</span>
-                      <button
-                        type='button'
-                        onClick={() => {
-                          const now = toDatetimeLocal(new Date().toISOString());
-                          setStartDate(now);
-                          if (endDate && endDate < now) setEndDate('');
-                        }}
-                        className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'
-                      >
-                        Now
-                      </button>
+                {/* ── Start ── */}
+                {(() => {
+                  const { date: sd, time: st } = splitDT(startDate);
+                  const nowLocal = toDatetimeLocal(new Date().toISOString());
+                  const isInvalid = !!startDate && (startDate > nowLocal || (!!minDatetime && startDate < minDatetime));
+                  return (
+                    <div className='flex flex-col gap-1.5'>
+                      <div className='flex items-center justify-between'>
+                        <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
+                        <div className='flex items-center gap-2'>
+                          <button type='button' onClick={() => setStartDate('')} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
+                          <span className='text-gray-300 text-[10px]'>|</span>
+                          <button type='button' onClick={() => { const n = toDatetimeLocal(new Date().toISOString()); setStartDate(n); if (endDate && endDate < n) setEndDate(''); }} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
+                        </div>
+                      </div>
+                      <div className={`flex gap-1.5 rounded-lg border-2 bg-white px-2 transition-colors ${isInvalid ? 'border-red-400' : 'border-gray-200 focus-within:border-blue-500'}`}>
+                        <input
+                          type='date'
+                          value={sd}
+                          min={minDatetime?.slice(0, 10) || undefined}
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => setStartPart(e.target.value, st || new Date().toTimeString().slice(0, 5))}
+                          className='flex-1 h-10 text-sm bg-transparent text-gray-800 outline-none'
+                        />
+                        <input
+                          type='time'
+                          value={st}
+                          onChange={(e) => { if (sd) setStartPart(sd, e.target.value); }}
+                          className='w-24 h-10 text-sm bg-transparent text-gray-800 outline-none'
+                        />
+                      </div>
+                      <p className='text-[10px] text-gray-400'>Valid range: {createdAtReadable || '—'} → now</p>
+                      {startDate && startDate > nowLocal && <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>}
+                      {startDate && minDatetime && startDate < minDatetime && <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>}
                     </div>
-                  </div>
-                  <input
-                    ref={startInputRef}
-                    type='datetime-local'
-                    value={startDate}
-                    min={minDatetime || undefined}
-                    onChange={(e) => {
-                      const newStart = e.target.value;
-                      if (newStart === '') { setStartDate(''); return; }
-                      const todayDate = new Date().toISOString().slice(0, 10);
-                      const prevDate = startDate.slice(0, 10);
-                      if (newStart.slice(0, 10) === todayDate && prevDate !== todayDate) {
-                        const nowLocal = toDatetimeLocal(new Date().toISOString());
-                        setStartDate(nowLocal);
-                        if (endDate && endDate < nowLocal) setEndDate('');
-                        e.target.blur();
-                        return;
-                      }
-                      setStartDate(newStart);
-                      if (endDate && newStart && endDate < newStart) setEndDate('');
-                      scheduleBlur(startInputRef, startBlurTimer);
-                    }}
-                    className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
-                      startDate && (startDate > toDatetimeLocal(new Date().toISOString()) || (minDatetime && startDate < minDatetime))
-                        ? 'border-red-400' : 'border-gray-200'
-                    }`}
-                  />
-                  <p className='text-[10px] text-gray-400'>Valid range: {createdAtReadable || '—'} → now</p>
-                  {startDate && startDate > toDatetimeLocal(new Date().toISOString()) && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
-                  )}
-                  {startDate && minDatetime && startDate < minDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>
-                  )}
-                </div>
-                <div className='flex flex-col gap-1.5'>
-                  <div className='flex items-center justify-between'>
-                    <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
-                    <div className='flex items-center gap-2'>
-                      <button
-                        type='button'
-                        onClick={() => setEndDate('')}
-                        className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'
-                      >
-                        Clear
-                      </button>
-                      <span className='text-gray-300 text-[10px]'>|</span>
-                      <button
-                        type='button'
-                        onClick={() => setEndDate(toDatetimeLocal(new Date().toISOString()))}
-                        className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'
-                      >
-                        Now
-                      </button>
+                  );
+                })()}
+
+                {/* ── End ── */}
+                {(() => {
+                  const { date: ed, time: et } = splitDT(endDate);
+                  const nowLocal = toDatetimeLocal(new Date().toISOString());
+                  const isInvalid = !!endDate && (endDate > nowLocal || (!!startDate && endDate < startDate) || (!!minDatetime && endDate < minDatetime));
+                  return (
+                    <div className='flex flex-col gap-1.5'>
+                      <div className='flex items-center justify-between'>
+                        <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
+                        <div className='flex items-center gap-2'>
+                          <button type='button' onClick={() => setEndDate('')} className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'>Clear</button>
+                          <span className='text-gray-300 text-[10px]'>|</span>
+                          <button type='button' onClick={() => setEndDate(toDatetimeLocal(new Date().toISOString()))} className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'>Now</button>
+                        </div>
+                      </div>
+                      <div className={`flex gap-1.5 rounded-lg border-2 bg-white px-2 transition-colors ${isInvalid ? 'border-red-400' : 'border-gray-200 focus-within:border-blue-500'}`}>
+                        <input
+                          type='date'
+                          value={ed}
+                          min={startDate?.slice(0, 10) || minDatetime?.slice(0, 10) || undefined}
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(e) => setEndPart(e.target.value, et || new Date().toTimeString().slice(0, 5))}
+                          className='flex-1 h-10 text-sm bg-transparent text-gray-800 outline-none'
+                        />
+                        <input
+                          type='time'
+                          value={et}
+                          onChange={(e) => { if (ed) setEndPart(ed, e.target.value); }}
+                          className='w-24 h-10 text-sm bg-transparent text-gray-800 outline-none'
+                        />
+                      </div>
+                      <p className='text-[10px] text-gray-400'>Valid range: {startDate ? startDate.replace('T', ' ') : (createdAtReadable || '—')} → now</p>
+                      {endDate && endDate > nowLocal && <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>}
+                      {endDate && minDatetime && endDate < minDatetime && <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>}
+                      {endDate && startDate && endDate < startDate && <p className='text-[10px] text-red-500 font-medium'>Cannot be before start time</p>}
                     </div>
-                  </div>
-                  <input
-                    ref={endInputRef}
-                    type='datetime-local'
-                    value={endDate}
-                    min={startDate || minDatetime || undefined}
-                    onChange={(e) => {
-                      const newEnd = e.target.value;
-                      if (newEnd === '') { setEndDate(''); return; }
-                      const todayDate = new Date().toISOString().slice(0, 10);
-                      const prevDate = endDate.slice(0, 10);
-                      if (newEnd.slice(0, 10) === todayDate && prevDate !== todayDate) {
-                        setEndDate(toDatetimeLocal(new Date().toISOString()));
-                        e.target.blur();
-                        return;
-                      }
-                      setEndDate(newEnd);
-                      scheduleBlur(endInputRef, endBlurTimer);
-                    }}
-                    className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
-                      endDate && (endDate > toDatetimeLocal(new Date().toISOString()) || (startDate && endDate < startDate) || (minDatetime && endDate < minDatetime))
-                        ? 'border-red-400' : 'border-gray-200'
-                    }`}
-                  />
-                  <p className='text-[10px] text-gray-400'>Valid range: {startDate ? startDate.replace('T', ' ') : (createdAtReadable || '—')} → now</p>
-                  {endDate && endDate > toDatetimeLocal(new Date().toISOString()) && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be in the future</p>
-                  )}
-                  {endDate && minDatetime && endDate < minDatetime && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before backup creation date</p>
-                  )}
-                  {endDate && startDate && endDate < startDate && !(endDate < minDatetime) && (
-                    <p className='text-[10px] text-red-500 font-medium'>Cannot be before start time</p>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
               {(!startDate || !endDate) && (
                 <div className='mt-3 flex items-center gap-2'>
