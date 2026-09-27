@@ -166,7 +166,8 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
   ).toUpperCase();
   // Detect export by explicit type OR by presence of csvCount on objects (new API shape)
   const isExportJob = isExportProp || destType.includes('EXPORT') || objects.some((o: any) => o.csvCount !== undefined);
-  const isJobReady = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
+  const isJobReady   = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
+  const canRollback  = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL_FAILURE'].includes(status);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -425,7 +426,9 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
           {!isExportJob && (
             <button
               onClick={() => { setRollbackError(null); setShowRollbackConfirm(true); }}
-              className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors'
+              disabled={!canRollback}
+              title={!canRollback ? 'Rollback is only available after a successful restore' : undefined}
+              className='flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-sm font-semibold text-orange-700 hover:bg-orange-100 hover:border-orange-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-orange-50 disabled:hover:border-orange-300'
             >
               <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                 <path d='M3 7v6h6' /><path d='M3 13C5.5 6 13 3 20 7' />
