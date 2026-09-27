@@ -350,14 +350,37 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
               </div>
               <div className='grid grid-cols-2 gap-5'>
                 <div className='flex flex-col gap-1.5'>
-                  <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
+                  <div className='flex items-center justify-between'>
+                    <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>Start Time</label>
+                    <div className='flex items-center gap-2'>
+                      <button
+                        type='button'
+                        onClick={() => setStartDate('')}
+                        className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'
+                      >
+                        Clear
+                      </button>
+                      <span className='text-gray-300 text-[10px]'>|</span>
+                      <button
+                        type='button'
+                        onClick={() => {
+                          const now = toDatetimeLocal(new Date().toISOString());
+                          setStartDate(now);
+                          if (endDate && endDate < now) setEndDate('');
+                        }}
+                        className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'
+                      >
+                        Now
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type='datetime-local'
                     value={startDate}
                     min={minDatetime || undefined}
                     onChange={(e) => {
                       const newStart = e.target.value;
-                      if (!newStart) return;
+                      if (newStart === '') { setStartDate(''); return; }
                       setStartDate(newStart);
                       if (endDate && newStart && endDate < newStart) setEndDate('');
                     }}
@@ -375,14 +398,33 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
                   )}
                 </div>
                 <div className='flex flex-col gap-1.5'>
-                  <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
+                  <div className='flex items-center justify-between'>
+                    <label className='text-xs font-semibold text-gray-600 uppercase tracking-wide'>End Time</label>
+                    <div className='flex items-center gap-2'>
+                      <button
+                        type='button'
+                        onClick={() => setEndDate('')}
+                        className='text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors'
+                      >
+                        Clear
+                      </button>
+                      <span className='text-gray-300 text-[10px]'>|</span>
+                      <button
+                        type='button'
+                        onClick={() => setEndDate(toDatetimeLocal(new Date().toISOString()))}
+                        className='text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors'
+                      >
+                        Now
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type='datetime-local'
                     value={endDate}
                     min={startDate || minDatetime || undefined}
                     onChange={(e) => {
                       const newEnd = e.target.value;
-                      if (!newEnd) return;
+                      if (newEnd === '') { setEndDate(''); return; }
                       setEndDate(newEnd);
                     }}
                     className={`h-10 text-sm border-2 rounded-lg px-3 bg-white text-gray-800 outline-none focus:border-blue-500 transition-colors ${
