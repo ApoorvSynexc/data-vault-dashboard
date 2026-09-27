@@ -292,20 +292,36 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
       header: 'Errors',
       render: (row) => {
         const hasErrors = Array.isArray(row.errors) && row.errors.length > 0;
-        if (!hasErrors) return <span className='text-xs text-gray-400'>—</span>;
-        return (
-          <button
-            onClick={() => setErrorPanel({ obj: row })}
-            className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
-            style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
-          >
-            View Errors
-            <span className='ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold'
-              style={{ background: '#F24400', color: '#fff' }}>
-              {row.errors.length}
+        if (hasErrors) {
+          return (
+            <button
+              onClick={() => setErrorPanel({ obj: row })}
+              className='inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition hover:opacity-80'
+              style={{ background: 'rgba(242,68,0,0.1)', color: '#F24400', border: '1px solid rgba(242,68,0,0.2)' }}
+            >
+              View Errors
+              <span className='ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold'
+                style={{ background: '#F24400', color: '#fff' }}>
+                {row.errors.length}
+              </span>
+            </button>
+          );
+        }
+        if (row.errorMessage) {
+          return (
+            <span
+              className='inline-flex items-center gap-1 text-xs font-medium max-w-[220px] truncate'
+              style={{ color: '#F24400' }}
+              title={row.errorMessage}
+            >
+              <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0'>
+                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+              </svg>
+              {row.errorMessage}
             </span>
-          </button>
-        );
+          );
+        }
+        return <span className='text-xs text-gray-400'>—</span>;
       },
     },
   ];
@@ -374,6 +390,14 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
 
             {/* Error list */}
             <div className='overflow-y-auto flex-1 px-5 py-4'>
+              {errorPanel.obj.errorMessage && (
+                <div className='mb-3 rounded-xl px-4 py-3 flex items-start gap-2' style={{ background: 'rgba(242,68,0,0.06)', border: '1px solid rgba(242,68,0,0.15)' }}>
+                  <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round' className='flex-shrink-0 mt-0.5'>
+                    <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  </svg>
+                  <p className='text-xs leading-relaxed font-mono break-all' style={{ color: '#B91C1C' }}>{errorPanel.obj.errorMessage}</p>
+                </div>
+              )}
               {(errorPanel.obj.errors as string[]).length === 0 ? (
                 <div className='flex flex-col items-center justify-center py-12 gap-2'>
                   <div className='w-10 h-10 rounded-full flex items-center justify-center' style={{ background: '#F1F5F9' }}>
@@ -496,6 +520,21 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
             Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
           </p>
         </div>
+
+        {/* Job-level failure reason banner */}
+        {(status === 'FAILED' || status === 'PARTIAL_FAILURE') && job.errorMessage && (
+          <div className='rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex-shrink-0 flex items-start gap-3'>
+            <div className='flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center' style={{ background: 'rgba(242,68,0,0.12)' }}>
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#F24400' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+              </svg>
+            </div>
+            <div className='flex-1 min-w-0'>
+              <p className='text-xs font-bold text-red-700 uppercase tracking-wide mb-1'>Failure Reason</p>
+              <p className='text-sm text-red-800 break-words leading-relaxed'>{job.errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* Summary Stats */}
         {isExportJob ? (
