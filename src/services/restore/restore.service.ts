@@ -4,7 +4,7 @@ import { useHttpRequest } from '../../hooks/useHttpRequest';
 
 export interface RestoreScopeRecord {
   objectName: string;
-  recordIds: string[];
+  id: string;
 }
 
 export interface RestoreScopeField {
