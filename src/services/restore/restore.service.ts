@@ -365,7 +365,7 @@ export function useRestoreService() {
       const formData = new FormData();
       formData.append('file', file);
       return api.post<{ s3Key: string }>(
-        `${RESTORE_ENDPOINTS.uploadBulkCsv}?objectApiName=${encodeURIComponent(objectApiName)}&backupConfigId=${encodeURIComponent(backupConfigId)}`,
+        `${RESTORE_ENDPOINTS.uploadBulkCsv}?objectName=${encodeURIComponent(objectApiName)}&backupConfigId=${encodeURIComponent(backupConfigId)}`,
         formData,
       );
     },
