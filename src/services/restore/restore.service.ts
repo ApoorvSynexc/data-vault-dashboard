@@ -364,10 +364,9 @@ export function useRestoreService() {
     uploadBulkCsv: (objectApiName: string, backupConfigId: string, file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      return api.post<{ s3Key: string }>(
-        `${RESTORE_ENDPOINTS.uploadBulkCsv}?objectName=${encodeURIComponent(objectApiName)}&backupConfigId=${encodeURIComponent(backupConfigId)}`,
-        formData,
-      );
+      formData.append('objectName', objectApiName);
+      formData.append('backupConfigId', backupConfigId);
+      return api.post<{ s3Key: string }>(RESTORE_ENDPOINTS.uploadBulkCsv, formData);
     },
 
     // objectApiNames omitted resolves to every restorable object on the config
