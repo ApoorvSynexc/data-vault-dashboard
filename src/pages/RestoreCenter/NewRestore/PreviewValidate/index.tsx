@@ -242,7 +242,7 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
           {[
             { label: 'Total Changed', value: dryRunDone ? String(totalCount)       : '—', color: '#155DFC' },
             { label: 'To Update',     value: dryRunDone ? String(totalUpdateCount) : '—', color: '#D97706' },
-            { label: 'To Delete',     value: dryRunDone ? String(totalDeleteCount) : '—', color: '#DC2626' },
+            { label: 'To Insert',     value: dryRunDone ? String(totalDeleteCount) : '—', color: '#DC2626' },
           ].map(({ label, value, color }) => (
             <div key={label}
               className='bg-white rounded-xl px-5 py-4 flex flex-col gap-1 flex-shrink-0'
@@ -256,30 +256,6 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
 
         {/* Cards */}
         <div className='flex flex-col gap-4'>
-
-          {/* Schema Mismatch Report — no issues */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
-            <div className='flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3'>
-              <div className='flex items-center gap-2'>
-                <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                  <polyline points='20 6 9 17 4 12'/>
-                </svg>
-                <span className='text-sm font-semibold text-gray-800'>Schema Mismatch Report</span>
-                <InfoTooltip text='Checks if fields and object types in the backup match the current destination schema. Mismatches can cause fields to be skipped during restore.' />
-              </div>
-              <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-700'>
-                No Issues
-              </span>
-            </div>
-            <div className='px-5 py-6 flex items-center gap-3'>
-              <div className='w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'>
-                <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#16A34A' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                  <polyline points='20 6 9 17 4 12'/>
-                </svg>
-              </div>
-              <p className='text-sm text-gray-600'>All fields and record types match between source and destination. No schema mismatches detected.</p>
-            </div>
-          </div>
 
           {/* Tabbed: Dry-Run + Diff */}
           <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
