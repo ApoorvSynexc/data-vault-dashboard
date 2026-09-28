@@ -296,6 +296,30 @@ function RequiredFieldsForObject({ backupConfigId, objectApiName, values, onValu
   );
 }
 
+function FieldDropdownForObject({ objectName, backupConfigId, configType, sourceStartDate, sourceEndDate, value, onChange }: {
+  objectName: string; backupConfigId: string; configType: 'BACKUP' | 'ARCHIVAL';
+  sourceStartDate?: string; sourceEndDate?: string;
+  value: string; onChange: (v: string) => void;
+}) {
+  const restoreService = useRestoreService();
+  const { data, isLoading } = useQuery({
+    queryKey: ['object-fields-merge', backupConfigId, objectName, configType],
+    queryFn: () => restoreService.fetchObjectFields(objectName, backupConfigId, configType, sourceStartDate, sourceEndDate),
+    enabled: !!objectName && !!backupConfigId,
+    retry: 1,
+  });
+  const fields: { name: string; label: string }[] = Array.isArray((data as any)?.data) ? (data as any).data : [];
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={!objectName || isLoading}
+      className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white disabled:opacity-60 disabled:cursor-not-allowed'
+      style={{ border: '1px solid #E2E8F0', color: value ? '#33363F' : '#9CA3AF' }}
+    >
+      <option value=''>{isLoading ? 'Loading fields…' : !objectName ? 'Select object first' : 'Select a field…'}</option>
+      {fields.map((f: any) => <option key={f.name} value={f.name}>{f.name}{f.label ? ` (${f.label})` : ''}</option>)}
+    </select>
+  );
+}
+
 function RequiredFieldDefaultBlock({ backupConfigId, objectApiName, objectOptions, onObjectChange, onRemove, canRemove, values, onValueChange, onFieldsLoaded }: {
   backupConfigId: string; objectApiName: string; objectOptions: string[];
   onObjectChange: (objectApiName: string) => void; onRemove: () => void; canRemove: boolean;
@@ -399,7 +423,7 @@ export default function ConflictConfig({
   const { data: objectListData } = useQuery({
     queryKey: ['object-list', backupConfigId, configType],
     queryFn: () => restoreService.getObjectListByConfigId(backupConfigId, configType!),
-    enabled: !scopeObjectApiNames?.length && !!backupConfigId && (ecMissRequired === 'Use specified default per field' || ecMissingField === 'Map to existing field'),
+    enabled: !scopeObjectApiNames?.length && !!backupConfigId && (ecMissRequired === 'Use specified default per field' || ecMissingField === 'Map to existing field' || restoreMode === 'merge'),
     retry: 1,
   });
   const reqFieldObjectOptions: string[] = (() => {
@@ -584,8 +608,24 @@ export default function ConflictConfig({
                       <>
                         {mergeRows.map((row) => (
                           <div key={row.id} className='grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center'>
-                            <input value={row.objectName} onChange={(e) => updateMergeRow(row.id, { objectName: e.target.value })} placeholder='Object API name' className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white' style={{ border: '1px solid #E2E8F0', color: '#33363F' }} />
-                            <input value={row.fieldName} onChange={(e) => updateMergeRow(row.id, { fieldName: e.target.value })} placeholder='Field API name' className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white' style={{ border: '1px solid #E2E8F0', color: '#33363F' }} />
+                            <select
+                              value={row.objectName}
+                              onChange={(e) => updateMergeRow(row.id, { objectName: e.target.value, fieldName: '' })}
+                              className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white'
+                              style={{ border: '1px solid #E2E8F0', color: row.objectName ? '#33363F' : '#9CA3AF' }}
+                            >
+                              <option value=''>Select object…</option>
+                              {reqFieldObjectOptions.map((name) => <option key={name} value={name}>{name}</option>)}
+                            </select>
+                            <FieldDropdownForObject
+                              objectName={row.objectName}
+                              backupConfigId={backupConfigId}
+                              configType={configType ?? 'BACKUP'}
+                              sourceStartDate={sourceStartDate}
+                              sourceEndDate={sourceEndDate}
+                              value={row.fieldName}
+                              onChange={(v) => updateMergeRow(row.id, { fieldName: v })}
+                            />
                             <select value={row.rule} onChange={(e) => updateMergeRow(row.id, { rule: e.target.value })} className={selectClass} style={selectStyle}>
                               {FIELD_MERGE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                             </select>
