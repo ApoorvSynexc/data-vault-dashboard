@@ -146,7 +146,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
       case 'record':  return { type: 'RECORD', records: recordScope.map(({ objectName, recordIds }) => ({ id: objectName, objectName, recordIds })) };
       case 'field':   return { type: 'FIELD',  fields:  fieldScope };
       case 'filter':  return { type: 'FILTER', filters: filterScope };
-      case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope.map(({ objectName, ids }) => ({ objectName, ids })) };
+      case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope.map(({ objectName }) => ({ objectName, ids: [] })) };
       case 'deleted': return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':
       default:        return { type: 'ALL' };

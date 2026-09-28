@@ -35,6 +35,7 @@ export interface RestoreScopeFilter {
 export interface RestoreBulkCsvIds {
   objectName: string;
   ids: string[];
+  csvFilePath?: string;
 }
 
 export interface RestoreScopeObject {
