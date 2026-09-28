@@ -169,6 +169,14 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
   const isJobReady   = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
   const canRollback  = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL_FAILURE'].includes(status);
 
+  // Source backup/archival config info
+  const sourceConfig = job.source?.backupConfig as any;
+  const sourceConfigType = sourceConfig?.type?.toUpperCase() === 'NORMAL' ? 'Backup' : sourceConfig?.type ? 'Archival' : null;
+  const sourceDatasetLabel: Record<string, string> = { PARTIAL: 'Partial', FULL: 'Full', INCREMENTAL: 'Incremental' };
+  const sourceScheduleLabel: Record<string, string> = { REALTIME: 'Real-time', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', HOURLY: 'Hourly', MANUAL: 'Manual' };
+  const sourceDataset  = sourceConfig?.dataset  ? (sourceDatasetLabel[sourceConfig.dataset.toUpperCase()]  ?? sourceConfig.dataset)  : null;
+  const sourceSchedule = sourceConfig?.schedule ? (sourceScheduleLabel[sourceConfig.schedule.toUpperCase()] ?? sourceConfig.schedule) : null;
+
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
@@ -533,6 +541,65 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
               <p className='text-xs font-bold text-red-700 uppercase tracking-wide mb-1'>Failure Reason</p>
               <p className='text-sm text-red-800 break-words leading-relaxed'>{job.errorMessage}</p>
             </div>
+          </div>
+        )}
+
+        {/* Source Config Info */}
+        {sourceConfig !== undefined && sourceConfig !== null && (
+          <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 px-5 py-4'>
+            <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3'>Source</p>
+            {!sourceConfig.name ? (
+              <div className='flex items-center gap-2'>
+                <div className='w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-100'>
+                  <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6'/><path d='M10 11v6'/><path d='M14 11v6'/><path d='M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2'/>
+                  </svg>
+                </div>
+                <div>
+                  <p className='text-sm font-semibold text-gray-500'>Source config deleted</p>
+                  <p className='text-xs text-gray-400 mt-0.5'>The original backup or archival config no longer exists.</p>
+                </div>
+              </div>
+            ) : (
+              <div className='flex flex-wrap items-center gap-x-6 gap-y-2'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0' style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.08)' : 'rgba(124,58,237,0.08)' }}>
+                    <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke={sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED'} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className='text-sm font-bold text-gray-900'>{sourceConfig.name}</p>
+                    {sourceConfigType && (
+                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5'
+                        style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.08)' : 'rgba(124,58,237,0.08)', color: sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED' }}>
+                        {sourceConfigType}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {sourceDataset && (
+                  <div className='flex flex-col'>
+                    <span className='text-[10px] text-gray-400 font-semibold uppercase tracking-wide'>Dataset</span>
+                    <span className='text-xs font-semibold text-gray-700 mt-0.5'>{sourceDataset}</span>
+                  </div>
+                )}
+                {sourceSchedule && (
+                  <div className='flex flex-col'>
+                    <span className='text-[10px] text-gray-400 font-semibold uppercase tracking-wide'>Schedule</span>
+                    <span className='text-xs font-semibold text-gray-700 mt-0.5'>{sourceSchedule}</span>
+                  </div>
+                )}
+                {sourceConfig.createdAt && (
+                  <div className='flex flex-col'>
+                    <span className='text-[10px] text-gray-400 font-semibold uppercase tracking-wide'>Config Created</span>
+                    <span className='text-xs font-semibold text-gray-700 mt-0.5'>
+                      {new Date(sourceConfig.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
