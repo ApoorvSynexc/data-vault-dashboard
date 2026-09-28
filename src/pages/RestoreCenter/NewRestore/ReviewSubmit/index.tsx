@@ -259,7 +259,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
             if (!file) return entry;
             const res = await restoreService.uploadBulkCsv(entry.objectName, finalPayload.source.backupConfigId, file);
             const s3Key = (res as any)?.data?.s3Key ?? (res as any)?.s3Key;
-            return { ...entry, ...(s3Key ? { csvFilePath: s3Key } : {}) };
+            return { objectName: entry.objectName, ids: [], ...(s3Key ? { csvFilePath: s3Key } : {}) };
           })
         );
         finalPayload = {
