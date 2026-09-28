@@ -525,7 +525,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
             {isExportJob ? `CSV Export ${statusConfig.label.split(' ').slice(1).join(' ')}` : `Restore ${statusConfig.label.split(' ')[1]}`}
           </h3>
           <p className='mt-2 text-sm text-gray-600 text-center'>
-            Job ID: {jobId_display} · Runtime: {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
+            <span className='font-bold text-gray-800'>Job ID:</span> {jobId_display} · <span className='font-bold text-gray-800'>Runtime:</span> {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
           </p>
         </div>
 
@@ -563,7 +563,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                   </div>
                   <div>
                     <p className='text-sm font-semibold text-gray-600'>Source config deleted</p>
-                    <p className='text-xs text-gray-400 mt-0.5'>The original backup or archival config no longer exists.</p>
+                    <p className='text-xs text-gray-500 mt-0.5'>The original backup or archival config no longer exists.</p>
                   </div>
                 </div>
               ) : (
