@@ -184,9 +184,11 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
           <div className='p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'>
             {SCOPE_MODES.filter((m) => {
               const isArchival = sourceSelection.configType === 'ARCHIVAL';
-              const isBackupEntire = sourceSelection.configType === 'BACKUP' && sourceSelection.type === 'ENTIRE';
+              const isEntire = sourceSelection.type === 'ENTIRE';
+              const isBackupEntire = sourceSelection.configType === 'BACKUP' && isEntire;
               if (isArchival && (m.id === 'deleted' || m.id === 'field')) return false;
               if (isBackupEntire && (m.id === 'deleted' || m.id === 'field')) return false;
+              if (isEntire && m.id === 'record') return false;
               return true;
             }).map((m) => {
               const active = scopeMode === m.id;
