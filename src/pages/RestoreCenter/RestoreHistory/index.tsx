@@ -592,7 +592,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
 
                   {/* Meta pills */}
                   <div className='flex flex-wrap gap-2 flex-1'>
-                    {sourceDataset && (
+                    {sourceConfigType !== 'Archival' && sourceDataset && (
                       <div className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
                         <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                           <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
@@ -601,7 +601,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                         <span className='text-[11px] font-bold text-gray-800'>{sourceDataset}</span>
                       </div>
                     )}
-                    {sourceSchedule && (
+                    {sourceConfigType !== 'Archival' && sourceSchedule && (
                       <div className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
                         <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                           <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
