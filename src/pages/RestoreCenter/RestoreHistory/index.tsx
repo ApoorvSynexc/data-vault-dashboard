@@ -53,18 +53,23 @@ function DownloadCsvButton({ restoreJobId, objectName, disabled }: { restoreJobI
 }
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: string }> = {
-  SUCCESS:          { label: '✓ Success',     cls: 'text-green-600',  icon: '✓' },
-  COMPLETED:        { label: '✓ Completed',   cls: 'text-green-600',  icon: '✓' },
-  DONE:             { label: '✓ Done',        cls: 'text-green-600',  icon: '✓' },
-  PARTIAL_FAILURE:  { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
-  PARTIAL:          { label: '⚠ Partial',     cls: 'text-yellow-600', icon: '⚠' },
-  FAILED:           { label: '✗ Failed',      cls: 'text-red-600',    icon: '✗' },
-  CANCELLED:        { label: '⊘ Cancelled',   cls: 'text-gray-500',   icon: '⊘' },
-  ROLLED_BACK:      { label: '↩ Rolled Back', cls: 'text-gray-600',   icon: '↩' },
-  DRAFT:            { label: '📝 Draft',      cls: 'text-orange-600', icon: '📝' },
-  PENDING:          { label: '⏳ Pending',    cls: 'text-blue-600',   icon: '⏳' },
-  RUNNING:          { label: '⏳ Running',    cls: 'text-blue-600',   icon: '⏳' },
-  IN_PROGRESS:      { label: '⏳ In Progress', cls: 'text-blue-600',  icon: '⏳' },
+  SUCCESS:               { label: '✓ Success',          cls: 'text-green-600',  icon: '✓' },
+  COMPLETED:             { label: '✓ Completed',         cls: 'text-green-600',  icon: '✓' },
+  DONE:                  { label: '✓ Done',              cls: 'text-green-600',  icon: '✓' },
+  PARTIAL_FAILURE:       { label: '⚠ Partial',           cls: 'text-yellow-600', icon: '⚠' },
+  PARTIAL:               { label: '⚠ Partial',           cls: 'text-yellow-600', icon: '⚠' },
+  FAILED:                { label: '✗ Failed',            cls: 'text-red-600',    icon: '✗' },
+  CANCELLED:             { label: '⊘ Cancelled',         cls: 'text-gray-500',   icon: '⊘' },
+  ROLLED_BACK:           { label: '↩ Rolled Back',       cls: 'text-gray-600',   icon: '↩' },
+  DRAFT:                 { label: '📝 Draft',            cls: 'text-orange-600', icon: '📝' },
+  PENDING:               { label: '⏳ Pending',          cls: 'text-blue-600',   icon: '⏳' },
+  RUNNING:               { label: '⏳ Running',          cls: 'text-blue-600',   icon: '⏳' },
+  IN_PROGRESS:           { label: '⏳ In Progress',      cls: 'text-blue-600',   icon: '⏳' },
+  CSV_CREATING:          { label: '⏳ Creating CSV',     cls: 'text-blue-600',   icon: '⏳' },
+  INGEST_IN_PROGRESS:    { label: '⏳ Ingesting',        cls: 'text-blue-600',   icon: '⏳' },
+  ROLLBACK_IN_PROGRESS:  { label: '↩ Rolling Back',      cls: 'text-purple-600', icon: '↩' },
+  ROLLBACK_COMPLETED:    { label: '↩ Rolled Back',       cls: 'text-gray-600',   icon: '↩' },
+  ROLLBACK_FAILED:       { label: '✗ Rollback Failed',   cls: 'text-red-600',    icon: '✗' },
 };
 
 interface Props {
@@ -143,8 +148,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
     );
   }
 
-  const status = job.status || 'PENDING';
-  const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
+  const rawStatus = (job.status || 'PENDING').toUpperCase();
   const jobName = job.name || job.jobDetail?.name || 'Untitled Restore';
   const jobId_display = job.restoreJobId;
   const createdAt = job.createdAt;
@@ -166,8 +170,26 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
   ).toUpperCase();
   // Detect export by explicit type OR by presence of csvCount on objects (new API shape)
   const isExportJob = isExportProp || destType.includes('EXPORT') || objects.some((o: any) => o.csvCount !== undefined);
-  const isJobReady   = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED'].includes(status);
-  const canRollback  = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL_FAILURE'].includes(status);
+
+  // Derive effective status from per-object statuses to detect rollback state.
+  // Backend sets job.status = PENDING during rollback; the real phase lives in per-object statuses.
+  const objStatuses = objects.map((o: any) => (o.status as string)?.toUpperCase() ?? '');
+  const hasRollbackInProgress = objStatuses.some((s) => s === 'ROLLBACK_IN_PROGRESS');
+  const hasRollbackFailed     = objStatuses.some((s) => s === 'ROLLBACK_FAILED');
+  const allRollbackDone       = objects.length > 0 && objStatuses.every((s) => s === 'ROLLBACK_COMPLETED' || s === 'SUCCESS');
+
+  const status: string = hasRollbackInProgress
+    ? 'ROLLBACK_IN_PROGRESS'
+    : hasRollbackFailed
+      ? 'ROLLBACK_FAILED'
+      : allRollbackDone && rawStatus !== 'FAILED'
+        ? 'ROLLBACK_COMPLETED'
+        : rawStatus;
+
+  const statusConfig = STATUS_CONFIG[status] ?? STATUS_CONFIG.PENDING;
+
+  const isJobReady  = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL', 'PARTIAL_FAILURE', 'FAILED', 'CANCELLED', 'ROLLBACK_COMPLETED', 'ROLLBACK_FAILED'].includes(status);
+  const canRollback = ['DONE', 'SUCCESS', 'COMPLETED', 'PARTIAL_FAILURE'].includes(status);
 
   // Source backup/archival config info
   const sourceConfig = job.source?.backupConfig as any;
@@ -512,7 +534,13 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
 
         {/* Success/Status Card */}
         <div className='rounded-xl border border-gray-200 bg-white px-6 py-8 shadow-sm flex-shrink-0 flex flex-col items-center'>
-          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${status === 'SUCCESS' || status === 'DONE' || status === 'COMPLETED' ? (isExportJob ? 'bg-blue-100' : 'bg-green-100') : status === 'FAILED' ? 'bg-red-100' : 'bg-yellow-100'}`}>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${
+            ['SUCCESS', 'DONE', 'COMPLETED', 'ROLLBACK_COMPLETED'].includes(status)
+              ? (isExportJob ? 'bg-blue-100' : status === 'ROLLBACK_COMPLETED' ? 'bg-gray-100' : 'bg-green-100')
+              : ['FAILED', 'ROLLBACK_FAILED'].includes(status) ? 'bg-red-100'
+              : ['ROLLBACK_IN_PROGRESS'].includes(status) ? 'bg-purple-100'
+              : 'bg-yellow-100'
+          }`}>
             {isExportJob ? (
               <svg width='28' height='28' viewBox='0 0 24 24' fill='none' stroke={status === 'FAILED' ? '#F24400' : '#155DFC'} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                 <path d='M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/>
@@ -522,7 +550,12 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
             )}
           </div>
           <h3 className={`mt-4 text-xl font-bold ${isExportJob ? (status === 'FAILED' ? 'text-red-600' : 'text-blue-600') : statusConfig.cls}`}>
-            {isExportJob ? `CSV Export ${statusConfig.label.split(' ').slice(1).join(' ')}` : `Restore ${statusConfig.label.split(' ')[1]}`}
+            {(() => {
+              const labelText = statusConfig.label.replace(/^[^\s]+\s/, ''); // strip icon prefix
+              if (isExportJob) return `CSV Export ${labelText}`;
+              if (['ROLLBACK_IN_PROGRESS', 'ROLLBACK_COMPLETED', 'ROLLBACK_FAILED'].includes(status)) return labelText;
+              return `Restore ${labelText}`;
+            })()}
           </h3>
           <p className='mt-2 text-sm text-gray-600 text-center'>
             <span className='font-bold text-gray-800'>Job ID:</span> {jobId_display} · <span className='font-bold text-gray-800'>Runtime:</span> {runtime} · {createdAt ? new Date(createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
