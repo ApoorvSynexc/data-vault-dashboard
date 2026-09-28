@@ -220,10 +220,12 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, con
 
     if (selected.has(obj.name)) {
       const descendants = collectDescendantNames({ ...obj, children: getChildren() });
+      // Don't remove descendants that are independently selectable top-level objects
+      const topLevelNames = new Set(eligibleObjects.map((o) => o.name));
       setSelected((prev) => {
         const next = new Set(prev);
         next.delete(obj.name);
-        descendants.forEach((d) => next.delete(d));
+        descendants.filter((d) => !topLevelNames.has(d)).forEach((d) => next.delete(d));
         notify(next);
         return next;
       });
