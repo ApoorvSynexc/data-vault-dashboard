@@ -176,7 +176,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
   const objStatuses = objects.map((o: any) => (o.status as string)?.toUpperCase() ?? '');
   const hasRollbackInProgress = objStatuses.some((s) => s === 'ROLLBACK_IN_PROGRESS');
   const hasRollbackFailed     = objStatuses.some((s) => s === 'ROLLBACK_FAILED');
-  const allRollbackDone       = objects.length > 0 && objStatuses.every((s) => s === 'ROLLBACK_COMPLETED' || s === 'SUCCESS');
+  const allRollbackDone       = objects.length > 0 && objStatuses.some((s) => s === 'ROLLBACK_COMPLETED') && objStatuses.every((s) => s === 'ROLLBACK_COMPLETED' || s === 'SUCCESS');
 
   const status: string = hasRollbackInProgress
     ? 'ROLLBACK_IN_PROGRESS'
