@@ -314,7 +314,6 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
     'COMPLETED':      'bg-green-100 text-green-700',
     'FAILED':         'bg-red-100 text-red-700',
     'PARTIAL_FAILURE':'bg-orange-100 text-orange-700',
-    'CANCELLED':      'bg-gray-100 text-gray-500',
     'PAUSED':         'bg-gray-100 text-gray-700',
     'RESUMED':        'bg-purple-100 text-purple-700',
   };
@@ -329,7 +328,6 @@ function BackupStatusBadge({ backupStatus }: { backupStatus: string }) {
     'COMPLETED':      'Completed',
     'FAILED':         'Failed',
     'PARTIAL_FAILURE':'Partial Failure',
-    'CANCELLED':      'Cancelled',
     'PAUSED':         'Paused',
     'RESUMED':        'Resumed',
   };
