@@ -205,13 +205,13 @@ export default function DashboardV2() {
   const bkpSuccessStatus = overview?.successBackupStatus ?? 0;
   const bkpFailedStatus  = overview?.failedBackupStatus  ?? 0;
   // Job-level counts (used in the Jobs Summary block)
-  const bkpJobSuccess          = overview?.jobOverview?.successStatus          ?? 0;
-  const bkpJobFailed           = overview?.jobOverview?.failedStatus           ?? 0;
-  const bkpJobPending          = overview?.jobOverview?.pendingStatus          ?? 0;
-  // TODO: map from API once fields are confirmed
-  const bkpJobCompressed         = 0;
-  const bkpJobPartialFailure     = 0;
-  const bkpJobCompressionFailed  = 0;
+  const bkpJobSuccess              = overview?.jobOverview?.successStatus              ?? 0;
+  const bkpJobFailed               = overview?.jobOverview?.failedStatus               ?? 0;
+  const bkpJobPending              = overview?.jobOverview?.pendingStatus              ?? 0;
+  const bkpJobCompressed           = overview?.jobOverview?.compressedStatus           ?? 0;
+  const bkpJobPartialFailure       = overview?.jobOverview?.partialFailureStatus       ?? 0;
+  const bkpJobCompressionFailed    = overview?.jobOverview?.compressionFailedStatus    ?? 0;
+  const bkpJobCompressionInProgress = overview?.jobOverview?.compressionInProgressStatus ?? 0;
   // Success = Success + Compressed; Failed = Failed + PartialFailure + CompressionFailed; Running excluded
   const bkpJobTotalSuccess = bkpJobSuccess + bkpJobCompressed;
   const bkpJobTotalFailed  = bkpJobFailed + bkpJobPartialFailure + bkpJobCompressionFailed;
@@ -225,13 +225,13 @@ export default function DashboardV2() {
   const archSuccessStatus = overview?.successBackupStatus ?? 0;
   const archFailedStatus = overview?.failedBackupStatus ?? 0;
   // Job-level counts (used in the Jobs Summary block)
-  const archJobSuccess          = overview?.jobOverview?.successStatus          ?? 0;
-  const archJobFailed           = overview?.jobOverview?.failedStatus           ?? 0;
-  const archJobPending          = overview?.jobOverview?.pendingStatus          ?? 0;
-  // TODO: map from API once fields are confirmed
-  const archJobCompressed         = 0;
-  const archJobPartialFailure     = 0;
-  const archJobCompressionFailed  = 0;
+  const archJobSuccess               = overview?.jobOverview?.successStatus               ?? 0;
+  const archJobFailed                = overview?.jobOverview?.failedStatus                ?? 0;
+  const archJobPending               = overview?.jobOverview?.pendingStatus               ?? 0;
+  const archJobCompressed            = overview?.jobOverview?.compressedStatus            ?? 0;
+  const archJobPartialFailure        = overview?.jobOverview?.partialFailureStatus        ?? 0;
+  const archJobCompressionFailed     = overview?.jobOverview?.compressionFailedStatus     ?? 0;
+  const archJobCompressionInProgress = overview?.jobOverview?.compressionInProgressStatus ?? 0;
   // Success = Success + Compressed; Failed = Failed + PartialFailure + CompressionFailed; Running excluded
   const archJobTotalSuccess = archJobSuccess + archJobCompressed;
   const archJobTotalFailed  = archJobFailed + archJobPartialFailure + archJobCompressionFailed;
@@ -406,8 +406,8 @@ export default function DashboardV2() {
     ];
     if (activeTab === 'archive') return [
       { label: 'Success',            value: archJobSuccess,           color: 'text-green-600',  bg: 'bg-green-50'  },
-      { label: 'Compressed',         value: archJobCompressed,        color: 'text-green-700',  bg: 'bg-green-100' },
-      { label: 'Compressing',        value: 0,                        color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Compressed',         value: archJobCompressed,             color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: archJobCompressionInProgress,  color: 'text-blue-600',   bg: 'bg-blue-50'   },
       { label: 'Pending',            value: archJobPending,           color: 'text-yellow-600', bg: 'bg-yellow-50' },
       { label: 'Partial Failure',    value: archJobPartialFailure,    color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compression Failed', value: archJobCompressionFailed, color: 'text-red-700',    bg: 'bg-red-100'   },
@@ -415,8 +415,8 @@ export default function DashboardV2() {
     ];
     return [
       { label: 'Success',            value: bkpJobSuccess,           color: 'text-green-600',  bg: 'bg-green-50'  },
-      { label: 'Compressed',         value: bkpJobCompressed,        color: 'text-green-700',  bg: 'bg-green-100' },
-      { label: 'Compressing',        value: 0,                       color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Compressed',         value: bkpJobCompressed,              color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: bkpJobCompressionInProgress,   color: 'text-blue-600',   bg: 'bg-blue-50'   },
       { label: 'Pending',            value: bkpJobPending,           color: 'text-yellow-600', bg: 'bg-yellow-50' },
       { label: 'Partial Failure',    value: bkpJobPartialFailure,    color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compression Failed', value: bkpJobCompressionFailed, color: 'text-red-700',    bg: 'bg-red-100'   },
