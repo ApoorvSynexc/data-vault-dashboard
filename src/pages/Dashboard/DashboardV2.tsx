@@ -68,6 +68,9 @@ function statusBadge(status?: string): { label: string; bg: string; color: strin
   if (s === 'CANCELLED') return { label: 'Cancelled', bg: '#F3F4F6', color: '#6B7280' };
   if (s === 'PARTIAL_FAILURE') return { label: 'Partial Failure', bg: '#FFF7ED', color: '#C2410C' };
   if (s === 'PARTIAL') return { label: 'Partial', bg: 'rgba(234,179,8,0.12)', color: '#A16207' };
+  if (s === 'COMPRESSION_JOB_IN_PROGRESS') return { label: 'Compressing', bg: '#EFF6FF', color: '#1D4ED8' };
+  if (s === 'COMPRESSED') return { label: 'Compressed', bg: '#F0FDF4', color: '#15803D' };
+  if (s === 'COMPRESSION_JOB_FAILED') return { label: 'Compression Failed', bg: '#FEE2E2', color: '#B91C1C' };
   if (s === 'DRAFT') return { label: 'Draft', bg: '#F3F4F6', color: '#6B7280' };
   return { label: status || 'Unknown', bg: '#F3F4F6', color: '#374151' };
 }
@@ -389,14 +392,22 @@ export default function DashboardV2() {
       { label: 'Failed', value: rstFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     if (activeTab === 'archive') return [
-      { label: 'Success', value: archJobSuccess, color: 'text-green-600', bg: 'bg-green-50' },
-      { label: 'Pending', value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Failed', value: archJobFailed, color: 'text-red-600', bg: 'bg-red-50' },
+      { label: 'Success',            value: archJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
+      { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Failed',             value: archJobFailed, color: 'text-red-600',    bg: 'bg-red-50'    },
+      { label: 'Pending',            value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     ];
     return [
-      { label: 'Success', value: bkpJobSuccess, color: 'text-green-600', bg: 'bg-green-50' },
-      { label: 'Pending', value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Failed',  value: bkpJobFailed,  color: 'text-red-600',   bg: 'bg-red-50'   },
+      { label: 'Success',            value: bkpJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
+      { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Failed',             value: bkpJobFailed,  color: 'text-red-600',    bg: 'bg-red-50'    },
+      { label: 'Pending',            value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     ];
   })();
 
@@ -648,17 +659,17 @@ export default function DashboardV2() {
 
           {/* Summary */}
           <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3 flex-1 flex flex-col min-h-0 overflow-hidden'>
-            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2'>
+            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2 flex-shrink-0'>
               {TABS.find((t) => t.id === activeTab)?.label ?? activeTab} Jobs Summary
             </Typography>
-            <div className='flex flex-col gap-2 flex-1 justify-center'>
+            <div className='flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto'>
               {summaryRows.map(({ label, value, color, bg }) => (
-                <div key={label} className='flex items-center justify-between'>
+                <div key={label} className='flex items-center justify-between flex-shrink-0'>
                   <span className='text-xs text-gray-500'>{label}</span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color} ${bg}`}>{value}</span>
                 </div>
               ))}
-              <div className='border-t border-gray-100 pt-2 flex items-center justify-between'>
+              <div className='border-t border-gray-100 pt-1.5 mt-0.5 flex items-center justify-between flex-shrink-0'>
                 <span className='text-xs text-gray-500'>Success Rate</span>
                 <span className='text-sm font-bold text-gray-800'>{rateLabel}</span>
               </div>
