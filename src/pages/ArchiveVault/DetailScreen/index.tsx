@@ -31,7 +31,7 @@ import ArchiveJobDetailsModal from './ArchiveJobDetailsModal';
 function StatusDot({ status }: { status: string }) {
   const color: Record<string, string> = {
     ACTIVE: 'bg-green-500', SUCCESS: 'bg-green-500', COMPLETED: 'bg-green-500', DELETION_COMPLETED: 'bg-green-500',
-    PARTIAL_FAILURE: 'bg-amber-400', CANCELLED: 'bg-gray-400',
+    PARTIAL_FAILURE: 'bg-amber-400',
     PENDING: 'bg-yellow-400', RUNNING: 'bg-yellow-400', IN_PROGRESS: 'bg-yellow-400', DRAFT: 'bg-yellow-400',
     PAUSED: 'bg-gray-400', FAILED: 'bg-red-500',
   };
@@ -39,7 +39,6 @@ function StatusDot({ status }: { status: string }) {
     ACTIVE: 'Active', SUCCESS: 'Success', COMPLETED: 'Completed', DELETION_COMPLETED: 'Deletion Completed',
     PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress', DRAFT: 'Draft',
     PAUSED: 'Paused', FAILED: 'Failed', PARTIAL_FAILURE: 'Partial Failure',
-    CANCELLED: 'Cancelled',
   };
   const key = status?.toUpperCase() ?? 'DRAFT';
   return (
@@ -785,7 +784,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                         COMPRESSION_FAILED: 'border-red-200 bg-red-50 text-red-700',
                         DELETION_JOB_FAILED: 'border-red-200 bg-red-50 text-red-700',
                         DELETION_RECORDS_FAILED: 'border-amber-200 bg-amber-50 text-amber-700',
-                        CANCELLED: 'border-gray-200 bg-gray-50 text-gray-600',
                         RUNNING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
                         PENDING: 'border-yellow-200 bg-yellow-50 text-yellow-700',
                       };
@@ -794,7 +792,6 @@ const [logCursor, setLogCursor] = useState<string | null>(null);
                         FAILED: 'bg-red-500', DELETION_JOB_FAILED: 'bg-red-500', COMPRESSION_FAILED: 'bg-red-500',
                         RUNNING: 'bg-yellow-400', PENDING: 'bg-yellow-400',
                         PARTIAL_FAILURE: 'bg-amber-400', DELETION_RECORDS_FAILED: 'bg-amber-400',
-                        CANCELLED: 'bg-gray-400',
                       };
                       const statusLabel: Record<string, string> = {
                         PARTIAL_FAILURE: 'Partial Failure',

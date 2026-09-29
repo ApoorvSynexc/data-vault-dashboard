@@ -70,7 +70,6 @@ function getStatusStyle(status: string) {
   if (s === 'UPLOAD_COMPLETED') return { bg: 'rgba(6,182,212,0.1)', color: '#0891B2' };
   if (s === 'FAILED' || s === 'DELETION_JOB_FAILED' || s === 'COMPRESSION_FAILED') return { bg: 'rgba(242,68,0,0.1)', color: '#F24400' };
   if (s === 'PARTIAL_FAILURE' || s === 'DELETION_RECORDS_FAILED') return { bg: 'rgba(217,119,6,0.1)', color: '#D97706' };
-  if (s === 'CANCELLED') return { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' };
   if (s === 'RUNNING' || s === 'IN_PROGRESS' || s === 'BULK_QUERY_IN_PROGRESS' || s === 'TRANSFER_IN_PROGRESS' || s === 'DELETION_IN_PROGRESS' || s === 'RESTORE_IN_PROGRESS' || s === 'ROLLBACK_IN_PROGRESS' || s === 'COMPRESSION_IN_PROGRESS') return { bg: 'rgba(21,93,252,0.1)', color: '#155DFC' };
   if (s === 'CREATED' || s === 'PENDING' || s === 'BULK_QUERY_COMPLETED' || s === 'ROLLBACK_COMPLETED' || s === 'COMPRESSED' || s === 'CSV_CREATING' || s === 'INGEST_IN_PROGRESS' || s === 'RESTORE_CSV_CREATING') return { bg: 'rgba(234,179,8,0.1)', color: '#A16207' };
   return { bg: '#F3F4F6', color: '#374151' };
@@ -87,7 +86,6 @@ function getStatusLabel(status: string) {
   if (s === 'DELETION_JOB_FAILED') return 'Deletion Failed';
   if (s === 'DELETION_RECORDS_FAILED') return 'Records Failed';
   if (s === 'PARTIAL_FAILURE') return 'Partial Failure';
-  if (s === 'CANCELLED') return 'Cancelled';
   if (s === 'RUNNING') return 'Running';
   if (s === 'IN_PROGRESS') return 'In Progress';
   if (s === 'BULK_QUERY_IN_PROGRESS') return 'Query In Progress';

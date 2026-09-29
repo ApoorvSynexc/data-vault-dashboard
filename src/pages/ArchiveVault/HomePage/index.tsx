@@ -178,14 +178,13 @@ function StatusBadge({ status }: { status: string }) {
     FAILED:           'bg-red-100 text-red-700',
     PARTIAL_FAILURE:  'bg-orange-100 text-orange-700',
     ONE_TIME:         'bg-gray-100 text-gray-700',
-    CANCELLED:        'bg-gray-100 text-gray-500',
   };
   const labels: Record<string, string> = {
     ACTIVE: 'Active', RESUMED: 'Resumed', SCHEDULED: 'Scheduled',
     SUCCESS: 'Success', COMPLETED: 'Completed', DELETION_COMPLETED: 'Deletion Completed',
     PENDING: 'Pending', RUNNING: 'Running', IN_PROGRESS: 'In Progress',
     DRAFT: 'Draft', PAUSED: 'Paused', INACTIVE: 'Inactive', FAILED: 'Failed',
-    PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time', CANCELLED: 'Cancelled',
+    PARTIAL_FAILURE: 'Partial Failure', ONE_TIME: 'One Time',
   };
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${styles[status] ?? 'bg-gray-100 text-gray-700'}`}>
