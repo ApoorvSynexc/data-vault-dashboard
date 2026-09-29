@@ -65,7 +65,6 @@ function statusBadge(status?: string): { label: string; bg: string; color: strin
   if (s === 'PENDING') return { label: 'Pending', bg: '#FEF9C3', color: '#A16207' };
   if (s === 'RUNNING') return { label: 'Running', bg: '#FEF9C3', color: '#A16207' };
   if (s === 'IN_PROGRESS') return { label: 'In Progress', bg: '#FEF9C3', color: '#A16207' };
-  if (s === 'CANCELLED') return { label: 'Cancelled', bg: '#F3F4F6', color: '#6B7280' };
   if (s === 'PARTIAL_FAILURE') return { label: 'Partial Failure', bg: '#FFF7ED', color: '#C2410C' };
   if (s === 'PARTIAL') return { label: 'Partial', bg: 'rgba(234,179,8,0.12)', color: '#A16207' };
   if (s === 'COMPRESSION_JOB_IN_PROGRESS') return { label: 'Compressing', bg: '#EFF6FF', color: '#1D4ED8' };
@@ -392,22 +391,22 @@ export default function DashboardV2() {
       { label: 'Failed', value: rstFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     if (activeTab === 'archive') return [
+      { label: 'Pending',            value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
       { label: 'Success',            value: archJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Failed',             value: archJobFailed, color: 'text-red-600',    bg: 'bg-red-50'    },
+      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
       { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
-      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
-      { label: 'Failed',             value: archJobFailed, color: 'text-red-600',    bg: 'bg-red-50'    },
-      { label: 'Pending',            value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     ];
     return [
+      { label: 'Pending',            value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
       { label: 'Success',            value: bkpJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Failed',             value: bkpJobFailed,  color: 'text-red-600',    bg: 'bg-red-50'    },
+      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
       { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
-      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
       { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
-      { label: 'Failed',             value: bkpJobFailed,  color: 'text-red-600',    bg: 'bg-red-50'    },
-      { label: 'Pending',            value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     ];
   })();
 
