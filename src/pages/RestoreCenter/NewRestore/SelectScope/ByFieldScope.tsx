@@ -110,7 +110,13 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
   const toggleObj = (name: string) => {
     setSelectedObjs((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) { next.delete(name); } else { next.add(name); setActiveObj(name); }
+      if (next.has(name)) {
+        next.delete(name);
+        if (activeObj === name) setActiveObj('');
+      } else {
+        next.add(name);
+        setActiveObj(name);
+      }
       return next;
     });
   };
