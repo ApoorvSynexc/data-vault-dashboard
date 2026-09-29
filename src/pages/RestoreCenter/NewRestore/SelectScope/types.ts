@@ -72,7 +72,7 @@ export const SCOPE_MODES: { id: ScopeMode; icon: string; title: string; desc: st
   { id: 'field',   icon: '▤',  title: 'By Field',       desc: 'Specific fields within records',                         tooltip: 'Restores only selected fields on records, leaving other fields untouched in the destination.' },
   { id: 'filter',  icon: '⚙',  title: 'Custom Filter',  desc: 'Visual filter or raw SOQL — with live match count',      tooltip: 'Build conditions visually or write a SOQL WHERE clause to target exactly the records that match your criteria.' },
   { id: 'deleted', icon: '⌫',  title: 'Deleted-Only',   desc: 'Records deleted in destination since snapshot',          tooltip: 'Finds and restores only the records that were deleted in the destination org after the backup snapshot was taken.' },
-  { id: 'csv',     icon: '📋', title: 'Bulk via CSV',   desc: 'Paste or upload IDs / external IDs',                    tooltip: 'Upload a CSV file or paste a list of Salesforce record IDs to restore a large batch of specific records.' },
+  { id: 'csv',     icon: '📋', title: 'Bulk via CSV',   desc: 'upload Record IDs',                    tooltip: 'Upload a CSV file of Salesforce record IDs to restore a large batch of specific records.' },
 ];
 
 export type { SourceSelection, RestoreScope };
