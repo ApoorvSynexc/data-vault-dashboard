@@ -205,11 +205,18 @@ export default function DashboardV2() {
   const bkpSuccessStatus = overview?.successBackupStatus ?? 0;
   const bkpFailedStatus  = overview?.failedBackupStatus  ?? 0;
   // Job-level counts (used in the Jobs Summary block)
-  const bkpJobSuccess = overview?.jobOverview?.successStatus ?? 0;
-  const bkpJobFailed  = overview?.jobOverview?.failedStatus  ?? 0;
-  const bkpJobPending = overview?.jobOverview?.pendingStatus ?? 0;
-  const bkpJobResolved = bkpJobSuccess + bkpJobFailed;
-  const bkpRate = bkpJobResolved > 0 ? ((bkpJobSuccess / bkpJobResolved) * 100).toFixed(1) : '100.0';
+  const bkpJobSuccess          = overview?.jobOverview?.successStatus          ?? 0;
+  const bkpJobFailed           = overview?.jobOverview?.failedStatus           ?? 0;
+  const bkpJobPending          = overview?.jobOverview?.pendingStatus          ?? 0;
+  // TODO: map from API once fields are confirmed
+  const bkpJobCompressed         = 0;
+  const bkpJobPartialFailure     = 0;
+  const bkpJobCompressionFailed  = 0;
+  // Success = Success + Compressed; Failed = Failed + PartialFailure + CompressionFailed; Running excluded
+  const bkpJobTotalSuccess = bkpJobSuccess + bkpJobCompressed;
+  const bkpJobTotalFailed  = bkpJobFailed + bkpJobPartialFailure + bkpJobCompressionFailed;
+  const bkpJobResolved     = bkpJobTotalSuccess + bkpJobTotalFailed;
+  const bkpRate = bkpJobResolved > 0 ? ((bkpJobTotalSuccess / bkpJobResolved) * 100).toFixed(1) : '100.0';
 
   // Archive KPIs: same field names as backup
   const archActiveConfigs = overview?.activeBackupConfigs ?? 0;
@@ -218,11 +225,18 @@ export default function DashboardV2() {
   const archSuccessStatus = overview?.successBackupStatus ?? 0;
   const archFailedStatus = overview?.failedBackupStatus ?? 0;
   // Job-level counts (used in the Jobs Summary block)
-  const archJobSuccess = overview?.jobOverview?.successStatus ?? 0;
-  const archJobFailed  = overview?.jobOverview?.failedStatus  ?? 0;
-  const archJobPending = overview?.jobOverview?.pendingStatus ?? 0;
-  const archJobResolved = archJobSuccess + archJobFailed;
-  const archRate = archJobResolved > 0 ? ((archJobSuccess / archJobResolved) * 100).toFixed(1) : '100.0';
+  const archJobSuccess          = overview?.jobOverview?.successStatus          ?? 0;
+  const archJobFailed           = overview?.jobOverview?.failedStatus           ?? 0;
+  const archJobPending          = overview?.jobOverview?.pendingStatus          ?? 0;
+  // TODO: map from API once fields are confirmed
+  const archJobCompressed         = 0;
+  const archJobPartialFailure     = 0;
+  const archJobCompressionFailed  = 0;
+  // Success = Success + Compressed; Failed = Failed + PartialFailure + CompressionFailed; Running excluded
+  const archJobTotalSuccess = archJobSuccess + archJobCompressed;
+  const archJobTotalFailed  = archJobFailed + archJobPartialFailure + archJobCompressionFailed;
+  const archJobResolved     = archJobTotalSuccess + archJobTotalFailed;
+  const archRate = archJobResolved > 0 ? ((archJobTotalSuccess / archJobResolved) * 100).toFixed(1) : '100.0';
 
   // Restore KPIs: { totalRecords, totalSize, successStatus, failedStatus, pendingStatus }
   const rstTotalRecords = overview?.totalRecords ?? 0;
@@ -391,22 +405,22 @@ export default function DashboardV2() {
       { label: 'Failed', value: rstFailedStatus, color: 'text-red-600', bg: 'bg-red-50' },
     ];
     if (activeTab === 'archive') return [
-      { label: 'Pending',            value: archJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Success',            value: archJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
-      { label: 'Failed',             value: archJobFailed, color: 'text-red-600',    bg: 'bg-red-50'    },
-      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
-      { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
-      { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
-      { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Success',            value: archJobSuccess,           color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Compressed',         value: archJobCompressed,        color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: 0,                        color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Pending',            value: archJobPending,           color: 'text-yellow-600', bg: 'bg-yellow-50' },
+      { label: 'Partial Failure',    value: archJobPartialFailure,    color: 'text-orange-600', bg: 'bg-orange-50' },
+      { label: 'Compression Failed', value: archJobCompressionFailed, color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Failed',             value: archJobFailed,            color: 'text-red-600',    bg: 'bg-red-50'    },
     ];
     return [
-      { label: 'Pending',            value: bkpJobPending, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-      { label: 'Success',            value: bkpJobSuccess, color: 'text-green-600',  bg: 'bg-green-50'  },
-      { label: 'Failed',             value: bkpJobFailed,  color: 'text-red-600',    bg: 'bg-red-50'    },
-      { label: 'Partial Failure',    value: 0,             color: 'text-orange-600', bg: 'bg-orange-50' },
-      { label: 'Compressed',         value: 0,             color: 'text-green-700',  bg: 'bg-green-100' },
-      { label: 'Compressing',        value: 0,             color: 'text-blue-600',   bg: 'bg-blue-50'   },
-      { label: 'Compression Failed', value: 0,             color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Success',            value: bkpJobSuccess,           color: 'text-green-600',  bg: 'bg-green-50'  },
+      { label: 'Compressed',         value: bkpJobCompressed,        color: 'text-green-700',  bg: 'bg-green-100' },
+      { label: 'Compressing',        value: 0,                       color: 'text-blue-600',   bg: 'bg-blue-50'   },
+      { label: 'Pending',            value: bkpJobPending,           color: 'text-yellow-600', bg: 'bg-yellow-50' },
+      { label: 'Partial Failure',    value: bkpJobPartialFailure,    color: 'text-orange-600', bg: 'bg-orange-50' },
+      { label: 'Compression Failed', value: bkpJobCompressionFailed, color: 'text-red-700',    bg: 'bg-red-100'   },
+      { label: 'Failed',             value: bkpJobFailed,            color: 'text-red-600',    bg: 'bg-red-50'    },
     ];
   })();
 
