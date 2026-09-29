@@ -206,7 +206,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     // These are junction-object parents the user must select manually — we do NOT auto-select them.
     const junctionParentApiNames = Array.from(
       new Set((d.parent ?? []).flatMap((p) => p.referenceTo ?? []))
-    );
+    ).filter((name) => name !== lastSelectedSfName);
 
     if (payloadTree.length === 0 && junctionParentApiNames.length === 0) return;
 
