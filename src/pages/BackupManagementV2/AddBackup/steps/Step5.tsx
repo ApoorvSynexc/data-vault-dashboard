@@ -152,6 +152,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [parentTreeMap, setParentTreeMap] = useState<Map<string, PayloadChildNode[]>>(new Map());
   // Toast message (child labels for display)
   const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
+  // Parent-required notice (junction object parents that must be manually selected)
+  const [parentNotice, setParentNotice] = useState<{ objectName: string; parents: string[] } | null>(null);
 
   // Selected-objects panel
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
@@ -201,14 +203,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     const { uuids: childUuids, labels: childLabels } = flattenPayloadTree(payloadTree);
 
     // Collect parent object API names from top-level data.parent[].referenceTo[]
+    // These are junction-object parents the user must select manually — we do NOT auto-select them.
     const junctionParentApiNames = Array.from(
       new Set((d.parent ?? []).flatMap((p) => p.referenceTo ?? []))
     );
-    const junctionParentUuids = junctionParentApiNames
-      .map((apiName) => displayObjects.find((o) => o.id === apiName)?.uuid)
-      .filter((u): u is string => !!u);
 
-    if (payloadTree.length === 0 && junctionParentUuids.length === 0) return;
+    if (payloadTree.length === 0 && junctionParentApiNames.length === 0) return;
 
     const parentObj = displayObjects.find((o) => o.id === lastSelectedSfName);
     const parentUuid = parentObj?.uuid ?? lastSelectedSfName;
@@ -216,20 +216,20 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     if (payloadTree.length > 0) {
       setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
       setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
+      setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
     }
 
-    // Mark junction parents as user-selected so they survive deselection of the current object
-    if (junctionParentUuids.length > 0) {
-      setUserSelectedObjects((prev) => { const n = new Set(prev); junctionParentUuids.forEach((u) => n.add(u)); return n; });
+    if (childLabels.length > 0) {
+      setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: Array.from(new Set(childLabels)) });
+      const t = setTimeout(() => setToast(null), 6000);
+      if (junctionParentApiNames.length === 0) return () => clearTimeout(t);
     }
 
-    setSelectedObjects((prev) => new Set([...prev, ...childUuids, ...junctionParentUuids]));
-
-    const toastLabels = Array.from(new Set([...childLabels, ...junctionParentApiNames]));
-    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: toastLabels });
-
-    const timer = setTimeout(() => setToast(null), 6000);
-    return () => clearTimeout(timer);
+    if (junctionParentApiNames.length > 0) {
+      setParentNotice({ objectName: parentObj?.name ?? lastSelectedSfName, parents: junctionParentApiNames });
+      const t2 = setTimeout(() => setParentNotice(null), 8000);
+      return () => clearTimeout(t2);
+    }
   }, [depthChildrenData, lastSelectedSfName]);
 
   // Filter + paginate
@@ -358,6 +358,35 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
           <style>{`@keyframes shrink { from { width: 100% } to { width: 0% } }`}</style>
         </div>
       )}
+
+      {/* Junction-parent notice — these objects must be selected manually */}
+      {parentNotice && (
+        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden mt-20'
+          style={{ border: '1px solid rgba(217,119,6,0.25)' }}>
+          <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
+            <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(217,119,6,0.1)' }}>
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+              </svg>
+            </div>
+            <div className='flex-1 min-w-0'>
+              <p className='text-sm font-semibold text-gray-900'>Parent objects required</p>
+              <p className='text-xs text-gray-500 mt-0.5 leading-relaxed'>
+                <span className='font-medium'>{parentNotice.objectName}</span> has a Master-Detail relationship with{' '}
+                <span className='font-medium text-amber-700'>{parentNotice.parents.join(', ')}</span>.
+                {' '}Please select {parentNotice.parents.length === 1 ? 'it' : 'them'} manually to ensure a complete backup.
+              </p>
+            </div>
+            <button onClick={() => setParentNotice(null)} className='flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mt-0.5'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+              </svg>
+            </button>
+          </div>
+          <div className='h-0.5 bg-amber-500' style={{ animation: 'shrink 8s linear forwards' }} />
+        </div>
+      )}
+
       {/* Header */}
       <div className='flex items-start justify-between px-8 py-4 flex-shrink-0'>
         <div>
