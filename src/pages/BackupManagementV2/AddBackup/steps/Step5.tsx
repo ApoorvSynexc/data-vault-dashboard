@@ -40,6 +40,25 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
   return result;
 }
 
+// Walks the depth-children tree and collects all parent object API names (SF id)
+// referenced in any node's parent[] array — these are junction-object parents that
+// must also be auto-selected when any child in this subtree is selected.
+function collectJunctionParentNames(nodes: DepthChildNode[]): string[] {
+  const names = new Set<string>();
+  const walk = (list: DepthChildNode[]) => {
+    for (const node of list) {
+      if (node.parent?.length) {
+        for (const p of node.parent) {
+          for (const ref of (p.referenceTo ?? [])) names.add(ref);
+        }
+      }
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(nodes);
+  return [...names];
+}
+
 // Flattens a payload tree into uuids/labels (for locking rows and the toast message)
 function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
   const uuids: string[] = [];
@@ -189,22 +208,41 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     enabled: !!lastSelectedSfName,
   });
 
-  // When depth-children data arrives, auto-select master-detail descendants (at any depth) and show toast
+  // When depth-children data arrives, auto-select master-detail descendants (at any depth)
+  // and also auto-select parent objects of any junction nodes found in the subtree.
   useEffect(() => {
     if (!depthChildrenData?.data || !lastSelectedSfName) return;
     const d = depthChildrenData.data as { children?: DepthChildNode[] };
-    const payloadTree = buildPayloadTree(d.children ?? [], displayObjects);
-    if (payloadTree.length === 0) return;
+    const rawChildren = d.children ?? [];
+    const payloadTree = buildPayloadTree(rawChildren, displayObjects);
 
     const { uuids: childUuids, labels: childLabels } = flattenPayloadTree(payloadTree);
+
+    // Collect junction-object parent names and resolve to UUIDs
+    const junctionParentApiNames = collectJunctionParentNames(rawChildren);
+    const junctionParentUuids = junctionParentApiNames
+      .map((apiName) => displayObjects.find((o) => o.id === apiName)?.uuid)
+      .filter((u): u is string => !!u);
+
+    if (payloadTree.length === 0 && junctionParentUuids.length === 0) return;
 
     const parentObj = displayObjects.find((o) => o.id === lastSelectedSfName);
     const parentUuid = parentObj?.uuid ?? lastSelectedSfName;
 
-    setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
-    setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
-    setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
-    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: Array.from(new Set(childLabels)) });
+    if (payloadTree.length > 0) {
+      setParentChildMap((prev) => new Map(prev).set(parentUuid, childUuids));
+      setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
+    }
+
+    // Mark junction parents as user-selected so they survive parent deselection
+    if (junctionParentUuids.length > 0) {
+      setUserSelectedObjects((prev) => { const n = new Set(prev); junctionParentUuids.forEach((u) => n.add(u)); return n; });
+    }
+
+    setSelectedObjects((prev) => new Set([...prev, ...childUuids, ...junctionParentUuids]));
+
+    const toastLabels = Array.from(new Set([...childLabels, ...junctionParentApiNames]));
+    setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: toastLabels });
 
     const timer = setTimeout(() => setToast(null), 6000);
     return () => clearTimeout(timer);
