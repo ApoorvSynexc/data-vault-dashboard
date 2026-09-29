@@ -40,25 +40,6 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
   return result;
 }
 
-// Walks the depth-children tree and collects all parent object API names (SF id)
-// referenced in any node's parent[] array — these are junction-object parents that
-// must also be auto-selected when any child in this subtree is selected.
-function collectJunctionParentNames(nodes: DepthChildNode[]): string[] {
-  const names = new Set<string>();
-  const walk = (list: DepthChildNode[]) => {
-    for (const node of list) {
-      if (node.parent?.length) {
-        for (const p of node.parent) {
-          for (const ref of (p.referenceTo ?? [])) names.add(ref);
-        }
-      }
-      if (node.children?.length) walk(node.children);
-    }
-  };
-  walk(nodes);
-  return [...names];
-}
-
 // Flattens a payload tree into uuids/labels (for locking rows and the toast message)
 function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
   const uuids: string[] = [];
@@ -209,17 +190,20 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   });
 
   // When depth-children data arrives, auto-select master-detail descendants (at any depth)
-  // and also auto-select parent objects of any junction nodes found in the subtree.
+  // and also auto-select parent objects listed in the top-level data.parent[] array
+  // (junction/multi-parent MasterDetail relationships).
   useEffect(() => {
     if (!depthChildrenData?.data || !lastSelectedSfName) return;
-    const d = depthChildrenData.data as { children?: DepthChildNode[] };
+    const d = depthChildrenData.data as { children?: DepthChildNode[]; parent?: { referenceTo?: string[]; name?: string }[] };
     const rawChildren = d.children ?? [];
     const payloadTree = buildPayloadTree(rawChildren, displayObjects);
 
     const { uuids: childUuids, labels: childLabels } = flattenPayloadTree(payloadTree);
 
-    // Collect junction-object parent names and resolve to UUIDs
-    const junctionParentApiNames = collectJunctionParentNames(rawChildren);
+    // Collect parent object API names from top-level data.parent[].referenceTo[]
+    const junctionParentApiNames = Array.from(
+      new Set((d.parent ?? []).flatMap((p) => p.referenceTo ?? []))
+    );
     const junctionParentUuids = junctionParentApiNames
       .map((apiName) => displayObjects.find((o) => o.id === apiName)?.uuid)
       .filter((u): u is string => !!u);
@@ -234,7 +218,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       setParentTreeMap((prev) => new Map(prev).set(parentUuid, payloadTree));
     }
 
-    // Mark junction parents as user-selected so they survive parent deselection
+    // Mark junction parents as user-selected so they survive deselection of the current object
     if (junctionParentUuids.length > 0) {
       setUserSelectedObjects((prev) => { const n = new Set(prev); junctionParentUuids.forEach((u) => n.add(u)); return n; });
     }
