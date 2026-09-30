@@ -137,7 +137,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   useEffect(() => {
     if (prevConfigIdRef.current !== selectedBackupConfigId) {
       prevConfigIdRef.current = selectedBackupConfigId;
-      setScopeType('ENTIRE');
+      setScopeType('CHANGED_BETWEEN');
       clearStart();
       clearEnd();
     }
