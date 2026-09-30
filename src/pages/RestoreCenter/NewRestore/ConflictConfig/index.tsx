@@ -747,14 +747,24 @@ export default function ConflictConfig({
                     </select>
                   </div>
                   {ecAuditFields === 'Include' && (
-                    <div className='ml-0 sm:ml-48 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2'>
+                    <div className='ml-0 sm:ml-48 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5'>
                       <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                         <path d='M12 9v4'/><circle cx='12' cy='16.5' r='0.5' fill='currentColor' stroke='none'/>
                         <path d='M10.29 3.86L1.82 18a2 2 0 001.72 3h16.92a2 2 0 001.72-3L13.71 3.86a2 2 0 00-3.42 0z'/>
                       </svg>
-                      <p className='text-[11px] text-amber-700 leading-relaxed'>
-                        You must have the <span className='font-semibold'>"Enable 'Set Audit Fields upon Record Creation'"</span> permission assigned to you in Salesforce to use this option.
-                      </p>
+                      <div className='flex flex-col gap-1.5'>
+                        <p className='text-[11px] text-amber-700 leading-relaxed'>
+                          You must have the <span className='font-semibold'>"Enable 'Set Audit Fields upon Record Creation'"</span> permission assigned to you in Salesforce to use this option.
+                        </p>
+                        <p className='text-[11px] text-amber-700 leading-relaxed'>
+                          <span className='font-semibold'>Supported standard objects:</span>{' '}
+                          Account, ArticleVersion, Attachment, CampaignMember, Case, CaseComment, Contact, ContentVersion, Contract, Event, Idea, IdeaComment, Lead, Opportunity, Question, Task, Vote — and all custom objects.
+                        </p>
+                        <p className='text-[11px] text-amber-600 leading-relaxed'>
+                          <span className='font-semibold'>Exception:</span> <span className='font-mono'>SystemModstamp</span> cannot be set even with this permission.{' '}
+                          <a href='https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/system_fields.htm' target='_blank' rel='noreferrer' className='underline hover:text-amber-800'>Salesforce docs ↗</a>
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
