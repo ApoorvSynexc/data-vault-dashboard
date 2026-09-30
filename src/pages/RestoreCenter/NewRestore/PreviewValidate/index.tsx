@@ -257,8 +257,23 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
         {/* Cards */}
         <div className='flex flex-col gap-4'>
 
+          {/* Bulk CSV scope — dry run not supported */}
+          {restorePayload.selection.restoreScope.type === 'BULK_CSV' && (
+            <div className='flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5'>
+              <svg className='mt-0.5 h-4 w-4 shrink-0 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+              </svg>
+              <div className='flex flex-col gap-1'>
+                <p className='text-[12px] font-semibold text-amber-800'>Dry Run &amp; Snapshot Diff not available for Bulk CSV scope</p>
+                <p className='text-[11px] text-amber-700 leading-relaxed'>
+                  When using <span className='font-semibold'>Bulk via CSV</span> as your restore scope, pre-flight simulations cannot be run because the record set is resolved directly from the uploaded file at execution time. You can still proceed — the restore will execute with the records from your CSV.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Tabbed: Dry-Run + Diff */}
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm'>
+          <div className={`rounded-xl border border-gray-200 bg-white shadow-sm${restorePayload.selection.restoreScope.type === 'BULK_CSV' ? ' opacity-40 pointer-events-none select-none' : ''}`}>
 
             {/* Tab bar */}
             <div className='flex border-b border-gray-200'>
