@@ -107,7 +107,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
     ? new Date(selectedBackupCreatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
     : '';
 
-  const [type, setScopeType] = useState<ScopeType>('ENTIRE');
+  const [type, setScopeType] = useState<ScopeType>('CHANGED_BETWEEN');
 
   // Date and time stored separately so picking a date doesn't auto-fill time
   const [startDatePart, setStartDatePart] = useState('');
