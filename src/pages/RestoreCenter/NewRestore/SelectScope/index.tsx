@@ -136,6 +136,8 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   // Each scope component reports its latest value here via onChange
   const [selectedObjects, setSelectedObjects]   = useState<{ id?: string; name: string; type: string; children?: RestoreSourceObject[] }[]>([]);
   const [recordScope,     setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
+  const [recordAddedObjs, setRecordAddedObjs]   = useState<string[]>([]);
+  const [recordEmptyObjs, setRecordEmptyObjs]   = useState<string[]>([]);
   const [fieldScope,      setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
   const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
@@ -237,6 +239,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setRecordScope}
+            onObjectsChange={(objs, empty) => { setRecordAddedObjs(objs); setRecordEmptyObjs(empty); }}
           />
         )}
         {scopeMode === 'field'   && (
@@ -278,8 +281,36 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             ← Back
           </button>
           <div className='flex items-center gap-2'>
+            {scopeMode === 'record' && (() => {
+              const needsSelection = recordAddedObjs.filter(
+                (obj) => !recordEmptyObjs.includes(obj) && !recordScope.some((r) => r.objectName === obj && r.recordIds.length > 0),
+              );
+              const hasEmpty = recordEmptyObjs.filter((obj) => recordAddedObjs.includes(obj));
+              if (hasEmpty.length > 0) {
+                return (
+                  <p className='text-xs text-amber-600 font-medium'>
+                    No records available for: <span className='font-mono'>{hasEmpty.join(', ')}</span> — uncheck to remove
+                  </p>
+                );
+              }
+              if (needsSelection.length > 0) {
+                return (
+                  <p className='text-xs text-red-600 font-medium'>
+                    Select records for: <span className='font-mono'>{needsSelection.join(', ')}</span>
+                  </p>
+                );
+              }
+              return null;
+            })()}
             <button
               onClick={() => {
+                if (scopeMode === 'record') {
+                  const needsSelection = recordAddedObjs.filter(
+                    (obj) => !recordEmptyObjs.includes(obj) && !recordScope.some((r) => r.objectName === obj && r.recordIds.length > 0),
+                  );
+                  const hasEmpty = recordEmptyObjs.filter((obj) => recordAddedObjs.includes(obj));
+                  if (needsSelection.length > 0 || hasEmpty.length > 0) return;
+                }
                 const scope = buildScope();
                 const csvFiles = scopeMode === 'csv'
                   ? Object.fromEntries(csvScope.filter((c) => c.file).map((c) => [c.objectName, c.file!]))

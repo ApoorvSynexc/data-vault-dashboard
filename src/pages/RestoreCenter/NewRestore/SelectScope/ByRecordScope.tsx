@@ -18,9 +18,10 @@ interface Props {
   sourceObjectsLoading: boolean;
   sourceSelection: SourceSelection;
   onChange: (records: { objectName: string; recordIds: string[] }[]) => void;
+  onObjectsChange: (addedObjs: string[], emptyObjs: string[]) => void;
 }
 
-export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange }: Props) {
+export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange, onObjectsChange }: Props) {
   const restoreService = useRestoreService();
 
   const [objSearch,       setObjSearch]       = useState('');
@@ -32,6 +33,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
   const [modalObj,        setModalObj]        = useState<string | null>(null);
   const [draftSelected,   setDraftSelected]   = useState<Set<string>>(new Set());
   const [recordSearch,    setRecordSearch]    = useState('');
+  const [emptyObjs,       setEmptyObjs]       = useState<Set<string>>(new Set());
 
   const debouncedSearch = useDebounce(recordSearch, 500);
 
@@ -88,6 +90,20 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
       ...prev,
       [activeObj]: cursor ? [...(prev[activeObj] ?? []), ...records] : records,
     }));
+    if (!cursor && records.length === 0) {
+      setEmptyObjs((prev) => {
+        const next = new Set([...prev, activeObj]);
+        onObjectsChange(addedObjs, [...next]);
+        return next;
+      });
+    } else if (records.length > 0) {
+      setEmptyObjs((prev) => {
+        const next = new Set(prev);
+        next.delete(activeObj);
+        onObjectsChange(addedObjs, [...next]);
+        return next;
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchedData]);
 
@@ -98,7 +114,9 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
 
   const addObj = (name: string) => {
     if (!name || addedObjs.includes(name)) { setActiveObj(name); return; }
-    setAddedObjs((p) => [...p, name]);
+    const next = [...addedObjs, name];
+    setAddedObjs(next);
+    onObjectsChange(next, [...emptyObjs]);
     setActiveObj(name);
     setAllRecordsByObj((p) => ({ ...p, [name]: [] }));
     setSelectedByObj((p) => ({ ...p, [name]: new Set() }));
@@ -106,10 +124,15 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
   };
 
   const removeObj = (name: string) => {
-    setAddedObjs((p) => p.filter((o) => o !== name));
+    const next = addedObjs.filter((o) => o !== name);
+    setAddedObjs(next);
+    const nextEmpty = new Set(emptyObjs);
+    nextEmpty.delete(name);
+    setEmptyObjs(nextEmpty);
+    onObjectsChange(next, [...nextEmpty]);
     setAllRecordsByObj((p) => { const n = { ...p }; delete n[name]; return n; });
     setSelectedByObj((p) => { const n = { ...p }; delete n[name]; return n; });
-    setActiveObj((prev) => prev === name ? (addedObjs.find((o) => o !== name) ?? '') : prev);
+    setActiveObj((prev) => prev === name ? (next[0] ?? '') : prev);
     setCursor(undefined);
   };
 
@@ -148,7 +171,6 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
           className='w-4 h-4 accent-blue-600 cursor-pointer rounded' />
       ),
     },
-    { key: 'Name',             header: 'Record',        render: (row) => <span className='text-sm font-semibold text-gray-900'>{row.Name}</span> },
     { key: 'Id',               header: 'ID',            render: (row) => <span className='text-xs font-mono text-gray-500'>{row.Id}</span> },
     { key: 'LastModifiedDate', header: 'Last Modified', render: (row) => <span className='text-sm text-gray-500'>{new Date(row.LastModifiedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> },
   ];
@@ -193,18 +215,30 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
             {sourceObjectNames
               .filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()))
               .map((name) => {
-                const isTicked = addedObjs.includes(name);
-                const recCount = selectedByObj[name]?.size ?? 0;
+                const isTicked  = addedObjs.includes(name);
+                const recCount  = selectedByObj[name]?.size ?? 0;
+                const isEmpty   = emptyObjs.has(name);
                 return (
-                  <div key={name} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isTicked ? 'bg-blue-50/40' : 'bg-white hover:bg-gray-50'}`}>
+                  <div key={name} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isTicked ? (isEmpty ? 'bg-amber-50/60' : 'bg-blue-50/40') : 'bg-white hover:bg-gray-50'}`}>
                     <input type='checkbox' checked={isTicked}
                       onChange={() => isTicked ? removeObj(name) : addObj(name)}
                       className='w-4 h-4 accent-blue-600 cursor-pointer rounded flex-shrink-0' />
-                    <span className={`text-sm font-mono flex-1 min-w-0 truncate ${isTicked ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
-                    {isTicked && (
+                    <div className='flex-1 min-w-0'>
+                      <span className={`text-sm font-mono truncate block ${isTicked ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{name}</span>
+                      {isTicked && isEmpty && (
+                        <span className='text-[10px] text-amber-700 leading-tight'>No records available — uncheck to remove</span>
+                      )}
+                    </div>
+                    {isTicked && !isEmpty && (
                       <button onClick={() => openModal(name)}
                         className='flex-shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors border-blue-300 text-blue-600 hover:bg-blue-50'>
                         {recCount > 0 ? `${recCount} record${recCount !== 1 ? 's' : ''} ✎` : 'Select Records →'}
+                      </button>
+                    )}
+                    {isTicked && isEmpty && (
+                      <button onClick={() => removeObj(name)}
+                        className='flex-shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors border-amber-300 text-amber-700 hover:bg-amber-100'>
+                        Remove ✕
                       </button>
                     )}
                   </div>
@@ -268,8 +302,25 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
                   Loading {modalObj} records…
                 </div>
               ) : filteredRecords.length === 0 ? (
-                <div className='flex items-center justify-center py-12'>
-                  <p className='text-sm text-gray-400'>No records found.</p>
+                <div className='flex flex-col items-center justify-center py-12 px-6 gap-3 text-center'>
+                  {recordSearch ? (
+                    <p className='text-sm text-gray-400'>No records match your search.</p>
+                  ) : (
+                    <>
+                      <div className='w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0'>
+                        <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                          <path d='M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className='text-sm font-semibold text-gray-700'>No records available for <span className='font-mono'>{modalObj}</span></p>
+                        <p className='text-xs text-gray-500 mt-1 leading-relaxed'>This object has no records in the selected backup/archive. Close this dialog and <span className='font-semibold'>uncheck the object</span> to continue.</p>
+                      </div>
+                      <button onClick={() => { closeModal(); if (modalObj) removeObj(modalObj); }} className='mt-1 px-4 py-1.5 text-xs font-semibold rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors'>
+                        Close &amp; Remove Object
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <Table columns={recordColumns} rows={filteredRecords} getRowKey={(r) => r.Id}
