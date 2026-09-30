@@ -164,6 +164,14 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
             </span>
           )}
         </div>
+        <div className='px-4 py-2.5 border-b border-gray-100 flex items-start gap-2 bg-blue-50' style={{ borderBottom: '1px solid #BFDBFE' }}>
+          <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+            <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+          </svg>
+          <p className='text-[11px] text-blue-800 leading-relaxed'>
+            <span className='font-semibold'>Note:</span> Only records from <span className='font-semibold'>compressed jobs</span> are listed here. Records from jobs that have not yet completed compression are not yet queryable and will not appear — this does <span className='font-semibold'>not</span> affect your restore job.
+          </p>
+        </div>
         <div className='px-4 py-2.5 border-b border-gray-100 bg-gray-50'>
           <div className='relative max-w-xs'>
             <svg className='pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400' width='13' height='13' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
