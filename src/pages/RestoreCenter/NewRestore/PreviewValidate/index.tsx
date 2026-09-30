@@ -300,15 +300,15 @@ export default function PreviewValidate({ onNext, onBack, sourceSelection, resto
                 <p className='text-xs text-gray-500 leading-relaxed'>
                   Execute the full job pipeline without writing any data. Produces a complete preview report showing records to insert, update, and any conflicts.
                 </p>
-                <div className='flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5'>
-                  <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <div className='flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5'>
+                  <svg className='mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                     <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
                   </svg>
                   <div className='flex flex-col gap-1'>
-                    <p className='text-[11px] text-blue-800 leading-relaxed'>
+                    <p className='text-[11px] text-red-800 leading-relaxed'>
                       <span className='font-semibold'>Note:</span> Only records from <span className='font-semibold'>compressed jobs</span> are included in this count. Records from jobs that have not yet completed compression are not yet queryable and will not appear — this does <span className='font-semibold'>not</span> affect your actual restore job.
                     </p>
-                    <p className='text-[11px] text-blue-700 leading-relaxed'>
+                    <p className='text-[11px] text-red-700 leading-relaxed'>
                       Record counts shown here are <span className='font-semibold'>estimates</span> and may vary from the final restore — they are not guaranteed to be exact.
                     </p>
                   </div>
