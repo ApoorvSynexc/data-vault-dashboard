@@ -33,44 +33,6 @@ export async function validateUpdateProfile(values: UpdateProfileValues): Promis
   }
 }
 
-// ── Change password ───────────────────────────────────────────────────────────
-
-export interface ChangePasswordValues {
-  oldPassword: string;
-  newPassword: string;
-  confirmNewPassword: string;
-}
-
-type ChangePasswordErrors = Partial<Record<keyof ChangePasswordValues, string>>;
-
-export async function validateChangePassword(values: ChangePasswordValues): Promise<ChangePasswordErrors> {
-  const schema = yup.object({
-    oldPassword: yup.string().required('Current password is required'),
-    newPassword: yup
-      .string()
-      .required('New password is required')
-      .min(8, 'Password must be at least 8 characters'),
-    confirmNewPassword: yup
-      .string()
-      .required('Please confirm your new password')
-      .oneOf([yup.ref('newPassword')], 'Passwords do not match'),
-  });
-
-  try {
-    await schema.validate(values, { abortEarly: false });
-    return {};
-  } catch (error) {
-    const errors: ChangePasswordErrors = {};
-    if (error instanceof ValidationError) {
-      for (const issue of error.inner) {
-        const field = issue.path as keyof ChangePasswordValues;
-        if (field && !errors[field]) errors[field] = issue.message;
-      }
-    }
-    return errors;
-  }
-}
-
 // ── New email ─────────────────────────────────────────────────────────────────
 
 export async function validateEmail(email: string): Promise<string> {
