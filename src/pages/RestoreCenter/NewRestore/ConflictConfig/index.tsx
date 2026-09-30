@@ -105,6 +105,16 @@ const DEFAULT_MERGE_RULE_ENUM: Record<string, string> = {
 type FieldMapRow = { id: number; objectName: string; committedObjectName: string; destFieldBySource: Record<string, string> };
 interface DestField { name: string; label: string; type: string; }
 
+// Broad compatibility groups — numeric types and text types are interchangeable within their group
+function getCompatibleTypes(srcType: string): string[] {
+  const t = srcType.toLowerCase();
+  const numeric = ['double', 'int', 'integer', 'currency', 'percent', 'number', 'long'];
+  const textual  = ['string', 'textarea', 'email', 'phone', 'url', 'encryptedstring'];
+  if (numeric.includes(t)) return numeric;
+  if (textual.includes(t)) return textual;
+  return [t];
+}
+
 function InlineErrorState({ message }: { message: string }) {
   return (
     <div className='flex items-center gap-2 py-2'>
@@ -156,15 +166,38 @@ function MissingFieldsForObject({
         <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Source Field</span>
         <span className='text-[10px] font-bold text-gray-500 uppercase tracking-wide'>Destination Field</span>
       </div>
-      {missingFields.map((field) => (
-        <div key={field.apiName} className='grid grid-cols-[1fr_1fr] gap-2 items-center'>
-          <input value={field.apiName} disabled readOnly className='h-9 px-3 rounded-lg text-xs outline-none bg-gray-50 text-gray-500 font-mono cursor-not-allowed' style={{ border: '1px solid #E2E8F0' }} />
-          <select value={destFieldBySource[field.apiName] ?? ''} onChange={(e) => onDestFieldChange(field.apiName, e.target.value)} className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white' style={{ border: '1px solid #E2E8F0', color: '#33363F' }}>
-            <option value=''>Select a field…</option>
-            {destFieldList.map((df) => <option key={df.name} value={df.name}>{df.name} ({df.label})</option>)}
-          </select>
-        </div>
-      ))}
+      {missingFields.map((field) => {
+        const compatTypes = getCompatibleTypes(field.dataType);
+        const compatFields = destFieldList.filter((df) => compatTypes.includes(df.type.toLowerCase()));
+        const noMatch = destFieldList.length > 0 && compatFields.length === 0;
+        return (
+          <div key={field.apiName} className='flex flex-col gap-1'>
+            <div className='grid grid-cols-[1fr_1fr] gap-2 items-center'>
+              <div className='relative'>
+                <input value={field.apiName} disabled readOnly className='h-9 w-full pl-3 pr-2 rounded-lg text-xs outline-none bg-gray-50 text-gray-500 font-mono cursor-not-allowed' style={{ border: '1px solid #E2E8F0' }} />
+                {field.dataType && (
+                  <span className='absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 leading-none whitespace-nowrap'>
+                    {field.dataType}
+                  </span>
+                )}
+              </div>
+              <select
+                value={destFieldBySource[field.apiName] ?? ''}
+                onChange={(e) => onDestFieldChange(field.apiName, e.target.value)}
+                disabled={noMatch}
+                className='h-9 px-3 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500/30 bg-white disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed'
+                style={{ border: `1px solid ${noMatch ? '#FECACA' : '#E2E8F0'}`, color: noMatch ? '#9CA3AF' : '#33363F' }}
+              >
+                <option value=''>Select a field…</option>
+                {compatFields.map((df) => <option key={df.name} value={df.name}>{df.name} ({df.label})</option>)}
+              </select>
+            </div>
+            {noMatch && (
+              <p className='text-[10px] text-red-600 pl-1'>No destination fields match type <span className='font-mono font-semibold'>{field.dataType}</span> — cannot map this field.</p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
