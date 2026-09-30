@@ -145,7 +145,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const buildScope = (): RestoreScope => {
     switch (scopeMode) {
       case 'object':  return { type: 'OBJECT', objects: selectedObjects.map((o) => ({ id: o.id, name: o.name, type: o.type, ...(sourceSelection.configType === 'ARCHIVAL' && o.children ? { children: o.children } : {}) })) };
-      case 'record':  return { type: 'RECORD', records: recordScope.map(({ objectName, recordIds }) => ({ id: objectName, objectName, recordIds })) };
+      case 'record':  return { type: 'RECORD', records: recordScope.map(({ objectName, recordIds }) => ({ id: sourceObjects.find((o) => o.name === objectName)?.id ?? objectName, objectName, recordIds })) };
       case 'field':   return { type: 'FIELD',  fields:  fieldScope };
       case 'filter':  return { type: 'FILTER', filters: filterScope };
       case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope.map(({ objectName }) => ({ objectName, ids: [] })) };
