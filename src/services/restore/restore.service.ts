@@ -75,7 +75,7 @@ export interface RestoreMissingFieldInDestination {
 export interface MissingSourceField {
   apiName: string;
   label: string;
-  type: string;
+  dataType: string;
 }
 
 export interface FetchMissingFieldsResult {
