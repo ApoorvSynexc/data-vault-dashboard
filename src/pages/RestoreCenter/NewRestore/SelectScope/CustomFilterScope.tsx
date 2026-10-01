@@ -211,6 +211,8 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     setModalObj(null);
   };
 
+  const applyBlocked = filterTab === 'soql' && soqlWhere.trim().length > 0 && queryValidation?.valid !== true;
+
   const filteredObjs = sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()));
   const totalFiltered = addedObjs.filter(hasFilter).length;
 
@@ -305,7 +307,16 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
             {/* Tabs */}
             <div className='flex border-b border-gray-200 px-6 flex-shrink-0'>
               {(['visual', 'soql'] as FilterTab[]).map((t) => (
-                <button key={t} onClick={() => setFilterTab(t)}
+                <button key={t} onClick={() => {
+                  if (t === filterTab) return;
+                  if (t === 'visual') {
+                    setSoqlByObj((p) => ({ ...p, [modalObj!]: '' }));
+                    setQueryValidation(null);
+                  } else {
+                    setCfg(modalObj!, { rows: [], orGroups: [], filterLogic: '' });
+                  }
+                  setFilterTab(t);
+                }}
                   className={`pb-3 pt-2 px-4 text-sm font-semibold border-b-2 transition-colors ${filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                   {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
                 </button>
@@ -402,9 +413,11 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                       onClick={async () => {
                         setQueryValidating(true);
                         setQueryValidation(null);
+                        const obj = modalObj!;
                         try {
-                          const res = await restoreService.validateQuery(sourceSelection.backupConfigId, sourceSelection.configType, modalObj!, soqlWhere.trim());
-                          setQueryValidation((res as any)?.data ?? res);
+                          const res = await restoreService.validateQuery(sourceSelection.backupConfigId, sourceSelection.configType, obj, soqlWhere.trim());
+                          const result: { valid: boolean; message?: string } = (res as any)?.data ?? res;
+                          setQueryValidation(result);
                         } catch {
                           setQueryValidation({ valid: false, message: 'Request failed. Please try again.' });
                         } finally {
@@ -442,7 +455,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
               </button>
               <div className='flex items-center gap-3'>
                 <button onClick={closeModal} className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
-                <button onClick={applyModal} className='px-6 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors'>Apply Filter</button>
+                <button onClick={applyModal} disabled={applyBlocked} className='px-6 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>Apply Filter</button>
               </div>
             </div>
           </div>

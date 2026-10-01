@@ -135,10 +135,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
 
   // Each scope component reports its latest value here via onChange
   const [selectedObjects, setSelectedObjects]   = useState<{ id?: string; name: string; type: string; children?: RestoreSourceObject[] }[]>([]);
-  const [recordScope,     setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
-  const [recordAddedObjs, setRecordAddedObjs]   = useState<string[]>([]);
-  const [recordEmptyObjs, setRecordEmptyObjs]   = useState<string[]>([]);
-  const [fieldScope,      setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
+  const [recordScope,       setRecordScope]       = useState<{ objectName: string; recordIds: string[] }[]>([]);
+  const [recordAddedObjs,   setRecordAddedObjs]   = useState<string[]>([]);
+  const [recordEmptyObjs,   setRecordEmptyObjs]   = useState<string[]>([]);
+  const [fieldScope,        setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
   const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
 
