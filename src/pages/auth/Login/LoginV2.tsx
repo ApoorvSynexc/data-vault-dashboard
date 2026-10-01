@@ -203,7 +203,7 @@ export default function LoginV2() {
 
         {/* Footer */}
         <div className='text-center text-xs' style={{ color: '#64748B' }}>
-          <p>Privacy Ploicy | Terms &amp; Conditions | Support</p>
+          <p>Privacy Policy | Terms &amp; Conditions | Support</p>
           <p className='mt-1'>@ 2026 360 DataCraft</p>
         </div>
       </div>
