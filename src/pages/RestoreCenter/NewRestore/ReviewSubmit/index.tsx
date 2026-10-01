@@ -177,6 +177,50 @@ function AcknowledgementModal({ onConfirm, onCancel, jobName, destinationOrg, to
           </div>
         </div>
 
+        {/* Restore Setup Required */}
+        <div className='px-6 py-4 border-b border-gray-100'>
+          <div className='rounded-lg border border-blue-100 bg-blue-50 px-4 py-3.5 flex flex-col gap-3'>
+            <div>
+              <p className='text-xs font-bold text-blue-900'>Restore Setup Required</p>
+              <p className='text-[11px] text-blue-700 mt-0.5 leading-relaxed'>
+                To enable the restore process, DataVault needs to create the following Salesforce metadata in your org:
+              </p>
+            </div>
+
+            <div className='flex flex-col gap-2.5'>
+              <div>
+                <p className='text-[11px] font-semibold text-blue-900 mb-1'>Custom Fields</p>
+                <p className='text-[11px] text-blue-700 mb-1.5'>The following fields will be created on all required objects:</p>
+                <ul className='flex flex-col gap-0.5 pl-3'>
+                  {['DataVault External Id', 'DataVault Restore Job Id', 'DataVault Restore Job Name'].map((f) => (
+                    <li key={f} className='flex items-center gap-1.5 text-[11px] text-blue-800'>
+                      <span className='w-1 h-1 rounded-full bg-blue-400 flex-shrink-0' />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p className='text-[11px] font-semibold text-blue-900 mb-1'>Permission Set</p>
+                <ul className='flex flex-col gap-0.5 pl-3'>
+                  <li className='flex items-center gap-1.5 text-[11px] text-blue-800'>
+                    <span className='w-1 h-1 rounded-full bg-blue-400 flex-shrink-0' />
+                    DataVault Restore Permission Set
+                  </li>
+                </ul>
+                <p className='text-[11px] text-blue-600 mt-1 leading-relaxed'>
+                  The permission set will provide the required access to these newly created fields for the restore process.
+                </p>
+              </div>
+            </div>
+
+            <p className='text-[11px] text-blue-700 leading-relaxed border-t border-blue-200 pt-2.5'>
+              Since these are Salesforce metadata components, creating them requires a <span className='font-semibold'>metadata deployment</span> to your org.
+            </p>
+          </div>
+        </div>
+
         {/* Acknowledgement checkbox */}
         <div className='px-6 py-4 border-b border-gray-100'>
           <button

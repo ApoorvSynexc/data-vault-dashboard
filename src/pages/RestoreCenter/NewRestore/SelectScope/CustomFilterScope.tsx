@@ -176,7 +176,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
       const cfg = configByObj[obj] ?? { rows: [], orGroups: [], filterLogic: '' };
       const soql = soqlByObj[obj] ?? '';
       if (soql.trim()) {
-        return { objectName: obj, filter: { type: 'SOQL' as const, soqlQuery: `SELECT Id FROM ${obj} WHERE ${soql.trim()}` } };
+        return { objectName: obj, filter: { type: 'SOQL' as const, soqlQuery: soql.trim() } };
       }
       return { objectName: obj, filter: { type: 'AND' as const, fields: cfg.rows.map((r) => ({ name: r.field, dataType: r.dataType, operator: r.op, value: r.value })) } };
     });
