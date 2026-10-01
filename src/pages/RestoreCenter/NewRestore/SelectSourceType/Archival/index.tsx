@@ -115,7 +115,7 @@ export default function ArchivalPicker({ onConfigSelected, onSelectionChange, sh
   }, [search]);
 
   const queryFn = useCallback(
-    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, undefined, undefined, true, destinationId),
+    () => archivalService.getList(currentCursor ?? undefined, debouncedSearch || undefined, undefined, undefined, true, destinationId, true),
     [currentCursor, debouncedSearch, destinationId]
   );
 

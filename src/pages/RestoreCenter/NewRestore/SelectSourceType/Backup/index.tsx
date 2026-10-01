@@ -66,7 +66,7 @@ export default function BackupPicker({ onConfigSelected, onSelectionChange, show
   const apiSchedule = typeFilter === 'Realtime' ? 'REALTIME' : typeFilter === 'Schedule' ? 'SCHEDULE' : undefined;
 
   const backupQueryFn = useCallback(
-    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, apiSchedule, undefined, destinationId),
+    () => backupConfigService.listBackupConfigs(true, backupCurrentCursor ?? undefined, debouncedSearch || undefined, undefined, apiSchedule, undefined, destinationId, true),
     [backupCurrentCursor, debouncedSearch, apiSchedule, destinationId]
   );
 
