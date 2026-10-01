@@ -431,7 +431,7 @@ export default function DashboardV2() {
     if (activeTab === 'restore') return [
       { label: 'Successful Restores',  value: rstSuccessStatus,        color: 'text-green-600',                                                    dot: '#16A34A'                                    },
       { label: 'Pending Restores',     value: rstPendingStatus,        color: 'text-yellow-600',                                                   dot: '#F59E0B'                                    },
-      { label: 'Partial Failure',      value: rstPartialFailureStatus, color: rstPartialFailureStatus > 0 ? 'text-orange-600' : 'text-gray-400',   dot: rstPartialFailureStatus > 0 ? '#EA580C' : '#9CA3AF' },
+      { label: 'Partial Failed Restores',      value: rstPartialFailureStatus, color: rstPartialFailureStatus > 0 ? 'text-orange-600' : 'text-gray-400',   dot: rstPartialFailureStatus > 0 ? '#EA580C' : '#9CA3AF' },
       { label: 'Failed Restores',      value: rstFailedStatus,         color: rstFailedStatus > 0 ? 'text-red-600' : 'text-gray-400',              dot: rstFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
     ];
     if (activeTab === 'archive') return [
