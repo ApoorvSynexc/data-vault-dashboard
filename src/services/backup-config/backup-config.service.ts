@@ -182,7 +182,7 @@ export function useBackupConfigService() {
           ...(schedule ? { schedule } : {}),
           ...(backupStatus ? { backupStatus } : {}),
           ...(destinationId ? { destinationId } : {}),
-          ...(withoutLastBackupAt ? { withoutLastBackupAt: true } : {}),
+          ...(withoutLastBackupAt !== undefined ? { withoutLastBackupAt } : {}),
         },
       });
 

@@ -171,7 +171,7 @@ export function useArchivalService() {
           ...(status ? { status } : {}),
           ...(backupStatus ? { backupStatus } : {}),
           ...(destinationId ? { destinationId } : {}),
-          ...(withoutLastBackupAt ? { withoutLastBackupAt: true } : {}),
+          ...(withoutLastBackupAt !== undefined ? { withoutLastBackupAt } : {}),
         },
       }),
 
