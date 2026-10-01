@@ -156,7 +156,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
 
   const { data: jobsData, isLoading } = useQuery({
     queryKey: ['restore-jobs-list-home', search, activeChip, currentCursor],
-    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip, currentCursor),
+    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip.toUpperCase(), currentCursor),
   });
 
   const { data: statsData } = useQuery({
