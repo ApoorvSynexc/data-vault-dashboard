@@ -40,6 +40,29 @@ function buildPayloadTree(nodes: DepthChildNode[] = [], objects: BackupObject[])
   return result;
 }
 
+// Walks the depth-children tree recursively and collects, for each master-detail child,
+// any additional parent objects it points to (beyond the ancestors already in the chain).
+// These are objects the user must manually select for data integrity.
+function collectChildExtraParents(
+  nodes: DepthChildNode[],
+  pathAncestors: Set<string>,
+): { childName: string; parents: string[] }[] {
+  const result: { childName: string; parents: string[] }[] = [];
+  for (const node of nodes) {
+    if (node.cascadeDelete !== true && node.restrictedDelete !== true) continue;
+    const nodeParents = (node as any).parent as { referenceTo?: string[] }[] | undefined;
+    const extraParents = (nodeParents ?? [])
+      .flatMap((p) => p.referenceTo ?? [])
+      .filter((ref) => !pathAncestors.has(ref) && ref !== node.name);
+    const unique = [...new Set(extraParents)];
+    if (unique.length > 0) result.push({ childName: node.name, parents: unique });
+    if (node.children?.length) {
+      result.push(...collectChildExtraParents(node.children, new Set([...pathAncestors, node.name])));
+    }
+  }
+  return result;
+}
+
 // Flattens a payload tree into uuids/labels (for locking rows and the toast message)
 function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
   const uuids: string[] = [];
@@ -154,6 +177,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
   // Parent-required notice (junction object parents that must be manually selected)
   const [parentNotice, setParentNotice] = useState<{ objectName: string; parents: string[] } | null>(null);
+  // Notice when an auto-selected child itself has additional master-detail parents the user should add
+  const [childParentNotice, setChildParentNotice] = useState<{ objectName: string; items: { childName: string; parents: string[] }[] } | null>(null);
 
   // Selected-objects panel
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
@@ -219,10 +244,19 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       setSelectedObjects((prev) => new Set([...prev, ...childUuids]));
     }
 
+    // Collect extra parents of auto-selected children (at all depths)
+    const childExtraParents = collectChildExtraParents(rawChildren, new Set([lastSelectedSfName]));
+
     if (childLabels.length > 0) {
       setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: Array.from(new Set(childLabels)) });
       const t = setTimeout(() => setToast(null), 6000);
-      if (junctionParentApiNames.length === 0) return () => clearTimeout(t);
+      if (junctionParentApiNames.length === 0 && childExtraParents.length === 0) return () => clearTimeout(t);
+    }
+
+    if (childExtraParents.length > 0) {
+      setChildParentNotice({ objectName: parentObj?.name ?? lastSelectedSfName, items: childExtraParents });
+      const t3 = setTimeout(() => setChildParentNotice(null), 12000);
+      if (junctionParentApiNames.length === 0) return () => clearTimeout(t3);
     }
 
     if (junctionParentApiNames.length > 0) {
@@ -384,6 +418,48 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
             </button>
           </div>
           <div className='h-0.5 bg-amber-500' style={{ animation: 'shrink 8s linear forwards' }} />
+        </div>
+      )}
+
+      {/* Child-parent notice — auto-selected children that have additional master-detail parents */}
+      {childParentNotice && (
+        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ marginTop: parentNotice ? '10rem' : '5rem', border: '1px solid rgba(220,38,38,0.2)' }}>
+          <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
+            <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(220,38,38,0.08)' }}>
+              <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/>
+                <line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/>
+              </svg>
+            </div>
+            <div className='flex-1 min-w-0'>
+              <p className='text-sm font-semibold text-gray-900'>Additional parent objects detected</p>
+              <p className='text-xs text-gray-500 mt-0.5 mb-2 leading-relaxed'>
+                Some child objects auto-selected with <span className='font-medium text-gray-700'>{childParentNotice.objectName}</span> have additional Master-Detail parents.
+                {' '}Please add them manually for data integrity.
+              </p>
+              <div className='flex flex-col gap-1'>
+                {childParentNotice.items.map(({ childName, parents }) => (
+                  <div key={childName} className='flex items-start gap-1.5 rounded-lg px-2.5 py-1.5' style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.1)' }}>
+                    <svg className='flex-shrink-0 mt-0.5' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                      <polyline points='18 15 12 9 6 15'/>
+                    </svg>
+                    <p className='text-xs leading-relaxed'>
+                      <span className='font-semibold text-gray-800'>{childName}</span>
+                      <span className='text-gray-500'> also has a Master-Detail parent: </span>
+                      <span className='font-semibold text-red-700'>{parents.join(', ')}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => setChildParentNotice(null)} className='flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mt-0.5'>
+              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
+              </svg>
+            </button>
+          </div>
+          <div className='h-0.5 bg-red-500' style={{ animation: 'shrink 12s linear forwards' }} />
         </div>
       )}
 
