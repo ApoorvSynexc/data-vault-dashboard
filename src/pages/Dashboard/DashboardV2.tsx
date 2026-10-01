@@ -238,13 +238,16 @@ export default function DashboardV2() {
   const archJobResolved     = archJobTotalSuccess + archJobTotalFailed;
   const archRate = archJobResolved > 0 ? ((archJobTotalSuccess / archJobResolved) * 100).toFixed(1) : '100.0';
 
-  // Restore KPIs: { totalRecords, totalSize, successStatus, failedStatus, pendingStatus }
+  // Restore KPIs: { totalRecords, totalSize, successStatus, failedStatus, pendingStatus, partialFailureStatus }
   const rstTotalRecords = overview?.totalRecords ?? 0;
-  const rstStorageUsed = typeof overview?.totalSize === 'number' ? formatBytes(overview.totalSize) : '--';
+  const rstRecordsSize = typeof overview?.totalSize === 'number' ? formatBytes(overview.totalSize) : '--';
   const rstSuccessStatus = overview?.successStatus ?? 0;
   const rstFailedStatus = overview?.failedStatus ?? 0;
   const rstPendingStatus = overview?.pendingStatus ?? 0;
-  const rstResolvedStatus = rstSuccessStatus + rstFailedStatus;
+  const rstPartialFailureStatus = overview?.partialFailureStatus ?? 0;
+  // Partial failure counts as failed for health score calculation
+  const rstFailedTotal = rstFailedStatus + rstPartialFailureStatus;
+  const rstResolvedStatus = rstSuccessStatus + rstFailedTotal;
   const rstRate = rstResolvedStatus > 0 ? ((rstSuccessStatus / rstResolvedStatus) * 100).toFixed(1) : '100.0';
 
   // ── tab config ─────────────────────────────────────────────────────────────
@@ -380,7 +383,7 @@ export default function DashboardV2() {
       { icon: RecordsIcon, label: 'Total Records', value: String(rstTotalRecords) },
       { icon: RateIcon, label: 'Success Rate', value: `${rstRate}%` },
       { icon: ActiveIcon, label: 'Pending', value: String(rstPendingStatus) },
-      { icon: StorageIcon, label: 'Storage Used', value: rstStorageUsed },
+      { icon: StorageIcon, label: 'Restored Records Size', value: rstRecordsSize },
     ];
     // fallback (backup)
     return [
@@ -426,9 +429,10 @@ export default function DashboardV2() {
 
   const healthDots: { label: string; value: number; color: string; dot: string }[] = (() => {
     if (activeTab === 'restore') return [
-      { label: 'Successful Restores', value: rstSuccessStatus, color: 'text-green-600', dot: '#16A34A' },
-      { label: 'Pending Restores', value: rstPendingStatus, color: 'text-yellow-600', dot: '#F59E0B' },
-      { label: 'Failed Restores', value: rstFailedStatus, color: rstFailedStatus > 0 ? 'text-red-600' : 'text-gray-400', dot: rstFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
+      { label: 'Successful Restores',  value: rstSuccessStatus,        color: 'text-green-600',                                                    dot: '#16A34A'                                    },
+      { label: 'Pending Restores',     value: rstPendingStatus,        color: 'text-yellow-600',                                                   dot: '#F59E0B'                                    },
+      { label: 'Partial Failure',      value: rstPartialFailureStatus, color: rstPartialFailureStatus > 0 ? 'text-orange-600' : 'text-gray-400',   dot: rstPartialFailureStatus > 0 ? '#EA580C' : '#9CA3AF' },
+      { label: 'Failed Restores',      value: rstFailedStatus,         color: rstFailedStatus > 0 ? 'text-red-600' : 'text-gray-400',              dot: rstFailedStatus > 0 ? '#DC2626' : '#9CA3AF' },
     ];
     if (activeTab === 'archive') return [
       { label: 'Active Archive Configs', value: archActiveConfigs, color: 'text-blue-600', dot: '#3B82F6' },
@@ -670,24 +674,26 @@ export default function DashboardV2() {
             </div>
           </section>
 
-          {/* Summary */}
-          <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3 flex-1 flex flex-col min-h-0 overflow-hidden'>
-            <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2 flex-shrink-0'>
-              {TABS.find((t) => t.id === activeTab)?.label ?? activeTab} Jobs Summary
-            </Typography>
-            <div className='flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto'>
-              {summaryRows.map(({ label, value, color, bg }) => (
-                <div key={label} className='flex items-center justify-between flex-shrink-0'>
-                  <span className='text-xs text-gray-500'>{label}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color} ${bg}`}>{value}</span>
+          {/* Summary — not shown for restore (no job-level breakdown) */}
+          {activeTab !== 'restore' && (
+            <section className='rounded-xl border border-gray-200 bg-white shadow-sm px-4 py-3 flex-1 flex flex-col min-h-0 overflow-hidden'>
+              <Typography as='h3' variant='sectionTitle' color='secondary' className='mb-2 flex-shrink-0'>
+                {TABS.find((t) => t.id === activeTab)?.label ?? activeTab} Jobs Summary
+              </Typography>
+              <div className='flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto'>
+                {summaryRows.map(({ label, value, color, bg }) => (
+                  <div key={label} className='flex items-center justify-between flex-shrink-0'>
+                    <span className='text-xs text-gray-500'>{label}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color} ${bg}`}>{value}</span>
+                  </div>
+                ))}
+                <div className='border-t border-gray-100 pt-1.5 mt-0.5 flex items-center justify-between flex-shrink-0'>
+                  <span className='text-xs text-gray-500'>Success Rate</span>
+                  <span className='text-sm font-bold text-gray-800'>{rateLabel}</span>
                 </div>
-              ))}
-              <div className='border-t border-gray-100 pt-1.5 mt-0.5 flex items-center justify-between flex-shrink-0'>
-                <span className='text-xs text-gray-500'>Success Rate</span>
-                <span className='text-sm font-bold text-gray-800'>{rateLabel}</span>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
 
         </div>
       </div>
