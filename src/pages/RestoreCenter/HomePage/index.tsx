@@ -225,11 +225,6 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
       render: (row) => <span className='text-gray-600'>{row.destination}</span>,
     },
     {
-      key: 'records',
-      header: 'Records',
-      render: (row) => <span className='tabular-nums text-gray-700'>{row.records}</span>,
-    },
-    {
       key: 'status',
       header: 'Status',
       render: (row) => {
@@ -370,6 +365,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
             cellPaddingClassName='px-5 py-3'
             paginationClassName='px-5 py-2'
             emptyState='No restores yet.'
+            showSerialNumber
             serialNumberStart={(currentPage - 1) * pageSize + 1}
             paginationConfig={{
               type: 'cursor',
