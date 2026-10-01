@@ -420,7 +420,7 @@ export function useRestoreService() {
           pagination: true,
           limit: 25,
           ...(search && { search }),
-          ...(status && status !== 'All' && { status }),
+          ...(status && status !== 'All' && status !== 'ALL' && { status }),
           ...(cursor && { cursor }),
         },
       }),
