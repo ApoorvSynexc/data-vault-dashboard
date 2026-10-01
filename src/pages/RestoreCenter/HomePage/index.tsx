@@ -123,16 +123,23 @@ function SourceBadge({ type }: { type: 'Backup' | 'Archive' }) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  DONE:        { label: '✓ Done',        cls: 'bg-green-100 text-green-700' },
-  FAILED:      { label: '✗ Failed',      cls: 'bg-red-100 text-red-700' },
-  PENDING:     { label: '⏳ Pending',    cls: 'bg-blue-100 text-blue-700' },
+  SUCCESS:         { label: '✓ Success',         cls: 'bg-green-100 text-green-700'   },
+  PENDING:         { label: '⏳ Pending',         cls: 'bg-blue-100 text-blue-700'     },
+  PARTIAL_FAILURE: { label: '⚠ Partial Failure', cls: 'bg-orange-100 text-orange-700' },
+  FAILED:          { label: '✗ Failed',           cls: 'bg-red-100 text-red-700'       },
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type FilterChip = 'All' | 'Success' | 'Failed' | 'Pending';
+type FilterChip = 'All' | 'SUCCESS' | 'FAILED' | 'PENDING' | 'PARTIAL_FAILURE';
 
-const CHIPS: FilterChip[] = ['All', 'Pending', 'Success', 'Failed'];
+const CHIPS: { value: FilterChip; label: string }[] = [
+  { value: 'All',                        label: 'All'                },
+  { value: 'PENDING',                    label: 'Pending'            },
+  { value: 'SUCCESS',                    label: 'Success'            },
+  { value: 'PARTIAL_FAILURE',            label: 'Partial Failure'    },
+  { value: 'FAILED',                     label: 'Failed'             },
+];
   
 type RestoreRow = {
   id: string;
@@ -156,7 +163,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
 
   const { data: jobsData, isLoading } = useQuery({
     queryKey: ['restore-jobs-list-home', search, activeChip, currentCursor],
-    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip.toUpperCase(), currentCursor),
+    queryFn: () => restoreService.listRestoreJobs(search || undefined, activeChip, currentCursor),
   });
 
   const { data: statsData } = useQuery({
@@ -347,7 +354,7 @@ export default function RestoreCenterHomePage({ onNewRestore, onViewHistory }: P
               <Dropdown
                 label='Status'
                 value={activeChip}
-                options={CHIPS.map((chip) => ({ value: chip, label: chip }))}
+                options={CHIPS.map((chip) => ({ value: chip.value, label: chip.label }))}
                 onChange={(value) => { setActiveChip(value as FilterChip); setCurrentCursor(null); setCursorHistory([null]); setCurrentPage(1); }}
               />
             </div>
