@@ -6,7 +6,7 @@ import ProgressBar from '../ProgressBar';
 import { parseSalesforceError } from '../../../../utils';
 import AddDetailsWizard from './AddDetailsWizard';
 import type { ObjectConfig } from './AddDetailsWizard';
-import type { MdWarning } from './ChildHierarchyPanel';
+import type { MdWarning, Tier1Notice, ChildExtraParentsNotice } from './ChildHierarchyPanel';
 import type { ArchivalCondition, BuiltChildNode, ScheduleConfig } from './types';
 
 export type { ArchivalCondition };
@@ -113,6 +113,24 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
   // Wizard target — which object "Add Details" was clicked on
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
+
+  // Master-detail parent notices (survive modal close)
+  const [tier1Notice, setTier1Notice] = useState<Tier1Notice | null>(null);
+  const [childExtraParentsNotice, setChildExtraParentsNotice] = useState<ChildExtraParentsNotice | null>(null);
+  const tier1TimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const childTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTier1Notice = (notice: Tier1Notice | null) => {
+    if (tier1TimerRef.current) clearTimeout(tier1TimerRef.current);
+    setTier1Notice(notice);
+    if (notice) tier1TimerRef.current = setTimeout(() => setTier1Notice(null), 15000);
+  };
+
+  const handleChildExtraParentsNotice = (notice: ChildExtraParentsNotice | null) => {
+    if (childTimerRef.current) clearTimeout(childTimerRef.current);
+    setChildExtraParentsNotice(notice);
+    if (notice) childTimerRef.current = setTimeout(() => setChildExtraParentsNotice(null), 20000);
+  };
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -290,6 +308,8 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
             setWizardTarget(null);
           }}
           onClose={() => setWizardTarget(null)}
+          onTier1Notice={handleTier1Notice}
+          onChildExtraParentsNotice={handleChildExtraParentsNotice}
           onMasterDetailWarnings={(warnings) => {
             const id = wizardTarget.objectId;
             setObjectConfigs((prev) => {
@@ -704,6 +724,85 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
           </div>
         </div>
       </div>
+
+      {/* Master-detail parent toasts — persist after modal closes */}
+      <style>{`@keyframes archiveMdShrink { from { width: 100%; } to { width: 0%; } }`}</style>
+
+      {tier1Notice && (
+        <div
+          className='fixed left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ top: '5rem', border: '1px solid rgba(217,119,6,0.25)' }}
+        >
+          <div className='bg-amber-50 px-5 pt-4 pb-3'>
+            <div className='flex items-start gap-3'>
+              <div className='mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100'>
+                <svg className='h-4 w-4 text-amber-600' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
+                </svg>
+              </div>
+              <div className='flex-1 min-w-0'>
+                <p className='text-sm font-semibold text-amber-900 mb-1'>Master-Detail Parent Detected</p>
+                <p className='text-xs text-amber-800 leading-relaxed'>
+                  <span className='font-semibold'>{tier1Notice.objectName}</span> has master-detail parent relationship
+                  {tier1Notice.parents.length > 1 ? 's' : ''} with{' '}
+                  {tier1Notice.parents.map((p, i) => (
+                    <span key={p}>
+                      <span className='font-semibold'>{p}</span>
+                      {i < tier1Notice.parents.length - 1 ? ', ' : ''}
+                    </span>
+                  ))}. Consider manually selecting {tier1Notice.parents.length > 1 ? 'these objects' : 'this object'} to maintain data integrity.
+                </p>
+              </div>
+              <button onClick={() => setTier1Notice(null)} className='ml-1 shrink-0 text-amber-400 hover:text-amber-600 transition-colors'>
+                <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className='h-0.5 bg-amber-400' style={{ animation: 'archiveMdShrink 15s linear forwards' }} />
+        </div>
+      )}
+
+      {childExtraParentsNotice && (
+        <div
+          className='fixed left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ top: tier1Notice ? '15rem' : '5rem', border: '1px solid rgba(220,38,38,0.2)' }}
+        >
+          <div className='bg-red-50 px-5 pt-4 pb-3'>
+            <div className='flex items-start gap-3'>
+              <div className='mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100'>
+                <svg className='h-4 w-4 text-red-600' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
+                </svg>
+              </div>
+              <div className='flex-1 min-w-0'>
+                <p className='text-sm font-semibold text-red-900 mb-2'>Additional Parent Objects Detected</p>
+                <div className='space-y-1'>
+                  {childExtraParentsNotice.items.map((item) => (
+                    <p key={item.childName} className='text-xs text-red-800 leading-relaxed'>
+                      <span className='font-semibold'>{item.childName}</span> has additional master-detail parent
+                      {item.parents.length > 1 ? 's' : ''}:{' '}
+                      {item.parents.map((p, i) => (
+                        <span key={p}>
+                          <span className='font-semibold'>{p}</span>
+                          {i < item.parents.length - 1 ? ', ' : ''}
+                        </span>
+                      ))}. Select {item.parents.length > 1 ? 'these objects' : 'this object'} manually for complete data integrity.
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => setChildExtraParentsNotice(null)} className='ml-1 shrink-0 text-red-400 hover:text-red-600 transition-colors'>
+                <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className='h-0.5 bg-red-500' style={{ animation: 'archiveMdShrink 20s linear forwards' }} />
+        </div>
+      )}
     </>
   );
 }
