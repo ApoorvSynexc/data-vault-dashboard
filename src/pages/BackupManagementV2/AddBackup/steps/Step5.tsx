@@ -179,6 +179,10 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [parentNotice, setParentNotice] = useState<{ objectName: string; parents: string[] } | null>(null);
   // Notice when an auto-selected child itself has additional master-detail parents the user should add
   const [childParentNotice, setChildParentNotice] = useState<{ objectName: string; items: { childName: string; parents: string[] }[] } | null>(null);
+  // Stable timer refs — cleared before each new selection so stale timers never clear fresh notices
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parentNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const childParentNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Selected-objects panel
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
@@ -233,6 +237,14 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
       new Set((d.parent ?? []).flatMap((p) => p.referenceTo ?? []))
     ).filter((name) => name !== lastSelectedSfName);
 
+    // Clear all previous timers and notices before processing new selection
+    if (toastTimerRef.current) { clearTimeout(toastTimerRef.current); toastTimerRef.current = null; }
+    if (parentNoticeTimerRef.current) { clearTimeout(parentNoticeTimerRef.current); parentNoticeTimerRef.current = null; }
+    if (childParentNoticeTimerRef.current) { clearTimeout(childParentNoticeTimerRef.current); childParentNoticeTimerRef.current = null; }
+    setToast(null);
+    setParentNotice(null);
+    setChildParentNotice(null);
+
     if (payloadTree.length === 0 && junctionParentApiNames.length === 0) return;
 
     const parentObj = displayObjects.find((o) => o.id === lastSelectedSfName);
@@ -247,22 +259,21 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     // Collect extra parents of auto-selected children (at all depths)
     const childExtraParents = collectChildExtraParents(rawChildren, new Set([lastSelectedSfName]));
 
+    const objectName = parentObj?.name ?? lastSelectedSfName;
+
     if (childLabels.length > 0) {
-      setToast({ objectName: parentObj?.name ?? lastSelectedSfName, children: Array.from(new Set(childLabels)) });
-      const t = setTimeout(() => setToast(null), 6000);
-      if (junctionParentApiNames.length === 0 && childExtraParents.length === 0) return () => clearTimeout(t);
+      setToast({ objectName, children: Array.from(new Set(childLabels)) });
+      toastTimerRef.current = setTimeout(() => setToast(null), 6000);
     }
 
     if (childExtraParents.length > 0) {
-      setChildParentNotice({ objectName: parentObj?.name ?? lastSelectedSfName, items: childExtraParents });
-      const t3 = setTimeout(() => setChildParentNotice(null), 12000);
-      if (junctionParentApiNames.length === 0) return () => clearTimeout(t3);
+      setChildParentNotice({ objectName, items: childExtraParents });
+      childParentNoticeTimerRef.current = setTimeout(() => setChildParentNotice(null), 12000);
     }
 
     if (junctionParentApiNames.length > 0) {
-      setParentNotice({ objectName: parentObj?.name ?? lastSelectedSfName, parents: junctionParentApiNames });
-      const t2 = setTimeout(() => setParentNotice(null), 8000);
-      return () => clearTimeout(t2);
+      setParentNotice({ objectName, parents: junctionParentApiNames });
+      parentNoticeTimerRef.current = setTimeout(() => setParentNotice(null), 8000);
     }
   }, [depthChildrenData, lastSelectedSfName]);
 
