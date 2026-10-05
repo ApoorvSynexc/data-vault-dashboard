@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useArchivalService } from '../../../../services/archival/archival.service';
 import { useCrmMetadataService } from '../../../../services/crm-metadata/crm-metadata.service';
-import { ChildHierarchyPanel, type MdWarning } from './ChildHierarchyPanel';
+import { ChildHierarchyPanel, type MdWarning, type Tier1Notice, type ChildExtraParentsNotice } from './ChildHierarchyPanel';
 import type { ArchivalCondition, BuiltChildNode, FilterCondition, ScheduleConfig } from './types';
 import { TIMEZONES, getDefaultTimezone } from '../../../../utils/timezones';
 import dayjs from 'dayjs';
@@ -32,6 +32,8 @@ interface AddDetailsWizardProps {
   onSave: (config: ObjectConfig) => void;
   onClose: () => void;
   onMasterDetailWarnings?: (warnings: MdWarning[]) => void;
+  onTier1Notice?: (notice: Tier1Notice | null) => void;
+  onChildExtraParentsNotice?: (notice: ChildExtraParentsNotice | null) => void;
 }
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -274,6 +276,7 @@ function FieldDropdown({ value, options, onChange }: {
 export default function AddDetailsWizard({
   objectName, objectLabel, recordCount, crmId,
   isParent = true, initialConfig, onSave, onClose, onMasterDetailWarnings,
+  onTier1Notice, onChildExtraParentsNotice,
 }: AddDetailsWizardProps) {
   const archivalService = useArchivalService();
   const crmMetadataService = useCrmMetadataService();
@@ -873,6 +876,8 @@ export default function AddDetailsWizard({
               onSelectionChange={setBuiltChildren}
               onLoadingChange={setChildPanelLoading}
               onMasterDetailWarnings={onMasterDetailWarnings}
+              onTier1Notice={onTier1Notice}
+              onChildExtraParentsNotice={onChildExtraParentsNotice}
               isVisible={step === 2}
             />
           </div>

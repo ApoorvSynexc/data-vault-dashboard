@@ -478,12 +478,17 @@ function collectChildExtraParents(
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
+export type Tier1Notice = { objectName: string; parents: string[] };
+export type ChildExtraParentsNotice = { objectName: string; items: { childName: string; parents: string[] }[] };
+
 interface ChildHierarchyPanelProps {
   objectName: string;
   initialBuiltChildren?: BuiltChildNode[];
   onSelectionChange: (children: BuiltChildNode[]) => void;
   onLoadingChange?: (loading: boolean) => void;
   onMasterDetailWarnings?: (warnings: MdWarning[]) => void;
+  onTier1Notice?: (notice: Tier1Notice | null) => void;
+  onChildExtraParentsNotice?: (notice: ChildExtraParentsNotice | null) => void;
   isVisible?: boolean;
 }
 
@@ -495,6 +500,8 @@ export function ChildHierarchyPanel({
   onSelectionChange,
   onLoadingChange,
   onMasterDetailWarnings,
+  onTier1Notice,
+  onChildExtraParentsNotice,
   isVisible = true,
 }: ChildHierarchyPanelProps) {
   const [treeMap, setTreeMap] = useState<Map<string, TNode>>(new Map());
@@ -502,8 +509,6 @@ export function ChildHierarchyPanel({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [tier1Notice, setTier1Notice] = useState<{ objectName: string; parents: string[] } | null>(null);
-  const [childExtraParentsNotice, setChildExtraParentsNotice] = useState<{ objectName: string; items: { childName: string; parents: string[] }[] } | null>(null);
 
   // Prevents emitting onSelectionChange during initial load/restoration
   const isReadyRef = useRef(false);
@@ -512,8 +517,10 @@ export function ChildHierarchyPanel({
   onSelectionChangeRef.current = onSelectionChange;
   const onMdWarningsRef = useRef(onMasterDetailWarnings);
   onMdWarningsRef.current = onMasterDetailWarnings;
-  const tier1TimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const childTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onTier1NoticeRef = useRef(onTier1Notice);
+  onTier1NoticeRef.current = onTier1Notice;
+  const onChildExtraParentsNoticeRef = useRef(onChildExtraParentsNotice);
+  onChildExtraParentsNoticeRef.current = onChildExtraParentsNotice;
 
   const crmService = useCrmMetadataService();
 
@@ -579,23 +586,13 @@ export function ChildHierarchyPanel({
           .filter((p) => p.cascadeDelete && !(p.referenceTo ?? []).includes(objectName))
           .flatMap((p) => p.referenceTo ?? []);
         const tier1Unique = [...new Set(tier1Parents)];
-        if (tier1TimerRef.current) clearTimeout(tier1TimerRef.current);
-        if (tier1Unique.length > 0) {
-          setTier1Notice({ objectName, parents: tier1Unique });
-          tier1TimerRef.current = setTimeout(() => setTier1Notice(null), 8000);
-        } else {
-          setTier1Notice(null);
-        }
+        onTier1NoticeRef.current?.(tier1Unique.length > 0 ? { objectName, parents: tier1Unique } : null);
 
         // Tier 2+ — extra master-detail parents of auto-selected children
         const childExtraParents = collectChildExtraParents(children, new Set([objectName]));
-        if (childTimerRef.current) clearTimeout(childTimerRef.current);
-        if (childExtraParents.length > 0) {
-          setChildExtraParentsNotice({ objectName, items: childExtraParents });
-          childTimerRef.current = setTimeout(() => setChildExtraParentsNotice(null), 12000);
-        } else {
-          setChildExtraParentsNotice(null);
-        }
+        onChildExtraParentsNoticeRef.current?.(
+          childExtraParents.length > 0 ? { objectName, items: childExtraParents } : null,
+        );
 
         // Auto-select MasterDetail and RequiredLookup nodes
         const mdIds = map.get(objectName)!.childIds.flatMap((cid) => collectAutoIds(cid, map));
@@ -623,12 +620,7 @@ export function ChildHierarchyPanel({
       }
     }, 0);
 
-    return () => {
-      cancelled = true;
-      clearTimeout(startTimer);
-      if (tier1TimerRef.current) { clearTimeout(tier1TimerRef.current); tier1TimerRef.current = null; }
-      if (childTimerRef.current) { clearTimeout(childTimerRef.current); childTimerRef.current = null; }
-    };
+    return () => { cancelled = true; clearTimeout(startTimer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectName]);
 
@@ -687,86 +679,8 @@ export function ChildHierarchyPanel({
             isVisible={isVisible}
           />
         </ReactFlowProvider>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-
-      {/* Tier 1 toast — master-detail parents of the selected object */}
-      {tier1Notice && (
-        <div
-          className='fixed left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
-          style={{ top: '6rem', border: '1px solid rgba(217,119,6,0.25)' }}
-        >
-          <div className='bg-amber-50 px-5 pt-4 pb-3'>
-            <div className='flex items-start gap-3'>
-              <div className='mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100'>
-                <svg className='h-4 w-4 text-amber-600' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z' />
-                </svg>
-              </div>
-              <div className='flex-1 min-w-0'>
-                <p className='text-sm font-semibold text-amber-900 mb-1'>Master-Detail Parent Detected</p>
-                <p className='text-xs text-amber-800 leading-relaxed'>
-                  <span className='font-semibold'>{tier1Notice.objectName}</span> has master-detail parent relationship
-                  {tier1Notice.parents.length > 1 ? 's' : ''} with{' '}
-                  {tier1Notice.parents.map((p, i) => (
-                    <span key={p}>
-                      <span className='font-semibold'>{p}</span>
-                      {i < tier1Notice.parents.length - 1 ? ', ' : ''}
-                    </span>
-                  ))}. Consider manually selecting {tier1Notice.parents.length > 1 ? 'these objects' : 'this object'} to maintain data integrity.
-                </p>
-              </div>
-              <button onClick={() => setTier1Notice(null)} className='ml-1 shrink-0 text-amber-400 hover:text-amber-600 transition-colors'>
-                <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className='h-0.5 bg-amber-400' style={{ animation: 'shrink 8s linear forwards' }} />
-        </div>
-      )}
-
-      {/* Tier 2+ toast — extra parents of auto-selected children */}
-      {childExtraParentsNotice && (
-        <div
-          className='fixed left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
-          style={{ top: tier1Notice ? '16rem' : '6rem', border: '1px solid rgba(220,38,38,0.2)' }}
-        >
-          <div className='bg-red-50 px-5 pt-4 pb-3'>
-            <div className='flex items-start gap-3'>
-              <div className='mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100'>
-                <svg className='h-4 w-4 text-red-600' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
-                </svg>
-              </div>
-              <div className='flex-1 min-w-0'>
-                <p className='text-sm font-semibold text-red-900 mb-2'>Additional Parent Objects Detected</p>
-                <div className='space-y-1'>
-                  {childExtraParentsNotice.items.map((item) => (
-                    <p key={item.childName} className='text-xs text-red-800 leading-relaxed'>
-                      <span className='font-semibold'>{item.childName}</span> has additional master-detail parent
-                      {item.parents.length > 1 ? 's' : ''}:{' '}
-                      {item.parents.map((p, i) => (
-                        <span key={p}>
-                          <span className='font-semibold'>{p}</span>
-                          {i < item.parents.length - 1 ? ', ' : ''}
-                        </span>
-                      ))}. Select {item.parents.length > 1 ? 'these objects' : 'this object'} manually for complete data integrity.
-                    </p>
-                  ))}
-                </div>
-              </div>
-              <button onClick={() => setChildExtraParentsNotice(null)} className='ml-1 shrink-0 text-red-400 hover:text-red-600 transition-colors'>
-                <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className='h-0.5 bg-red-500' style={{ animation: 'shrink 12s linear forwards' }} />
-        </div>
-      )}
     </>
   );
 }
