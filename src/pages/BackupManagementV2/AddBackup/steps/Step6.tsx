@@ -444,7 +444,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
         {frequency === 'Weekly' && (
           <div className='space-y-6'>
             <div>
-              <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Days</label>
+              <label className='block text-sm font-semibold text-gray-900 mb-1'>Select Days</label>
+              <p className='text-xs text-gray-500 mb-3'>The job runs on every selected day each week. To run daily, select all 7 days.</p>
               <div className='flex gap-2 flex-wrap'>
                 {days.map((day) => (
                   <button
@@ -495,7 +496,8 @@ export default function Step6({ onNext, onBack, initialScheduleConfig, onDone, h
         {frequency === 'Monthly' && (
           <div className='space-y-6'>
             <div>
-              <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Months</label>
+              <label className='block text-sm font-semibold text-gray-900 mb-1'>Select Months</label>
+              <p className='text-xs text-gray-500 mb-3'>The job runs only in the months you select. To run every month, select all 12 months.</p>
               <div className='flex gap-2 flex-wrap'>
                 {months.map((month) => (
                   <button

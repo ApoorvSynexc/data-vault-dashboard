@@ -473,7 +473,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                 {frequency === 'Weekly' && (
                   <div className='space-y-5 w-full'>
                     <div>
-                      <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Days</label>
+                      <label className='block text-sm font-semibold text-gray-900 mb-1'>Select Days</label>
+                      <p className='text-xs text-gray-500 mb-3'>The job runs on every selected day each week. To run daily, select all 7 days.</p>
                       <div className='flex gap-2 flex-wrap'>
                         {ALL_DAYS.map((day) => (
                           <button key={day}
@@ -507,7 +508,8 @@ export default function Step4({ crmId, destinationId, policyName = '', descripti
                 {frequency === 'Monthly' && (
                   <div className='space-y-5 w-full'>
                     <div>
-                      <label className='block text-sm font-semibold text-gray-900 mb-3'>Select Months</label>
+                      <label className='block text-sm font-semibold text-gray-900 mb-1'>Select Months</label>
+                      <p className='text-xs text-gray-500 mb-3'>The job runs only in the months you select. To run every month, select all 12 months.</p>
                       <div className='flex gap-2 flex-wrap'>
                         {ALL_MONTHS.map((month) => (
                           <button key={month}
