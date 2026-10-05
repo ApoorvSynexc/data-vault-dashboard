@@ -364,10 +364,12 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   return (
     <div className='flex-1 min-h-0 bg-gray-50 flex flex-col overflow-hidden'>
 
-      {/* Master-detail toast */}
+      {/* Toasts — each independently positioned, never shift when another dismisses */}
+      <style>{`@keyframes shrink { from { width: 100% } to { width: 0% } }`}</style>
+
       {toast && (
-        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
-          style={{ border: '1px solid rgba(21,93,252,0.2)' }}>
+        <div className='fixed left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ top: '1.5rem', border: '1px solid rgba(21,93,252,0.2)' }}>
           <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
             <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(21,93,252,0.1)' }}>
               <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -387,16 +389,13 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
               </svg>
             </button>
           </div>
-          {/* Auto-dismiss progress bar */}
           <div className='h-0.5 bg-blue-600' style={{ animation: 'shrink 6s linear forwards' }} />
-          <style>{`@keyframes shrink { from { width: 100% } to { width: 0% } }`}</style>
         </div>
       )}
 
-      {/* Junction-parent notice — these objects must be selected manually */}
       {parentNotice && (
-        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[480px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden mt-20'
-          style={{ border: '1px solid rgba(217,119,6,0.25)' }}>
+        <div className='fixed left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ top: '8rem', border: '1px solid rgba(217,119,6,0.25)' }}>
           <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
             <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(217,119,6,0.1)' }}>
               <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#D97706' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -421,10 +420,9 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
         </div>
       )}
 
-      {/* Child-parent notice — auto-selected children that have additional master-detail parents */}
       {childParentNotice && (
-        <div className='fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
-          style={{ marginTop: parentNotice ? '10rem' : '5rem', border: '1px solid rgba(220,38,38,0.2)' }}>
+        <div className='fixed left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden'
+          style={{ top: '16rem', border: '1px solid rgba(220,38,38,0.2)' }}>
           <div className='flex items-start gap-3 px-4 py-3.5 bg-white'>
             <div className='w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5' style={{ background: 'rgba(220,38,38,0.08)' }}>
               <svg width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
