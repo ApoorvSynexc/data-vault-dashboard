@@ -159,7 +159,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
 
   const activeRecords = allRecordsByObj[activeObj] ?? [];
   const filteredRecords = activeRecords.filter(
-    (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.includes(recordSearch),
+    (r) => r.Name?.toLowerCase().includes(recordSearch.toLowerCase()) || r.Id?.toLowerCase().includes(recordSearch.toLowerCase()),
   );
 
   const recordColumns: TableColumn<SFRecord>[] = [
