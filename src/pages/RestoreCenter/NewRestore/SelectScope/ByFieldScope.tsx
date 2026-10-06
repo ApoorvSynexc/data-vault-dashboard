@@ -166,7 +166,7 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
       </div>
       <div className='p-5 space-y-4'>
         <InfoCallout>
-          Tick objects to include them, then click <strong>Select Fields →</strong> to choose which fields to restore. Use <strong>Select all</strong> inside the field panel to pick every field at once.
+          Tick objects to include them, then click <strong>Select Fields →</strong> to choose which fields to restore. Use <strong>Select All</strong> inside the field panel to pick every field at once.
         </InfoCallout>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {/* Left — object list */}
@@ -231,9 +231,9 @@ export default function ByFieldScope({ sourceObjectNames, sourceObjectsLoading, 
                   <div className='flex items-center justify-between gap-2'>
                     <span className='text-xs font-semibold text-gray-700 font-mono truncate'>{activeObj}</span>
                     <div className='flex gap-2 text-xs flex-shrink-0'>
-                      <button onClick={selectAllFields} className='text-blue-500 hover:underline'>Select all</button>
+                      <button onClick={selectAllFields} className='text-blue-500 hover:underline'>Select All</button>
                       <span className='text-gray-300'>·</span>
-                      <button onClick={deselectAllFields} className='text-blue-500 hover:underline'>Deselect all</button>
+                      <button onClick={deselectAllFields} className='text-blue-500 hover:underline'>Deselect All</button>
                     </div>
                   </div>
                   <div className='relative'>
