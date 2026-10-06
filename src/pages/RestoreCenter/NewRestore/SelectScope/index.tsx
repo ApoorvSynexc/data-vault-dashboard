@@ -142,12 +142,22 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
   const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
 
+  const findObjectId = (name: string): string | undefined => {
+    const walk = (nodes: RestoreSourceObject[]): string | undefined => {
+      for (const n of nodes) {
+        if (n.name === name) return n.id;
+        if (n.children?.length) { const r = walk(n.children); if (r) return r; }
+      }
+    };
+    return walk(sourceObjects);
+  };
+
   const buildScope = (): RestoreScope => {
     switch (scopeMode) {
       case 'object':  return { type: 'OBJECT', objects: selectedObjects.map((o) => ({ id: o.id, name: o.name, type: o.type, ...(sourceSelection.configType === 'ARCHIVAL' && o.children ? { children: o.children } : {}) })) };
       case 'record':  return { type: 'RECORD', records: recordScope.map(({ objectName, recordIds }) => ({ id: sourceObjects.find((o) => o.name === objectName)?.id ?? objectName, objectName, recordIds })) };
-      case 'field':   return { type: 'FIELD',  fields:  fieldScope };
-      case 'filter':  return { type: 'FILTER', filters: filterScope };
+      case 'field':   return { type: 'FIELD',  fields:  fieldScope.map((f) => ({ ...f, id: findObjectId(f.objectName) })) };
+      case 'filter':  return { type: 'FILTER', filters: filterScope.map((f) => ({ ...f, id: findObjectId(f.objectName) })) };
       case 'csv':     return { type: 'BULK_CSV', bulkCsvIds: csvScope.map(({ objectName }) => ({ objectName, ids: [] })) };
       case 'deleted': return { type: 'DELETED_ONLY', deletedOnly: true };
       case 'full':

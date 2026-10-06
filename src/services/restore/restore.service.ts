@@ -10,6 +10,7 @@ export interface RestoreScopeRecord {
 }
 
 export interface RestoreScopeField {
+  id?: string;
   objectName: string;
   fieldNames: string[];
 }
@@ -28,6 +29,7 @@ export interface RestoreFilters {
 }
 
 export interface RestoreScopeFilter {
+  id?: string;
   objectName: string;
   filter: RestoreFilters;
 }
