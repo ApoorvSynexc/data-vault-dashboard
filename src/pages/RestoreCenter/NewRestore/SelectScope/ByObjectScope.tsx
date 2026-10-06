@@ -302,7 +302,7 @@ export default function ByObjectScope({ sourceObjects, sourceObjectsLoading, con
           onClick={toggleAll}
           className='text-xs font-semibold px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 text-gray-600 transition-colors whitespace-nowrap'
         >
-          {selected.size === eligibleNames.length && eligibleNames.length > 0 ? 'Deselect all' : 'Select all'}
+          {selected.size === eligibleNames.length && eligibleNames.length > 0 ? 'Deselect All' : 'Select All'}
         </button>
       </div>
 
