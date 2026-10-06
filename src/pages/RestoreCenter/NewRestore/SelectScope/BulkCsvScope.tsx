@@ -192,7 +192,7 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
             <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
               <div>
                 <h2 className='text-base font-bold text-gray-900 font-mono'>{modalObj}</h2>
-                <p className='text-xs text-gray-400 mt-0.5'>Upload a CSV for this object</p>
+                <p className='text-xs text-gray-600 mt-0.5'>Upload a CSV for this object</p>
               </div>
               <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors'>
                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
