@@ -286,10 +286,9 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
 
       {/* Filter Modal */}
       {modalObj && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4' onClick={closeModal}>
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
           <div className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
-            style={{ width: 780, maxHeight: '90vh', border: '1px solid #E2E8F0' }}
-            onClick={(e) => e.stopPropagation()}>
+            style={{ width: 780, maxHeight: '90vh', border: '1px solid #E2E8F0' }}>
 
             {/* Modal header */}
             <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
@@ -297,7 +296,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                 <h2 className='text-base font-bold text-gray-900 font-mono'>{modalObj}</h2>
                 <p className='text-xs text-gray-400 mt-0.5'>Define filter conditions for this object</p>
               </div>
-              <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'>
+              <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors'>
                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                   <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
                 </svg>

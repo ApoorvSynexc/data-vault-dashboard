@@ -184,10 +184,9 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
 
       {/* Upload Modal */}
       {modalObj && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4' onClick={closeModal}>
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
           <div className='bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden'
-            style={{ width: 620, maxHeight: '90vh', border: '1px solid #E2E8F0' }}
-            onClick={(e) => e.stopPropagation()}>
+            style={{ width: 620, maxHeight: '90vh', border: '1px solid #E2E8F0' }}>
 
             {/* Header */}
             <div className='flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0'>
@@ -195,7 +194,7 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
                 <h2 className='text-base font-bold text-gray-900 font-mono'>{modalObj}</h2>
                 <p className='text-xs text-gray-400 mt-0.5'>Upload a CSV for this object</p>
               </div>
-              <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors'>
+              <button onClick={closeModal} className='p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors'>
                 <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                   <line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/>
                 </svg>
@@ -283,7 +282,7 @@ export default function BulkCsvScope({ sourceObjectNames, sourceObjectsLoading, 
                 <svg viewBox='0 0 24 24' fill='none' stroke='#DC2626' strokeWidth='2' className='w-5 h-5'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
                 <h3 className='text-sm font-bold text-gray-900'>CSV Validation Errors</h3>
               </div>
-              <button onClick={() => setErrorOpen(false)} className='text-gray-400 hover:text-gray-600 transition-colors'>
+              <button onClick={() => setErrorOpen(false)} className='p-1.5 rounded-lg text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors'>
                 <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' className='w-5 h-5'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>
               </button>
             </div>
