@@ -269,7 +269,7 @@ export default function DashboardV2() {
   const columns: TableColumn<{ job: any; jtype: 'backup' | 'archive' | 'restore' }>[] = [
     {
       key: 'name',
-      header: 'Job Name',
+      header: 'Job Policy Name',
       width: '180px',
       render: ({ job, jtype }) => {
         const name =
@@ -526,7 +526,7 @@ export default function DashboardV2() {
           <div>
             <Typography as='h2' variant='pageTitle'>Dashboard</Typography>
             <Typography variant='bodySm' color='muted' className='mt-0.5'>
-              Hi {userName} — here's your DataCraft overview across Backup, Archive & Restore.
+              Hi {userName} - here's your DataCraft overview across Backup, Archive & Restore.
             </Typography>
           </div>
           <div className='flex items-center gap-2 flex-wrap justify-end'>
