@@ -199,9 +199,11 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
 
   const openModal = (name: string) => {
     setModalObj(name);
-    setFilterTab('visual');
+    const hasSavedSoql = !!(soqlByObj[name]?.trim());
+    setFilterTab(hasSavedSoql ? 'soql' : 'visual');
     setPendingPicklist(null);
-    setQueryValidation(null);
+    // If reopening with a saved SOQL, restore valid state so Apply Filter isn't blocked
+    setQueryValidation(hasSavedSoql ? { valid: true } : null);
   };
 
   const closeModal = () => setModalObj(null);
@@ -311,21 +313,23 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
 
             {/* Tabs */}
             <div className='flex border-b border-gray-200 px-6 flex-shrink-0'>
-              {(['visual', 'soql'] as FilterTab[]).map((t) => (
-                <button key={t} onClick={() => {
-                  if (t === filterTab) return;
-                  if (t === 'visual') {
-                    setSoqlByObj((p) => ({ ...p, [modalObj!]: '' }));
-                    setQueryValidation(null);
-                  } else {
-                    setCfg(modalObj!, { rows: [], orGroups: [], filterLogic: '' });
-                  }
-                  setFilterTab(t);
-                }}
-                  className={`pb-3 pt-2 px-4 text-sm font-semibold border-b-2 transition-colors ${filterTab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                  {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
-                </button>
-              ))}
+              {(['visual', 'soql'] as FilterTab[]).map((t) => {
+                const active = filterTab === t;
+                // Lock a tab if the OTHER tab already has data — filters are mutually exclusive
+                const locked = t === 'visual' ? hasSoqlFilter : hasVisualFilter;
+                return (
+                  <button key={t}
+                    onClick={() => { if (!active && !locked) setFilterTab(t); }}
+                    title={locked ? (t === 'visual' ? 'Clear the SOQL query to switch to Visual Builder' : 'Clear all visual filters to switch to SOQL') : undefined}
+                    className={`pb-3 pt-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+                      active  ? 'border-blue-600 text-blue-600' :
+                      locked  ? 'border-transparent text-gray-300 cursor-not-allowed' :
+                                'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}>
+                    {t === 'visual' ? 'Visual Builder' : 'Write SOQL'}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab content */}
