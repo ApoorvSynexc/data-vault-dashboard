@@ -58,9 +58,10 @@ interface Props {
   sourceObjectsLoading: boolean;
   sourceSelection: SourceSelection;
   onChange: (filters: RestoreScopeFilter[]) => void;
+  onObjectsChange?: (addedObjs: string[], filteredObjs: string[]) => void;
 }
 
-export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange }: Props) {
+export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoading, sourceSelection, onChange, onObjectsChange }: Props) {
   const restoreService = useRestoreService();
 
   const [objSearch,       setObjSearch]       = useState('');
@@ -162,11 +163,16 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
   const toggleObj = (name: string) => {
     setAddedObjs((prev) => {
       const next = prev.includes(name) ? prev.filter((o) => o !== name) : [...prev, name];
+      let nextCfg = configByObj;
+      let nextSoql = soqlByObj;
       if (!next.includes(name)) {
-        setConfigByObj((p) => { const n = { ...p }; delete n[name]; return n; });
-        setSoqlByObj((p) => { const n = { ...p }; delete n[name]; return n; });
+        nextCfg  = { ...configByObj };  delete nextCfg[name];
+        nextSoql = { ...soqlByObj };    delete nextSoql[name];
+        setConfigByObj(nextCfg);
+        setSoqlByObj(nextSoql);
       }
       buildAndNotify(next);
+      notifyObjectsChange(next, nextCfg, nextSoql);
       return next;
     });
   };
@@ -187,6 +193,15 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     const cfg = configByObj[name];
     const soql = soqlByObj[name] ?? '';
     return soql.trim().length > 0 || (cfg?.rows?.length ?? 0) > 0 || (cfg?.orGroups?.length ?? 0) > 0;
+  };
+
+  const notifyObjectsChange = (objs: string[], cfg: Record<string, FilterConfig>, soql: Record<string, string>) => {
+    const filtered = objs.filter((name) => {
+      const s = soql[name] ?? '';
+      const c = cfg[name];
+      return s.trim().length > 0 || (c?.rows?.length ?? 0) > 0 || (c?.orGroups?.length ?? 0) > 0;
+    });
+    onObjectsChange?.(objs, filtered);
   };
 
   const filterSummary = (name: string): string => {
@@ -210,6 +225,7 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
 
   const applyModal = () => {
     buildAndNotify(addedObjs);
+    notifyObjectsChange(addedObjs, configByObj, soqlByObj);
     setModalObj(null);
   };
 
@@ -457,8 +473,11 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
             {/* Modal footer */}
             <div className='flex-shrink-0 px-6 py-4 border-t border-gray-100 flex items-center justify-between'>
               <button onClick={() => {
-                setCfg(modalObj!, { rows: [], orGroups: [], filterLogic: '' });
-                setSoqlByObj((p) => ({ ...p, [modalObj!]: '' }));
+                const clearedCfg  = { ...configByObj,  [modalObj!]: { rows: [], orGroups: [], filterLogic: '' } };
+                const clearedSoql = { ...soqlByObj,    [modalObj!]: '' };
+                setConfigByObj(clearedCfg);
+                setSoqlByObj(clearedSoql);
+                notifyObjectsChange(addedObjs, clearedCfg, clearedSoql);
               }} className='text-xs font-medium text-gray-500 hover:text-red-500 transition-colors'>
                 Clear all filters
               </button>

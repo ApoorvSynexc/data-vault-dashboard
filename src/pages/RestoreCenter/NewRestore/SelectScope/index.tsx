@@ -139,8 +139,10 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
   const [recordAddedObjs,   setRecordAddedObjs]   = useState<string[]>([]);
   const [recordEmptyObjs,   setRecordEmptyObjs]   = useState<string[]>([]);
   const [fieldScope,        setFieldScope]        = useState<{ objectName: string; fieldNames: string[] }[]>([]);
-  const [filterScope,     setFilterScope]       = useState<RestoreScopeFilter[]>([]);
-  const [csvScope,        setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
+  const [filterScope,       setFilterScope]       = useState<RestoreScopeFilter[]>([]);
+  const [filterAddedObjs,   setFilterAddedObjs]   = useState<string[]>([]);
+  const [filterAppliedObjs, setFilterAppliedObjs] = useState<string[]>([]);
+  const [csvScope,          setCsvScope]          = useState<{ objectName: string; ids: string[]; file?: File }[]>([]);
 
   const findObjectId = (name: string): string | undefined => {
     const walk = (nodes: RestoreSourceObject[]): string | undefined => {
@@ -266,6 +268,7 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
             sourceObjectsLoading={sourceObjectsLoading}
             sourceSelection={sourceSelection}
             onChange={setFilterScope}
+            onObjectsChange={(added, applied) => { setFilterAddedObjs(added); setFilterAppliedObjs(applied); }}
           />
         )}
         {scopeMode === 'deleted' && <DeletedOnlyScope />}
@@ -312,6 +315,20 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
               }
               return null;
             })()}
+            {scopeMode === 'filter' && (() => {
+              if (filterAddedObjs.length === 0) {
+                return <p className='text-xs text-red-600 font-medium'>Select at least one object and apply a filter</p>;
+              }
+              const noFilter = filterAddedObjs.filter((o) => !filterAppliedObjs.includes(o));
+              if (noFilter.length > 0) {
+                return (
+                  <p className='text-xs text-red-600 font-medium'>
+                    Apply filter for: <span className='font-mono'>{noFilter.join(', ')}</span>
+                  </p>
+                );
+              }
+              return null;
+            })()}
             <button
               onClick={() => {
                 if (scopeMode === 'record') {
@@ -320,6 +337,11 @@ export default function SelectScope({ onNext, onBack, sourceSelection }: Props) 
                   );
                   const hasEmpty = recordEmptyObjs.filter((obj) => recordAddedObjs.includes(obj));
                   if (needsSelection.length > 0 || hasEmpty.length > 0) return;
+                }
+                if (scopeMode === 'filter') {
+                  if (filterAddedObjs.length === 0) return;
+                  const noFilter = filterAddedObjs.filter((o) => !filterAppliedObjs.includes(o));
+                  if (noFilter.length > 0) return;
                 }
                 const scope = buildScope();
                 const csvFiles = scopeMode === 'csv'
