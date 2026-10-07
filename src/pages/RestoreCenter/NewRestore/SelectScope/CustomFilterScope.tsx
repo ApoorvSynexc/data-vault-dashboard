@@ -211,7 +211,13 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
     setModalObj(null);
   };
 
-  const applyBlocked = filterTab === 'soql' && soqlWhere.trim().length > 0 && queryValidation?.valid !== true;
+  const hasVisualFilter = filterRows.length > 0 || orGroups.length > 0;
+  const hasSoqlFilter   = soqlWhere.trim().length > 0;
+
+  const applyBlocked =
+    (filterTab === 'visual' && !hasVisualFilter) ||
+    (filterTab === 'soql'   && !hasSoqlFilter) ||
+    (filterTab === 'soql'   && hasSoqlFilter && queryValidation?.valid !== true);
 
   const filteredObjs = sourceObjectNames.filter((n) => n.toLowerCase().includes(objSearch.toLowerCase()));
   const totalFiltered = addedObjs.filter(hasFilter).length;
@@ -453,6 +459,11 @@ export default function CustomFilterScope({ sourceObjectNames, sourceObjectsLoad
                 Clear all filters
               </button>
               <div className='flex items-center gap-3'>
+                {applyBlocked && (
+                  <p className='text-xs text-amber-600 font-medium'>
+                    {filterTab === 'visual' ? 'Add at least one filter condition' : hasSoqlFilter ? 'Validate your query first' : 'Write a WHERE clause first'}
+                  </p>
+                )}
                 <button onClick={closeModal} className='px-5 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors'>Cancel</button>
                 <button onClick={applyModal} disabled={applyBlocked} className='px-6 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>Apply Filter</button>
               </div>
