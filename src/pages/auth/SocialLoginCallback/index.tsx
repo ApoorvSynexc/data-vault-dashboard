@@ -13,6 +13,8 @@ export default function SocialLoginCallback() {
   const code = searchParams.get('code') ?? '';
   const state = searchParams.get('state') ?? '';
   const authProvider = searchParams.get('authProvider') ?? 'salesforce';
+  const oauthError = searchParams.get('error') ?? '';
+  const oauthErrorDescription = searchParams.get('error_description') ?? '';
   const hasRequiredParams = Boolean(code && state);
 
   const { isLoading, error, isSuccess } = useQuery({
@@ -49,14 +51,27 @@ export default function SocialLoginCallback() {
 
   useEffect(() => {
     if (hasRequiredParams) return;
-    const message = 'Login link expired or invalid. Please try again.';
+    let message: string;
+    let errorType: string | undefined;
+
+    if (oauthError === 'OAUTH_APP_ACCESS_DENIED') {
+      message = 'Your Salesforce administrator has not approved access to this app. Please contact your admin to grant access.';
+      errorType = 'access_denied';
+    } else if (oauthError && oauthErrorDescription) {
+      message = oauthErrorDescription; // URLSearchParams decodes the + signs automatically
+    } else {
+      message = 'Login link expired or invalid. Please try again.';
+    }
+
     if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message }, '*');
+      window.opener.postMessage({ type: 'SALESFORCE_LOGIN_ERROR', message, errorType }, '*');
       window.close();
     } else {
-      window.location.replace(`/login?error=${encodeURIComponent(message)}`);
+      const params = new URLSearchParams({ error: message });
+      if (errorType) params.set('errorType', errorType);
+      window.location.replace(`/login?${params.toString()}`);
     }
-  }, [hasRequiredParams]);
+  }, [hasRequiredParams, oauthError, oauthErrorDescription]);
 
   if (isSuccess && !(window.opener && !window.opener.closed)) {
     return <Navigate to='/' replace />;

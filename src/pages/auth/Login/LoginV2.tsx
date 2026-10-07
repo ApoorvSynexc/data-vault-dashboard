@@ -29,6 +29,11 @@ export default function LoginV2() {
       ? 'You do not have permission to access Data Craft. Please contact your administrator to request access.'
       : err;
   });
+  const [errorType, setErrorType] = useState<string | null>(() => {
+    const stored = sessionStorage.getItem('loginErrorType');
+    if (stored) { sessionStorage.removeItem('loginErrorType'); return stored; }
+    return searchParams.get('errorType');
+  });
   const authService = useAuthService();
 
   useEffect(() => {
@@ -43,6 +48,7 @@ export default function LoginV2() {
       if (event.data?.type === 'SALESFORCE_LOGIN_ERROR') {
         const raw: string = event.data.message ?? '';
         const is401 = raw.includes('401') || /unauthorized/i.test(raw);
+        setErrorType(event.data.errorType ?? null);
         setLoginError(
           is401
             ? 'You do not have permission to access Data Craft. Please contact your administrator to request access.'
@@ -117,21 +123,34 @@ export default function LoginV2() {
             </p>
 
             {loginError && (
-              <div className='mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3'>
-                <svg className='mt-0.5 h-4 w-4 flex-shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                  <circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' />
-                </svg>
-                <div className='flex-1'>
-                  <p className='text-sm font-semibold text-red-700'>
-                    {loginError?.toLowerCase().includes('permission') ? 'Access Denied' : 'Login Failed'}
-                  </p>
-                  <p className='text-xs text-red-600 mt-0.5'>{loginError}</p>
+              <div className={`mb-5 rounded-xl border px-4 py-3 ${errorType === 'access_denied' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+                <div className='flex items-start gap-3'>
+                  {errorType === 'access_denied' ? (
+                    <svg className='mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' d='M12 15v2m0-10v5m-7 7h14a2 2 0 001.73-3L13.73 4a2 2 0 00-3.46 0L3.27 17A2 2 0 005 20z' />
+                    </svg>
+                  ) : (
+                    <svg className='mt-0.5 h-4 w-4 flex-shrink-0 text-red-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                      <circle cx='12' cy='12' r='10' /><path d='M12 8v4M12 16h.01' strokeLinecap='round' />
+                    </svg>
+                  )}
+                  <div className='flex-1'>
+                    <p className={`text-sm font-semibold ${errorType === 'access_denied' ? 'text-amber-800' : 'text-red-700'}`}>
+                      {errorType === 'access_denied' ? 'App Not Approved' : loginError?.toLowerCase().includes('permission') ? 'Access Denied' : 'Login Failed'}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${errorType === 'access_denied' ? 'text-amber-700' : 'text-red-600'}`}>{loginError}</p>
+                    {errorType === 'access_denied' && (
+                      <p className='text-xs text-amber-600 mt-1.5 leading-relaxed'>
+                        To fix this, ask your Salesforce admin to go to <span className='font-semibold'>Setup → Connected Apps</span> and approve this application for your profile or permission set.
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => { setLoginError(null); setErrorType(null); }} className={`${errorType === 'access_denied' ? 'text-amber-400 hover:text-amber-600' : 'text-red-400 hover:text-red-600'} transition-colors`}>
+                    <svg className='h-4 w-4' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
+                    </svg>
+                  </button>
                 </div>
-                <button onClick={() => setLoginError(null)} className='text-red-400 hover:text-red-600 transition-colors'>
-                  <svg className='h-4 w-4' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' d='M6 18L18 6M6 6l12 12' />
-                  </svg>
-                </button>
               </div>
             )}
 
