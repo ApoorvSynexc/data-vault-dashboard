@@ -139,11 +139,6 @@ export default function LoginV2() {
                       {errorType === 'access_denied' ? 'App Not Approved' : loginError?.toLowerCase().includes('permission') ? 'Access Denied' : 'Login Failed'}
                     </p>
                     <p className={`text-xs mt-0.5 ${errorType === 'access_denied' ? 'text-amber-700' : 'text-red-600'}`}>{loginError}</p>
-                    {errorType === 'access_denied' && (
-                      <p className='text-xs text-amber-600 mt-1.5 leading-relaxed'>
-                        To fix this, ask your Salesforce admin to go to <span className='font-semibold'>Setup → Connected Apps</span> and approve this application for your profile or permission set.
-                      </p>
-                    )}
                   </div>
                   <button onClick={() => { setLoginError(null); setErrorType(null); }} className={`${errorType === 'access_denied' ? 'text-amber-400 hover:text-amber-600' : 'text-red-400 hover:text-red-600'} transition-colors`}>
                     <svg className='h-4 w-4' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
