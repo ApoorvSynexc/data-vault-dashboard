@@ -204,6 +204,21 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                 <p className='text-xs text-gray-600 mb-1'>Time</p>
                 <p className='text-xs font-medium text-gray-900'>{displayData?.scheduleConfig?.scheduling?.startTime ? formatTime(`2000-01-01T${displayData.scheduleConfig.scheduling.startTime}`, displayData?.scheduleConfig?.timeZone) : 'N/A'}</p>
               </div>
+              {displayData?.scheduleConfig?.scheduling?.frequency === 'WEEKLY' && (displayData.scheduleConfig.scheduling as any)?.weekDays?.length > 0 && (
+                <div className='col-span-2'>
+                  <p className='text-xs text-gray-600 mb-1'>Run Days</p>
+                  <div className='flex flex-wrap gap-1'>
+                    {(['MON','TUE','WED','THU','FRI','SAT','SUN'] as const).map((day) => {
+                      const active = ((displayData.scheduleConfig!.scheduling as any).weekDays as string[]).includes(day);
+                      return (
+                        <span key={day} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+                          {day}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className='col-span-2'>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
                 {(() => {
