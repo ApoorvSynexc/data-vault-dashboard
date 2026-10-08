@@ -219,6 +219,40 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                   </div>
                 </div>
               )}
+              {displayData?.scheduleConfig?.scheduling?.frequency === 'MONTHLY' && (
+                <>
+                  {(displayData.scheduleConfig.scheduling as any)?.monthDate && (
+                    <div>
+                      <p className='text-xs text-gray-600 mb-1'>Day of Month</p>
+                      <p className='text-xs font-medium text-gray-900'>
+                        {(displayData.scheduleConfig.scheduling as any).monthDate}
+                        {(() => {
+                          const d = (displayData.scheduleConfig.scheduling as any).monthDate;
+                          if (d === 1 || d === 21 || d === 31) return 'st';
+                          if (d === 2 || d === 22) return 'nd';
+                          if (d === 3 || d === 23) return 'rd';
+                          return 'th';
+                        })()}
+                      </p>
+                    </div>
+                  )}
+                  {(displayData.scheduleConfig.scheduling as any)?.selectedMonths?.length > 0 && (
+                    <div className='col-span-2'>
+                      <p className='text-xs text-gray-600 mb-1'>Active Months</p>
+                      <div className='flex flex-wrap gap-1'>
+                        {(['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'] as const).map((month) => {
+                          const active = ((displayData.scheduleConfig!.scheduling as any).selectedMonths as string[]).includes(month);
+                          return (
+                            <span key={month} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${active ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+                              {month}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
               <div className='col-span-2'>
                 <p className='text-xs text-gray-600 mb-1'>Next Run</p>
                 {(() => {
