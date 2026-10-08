@@ -130,6 +130,18 @@ export default function Overview({ backup, onViewTriggers }: OverviewProps) {
                 <span className='text-xs text-gray-600'>Destination Platform</span>
                 <span className='text-xs font-medium text-gray-900'>{displayData?.destinationDetail?.destinationName ?? displayData?.destinationDetail?.type ?? (displayData?.destinationId ? 'Cloud Storage' : 'N/A')}</span>
               </div>
+              {displayData?.destinationDetail?.bucketName && (
+                <div className='flex justify-between'>
+                  <span className='text-xs text-gray-600'>Bucket Name</span>
+                  <span className='text-xs font-medium text-gray-900 font-mono'>{displayData.destinationDetail.bucketName}</span>
+                </div>
+              )}
+              {displayData?.destinationDetail?.region && (
+                <div className='flex justify-between'>
+                  <span className='text-xs text-gray-600'>Region</span>
+                  <span className='text-xs font-medium text-gray-900'>{displayData.destinationDetail.region}</span>
+                </div>
+              )}
               <div className='flex justify-between'>
                 <span className='text-xs text-gray-600'>Environment</span>
                 <span className='text-xs font-medium text-gray-900'>{displayData?.crmDetail?.environment ? capitalize(displayData.crmDetail.environment) : displayData?.environment ? capitalize(displayData.environment) : 'N/A'}</span>
