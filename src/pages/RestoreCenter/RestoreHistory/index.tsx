@@ -661,70 +661,136 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
           </div>
         )}
 
-        {/* Restore Parameters — source type + scope */}
-        {(job.source?.type || job.selection?.restoreScope?.type) && (() => {
+        {/* Restore Specifications — source, scope & conflict settings combined */}
+        {(job.source?.type || job.selection?.restoreScope?.type || job.conflict) && (() => {
           const SOURCE_TYPE_LABELS: Record<string, string> = {
             ENTIRE:          'Entire Backup',
             CHANGED_BETWEEN: 'Changed Between',
           };
           const SCOPE_LABELS: Record<string, string> = {
-            ALL:          'Full Restore',
-            OBJECT:       'By Object',
-            RECORD:       'By Record',
-            FIELD:        'By Field',
-            FILTER:       'Custom Filter',
-            BULK_CSV:     'Bulk CSV',
-            DELETED_ONLY: 'Deleted Only',
+            ALL: 'Full Restore', OBJECT: 'By Object', RECORD: 'By Record',
+            FIELD: 'By Field', FILTER: 'Custom Filter', BULK_CSV: 'Bulk CSV', DELETED_ONLY: 'Deleted Only',
           };
+          const EDGE_CASE_LABELS: Record<string, string> = {
+            missingFieldInDestination: 'Missing Field',
+            ownerInactive:             'Inactive Owner',
+            includeAuditFields:        'Audit Fields',
+            recordTypeMissing:         'Record Type Missing',
+            missingRequiredFieldValue: 'Required Field Missing',
+            parentMissing:             'Parent Missing',
+          };
+          const VALUE_LABELS: Record<string, string> = {
+            SKIP_THE_FIELD:       'Skip Field',
+            SKIP_RECORD:          'Skip Record',
+            SKIP_THE_RECORD:      'Skip Record',
+            SKIP:                 'Skip',
+            RESTORE_PARENT_FIRST: 'Restore Parent First',
+            Include:              'Include',
+            Exclude:              'Exclude',
+            OVERWRITE:            'Overwrite',
+            INSERT_ONLY:          'Insert Only',
+            UPSERT:               'Upsert',
+          };
+          // colour coding by action semantics
+          const valueStyle = (v: string): { bg: string; color: string } => {
+            const u = v.toUpperCase();
+            if (u.includes('SKIP')) return { bg: 'rgba(217,119,6,0.1)', color: '#B45309' };
+            if (u === 'RESTORE_PARENT_FIRST' || u === 'INCLUDE') return { bg: 'rgba(21,93,252,0.08)', color: '#155DFC' };
+            if (u === 'OVERWRITE') return { bg: 'rgba(124,58,237,0.1)', color: '#7C3AED' };
+            return { bg: '#F1F5F9', color: '#374151' };
+          };
+
           const fmtDate = (d: string) =>
             new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 
-          const srcType   = job.source?.type as string | undefined;
-          const scopeType = job.selection?.restoreScope?.type as string | undefined;
+          const srcType    = job.source?.type as string | undefined;
+          const scopeType  = job.selection?.restoreScope?.type as string | undefined;
+          const conflict   = job.conflict as any;
+          const edgeCases  = conflict?.edgeCases as Record<string, any> | undefined;
+          const restoreMode = conflict?.restoreMode as string | undefined;
 
           return (
             <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
               <div className='flex items-center gap-2 px-5 py-3 border-b border-gray-100'>
                 <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                  <path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11'/>
                 </svg>
-                <span className='text-sm font-semibold text-gray-700'>Restore Parameters</span>
+                <span className='text-sm font-semibold text-gray-700'>Restore Specifications</span>
               </div>
-              <div className='px-5 py-4 flex flex-wrap gap-3 items-center'>
 
-                {/* Source Type */}
-                {srcType && (
-                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
-                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>
-                    </svg>
-                    <span className='text-[11px] text-gray-500 font-medium'>Source Type</span>
-                    <span className='text-[11px] font-bold text-gray-800'>{SOURCE_TYPE_LABELS[srcType] ?? srcType}</span>
+              <div className='divide-y divide-gray-50'>
+
+                {/* ── Row 1: Source & Scope ── */}
+                {(srcType || scopeType) && (
+                  <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
+                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Source & Scope</span>
+                    <div className='flex flex-wrap gap-2 flex-1'>
+                      {srcType && (
+                        <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100'>
+                          <span className='text-[10px] text-gray-400 font-medium'>Type</span>
+                          <span className='text-[10px] font-bold text-gray-800'>{SOURCE_TYPE_LABELS[srcType] ?? srcType}</span>
+                        </div>
+                      )}
+                      {srcType === 'CHANGED_BETWEEN' && job.source?.startDate && (
+                        <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100'>
+                          <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                            <rect x='3' y='4' width='18' height='18' rx='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                          </svg>
+                          <span className='text-[10px] font-bold text-blue-800'>
+                            {fmtDate(job.source.startDate)}
+                            <span className='mx-1 font-normal text-blue-400'>→</span>
+                            {job.source.endDate ? fmtDate(job.source.endDate) : '—'}
+                          </span>
+                        </div>
+                      )}
+                      {scopeType && (
+                        <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100'>
+                          <span className='text-[10px] text-gray-400 font-medium'>Scope</span>
+                          <span className='text-[10px] font-bold text-gray-800'>{SCOPE_LABELS[scopeType] ?? scopeType}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* Date range — only for CHANGED_BETWEEN */}
-                {srcType === 'CHANGED_BETWEEN' && job.source?.startDate && (
-                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100'>
-                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                    </svg>
-                    <span className='text-[11px] font-bold text-blue-800'>
-                      {fmtDate(job.source.startDate)}
-                      <span className='mx-1.5 font-normal text-blue-400'>→</span>
-                      {job.source.endDate ? fmtDate(job.source.endDate) : '—'}
-                    </span>
+                {/* ── Row 2: Restore Mode ── */}
+                {restoreMode && (
+                  <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
+                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Restore Mode</span>
+                    <div className='flex flex-wrap gap-2 flex-1'>
+                      {(() => {
+                        const s = valueStyle(restoreMode);
+                        return (
+                          <span className='inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold'
+                            style={{ background: s.bg, color: s.color }}>
+                            {VALUE_LABELS[restoreMode] ?? restoreMode}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
 
-                {/* Restore Scope */}
-                {scopeType && (
-                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
-                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>
-                    </svg>
-                    <span className='text-[11px] text-gray-500 font-medium'>Restore Scope</span>
-                    <span className='text-[11px] font-bold text-gray-800'>{SCOPE_LABELS[scopeType] ?? scopeType}</span>
+                {/* ── Row 3: Edge Cases ── */}
+                {edgeCases && Object.keys(edgeCases).length > 0 && (
+                  <div className='px-5 py-3 flex flex-wrap items-start gap-2'>
+                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0 pt-1'>Edge Cases</span>
+                    <div className='flex flex-wrap gap-1.5 flex-1'>
+                      {Object.entries(edgeCases).map(([key, val]) => {
+                        const rawVal = typeof val === 'object' && val !== null ? (val as any).type : String(val);
+                        const s = valueStyle(rawVal);
+                        return (
+                          <div key={key} className='inline-flex items-center rounded-lg border border-gray-100 overflow-hidden text-[10px]'>
+                            <span className='px-2 py-1 bg-gray-50 text-gray-500 font-medium border-r border-gray-100'>
+                              {EDGE_CASE_LABELS[key] ?? key}
+                            </span>
+                            <span className='px-2 py-1 font-bold' style={{ background: s.bg, color: s.color }}>
+                              {VALUE_LABELS[rawVal] ?? rawVal}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
