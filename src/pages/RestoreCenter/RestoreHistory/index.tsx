@@ -639,7 +639,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 0: Backup / Archival Source Config ── */}
                 {sourceConfig !== undefined && sourceConfig !== null && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Source Config</span>
+                    <span className='text-[10px] font-semibold text-gray-600 tracking-wide w-24 flex-shrink-0'>Source Config</span>
                     <div className='flex flex-wrap items-center gap-2 flex-1'>
                       {!sourceConfig.name ? (
                         <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-600'>
@@ -683,7 +683,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 1: Source & Scope ── */}
                 {(srcType || scopeType) && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Source & Scope</span>
+                    <span className='text-[10px] font-semibold text-gray-600 tracking-wide w-24 flex-shrink-0'>Source & Scope</span>
                     <div className='flex flex-wrap gap-2 flex-1'>
                       {srcType && (
                         <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100'>
@@ -716,7 +716,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 2: Restore Mode ── */}
                 {restoreMode && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Restore Mode</span>
+                    <span className='text-[10px] font-semibold text-gray-600 tracking-wide w-24 flex-shrink-0'>Restore Mode</span>
                     <div className='flex flex-wrap gap-2 flex-1'>
                       {(() => {
                         const s = valueStyle(restoreMode);
@@ -734,7 +734,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 3: Edge Cases ── */}
                 {edgeCases && Object.keys(edgeCases).length > 0 && (
                   <div className='px-5 py-3 flex flex-wrap items-start gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0 pt-1'>Edge Cases</span>
+                    <span className='text-[10px] font-semibold text-gray-600 tracking-wide w-24 flex-shrink-0 pt-1'>Edge Cases</span>
                     <div className='flex flex-wrap gap-1.5 flex-1'>
                       {Object.entries(edgeCases).map(([key, val]) => {
                         const rawVal = typeof val === 'object' && val !== null ? (val as any).type : String(val);
