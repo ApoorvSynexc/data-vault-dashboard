@@ -639,10 +639,10 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 0: Backup / Archival Source Config ── */}
                 {sourceConfig !== undefined && sourceConfig !== null && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Source Config</span>
+                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Source Config</span>
                     <div className='flex flex-wrap items-center gap-2 flex-1'>
                       {!sourceConfig.name ? (
-                        <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-500'>
+                        <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-600'>
                           <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                             <polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6'/>
                           </svg>
@@ -664,13 +664,13 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                           </div>
                           {sourceConfigType !== 'Archival' && sourceDataset && (
                             <div className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px]'>
-                              <span className='text-gray-400 font-medium'>Dataset</span>
+                              <span className='text-gray-600 font-medium'>Dataset</span>
                               <span className='font-bold text-gray-800'>{sourceDataset}</span>
                             </div>
                           )}
                           {sourceConfigType !== 'Archival' && sourceSchedule && (
                             <div className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px]'>
-                              <span className='text-gray-400 font-medium'>Schedule</span>
+                              <span className='text-gray-600 font-medium'>Schedule</span>
                               <span className='font-bold text-gray-800'>{sourceSchedule}</span>
                             </div>
                           )}
@@ -683,11 +683,11 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 1: Source & Scope ── */}
                 {(srcType || scopeType) && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Source & Scope</span>
+                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Source & Scope</span>
                     <div className='flex flex-wrap gap-2 flex-1'>
                       {srcType && (
                         <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100'>
-                          <span className='text-[10px] text-gray-400 font-medium'>Type</span>
+                          <span className='text-[10px] text-gray-600 font-medium'>Type</span>
                           <span className='text-[10px] font-bold text-gray-800'>{SOURCE_TYPE_LABELS[srcType] ?? srcType}</span>
                         </div>
                       )}
@@ -705,7 +705,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                       )}
                       {scopeType && (
                         <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100'>
-                          <span className='text-[10px] text-gray-400 font-medium'>Scope</span>
+                          <span className='text-[10px] text-gray-600 font-medium'>Scope</span>
                           <span className='text-[10px] font-bold text-gray-800'>{SCOPE_LABELS[scopeType] ?? scopeType}</span>
                         </div>
                       )}
@@ -716,7 +716,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 2: Restore Mode ── */}
                 {restoreMode && (
                   <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Restore Mode</span>
+                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0'>Restore Mode</span>
                     <div className='flex flex-wrap gap-2 flex-1'>
                       {(() => {
                         const s = valueStyle(restoreMode);
@@ -734,14 +734,14 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
                 {/* ── Row 3: Edge Cases ── */}
                 {edgeCases && Object.keys(edgeCases).length > 0 && (
                   <div className='px-5 py-3 flex flex-wrap items-start gap-2'>
-                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0 pt-1'>Edge Cases</span>
+                    <span className='text-[10px] font-semibold text-gray-600 uppercase tracking-wide w-24 flex-shrink-0 pt-1'>Edge Cases</span>
                     <div className='flex flex-wrap gap-1.5 flex-1'>
                       {Object.entries(edgeCases).map(([key, val]) => {
                         const rawVal = typeof val === 'object' && val !== null ? (val as any).type : String(val);
                         const s = valueStyle(rawVal);
                         return (
-                          <div key={key} className='inline-flex items-center rounded-lg border border-gray-100 overflow-hidden text-[10px]'>
-                            <span className='px-2 py-1 bg-gray-50 text-gray-500 font-medium border-r border-gray-100'>
+                          <div key={key} className='inline-flex items-center rounded-lg border border-gray-200 overflow-hidden text-[10px]'>
+                            <span className='px-2 py-1 bg-gray-100 text-gray-700 font-medium border-r border-gray-200'>
                               {EDGE_CASE_LABELS[key] ?? key}
                             </span>
                             <span className='px-2 py-1 font-bold' style={{ background: s.bg, color: s.color }}>
