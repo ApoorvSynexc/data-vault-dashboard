@@ -661,6 +661,78 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
           </div>
         )}
 
+        {/* Restore Parameters — source type + scope */}
+        {(job.source?.type || job.selection?.restoreScope?.type) && (() => {
+          const SOURCE_TYPE_LABELS: Record<string, string> = {
+            ENTIRE:          'Entire Backup',
+            CHANGED_BETWEEN: 'Changed Between',
+          };
+          const SCOPE_LABELS: Record<string, string> = {
+            ALL:          'Full Restore',
+            OBJECT:       'By Object',
+            RECORD:       'By Record',
+            FIELD:        'By Field',
+            FILTER:       'Custom Filter',
+            BULK_CSV:     'Bulk CSV',
+            DELETED_ONLY: 'Deleted Only',
+          };
+          const fmtDate = (d: string) =>
+            new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+
+          const srcType   = job.source?.type as string | undefined;
+          const scopeType = job.selection?.restoreScope?.type as string | undefined;
+
+          return (
+            <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
+              <div className='flex items-center gap-2 px-5 py-3 border-b border-gray-100'>
+                <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                  <circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/>
+                </svg>
+                <span className='text-sm font-semibold text-gray-700'>Restore Parameters</span>
+              </div>
+              <div className='px-5 py-4 flex flex-wrap gap-3 items-center'>
+
+                {/* Source Type */}
+                {srcType && (
+                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
+                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>
+                    </svg>
+                    <span className='text-[11px] text-gray-500 font-medium'>Source Type</span>
+                    <span className='text-[11px] font-bold text-gray-800'>{SOURCE_TYPE_LABELS[srcType] ?? srcType}</span>
+                  </div>
+                )}
+
+                {/* Date range — only for CHANGED_BETWEEN */}
+                {srcType === 'CHANGED_BETWEEN' && job.source?.startDate && (
+                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100'>
+                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#155DFC' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
+                    </svg>
+                    <span className='text-[11px] font-bold text-blue-800'>
+                      {fmtDate(job.source.startDate)}
+                      <span className='mx-1.5 font-normal text-blue-400'>→</span>
+                      {job.source.endDate ? fmtDate(job.source.endDate) : '—'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Restore Scope */}
+                {scopeType && (
+                  <div className='flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
+                    <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                      <polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>
+                    </svg>
+                    <span className='text-[11px] text-gray-500 font-medium'>Restore Scope</span>
+                    <span className='text-[11px] font-bold text-gray-800'>{SCOPE_LABELS[scopeType] ?? scopeType}</span>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Summary Stats */}
         {isExportJob ? (
           <div className='grid grid-cols-3 gap-3 flex-shrink-0'>
