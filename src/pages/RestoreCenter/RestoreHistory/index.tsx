@@ -577,91 +577,7 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
           </div>
         )}
 
-        {/* Source Config Info */}
-        {sourceConfig !== undefined && sourceConfig !== null && (
-          <div className='rounded-xl border border-gray-200 bg-white shadow-sm flex-shrink-0 overflow-hidden'>
-            <div className='flex items-center gap-2 px-5 py-3 border-b border-gray-100'>
-              <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>
-              </svg>
-              <span className='text-sm font-semibold text-gray-700'>Restore Source</span>
-            </div>
-            <div className='px-5 py-4'>
-              {!sourceConfig.name ? (
-                <div className='flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3'>
-                  <div className='w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0'>
-                    <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                      <polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6'/><path d='M10 11v6'/><path d='M14 11v6'/><path d='M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2'/>
-                    </svg>
-                  </div>
-                  <div>
-                    <p className='text-sm font-semibold text-gray-600'>Source config deleted</p>
-                    <p className='text-xs text-gray-500 mt-0.5'>The original backup or archival config no longer exists.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className='flex items-center gap-4'>
-                  {/* Icon + name */}
-                  <div className='flex items-center gap-3 flex-shrink-0'>
-                    <div className='w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0'
-                      style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.08)' : 'rgba(124,58,237,0.08)' }}>
-                      <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke={sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED'} strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                        <path d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className='text-sm font-bold text-gray-900 leading-tight'>{sourceConfig.name}</p>
-                      {sourceConfigType && (
-                        <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold mt-1'
-                          style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.1)' : 'rgba(124,58,237,0.1)', color: sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED' }}>
-                          {sourceConfigType}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Divider */}
-                  <div className='w-px self-stretch bg-gray-100 mx-1 flex-shrink-0' />
-
-                  {/* Meta pills */}
-                  <div className='flex flex-wrap gap-2 flex-1'>
-                    {sourceConfigType !== 'Archival' && sourceDataset && (
-                      <div className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
-                        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                          <ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/>
-                        </svg>
-                        <span className='text-[11px] text-gray-500 font-medium'>Dataset</span>
-                        <span className='text-[11px] font-bold text-gray-800'>{sourceDataset}</span>
-                      </div>
-                    )}
-                    {sourceConfigType !== 'Archival' && sourceSchedule && (
-                      <div className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
-                        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                          <circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>
-                        </svg>
-                        <span className='text-[11px] text-gray-500 font-medium'>Schedule</span>
-                        <span className='text-[11px] font-bold text-gray-800'>{sourceSchedule}</span>
-                      </div>
-                    )}
-                    {sourceConfig.createdAt && (
-                      <div className='flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100'>
-                        <svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='#6B7280' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                          <rect x='3' y='4' width='18' height='18' rx='2' ry='2'/><line x1='16' y1='2' x2='16' y2='6'/><line x1='8' y1='2' x2='8' y2='6'/><line x1='3' y1='10' x2='21' y2='10'/>
-                        </svg>
-                        <span className='text-[11px] text-gray-500 font-medium'>Created</span>
-                        <span className='text-[11px] font-bold text-gray-800'>
-                          {new Date(sourceConfig.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Restore Specifications — source, scope & conflict settings combined */}
+        {/* Restore Specifications — source config + scope + conflict settings combined */}
         {(job.source?.type || job.selection?.restoreScope?.type || job.conflict) && (() => {
           const SOURCE_TYPE_LABELS: Record<string, string> = {
             ENTIRE:          'Entire Backup',
@@ -719,6 +635,50 @@ export default function RestoreHistory({ onBack, jobId, isExport: isExportProp =
               </div>
 
               <div className='divide-y divide-gray-50'>
+
+                {/* ── Row 0: Backup / Archival Source Config ── */}
+                {sourceConfig !== undefined && sourceConfig !== null && (
+                  <div className='px-5 py-3 flex flex-wrap items-center gap-2'>
+                    <span className='text-[10px] font-semibold text-gray-400 uppercase tracking-wide w-24 flex-shrink-0'>Source Config</span>
+                    <div className='flex flex-wrap items-center gap-2 flex-1'>
+                      {!sourceConfig.name ? (
+                        <span className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px] text-gray-500'>
+                          <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='#9CA3AF' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                            <polyline points='3 6 5 6 21 6'/><path d='M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6'/>
+                          </svg>
+                          Config deleted
+                        </span>
+                      ) : (
+                        <>
+                          <div className='inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-100'
+                            style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.06)' : 'rgba(124,58,237,0.06)' }}>
+                            <span className='text-[10px] font-bold' style={{ color: sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED' }}>
+                              {sourceConfig.name}
+                            </span>
+                            {sourceConfigType && (
+                              <span className='text-[9px] font-semibold px-1.5 py-0.5 rounded-full'
+                                style={{ background: sourceConfigType === 'Backup' ? 'rgba(21,93,252,0.12)' : 'rgba(124,58,237,0.12)', color: sourceConfigType === 'Backup' ? '#155DFC' : '#7C3AED' }}>
+                                {sourceConfigType}
+                              </span>
+                            )}
+                          </div>
+                          {sourceConfigType !== 'Archival' && sourceDataset && (
+                            <div className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px]'>
+                              <span className='text-gray-400 font-medium'>Dataset</span>
+                              <span className='font-bold text-gray-800'>{sourceDataset}</span>
+                            </div>
+                          )}
+                          {sourceConfigType !== 'Archival' && sourceSchedule && (
+                            <div className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-100 text-[10px]'>
+                              <span className='text-gray-400 font-medium'>Schedule</span>
+                              <span className='font-bold text-gray-800'>{sourceSchedule}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* ── Row 1: Source & Scope ── */}
                 {(srcType || scopeType) && (
