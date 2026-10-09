@@ -468,7 +468,7 @@ export default function ReviewSubmit({ onBack, onComplete, restorePayload, dryRu
                       <p className='text-sm font-semibold text-amber-600'>{dryRunStats.totalUpdateCount.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className='text-xs text-gray-400 mb-0.5'>To Delete</p>
+                      <p className='text-xs text-gray-400 mb-0.5'>To Insert</p>
                       <p className='text-sm font-semibold text-red-600'>{dryRunStats.totalDeleteCount.toLocaleString()}</p>
                     </div>
                   </>
