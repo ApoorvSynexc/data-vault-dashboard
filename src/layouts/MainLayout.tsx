@@ -149,8 +149,8 @@ function OrgDropdown({ selectedOrg, userCrmId, userProfileId, onAutoSelect, onSe
       </button>
 
       {open && orgs.length > 1 && (
-        <div className='absolute left-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl overflow-hidden'
-          style={{ minWidth: 280, border: '1px solid #E2E8F0' }}>
+        <div className='absolute right-0 top-full mt-2 z-50 bg-white rounded-xl shadow-xl overflow-hidden'
+          style={{ minWidth: 320, maxWidth: 420, width: 'max-content', border: '1px solid #E2E8F0' }}>
           <div className='px-3 py-2 border-b border-gray-100'>
             <p className='text-[10px] font-semibold text-gray-400 uppercase tracking-wider'>Connected Orgs</p>
           </div>
