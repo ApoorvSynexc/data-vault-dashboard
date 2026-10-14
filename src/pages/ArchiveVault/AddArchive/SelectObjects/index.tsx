@@ -740,9 +740,9 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                   </svg>
                 </div>
                 <div className='flex-1 min-w-0'>
-                  <p className='text-sm font-semibold text-gray-900'>Master-Detail Parent Detected</p>
+                  <p className='text-sm font-semibold text-gray-900'>Master Detail Parent Detected</p>
                   <p className='text-xs text-gray-500 mt-0.5 leading-relaxed'>
-                    <span className='font-medium'>{tier1Notice.objectName}</span> has a master-detail parent relationship with{' '}
+                    <span className='font-medium'>{tier1Notice.objectName}</span> has a Master Detail parent relationship with{' '}
                     <span className='font-medium text-amber-700'>{tier1Notice.parents.join(', ')}</span>.
                     {' '}Consider manually selecting {tier1Notice.parents.length === 1 ? 'it' : 'them'} to maintain data integrity.
                   </p>
@@ -769,7 +769,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                 <div className='flex-1 min-w-0'>
                   <p className='text-sm font-semibold text-gray-900'>Additional parent objects detected</p>
                   <p className='text-xs text-gray-500 mt-0.5 mb-2 leading-relaxed'>
-                    Some child objects auto-selected with <span className='font-medium text-gray-700'>{childExtraParentsNotice.objectName}</span> have additional Master-Detail parents.
+                    Some child objects auto-selected with <span className='font-medium text-gray-700'>{childExtraParentsNotice.objectName}</span> have additional Master Detail parents.
                     {' '}Please add them manually for data integrity.
                   </p>
                   <div className='flex flex-col gap-1'>
@@ -780,7 +780,7 @@ export default function AddArchiveStep3({ crmId, initialSelectedObjects = [], on
                         </svg>
                         <p className='text-xs leading-relaxed'>
                           <span className='font-semibold text-gray-800'>{childName}</span>
-                          <span className='text-gray-500'> also has a Master-Detail parent: </span>
+                          <span className='text-gray-500'> also has a Master Detail parent: </span>
                           <span className='font-semibold text-red-700'>{parents.join(', ')}</span>
                         </p>
                       </div>
