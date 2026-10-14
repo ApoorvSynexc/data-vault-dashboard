@@ -269,7 +269,7 @@ function ObjNode({ data, id }: NodeProps<FlowNode>) {
         <div style={{ display: 'flex' }}>
           {isMd && (
             <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#EDE9FE', color: '#7C3AED', border: '1px solid #C4B5FD' }}>
-              ⛓ MasterDetail
+              ⛓ Master Detail
             </span>
           )}
           {isReqLookup && (
