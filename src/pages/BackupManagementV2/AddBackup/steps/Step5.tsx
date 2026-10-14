@@ -63,20 +63,23 @@ function collectChildExtraParents(
   return result;
 }
 
-// Flattens a payload tree into uuids/labels (for locking rows and the toast message)
-function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; labels: string[] } {
+type ChildRelType = 'Master Detail' | 'Required Lookup';
+
+// Flattens a payload tree into uuids + typed items (for locking rows and the toast message).
+// Child rule: cascadeDelete=true → Master Detail; cascadeDelete=false & restrictedDelete=true → Required Lookup.
+function flattenPayloadTree(nodes: PayloadChildNode[]): { uuids: string[]; items: { name: string; relType: ChildRelType }[] } {
   const uuids: string[] = [];
-  const labels: string[] = [];
+  const items: { name: string; relType: ChildRelType }[] = [];
   nodes.forEach((node) => {
     uuids.push(node.id);
-    labels.push(node.name);
+    items.push({ name: node.name, relType: node.cascadeDelete === true ? 'Master Detail' : 'Required Lookup' });
     if (node.children?.length) {
       const nested = flattenPayloadTree(node.children);
       uuids.push(...nested.uuids);
-      labels.push(...nested.labels);
+      items.push(...nested.items);
     }
   });
-  return { uuids, labels };
+  return { uuids, items };
 }
 
 // Re-resolves a previously-saved children tree (stale uuids, SF names as `name`)
@@ -173,8 +176,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
   const [parentChildMap, setParentChildMap] = useState<Map<string, string[]>>(new Map());
   // Map of parent uuid -> its master-detail children as a nested tree, for the payload
   const [parentTreeMap, setParentTreeMap] = useState<Map<string, PayloadChildNode[]>>(new Map());
-  // Toast message (child labels for display)
-  const [toast, setToast] = useState<{ objectName: string; children: string[] } | null>(null);
+  // Toast message (child items with relationship type for display)
+  const [toast, setToast] = useState<{ objectName: string; children: { name: string; relType: ChildRelType }[] } | null>(null);
   // Parent-required notice (junction object parents that must be manually selected)
   const [parentNotice, setParentNotice] = useState<{ objectName: string; parents: string[] } | null>(null);
   // Notice when an auto-selected child itself has additional master-detail parents the user should add
@@ -229,7 +232,7 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
     const rawChildren = d.children ?? [];
     const payloadTree = buildPayloadTree(rawChildren, displayObjects);
 
-    const { uuids: childUuids, labels: childLabels } = flattenPayloadTree(payloadTree);
+    const { uuids: childUuids, items: childItems } = flattenPayloadTree(payloadTree);
 
     // Collect parent object API names from top-level data.parent[].referenceTo[]
     // These are junction-object parents the user must select manually — we do NOT auto-select them.
@@ -261,8 +264,11 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
 
     const objectName = parentObj?.name ?? lastSelectedSfName;
 
-    if (childLabels.length > 0) {
-      setToast({ objectName, children: Array.from(new Set(childLabels)) });
+    if (childItems.length > 0) {
+      // Deduplicate by name, keeping the first occurrence
+      const seen = new Set<string>();
+      const unique = childItems.filter(({ name }) => seen.has(name) ? false : (seen.add(name), true));
+      setToast({ objectName, children: unique });
       toastTimerRef.current = setTimeout(() => setToast(null), 6000);
     }
 
@@ -391,10 +397,25 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                   </svg>
                 </div>
                 <div className='flex-1 min-w-0'>
-                  <p className='text-sm font-semibold text-gray-900'>Master-Detail relationships detected</p>
-                  <p className='text-xs text-gray-500 mt-0.5 leading-relaxed'>
-                    <span className='font-medium text-blue-600'>{toast.children.join(', ')}</span> are in a Master-Detail relationship with <span className='font-medium'>{toast.objectName}</span> and will be automatically backed up.
+                  <p className='text-sm font-semibold text-gray-900'>Related objects auto-selected</p>
+                  <p className='text-xs text-gray-500 mt-0.5 mb-2 leading-relaxed'>
+                    The following objects are related to <span className='font-medium text-gray-700'>{toast.objectName}</span> and will be automatically backed up.
                   </p>
+                  {(['Master Detail', 'Required Lookup'] as ChildRelType[]).map((relType) => {
+                    const group = toast.children.filter((c) => c.relType === relType);
+                    if (group.length === 0) return null;
+                    const isMD = relType === 'Master Detail';
+                    return (
+                      <div key={relType} className='flex items-start gap-1.5 mb-1 last:mb-0'>
+                        <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-px ${isMD ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {relType}
+                        </span>
+                        <span className={`text-xs font-medium ${isMD ? 'text-blue-600' : 'text-amber-700'}`}>
+                          {group.map((c) => c.name).join(', ')}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button onClick={() => setToast(null)} className='flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors mt-0.5'>
                   <svg width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
@@ -880,8 +901,8 @@ export default function Step5({ onNext, onBack, entireDatasetSelected: _entireDa
                         ? { background: 'rgba(16,185,129,0.1)', color: '#059669' }
                         : { background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}>
                       {variant === 'child'
-                        ? (!cascadeDelete && !restrictedDelete ? 'Lookup' : cascadeDelete && restrictedDelete ? 'Master Detail' : cascadeDelete ? 'Master Detail' : restrictedDelete ? 'Lookup Required' : 'Child' )
-                        : (cascadeDelete && nillable ? 'Master Detail' : cascadeDelete ? 'Master Detail' : nillable ? 'Lookup' : !cascadeDelete && !nillable ? 'Lookup Required' : 'Parent' )}
+                        ? (cascadeDelete ? 'Master Detail' : restrictedDelete ? 'Required Lookup' : 'Lookup')
+                        : (cascadeDelete ? 'Master Detail' : nillable ? 'Required Lookup' : 'Lookup')}
                     </span>
                   </div>
                 );
