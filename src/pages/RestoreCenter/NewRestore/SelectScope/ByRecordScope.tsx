@@ -290,7 +290,7 @@ export default function ByRecordScope({ sourceObjectNames, sourceObjectsLoading,
                   <circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>
                 </svg>
                 <input value={recordSearch} onChange={(e) => setRecordSearch(e.target.value)}
-                  placeholder={`Search ${modalObj} records by name or ID…`}
+                  placeholder={`Search ${modalObj} records by ID…`}
                   className='w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500'
                   autoFocus />
               </div>
